@@ -1,0 +1,106 @@
+import { useEffect, useState, useRef } from 'react';
+import { Client } from '@stomp/stompjs';
+import { useAuthStore } from '../stores/authStore';
+
+const WS_URL = import.meta.env.VITE_WS_URL || 'ws://localhost:8080/ws';
+
+/**
+ * Hook kết nối WebSocket STOMP với Spring Boot Backend
+ * Tự động đính kèm Bearer Token JWT khi handshake
+ */
+export function useWebSocket() {
+  const token = useAuthStore((state) => state.token);
+  const [connected, setConnected] = useState(false);
+  const stompClientRef = useRef(null);
+
+  useEffect(() => {
+    if (!token) return;
+
+    // Thiết lập STOMP Client
+    const client = new Client({
+      brokerURL: WS_URL,
+      connectHeaders: {
+        Authorization: `Bearer ${token}`, // Đính kèm JWT khi handshake bảo mật
+      },
+      debug: (str) => {
+        console.log('[STOMP DEBUG]: ', str);
+      },
+      reconnectDelay: 5000, // Tự động reconnect sau 5 giây nếu đứt kết nối
+      heartbeatIncoming: 4000,
+      heartbeatOutgoing: 4000,
+    });
+
+    client.onConnect = (frame) => {
+      console.log('Connected to Spring Boot STOMP WebSocket! Frame: ' + frame);
+      setConnected(true);
+    };
+
+    client.onDisconnect = () => {
+      console.log('Disconnected from STOMP WebSocket.');
+      setConnected(false);
+    };
+
+    client.onStompError = (frame) => {
+      console.error('Broker reported error: ' + frame.headers['message']);
+      console.error('Additional details: ' + frame.body);
+    };
+
+    // Bắt đầu kết nối
+    client.activate();
+    stompClientRef.current = client;
+
+    // Dọn dẹp kết nối khi component unmount
+    return () => {
+      if (stompClientRef.current) {
+        stompClientRef.current.deactivate();
+        console.log('WebSocket Connection deactivated.');
+      }
+    };
+  }, [token]);
+
+  /**
+   * Đăng ký nhận tin nhắn từ một Topic
+   * @param {string} destination 
+   * @param {function} onMessageReceived 
+   * @returns {object} Subscription để unsubscribe khi unmount
+   */
+  const subscribe = (destination, onMessageReceived) => {
+    if (!stompClientRef.current || !connected) {
+      console.warn('STOMP Client is not connected yet. Cannot subscribe to ' + destination);
+      return null;
+    }
+
+    return stompClientRef.current.subscribe(destination, (message) => {
+      try {
+        const payload = JSON.parse(message.body);
+        onMessageReceived(payload);
+      } catch (e) {
+        // Fallback cho text thô
+        onMessageReceived(message.body);
+      }
+    });
+  };
+
+  /**
+   * Gửi tin nhắn lên một Destination
+   * @param {string} destination 
+   * @param {object} body 
+   */
+  const publish = (destination, body) => {
+    if (!stompClientRef.current || !connected) {
+      console.warn('STOMP Client is not connected. Cannot publish message to ' + destination);
+      return;
+    }
+
+    stompClientRef.current.publish({
+      destination,
+      body: JSON.stringify(body),
+    });
+  };
+
+  return {
+    connected,
+    subscribe,
+    publish,
+  };
+}

@@ -1,7 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import apiClient from '../../services/api';
 import { useAuthStore } from '../../stores/authStore';
+import { getAvatarUrl } from '../../utils/avatarHelper';
+import { toast, ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 import {
   BarChart3,
   Store,
@@ -74,6 +77,60 @@ export default function AdminLayout() {
     { path: '/admin/stats', name: 'Thống kê hệ thống', icon: LineChart },
   ];
 
+  const fileInputRef = useRef(null);
+  const [uploading, setUploading] = useState(false);
+
+  const handleAvatarClick = () => {
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
+    }
+  };
+
+  const handleAvatarChange = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("Kích thước file tối đa là 5MB!");
+      return;
+    }
+    const allowedTypes = ["image/jpeg", "image/png", "image/webp", "image/heic", "image/heif"];
+    const ext = file.name.split('.').pop().toLowerCase();
+    if (!allowedTypes.includes(file.type.toLowerCase()) && ext !== 'heic' && ext !== 'heif') {
+      toast.error("Chỉ chấp nhận các định dạng hình ảnh JPEG, PNG, WEBP, HEIC, HEIF!");
+      return;
+    }
+
+    setUploading(true);
+    const { updateProfile } = useAuthStore.getState();
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      const uploadRes = await apiClient.post('/images/upload', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      const newUrl = uploadRes.data?.data?.url;
+      if (!newUrl) throw new Error("Không nhận được URL ảnh!");
+
+      try {
+        await apiClient.put('/users/profile', {
+          avatar: newUrl
+        });
+        updateProfile({ avatar: newUrl });
+        toast.success("Cập nhật ảnh đại diện thành công! 🎉");
+      } catch (dbErr) {
+        console.error("Cập nhật Database thất bại:", dbErr);
+        toast.error(dbErr.response?.data?.message || "Cập nhật Database thất bại. Đang giữ nguyên ảnh cũ.");
+      }
+    } catch (uploadErr) {
+      console.error("Upload ảnh thất bại:", uploadErr);
+      toast.error(uploadErr.response?.data?.message || "Lỗi khi upload ảnh lên Cloudinary!");
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
+
   const handleLogout = () => {
     logout();
     navigate('/login');
@@ -113,11 +170,22 @@ export default function AdminLayout() {
         {/* Admin profile quick card */}
         {expanded && user && (
           <div className="p-4 mx-3 my-4 bg-purple-950/20 rounded-radius-lg border border-purple-900/30 flex items-center gap-3">
-            <img 
-              src={user.avatar} 
-              alt="Admin Avatar" 
-              className="w-10 h-10 rounded-radius-full border border-purple-550 object-cover"
-            />
+            <div 
+              onClick={handleAvatarClick}
+              className="relative cursor-pointer group shrink-0"
+              title="Click để đổi ảnh đại diện nhanh"
+            >
+              <img 
+                src={getAvatarUrl(user.avatar)} 
+                alt="Admin Avatar" 
+                className="w-10 h-10 rounded-radius-full border border-purple-550 object-cover group-hover:opacity-75 transition-opacity"
+              />
+              {uploading && (
+                <div className="absolute inset-0 bg-black/40 rounded-radius-full flex items-center justify-center">
+                  <span className="w-3 h-3 border border-white border-t-transparent rounded-full animate-spin"></span>
+                </div>
+              )}
+            </div>
             <div className="flex flex-col min-w-0">
               <span className="text-sm font-bold text-slate-200 truncate">{user.name}</span>
               <span className="text-[10px] bg-purple-900 text-purple-300 font-bold px-1.5 py-0.5 rounded-full w-max mt-1">
@@ -266,11 +334,22 @@ export default function AdminLayout() {
               theme === 'light' ? 'border-slate-200 bg-slate-50' : 'border-slate-850 bg-slate-900/40'
             }`}>
               <div className="flex items-center gap-3">
-                <img 
-                  src={user?.avatar || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=150&q=80"} 
-                  alt="Admin Avatar" 
-                  className="w-10 h-10 rounded-full object-cover border border-purple-500 shadow-sm"
-                />
+                <div 
+                  onClick={handleAvatarClick}
+                  className="relative cursor-pointer group shrink-0"
+                  title="Click để đổi ảnh đại diện nhanh"
+                >
+                  <img 
+                    src={getAvatarUrl(user?.avatar)} 
+                    alt="Admin Avatar" 
+                    className="w-10 h-10 rounded-full object-cover border border-purple-550 shadow-sm group-hover:opacity-75 transition-opacity"
+                  />
+                  {uploading && (
+                    <div className="absolute inset-0 bg-black/40 rounded-full flex items-center justify-center">
+                      <span className="w-3 h-3 border border-white border-t-transparent rounded-full animate-spin"></span>
+                    </div>
+                  )}
+                </div>
                 <div className="flex flex-col min-w-0">
                   <span className={`text-xs font-bold truncate ${theme === 'light' ? 'text-slate-800' : 'text-slate-200'}`}>
                     {user?.name || 'Admin'}
@@ -348,6 +427,15 @@ export default function AdminLayout() {
         <Outlet />
       </main>
 
+      {/* TOAST POPUP TOÀN CỤC THỜI GIAN THỰC */}
+      <ToastContainer />
+      <input 
+        type="file" 
+        ref={fileInputRef} 
+        className="hidden" 
+        accept="image/*" 
+        onChange={handleAvatarChange} 
+      />
     </div>
   );
 }

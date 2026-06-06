@@ -23,6 +23,7 @@ import { useWebSocketContext } from '../../contexts/WebSocketContext';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import apiClient from '../../services/api';
+import { getAvatarUrl } from '../../utils/avatarHelper';
 
 export default function CustomerLayout() {
   const navigate = useNavigate();
@@ -191,6 +192,59 @@ export default function CustomerLayout() {
     { path: '/profile', name: 'Tài khoản', icon: User },
   ];
 
+  const fileInputRef = useRef(null);
+  const [uploading, setUploading] = useState(false);
+
+  const handleAvatarClick = () => {
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
+    }
+  };
+
+  const handleAvatarChange = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("Kích thước file tối đa là 5MB!");
+      return;
+    }
+    const allowedTypes = ["image/jpeg", "image/png", "image/webp", "image/heic", "image/heif"];
+    const ext = file.name.split('.').pop().toLowerCase();
+    if (!allowedTypes.includes(file.type.toLowerCase()) && ext !== 'heic' && ext !== 'heif') {
+      toast.error("Chỉ chấp nhận các định dạng hình ảnh JPEG, PNG, WEBP, HEIC, HEIF!");
+      return;
+    }
+
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      const uploadRes = await apiClient.post('/images/upload', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      const newUrl = uploadRes.data?.data?.url;
+      if (!newUrl) throw new Error("Không nhận được URL ảnh!");
+
+      try {
+        await apiClient.put('/users/profile', {
+          avatar: newUrl
+        });
+        updateProfile({ avatar: newUrl });
+        toast.success("Cập nhật ảnh đại diện thành công! 🎉");
+      } catch (dbErr) {
+        console.error("Cập nhật Database thất bại:", dbErr);
+        toast.error(dbErr.response?.data?.message || "Cập nhật Database thất bại. Đang giữ nguyên ảnh cũ.");
+      }
+    } catch (uploadErr) {
+      console.error("Upload ảnh thất bại:", uploadErr);
+      toast.error(uploadErr.response?.data?.message || "Lỗi khi upload ảnh lên Cloudinary!");
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
+
   const handleLogout = () => {
     logout();
     navigate('/login');
@@ -232,11 +286,22 @@ export default function CustomerLayout() {
         {/* User Quick Info */}
         {navRailExpanded && user && (
           <div className="p-4 mx-4 my-4 bg-gradient-to-r from-md-primary-container/20 to-md-secondary-container/10 border border-md-primary/5 rounded-radius-xl flex items-center gap-3.5 shadow-sm animate-fade-in">
-            <img 
-              src={user.avatar} 
-              alt="Avatar" 
-              className="w-11 h-11 rounded-radius-full border-2 border-md-primary/20 object-cover shadow-sm"
-            />
+            <div 
+              onClick={handleAvatarClick}
+              className="relative cursor-pointer group shrink-0"
+              title="Click để đổi ảnh đại diện nhanh"
+            >
+              <img 
+                src={getAvatarUrl(user.avatar)} 
+                alt="Avatar" 
+                className="w-11 h-11 rounded-radius-full border-2 border-md-primary/20 object-cover shadow-sm group-hover:opacity-75 transition-opacity"
+              />
+              {uploading && (
+                <div className="absolute inset-0 bg-black/40 rounded-radius-full flex items-center justify-center">
+                  <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+                </div>
+              )}
+            </div>
             <div className="flex flex-col min-w-0">
               <span className="text-sm font-extrabold text-md-on-surface truncate">{user.name}</span>
               <span className="text-[10px] text-md-primary font-bold tracking-wide uppercase mt-1">
@@ -367,11 +432,22 @@ export default function CustomerLayout() {
             <div className="p-4 flex items-center justify-between border-b border-md-outline-variant bg-gradient-to-r from-md-primary-container/10 to-transparent">
               {user ? (
                 <div className="flex items-center gap-3">
-                  <img 
-                    src={user.avatar} 
-                    alt="Avatar" 
-                    className="w-10 h-10 rounded-full object-cover border border-md-primary/20 shadow-sm"
-                  />
+                  <div 
+                    onClick={handleAvatarClick}
+                    className="relative cursor-pointer group shrink-0"
+                    title="Click để đổi ảnh đại diện nhanh"
+                  >
+                    <img 
+                      src={getAvatarUrl(user.avatar)} 
+                      alt="Avatar" 
+                      className="w-10 h-10 rounded-full object-cover border border-md-primary/20 shadow-sm group-hover:opacity-75 transition-opacity"
+                    />
+                    {uploading && (
+                      <div className="absolute inset-0 bg-black/40 rounded-full flex items-center justify-center">
+                        <span className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+                      </div>
+                    )}
+                  </div>
                   <div className="flex flex-col min-w-0">
                     <span className="text-xs font-extrabold text-slate-800 truncate">{user.name}</span>
                     <span className="text-[8px] text-md-primary font-bold tracking-widest uppercase">Khách hàng</span>
@@ -446,6 +522,15 @@ export default function CustomerLayout() {
 
       {/* TOAST POPUP TOÀN CỤC THỜI GIAN THỰC */}
       <ToastContainer />
+
+      {/* Input file ẩn phục vụ upload nhanh avatar */}
+      <input 
+        type="file" 
+        ref={fileInputRef} 
+        className="hidden" 
+        accept="image/*" 
+        onChange={handleAvatarChange} 
+      />
 
     </div>
   );

@@ -1,9 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../../stores/authStore';
 import { useChatStore } from '../../stores/chatStore';
 import { useOrderStore } from '../../stores/orderStore';
 import apiClient from '../../services/api';
+import { getRestaurantBannerUrl } from '../../utils/avatarHelper';
+import { toast, ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 import {
   BarChart3,
   ClipboardList,
@@ -77,6 +80,72 @@ export default function MerchantLayout() {
     { path: '/merchant/settings', name: 'Cài đặt quán', icon: Settings },
   ];
 
+  const fileInputRef = useRef(null);
+  const [uploadingLogo, setUploadingLogo] = useState(false);
+
+  const handleLogoClick = () => {
+    if (!restaurant) {
+      toast.warn("Bạn chưa đăng ký nhà hàng. Vui lòng vào Cài đặt quán để đăng ký trước!");
+      return;
+    }
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
+    }
+  };
+
+  const handleLogoChange = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("Kích thước file tối đa là 5MB!");
+      return;
+    }
+    const allowedTypes = ["image/jpeg", "image/png", "image/webp", "image/heic", "image/heif"];
+    const ext = file.name.split('.').pop().toLowerCase();
+    if (!allowedTypes.includes(file.type.toLowerCase()) && ext !== 'heic' && ext !== 'heif') {
+      toast.error("Chỉ chấp nhận các định dạng hình ảnh JPEG, PNG, WEBP, HEIC, HEIF!");
+      return;
+    }
+
+    setUploadingLogo(true);
+    const rId = restaurant.restaurantId || restaurant.id;
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      const uploadRes = await apiClient.post('/images/upload', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      const newUrl = uploadRes.data?.data?.url;
+      if (!newUrl) throw new Error("Không nhận được URL ảnh!");
+
+      try {
+        await apiClient.put(`/merchant/restaurants/${rId}`, {
+          restaurantName: restaurant.restaurantName,
+          address: restaurant.address,
+          latitude: restaurant.latitude,
+          longitude: restaurant.longitude,
+          phone: restaurant.phone,
+          description: restaurant.description,
+          imageUrl: newUrl
+        });
+        
+        // Cập nhật state cục bộ để giao diện đổi ngay lập tức
+        setRestaurant(prev => prev ? { ...prev, imageUrl: newUrl } : null);
+        toast.success("Cập nhật logo nhà hàng thành công! 🏪");
+      } catch (dbErr) {
+        console.error("Cập nhật Database thất bại:", dbErr);
+        toast.error(dbErr.response?.data?.message || "Cập nhật Database thất bại. Đang giữ nguyên ảnh cũ.");
+      }
+    } catch (uploadErr) {
+      console.error("Upload ảnh thất bại:", uploadErr);
+      toast.error(uploadErr.response?.data?.message || "Lỗi khi upload ảnh lên Cloudinary!");
+    } finally {
+      setUploadingLogo(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
+
   const handleLogout = () => {
     logout();
     navigate('/login');
@@ -114,11 +183,22 @@ export default function MerchantLayout() {
         {/* Store Profile Quick Card */}
         {expanded && user && (
           <div className="p-4 mx-3 my-4 bg-md-secondary-container/20 rounded-radius-lg border border-md-secondary/10 flex items-center gap-3">
-            <img 
-              src={restaurant ? restaurant.imageUrl : "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=150&q=80"} 
-              alt="Store Avatar" 
-              className="w-12 h-12 rounded-radius-md object-cover border border-md-secondary/20 shadow-shadow-1"
-            />
+            <div 
+              onClick={handleLogoClick}
+              className="relative cursor-pointer group shrink-0"
+              title="Click để đổi nhanh logo quán"
+            >
+              <img 
+                src={getRestaurantBannerUrl(restaurant ? restaurant.imageUrl : "")} 
+                alt="Store Avatar" 
+                className="w-12 h-12 rounded-radius-md object-cover border border-md-secondary/20 shadow-shadow-1 group-hover:opacity-75 transition-opacity"
+              />
+              {uploadingLogo && (
+                <div className="absolute inset-0 bg-black/40 rounded-radius-md flex items-center justify-center">
+                  <span className="w-3 h-3 border border-white border-t-transparent rounded-full animate-spin"></span>
+                </div>
+              )}
+            </div>
             <div className="flex flex-col min-w-0">
               <span className="text-sm font-bold text-md-on-surface truncate">
                 {restaurant ? restaurant.restaurantName : "Chưa đăng ký quán"}
@@ -217,11 +297,22 @@ export default function MerchantLayout() {
             {/* Header Drawer */}
             <div className="p-4 flex items-center justify-between border-b border-md-outline-variant bg-gradient-to-r from-md-secondary-container/10 to-transparent">
               <div className="flex items-center gap-3">
-                <img 
-                  src={restaurant ? restaurant.imageUrl : "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=150&q=80"} 
-                  alt="Store Avatar" 
-                  className="w-10 h-10 rounded-lg object-cover border border-md-secondary/20 shadow-sm"
-                />
+                <div 
+                  onClick={handleLogoClick}
+                  className="relative cursor-pointer group shrink-0"
+                  title="Click để đổi nhanh logo quán"
+                >
+                  <img 
+                    src={getRestaurantBannerUrl(restaurant ? restaurant.imageUrl : "")} 
+                    alt="Store Avatar" 
+                    className="w-10 h-10 rounded-lg object-cover border border-md-secondary/20 shadow-sm group-hover:opacity-75 transition-opacity"
+                  />
+                  {uploadingLogo && (
+                    <div className="absolute inset-0 bg-black/40 rounded-lg flex items-center justify-center">
+                      <span className="w-3 h-3 border border-white border-t-transparent rounded-full animate-spin"></span>
+                    </div>
+                  )}
+                </div>
                 <div className="flex flex-col min-w-0">
                   <span className="text-xs font-bold text-md-on-surface truncate">
                     {restaurant ? restaurant.restaurantName : "Chưa đăng ký quán"}
@@ -291,6 +382,14 @@ export default function MerchantLayout() {
         <Outlet />
       </main>
 
+      <ToastContainer />
+      <input 
+        type="file" 
+        ref={fileInputRef} 
+        className="hidden" 
+        accept="image/*" 
+        onChange={handleLogoChange} 
+      />
     </div>
   );
 }

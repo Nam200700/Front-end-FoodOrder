@@ -24,6 +24,7 @@ import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import apiClient from '../../services/api';
 import { getAvatarUrl } from '../../utils/avatarHelper';
+import { parseOrderEvent, notifyStatusChange } from '../../utils/orderStatusHelper';
 
 export default function CustomerLayout() {
   const navigate = useNavigate();
@@ -43,8 +44,6 @@ export default function CustomerLayout() {
   }, [isLoggedIn, role, fetchCart]);
 
   const { subscribe } = useWebSocketContext();
-  const subscriptionsRef = useRef({});
-  const orderStatusesRef = useRef({});
 
   // Tự động chuyển hướng nếu người dùng đã đăng nhập với role đặc thù sang trang chủ của họ (trừ phi đang ở trang dùng chung như /chat)
   if (isLoggedIn && !location.pathname.startsWith('/chat')) {
@@ -69,105 +68,29 @@ export default function CustomerLayout() {
     };
   }, [isLoggedIn, connectWebSocket, disconnectWebSocket]);
 
-  // WEBSOCKET THEO DÕI ĐƠN HÀNG HOẠT ĐỘNG TOÀN CỤC & POPUP TOAST 3 ĐỢT
+  // WEBSOCKET THEO DÕI HÀNG ĐỢI THÔNG BÁO CÁ NHÂN (Global Notification & Toast)
   useEffect(() => {
     if (!isLoggedIn || role !== 'CUSTOMER') return;
 
-    const trackActiveOrders = async () => {
-      try {
-        const res = await apiClient.get('/orders');
-        const allOrders = res.data?.data?.content || [];
-        
-        // Lọc các đơn hàng chưa COMPLETED hoặc CANCELLED
-        const activeOrders = allOrders.filter(ord => 
-          ord.orderStatus !== 'COMPLETED' && ord.orderStatus !== 'CANCELLED'
-        );
+    const destination = `/user/queue/notify`;
+    console.log('[Global Notification Track]: Subscribing to ' + destination);
 
-        activeOrders.forEach(ord => {
-          const orderId = ord.orderId.toString();
-          
-          // Tránh subscribe lặp lại
-          if (subscriptionsRef.current[orderId]) return;
+    const sub = subscribe(destination, (notifEvent) => {
+      console.log('[Global Notification]: Received event', notifEvent);
+      if (!notifEvent || !notifEvent.refId || !notifEvent.type) return;
 
-          // Lưu trữ trạng thái đơn ban đầu
-          orderStatusesRef.current[orderId] = ord.orderStatus;
-
-          const destination = `/topic/order/${orderId}`;
-          console.log('[Global Order Track]: Subscribing to ' + destination);
-          
-          const sub = subscribe(destination, (updatedOrder) => {
-            if (!updatedOrder || !updatedOrder.orderStatus) return;
-
-            const oldStatus = orderStatusesRef.current[orderId];
-            const newStatus = updatedOrder.orderStatus;
-
-            if (oldStatus !== newStatus) {
-              orderStatusesRef.current[orderId] = newStatus;
-              
-              // POPUP THÔNG BÁO CHIA 3 ĐỢT THỜI GIAN THỰC (Grab/ShopeeFood Style)
-              
-              // Đợt 1: Quán đã xác nhận
-              if (newStatus === 'CONFIRMED' || newStatus === 'PREPARING') {
-                toast.success(`📋 Đơn hàng #${orderId}: Quán đã xác nhận và đang chuẩn bị món ăn! 👨‍🍳`, {
-                  position: "top-right",
-                  autoClose: 6000,
-                  theme: "colored",
-                });
-              }
-              // Đợt 2: Có shipper nhận đơn
-              else if (newStatus === 'READY_FOR_PICKUP' || (updatedOrder.shipperId && oldStatus === 'PREPARING')) {
-                toast.info(`🚴 Đơn hàng #${orderId}: Đã tìm thấy tài xế giao hàng! Đang đến quán lấy món.`, {
-                  position: "top-right",
-                  autoClose: 6000,
-                  theme: "colored",
-                });
-              }
-              // Đợt 3: Đang giao tới bạn
-              else if (newStatus === 'DELIVERING' || newStatus === 'PICKED_UP') {
-                toast.success(`🚚 Đơn hàng #${orderId}: Shipper đang giao hàng tới bạn! Hãy chuẩn bị nhận món. 🥰`, {
-                  position: "top-right",
-                  autoClose: 8000,
-                  theme: "colored",
-                });
-              }
-              else if (newStatus === 'COMPLETED') {
-                toast.success(`🎉 Đơn hàng #${orderId}: Đã giao thành công! Ăn ngon miệng nhé! 😋`, {
-                  position: "top-right",
-                  autoClose: 6000,
-                  theme: "colored",
-                });
-              }
-              else if (newStatus === 'CANCELLED') {
-                toast.error(`❌ Đơn hàng #${orderId} đã bị hủy.`, {
-                  position: "top-right",
-                  autoClose: 6000,
-                  theme: "colored",
-                });
-              }
-            }
-          });
-
-          subscriptionsRef.current[orderId] = sub;
-        });
-      } catch (err) {
-        console.warn('Lỗi lấy đơn hàng hoạt động để track:', err);
+      const parsed = parseOrderEvent(notifEvent);
+      if (parsed) {
+        // Nổ Toast thông báo global (đã có cơ chế dedupe tự động)
+        notifyStatusChange(parsed);
       }
-    };
-
-    trackActiveOrders();
-    
-    // Định kỳ quét danh sách đơn mỗi 10 giây để subscribe thêm các đơn hàng mới đặt
-    const interval = setInterval(trackActiveOrders, 10000);
+    });
 
     return () => {
-      clearInterval(interval);
-      Object.keys(subscriptionsRef.current).forEach(orderId => {
-        if (subscriptionsRef.current[orderId]?.unsubscribe) {
-          subscriptionsRef.current[orderId].unsubscribe();
-        }
-      });
-      subscriptionsRef.current = {};
-      orderStatusesRef.current = {};
+      if (sub && sub.unsubscribe) {
+        console.log('[Global Notification Track]: Unsubscribing from ' + destination);
+        sub.unsubscribe();
+      }
     };
   }, [isLoggedIn, role, subscribe]);
   

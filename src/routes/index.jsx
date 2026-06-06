@@ -54,8 +54,20 @@ import AdminStats from '../pages/admin/Stats';
 import { useLocation } from 'react-router-dom';
 
 function ProtectedRoute({ children, allowedRoles }) {
-  const { isLoggedIn, role, user } = useAuthStore();
+  const { isLoggedIn, role, user, hasHydrated } = useAuthStore();
   const location = useLocation();
+
+  // Đợi rehydrate xong từ localStorage để tránh bug flash-redirect về /login
+  if (!hasHydrated) {
+    return (
+      <div className="min-h-screen bg-md-surface flex items-center justify-center font-google-sans">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-10 h-10 border-4 border-md-primary border-t-transparent rounded-full animate-spin"></div>
+          <span className="text-sm text-md-outline font-bold">Đang khôi phục phiên đăng nhập...</span>
+        </div>
+      </div>
+    );
+  }
 
   if (!isLoggedIn) {
     return <Navigate to="/login" replace />;

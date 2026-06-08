@@ -26,6 +26,11 @@ import apiClient from '../../services/api';
 import { getAvatarUrl } from '../../utils/avatarHelper';
 import { parseOrderEvent, notifyStatusChange } from '../../utils/orderStatusHelper';
 
+import { useAvatarUpload } from '../../hooks/useAvatarUpload';
+import { useLayoutNav } from '../../hooks/useLayoutNav';
+import NavMenuList from './NavMenuList';
+import MobileDrawer from './MobileDrawer';
+
 export default function CustomerLayout() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -35,7 +40,7 @@ export default function CustomerLayout() {
   const fetchCart = useCartStore((state) => state.fetchCart);
   const { conversations, connectWebSocket, disconnectWebSocket } = useChatStore();
   const { unreadCount } = useNotificationStore();
-  const { logout, user, isLoggedIn, role } = useAuthStore();
+  const { logout, user, isLoggedIn, role, updateProfile } = useAuthStore();
 
   useEffect(() => {
     if (isLoggedIn && role === 'CUSTOMER') {
@@ -94,18 +99,23 @@ export default function CustomerLayout() {
     };
   }, [isLoggedIn, role, subscribe]);
   
-  const [navRailExpanded, setNavRailExpanded] = useState(true);
-  const [isMobileDrawerOpen, setIsMobileDrawerOpen] = useState(false);
+  const {
+    sidebarCollapsed,
+    drawerOpen: isMobileDrawerOpen,
+    toggleSidebar,
+    openDrawer: openMobileDrawer,
+    closeDrawer: closeMobileDrawer
+  } = useLayoutNav('customer-sidebar-collapsed');
 
   useEffect(() => {
-    setIsMobileDrawerOpen(false);
-  }, [location.pathname]);
+    closeMobileDrawer();
+  }, [location.pathname, closeMobileDrawer]);
 
   // Tính số unread chat
   const unreadChatCount = conversations.reduce((sum, c) => sum + (c.unreadCount || 0), 0);
 
   const menuItems = [
-    { path: '/', name: 'Trang chủ', icon: Home },
+    { path: '/', name: 'Trang chủ', icon: Home, end: true },
     { path: '/explore', name: 'Khám phá', icon: Search },
     { path: '/cart', name: 'Giỏ hàng', icon: ShoppingCart, badge: cartCount },
     { path: '/orders', name: 'Đơn hàng', icon: Package },
@@ -116,7 +126,7 @@ export default function CustomerLayout() {
   ];
 
   const fileInputRef = useRef(null);
-  const [uploading, setUploading] = useState(false);
+  const { uploading, handleAvatarChange } = useAvatarUpload();
 
   const handleAvatarClick = () => {
     if (fileInputRef.current) {
@@ -124,49 +134,6 @@ export default function CustomerLayout() {
     }
   };
 
-  const handleAvatarChange = async (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error("Kích thước file tối đa là 5MB!");
-      return;
-    }
-    const allowedTypes = ["image/jpeg", "image/png", "image/webp", "image/heic", "image/heif"];
-    const ext = file.name.split('.').pop().toLowerCase();
-    if (!allowedTypes.includes(file.type.toLowerCase()) && ext !== 'heic' && ext !== 'heif') {
-      toast.error("Chỉ chấp nhận các định dạng hình ảnh JPEG, PNG, WEBP, HEIC, HEIF!");
-      return;
-    }
-
-    setUploading(true);
-    try {
-      const formData = new FormData();
-      formData.append('file', file);
-      const uploadRes = await apiClient.post('/images/upload', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
-      });
-      const newUrl = uploadRes.data?.data?.url;
-      if (!newUrl) throw new Error("Không nhận được URL ảnh!");
-
-      try {
-        await apiClient.put('/users/profile', {
-          avatar: newUrl
-        });
-        updateProfile({ avatar: newUrl });
-        toast.success("Cập nhật ảnh đại diện thành công! 🎉");
-      } catch (dbErr) {
-        console.error("Cập nhật Database thất bại:", dbErr);
-        toast.error(dbErr.response?.data?.message || "Cập nhật Database thất bại. Đang giữ nguyên ảnh cũ.");
-      }
-    } catch (uploadErr) {
-      console.error("Upload ảnh thất bại:", uploadErr);
-      toast.error(uploadErr.response?.data?.message || "Lỗi khi upload ảnh lên Cloudinary!");
-    } finally {
-      setUploading(false);
-      if (fileInputRef.current) fileInputRef.current.value = "";
-    }
-  };
 
   const handleLogout = () => {
     logout();
@@ -179,15 +146,15 @@ export default function CustomerLayout() {
       {/* ─── DESKTOP NAV RAIL (Left side, hidden on mobile) ───────────────────────── */}
       <aside 
         className={`hidden md:flex flex-col border-r border-md-outline-variant bg-white transition-all duration-300 relative z-30 ${
-          navRailExpanded ? 'w-68' : 'w-22'
+          sidebarCollapsed ? 'w-22' : 'w-68'
         }`}
       >
         {/* Toggle Button */}
         <button 
-          onClick={() => setNavRailExpanded(!navRailExpanded)}
+          onClick={toggleSidebar}
           className="absolute -right-3.5 top-8 bg-white border border-md-outline-variant rounded-full p-1.5 text-md-outline hover:text-md-primary shadow-shadow-2 hover:scale-115 transition-all cursor-pointer"
         >
-          {navRailExpanded ? <ChevronLeft size={14} /> : <ChevronRight size={14} />}
+          {sidebarCollapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
         </button>
 
         {/* Brand / Logo */}
@@ -195,7 +162,7 @@ export default function CustomerLayout() {
           <div className="w-12 h-12 bg-gradient-to-tr from-md-primary to-md-secondary rounded-radius-lg flex items-center justify-center text-white font-extrabold text-xl shadow-shadow-3 shrink-0">
             MD
           </div>
-          {navRailExpanded && (
+          {!sidebarCollapsed && (
             <div className="flex flex-col">
               <span className="font-extrabold text-slate-800 text-lg leading-none tracking-tight">
                 <span className="text-md-primary">Meal</span>
@@ -207,7 +174,7 @@ export default function CustomerLayout() {
         </div>
 
         {/* User Quick Info */}
-        {navRailExpanded && user && (
+        {!sidebarCollapsed && user && (
           <div className="p-4 mx-4 my-4 bg-gradient-to-r from-md-primary-container/20 to-md-secondary-container/10 border border-md-primary/5 rounded-radius-xl flex items-center gap-3.5 shadow-sm animate-fade-in">
             <div 
               onClick={handleAvatarClick}
@@ -235,53 +202,28 @@ export default function CustomerLayout() {
         )}
 
         {/* Navigation Items */}
-        <nav className="flex-1 px-4 py-4 space-y-1.5 overflow-y-auto no-scrollbar">
-          {menuItems.map((item) => {
-            const Icon = item.icon;
-            const isActive = location.pathname === item.path || (item.path !== '/' && location.pathname.startsWith(item.path));
-            return (
-              <button
-                key={item.path}
-                onClick={() => navigate(item.path)}
-                className={`flex items-center gap-4.5 w-full px-4 py-3.5 rounded-radius-xl transition-all duration-200 group relative cursor-pointer ${
-                  isActive 
-                    ? 'bg-md-primary text-white font-extrabold shadow-shadow-2' 
-                    : 'text-md-on-surface-variant hover:bg-md-primary-container/20 hover:text-md-primary'
-                }`}
-              >
-                <div className="relative shrink-0">
-                  <Icon size={22} className={isActive ? 'stroke-[2.5px]' : 'group-hover:scale-105 transition-transform'} />
-                  {item.badge > 0 && (
-                    <span className={`absolute -top-2.5 -right-2.5 text-white text-[9px] font-extrabold h-4 min-w-4 px-1 rounded-full flex items-center justify-center shadow-shadow-1 ${
-                      isActive ? 'bg-md-secondary' : 'bg-md-error'
-                    }`}>
-                      {item.badge}
-                    </span>
-                  )}
-                </div>
-                {navRailExpanded && (
-                  <span className="text-sm tracking-wide font-semibold">{item.name}</span>
-                )}
-                {!navRailExpanded && (
-                  <div className="absolute left-22 bg-md-on-surface text-white text-xs px-2.5 py-1.5 rounded-radius-md shadow-md opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap z-50">
-                    {item.name}
-                  </div>
-                )}
-              </button>
-            );
-          })}
-        </nav>
+        <div className="flex-1 px-4 py-4 space-y-1.5 overflow-y-auto no-scrollbar">
+          <NavMenuList
+            items={menuItems}
+            collapsed={sidebarCollapsed}
+            itemClass="flex items-center gap-4.5 w-full px-4 py-3.5 rounded-radius-xl transition-all duration-200 group relative cursor-pointer"
+            activeClass="bg-md-primary text-white font-extrabold shadow-shadow-2"
+            inactiveClass="text-md-on-surface-variant hover:bg-md-primary-container/20 hover:text-md-primary"
+            iconSize={22}
+            tooltipClass="absolute left-22 bg-md-on-surface text-white text-xs px-2.5 py-1.5 rounded-radius-md shadow-md opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap z-50"
+          />
+        </div>
 
         {/* Bottom Actions */}
         <div className="p-3 border-t border-md-outline-variant">
           <button
             onClick={handleLogout}
             className={`flex items-center gap-4.5 w-full px-4 py-3.5 text-red-500 rounded-radius-xl hover:bg-red-50 transition-colors cursor-pointer ${
-              navRailExpanded ? 'justify-start' : 'justify-center'
+              sidebarCollapsed ? 'justify-center' : 'justify-start'
             }`}
           >
             <LogOut size={22} />
-            {navRailExpanded && <span className="text-sm font-bold">Đăng xuất</span>}
+            {!sidebarCollapsed && <span className="text-sm font-bold">Đăng xuất</span>}
           </button>
         </div>
       </aside>
@@ -298,7 +240,7 @@ export default function CustomerLayout() {
           </span>
         </div>
         <button 
-          onClick={() => setIsMobileDrawerOpen(true)}
+          onClick={openMobileDrawer}
           className="p-1.5 hover:bg-slate-100 rounded-full text-slate-600 transition-colors"
         >
           <Menu size={20} />
@@ -332,7 +274,7 @@ export default function CustomerLayout() {
         })}
         {/* Nút thứ 5: Thêm (Menu) */}
         <button
-          onClick={() => setIsMobileDrawerOpen(true)}
+          onClick={openMobileDrawer}
           className="flex flex-col items-center justify-center gap-1 w-14 h-full relative transition-all duration-200 cursor-pointer text-md-on-surface-variant"
         >
           <Menu size={20} />
@@ -341,102 +283,74 @@ export default function CustomerLayout() {
       </nav>
 
       {/* ─── MOBILE DRAWER OVERLAY ─────────────────── */}
-      {isMobileDrawerOpen && (
-        <div className="md:hidden fixed inset-0 z-50 flex justify-end">
-          {/* Backdrop */}
-          <div 
-            className="absolute inset-0 bg-black/40 backdrop-blur-sm transition-opacity duration-300"
-            onClick={() => setIsMobileDrawerOpen(false)}
-          ></div>
-          
-          {/* Drawer Body */}
-          <div className="relative w-64 max-w-xs h-full bg-white shadow-xl flex flex-col z-10 animate-slide-left border-l border-md-outline-variant">
-            {/* Header Drawer */}
-            <div className="p-4 flex items-center justify-between border-b border-md-outline-variant bg-gradient-to-r from-md-primary-container/10 to-transparent">
-              {user ? (
-                <div className="flex items-center gap-3">
-                  <div 
-                    onClick={handleAvatarClick}
-                    className="relative cursor-pointer group shrink-0"
-                    title="Click để đổi ảnh đại diện nhanh"
-                  >
-                    <img 
-                      src={getAvatarUrl(user.avatar)} 
-                      alt="Avatar" 
-                      className="w-10 h-10 rounded-full object-cover border border-md-primary/20 shadow-sm group-hover:opacity-75 transition-opacity"
-                    />
-                    {uploading && (
-                      <div className="absolute inset-0 bg-black/40 rounded-full flex items-center justify-center">
-                        <span className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
-                      </div>
-                    )}
-                  </div>
-                  <div className="flex flex-col min-w-0">
-                    <span className="text-xs font-extrabold text-slate-800 truncate">{user.name}</span>
-                    <span className="text-[8px] text-md-primary font-bold tracking-widest uppercase">Khách hàng</span>
-                  </div>
-                </div>
-              ) : (
-                <span className="font-bold text-slate-800">MealDash</span>
-              )}
-              <button 
-                onClick={() => setIsMobileDrawerOpen(false)}
-                className="p-1.5 hover:bg-slate-100 rounded-full text-slate-500 transition-colors"
+      <MobileDrawer
+        isOpen={isMobileDrawerOpen}
+        onClose={closeMobileDrawer}
+        drawerClass="w-64 max-w-xs bg-white border-l border-md-outline-variant"
+      >
+        {/* Header Drawer */}
+        <div className="p-4 flex items-center justify-between border-b border-md-outline-variant bg-gradient-to-r from-md-primary-container/10 to-transparent">
+          {user ? (
+            <div className="flex items-center gap-3">
+              <div 
+                onClick={handleAvatarClick}
+                className="relative cursor-pointer group shrink-0"
+                title="Click để đổi ảnh đại diện nhanh"
               >
-                <X size={18} />
-              </button>
+                <img 
+                  src={getAvatarUrl(user.avatar)} 
+                  alt="Avatar" 
+                  className="w-10 h-10 rounded-full object-cover border border-md-primary/20 shadow-sm group-hover:opacity-75 transition-opacity"
+                />
+                {uploading && (
+                  <div className="absolute inset-0 bg-black/40 rounded-full flex items-center justify-center">
+                    <span className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+                  </div>
+                )}
+              </div>
+              <div className="flex flex-col min-w-0">
+                <span className="text-xs font-extrabold text-slate-800 truncate">{user.name}</span>
+                <span className="text-[8px] text-md-primary font-bold tracking-widest uppercase">Khách hàng</span>
+              </div>
             </div>
-
-            {/* Menu Items list */}
-            <div className="flex-1 overflow-y-auto p-3 space-y-1">
-              {menuItems.map((item) => {
-                const Icon = item.icon;
-                const isActive = location.pathname === item.path || (item.path !== '/' && location.pathname.startsWith(item.path));
-                return (
-                  <button
-                    key={item.path}
-                    onClick={() => {
-                      navigate(item.path);
-                      setIsMobileDrawerOpen(false);
-                    }}
-                    className={`flex items-center gap-3 w-full px-4 py-3 rounded-xl transition-all cursor-pointer ${
-                      isActive 
-                        ? 'bg-md-primary text-white font-extrabold shadow-sm' 
-                        : 'text-md-on-surface-variant hover:bg-slate-100'
-                    }`}
-                  >
-                    <div className="relative">
-                      <Icon size={18} />
-                      {item.badge > 0 && (
-                        <span className={`absolute -top-2 -right-2 text-white text-[8px] font-bold h-4 min-w-4 px-1 rounded-full flex items-center justify-center shadow-sm ${
-                          isActive ? 'bg-md-secondary' : 'bg-md-error'
-                        }`}>
-                          {item.badge}
-                        </span>
-                      )}
-                    </div>
-                    <span className="text-xs font-bold">{item.name}</span>
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* Logout button */}
-            <div className="p-3 border-t border-md-outline-variant bg-slate-50">
-              <button
-                onClick={() => {
-                  setIsMobileDrawerOpen(false);
-                  handleLogout();
-                }}
-                className="flex items-center gap-3 w-full px-4 py-3 text-red-500 hover:bg-red-50 rounded-xl font-bold text-xs cursor-pointer transition-colors"
-              >
-                <LogOut size={18} />
-                Đăng xuất
-              </button>
-            </div>
-          </div>
+          ) : (
+            <span className="font-bold text-slate-800">MealDash</span>
+          )}
+          <button 
+            onClick={closeMobileDrawer}
+            className="p-1.5 hover:bg-slate-100 rounded-full text-slate-500 transition-colors"
+          >
+            <X size={18} />
+          </button>
         </div>
-      )}
+
+        {/* Menu Items list */}
+        <div className="flex-1 overflow-y-auto p-3 space-y-1">
+          <NavMenuList
+            items={menuItems}
+            collapsed={false}
+            itemClass="flex items-center gap-3 w-full px-4 py-3 rounded-xl transition-all cursor-pointer"
+            activeClass="bg-md-primary text-white font-extrabold shadow-sm"
+            inactiveClass="text-md-on-surface-variant hover:bg-slate-100"
+            iconSize={18}
+            onItemClick={closeMobileDrawer}
+          />
+        </div>
+
+        {/* Logout button */}
+        <div className="p-3 border-t border-md-outline-variant bg-slate-50">
+          <button
+            onClick={() => {
+              closeMobileDrawer();
+              handleLogout();
+            }}
+            className="flex items-center gap-3 w-full px-4 py-3 text-red-500 hover:bg-red-50 rounded-xl font-bold text-xs cursor-pointer transition-colors"
+          >
+            <LogOut size={18} />
+            Đăng xuất
+          </button>
+        </div>
+      </MobileDrawer>
 
       {/* ─── MAIN CONTENT AREA ───────────────────────────────────────────────────── */}
       <main className="flex-1 flex flex-col min-w-0 pt-14 md:pt-0 pb-16 md:pb-0 h-screen overflow-y-auto relative bg-md-surface">
@@ -452,7 +366,7 @@ export default function CustomerLayout() {
         ref={fileInputRef} 
         className="hidden" 
         accept="image/*" 
-        onChange={handleAvatarChange} 
+        onChange={(e) => handleAvatarChange(e.target.files?.[0])} 
       />
 
     </div>

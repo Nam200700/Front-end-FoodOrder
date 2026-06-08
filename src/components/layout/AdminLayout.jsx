@@ -21,16 +21,28 @@ import {
   X
 } from 'lucide-react';
 
+import { useAvatarUpload } from '../../hooks/useAvatarUpload';
+import { useLayoutNav } from '../../hooks/useLayoutNav';
+import NavMenuList from './NavMenuList';
+import MobileDrawer from './MobileDrawer';
+
 export default function AdminLayout() {
   const navigate = useNavigate();
   const location = useLocation();
   const { logout, user } = useAuthStore();
-  const [expanded, setExpanded] = useState(true);
-  const [isMobileDrawerOpen, setIsMobileDrawerOpen] = useState(false);
+  const {
+    sidebarCollapsed,
+    drawerOpen: isMobileDrawerOpen,
+    toggleSidebar,
+    openDrawer: openMobileDrawer,
+    closeDrawer: closeMobileDrawer
+  } = useLayoutNav('admin-sidebar-collapsed');
+
+  const expanded = !sidebarCollapsed;
 
   useEffect(() => {
-    setIsMobileDrawerOpen(false);
-  }, [location.pathname]);
+    closeMobileDrawer();
+  }, [location.pathname, closeMobileDrawer]);
   const [theme, setTheme] = useState(localStorage.getItem('admin-theme') || 'light');
 
   const [pendingResCount, setPendingResCount] = useState(0);
@@ -68,7 +80,7 @@ export default function AdminLayout() {
   }, [location.pathname]);
 
   const menuItems = [
-    { path: '/admin', name: 'Dashboard', icon: BarChart3 },
+    { path: '/admin', name: 'Dashboard', icon: BarChart3, end: true },
     { path: '/admin/restaurants', name: 'Quản lý quán', icon: Store, badge: pendingResCount },
     { path: '/admin/shippers', name: 'Quản lý shipper', icon: Bike, badge: pendingShipperCount },
     { path: '/admin/users', name: 'Tài khoản', icon: Users },
@@ -78,7 +90,7 @@ export default function AdminLayout() {
   ];
 
   const fileInputRef = useRef(null);
-  const [uploading, setUploading] = useState(false);
+  const { uploading, handleAvatarChange } = useAvatarUpload();
 
   const handleAvatarClick = () => {
     if (fileInputRef.current) {
@@ -86,50 +98,6 @@ export default function AdminLayout() {
     }
   };
 
-  const handleAvatarChange = async (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error("Kích thước file tối đa là 5MB!");
-      return;
-    }
-    const allowedTypes = ["image/jpeg", "image/png", "image/webp", "image/heic", "image/heif"];
-    const ext = file.name.split('.').pop().toLowerCase();
-    if (!allowedTypes.includes(file.type.toLowerCase()) && ext !== 'heic' && ext !== 'heif') {
-      toast.error("Chỉ chấp nhận các định dạng hình ảnh JPEG, PNG, WEBP, HEIC, HEIF!");
-      return;
-    }
-
-    setUploading(true);
-    const { updateProfile } = useAuthStore.getState();
-    try {
-      const formData = new FormData();
-      formData.append('file', file);
-      const uploadRes = await apiClient.post('/images/upload', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
-      });
-      const newUrl = uploadRes.data?.data?.url;
-      if (!newUrl) throw new Error("Không nhận được URL ảnh!");
-
-      try {
-        await apiClient.put('/users/profile', {
-          avatar: newUrl
-        });
-        updateProfile({ avatar: newUrl });
-        toast.success("Cập nhật ảnh đại diện thành công! 🎉");
-      } catch (dbErr) {
-        console.error("Cập nhật Database thất bại:", dbErr);
-        toast.error(dbErr.response?.data?.message || "Cập nhật Database thất bại. Đang giữ nguyên ảnh cũ.");
-      }
-    } catch (uploadErr) {
-      console.error("Upload ảnh thất bại:", uploadErr);
-      toast.error(uploadErr.response?.data?.message || "Lỗi khi upload ảnh lên Cloudinary!");
-    } finally {
-      setUploading(false);
-      if (fileInputRef.current) fileInputRef.current.value = "";
-    }
-  };
 
   const handleLogout = () => {
     logout();
@@ -144,14 +112,14 @@ export default function AdminLayout() {
       {/* ─── ADMIN SIDE DRAWER ─────────────────────────────────────────────────── */}
       <aside 
         className={`hidden md:flex flex-col border-r border-slate-800 bg-slate-950 transition-all duration-300 relative z-30 ${
-          expanded ? 'w-64' : 'w-20'
+          sidebarCollapsed ? 'w-20' : 'w-64'
         }`}
       >
         <button 
-          onClick={() => setExpanded(!expanded)}
+          onClick={toggleSidebar}
           className="absolute -right-3 top-8 bg-slate-950 border border-slate-800 rounded-full p-1 text-slate-400 hover:text-purple-400 shadow-shadow-1 hover:scale-115 transition-transform"
         >
-          {expanded ? <ChevronLeft size={14} /> : <ChevronRight size={14} />}
+          {sidebarCollapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
         </button>
 
         {/* Logo / Brand */}
@@ -159,7 +127,7 @@ export default function AdminLayout() {
           <div className="w-10 h-10 bg-purple-650 rounded-radius-md flex items-center justify-center text-white text-lg font-bold shadow-shadow-2">
             🛡️
           </div>
-          {expanded && (
+          {!sidebarCollapsed && (
             <div className="flex flex-col">
               <span className="font-bold text-purple-400 text-base leading-none">Admin Panel</span>
               <span className="text-[10px] text-slate-500 font-semibold uppercase mt-1">Hệ thống tối cao</span>
@@ -168,7 +136,7 @@ export default function AdminLayout() {
         </div>
 
         {/* Admin profile quick card */}
-        {expanded && user && (
+        {!sidebarCollapsed && user && (
           <div className="p-4 mx-3 my-4 bg-purple-950/20 rounded-radius-lg border border-purple-900/30 flex items-center gap-3">
             <div 
               onClick={handleAvatarClick}
@@ -196,40 +164,17 @@ export default function AdminLayout() {
         )}
 
         {/* Navigation Items */}
-        <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto no-scrollbar">
-          {menuItems.map((item) => {
-            const Icon = item.icon;
-            const isActive = location.pathname === item.path || (item.path !== '/admin' && location.pathname.startsWith(item.path));
-            return (
-              <button
-                key={item.path}
-                onClick={() => navigate(item.path)}
-                className={`flex items-center gap-4 w-full px-4 py-3 rounded-radius-xl transition-all duration-200 group relative ${
-                  isActive 
-                    ? 'bg-purple-900/30 text-purple-400 font-bold border border-purple-900/20 shadow-lg' 
-                    : 'text-slate-400 hover:bg-slate-900 hover:text-slate-100'
-                }`}
-              >
-                <div className="relative">
-                  <Icon size={20} className={isActive ? 'stroke-[2.5px]' : 'group-hover:scale-105 transition-transform'} />
-                  {item.badge > 0 && (
-                    <span className="absolute -top-2 -right-2 bg-md-error text-white text-[9px] font-bold h-4 min-w-4 px-1 rounded-full flex items-center justify-center animate-pulse">
-                      {item.badge}
-                    </span>
-                  )}
-                </div>
-                {expanded && (
-                  <span className="text-sm tracking-wide">{item.name}</span>
-                )}
-                {!expanded && (
-                  <div className="absolute left-20 bg-slate-950 text-slate-100 text-xs px-2 py-1 rounded shadow-md opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap z-50 border border-slate-800">
-                    {item.name}
-                  </div>
-                )}
-              </button>
-            );
-          })}
-        </nav>
+        <div className="flex-1 px-3 py-4 space-y-1 overflow-y-auto no-scrollbar">
+          <NavMenuList
+            items={menuItems}
+            collapsed={sidebarCollapsed}
+            itemClass="flex items-center gap-4 w-full px-4 py-3 rounded-radius-xl transition-all duration-200 group relative cursor-pointer"
+            activeClass="bg-purple-900/30 text-purple-400 font-bold border border-purple-900/20 shadow-lg"
+            inactiveClass="text-slate-400 hover:bg-slate-900 hover:text-slate-100"
+            iconSize={20}
+            tooltipClass="absolute left-20 bg-slate-950 text-slate-100 text-xs px-2 py-1 rounded shadow-md opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap z-50 border border-slate-800"
+          />
+        </div>
 
         {/* Theme Switcher Action */}
         <div className="p-3 border-t border-slate-850">
@@ -239,7 +184,7 @@ export default function AdminLayout() {
               theme === 'light' 
                 ? 'text-amber-600 hover:bg-slate-100' 
                 : 'text-amber-400 hover:bg-slate-900'
-            } ${expanded ? 'justify-start' : 'justify-center'}`}
+            } ${sidebarCollapsed ? 'justify-center' : 'justify-start'}`}
             title="Chuyển đổi giao diện"
           >
             {theme === 'light' ? (
@@ -247,14 +192,14 @@ export default function AdminLayout() {
                 <svg className="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707m0-12.728l.707.707m12.728 12.728l.707-.707M12 8a4 4 0 100 8 4 4 0 000-8z" />
                 </svg>
-                {expanded && <span className="text-sm font-semibold">Chế độ sáng</span>}
+                {!sidebarCollapsed && <span className="text-sm font-semibold">Chế độ sáng</span>}
               </>
             ) : (
               <>
                 <svg className="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
                 </svg>
-                {expanded && <span className="text-sm font-semibold">Chế độ tối</span>}
+                {!sidebarCollapsed && <span className="text-sm font-semibold">Chế độ tối</span>}
               </>
             )}
           </button>
@@ -265,11 +210,11 @@ export default function AdminLayout() {
           <button
             onClick={handleLogout}
             className={`flex items-center gap-4 w-full px-4 py-3 text-red-400 rounded-radius-xl hover:bg-red-950/20 transition-colors cursor-pointer ${
-              expanded ? 'justify-start' : 'justify-center'
+              sidebarCollapsed ? 'justify-center' : 'justify-start'
             }`}
           >
             <LogOut size={20} />
-            {expanded && <span className="text-sm font-semibold">Đăng xuất</span>}
+            {!sidebarCollapsed && <span className="text-sm font-semibold">Đăng xuất</span>}
           </button>
         </div>
       </aside>
@@ -279,7 +224,7 @@ export default function AdminLayout() {
         theme === 'light' ? 'border-slate-200 bg-white' : 'border-slate-800 bg-slate-950'
       }`}>
         <div className="flex items-center gap-2">
-          <div className="w-8 h-8 bg-purple-600 rounded-lg flex items-center justify-center text-white font-bold text-sm shadow-sm">
+          <div className="w-8 h-8 bg-purple-650 rounded-lg flex items-center justify-center text-white font-bold text-sm shadow-sm">
             🛡️
           </div>
           <span className={`font-bold text-sm ${theme === 'light' ? 'text-purple-650' : 'text-purple-400'}`}>Admin Panel</span>
@@ -306,7 +251,7 @@ export default function AdminLayout() {
           </button>
           
           <button 
-            onClick={() => setIsMobileDrawerOpen(true)}
+            onClick={openMobileDrawer}
             className={`p-1.5 rounded-full transition-colors ${
               theme === 'light' ? 'hover:bg-slate-100 text-slate-600' : 'hover:bg-slate-900 text-slate-400'
             }`}
@@ -316,109 +261,83 @@ export default function AdminLayout() {
         </div>
       </nav>
 
+
+
       {/* ─── MOBILE ADMIN DRAWER ────────────────────────────────────────────── */}
-      {isMobileDrawerOpen && (
-        <div className="md:hidden fixed inset-0 z-50 flex justify-end">
-          {/* Backdrop */}
-          <div 
-            className="absolute inset-0 bg-black/50 backdrop-blur-sm transition-opacity duration-300"
-            onClick={() => setIsMobileDrawerOpen(false)}
-          ></div>
-          
-          {/* Drawer Body */}
-          <div className={`relative w-64 max-w-xs h-full shadow-xl flex flex-col z-10 animate-slide-left border-l transition-colors duration-250 ${
-            theme === 'light' ? 'bg-white border-slate-200' : 'bg-slate-950 border-slate-800'
-          }`}>
-            {/* Header Drawer */}
-            <div className={`p-4 flex items-center justify-between border-b ${
-              theme === 'light' ? 'border-slate-200 bg-slate-50' : 'border-slate-850 bg-slate-900/40'
-            }`}>
-              <div className="flex items-center gap-3">
-                <div 
-                  onClick={handleAvatarClick}
-                  className="relative cursor-pointer group shrink-0"
-                  title="Click để đổi ảnh đại diện nhanh"
-                >
-                  <img 
-                    src={getAvatarUrl(user?.avatar)} 
-                    alt="Admin Avatar" 
-                    className="w-10 h-10 rounded-full object-cover border border-purple-550 shadow-sm group-hover:opacity-75 transition-opacity"
-                  />
-                  {uploading && (
-                    <div className="absolute inset-0 bg-black/40 rounded-full flex items-center justify-center">
-                      <span className="w-3 h-3 border border-white border-t-transparent rounded-full animate-spin"></span>
-                    </div>
-                  )}
+      <MobileDrawer
+        isOpen={isMobileDrawerOpen}
+        onClose={closeMobileDrawer}
+        drawerClass={`w-64 max-w-xs bg-white border-l transition-colors duration-250 ${
+          theme === 'light' ? 'bg-white border-slate-200' : 'bg-slate-950 border-slate-800'
+        }`}
+      >
+        {/* Header Drawer */}
+        <div className={`p-4 flex items-center justify-between border-b ${
+          theme === 'light' ? 'border-slate-200 bg-slate-50' : 'border-slate-850 bg-slate-900/40'
+        }`}>
+          <div className="flex items-center gap-3">
+            <div 
+              onClick={handleAvatarClick}
+              className="relative cursor-pointer group shrink-0"
+              title="Click để đổi ảnh đại diện nhanh"
+            >
+              <img 
+                src={getAvatarUrl(user?.avatar)} 
+                alt="Admin Avatar" 
+                className="w-10 h-10 rounded-full object-cover border border-purple-550 shadow-sm group-hover:opacity-75 transition-opacity"
+              />
+              {uploading && (
+                <div className="absolute inset-0 bg-black/40 rounded-full flex items-center justify-center">
+                  <span className="w-3 h-3 border border-white border-t-transparent rounded-full animate-spin"></span>
                 </div>
-                <div className="flex flex-col min-w-0">
-                  <span className={`text-xs font-bold truncate ${theme === 'light' ? 'text-slate-800' : 'text-slate-200'}`}>
-                    {user?.name || 'Admin'}
-                  </span>
-                  <span className="text-[8px] text-purple-400 font-bold tracking-widest uppercase mt-0.5">Root Admin</span>
-                </div>
-              </div>
-              <button 
-                onClick={() => setIsMobileDrawerOpen(false)}
-                className={`p-1.5 rounded-full transition-colors ${
-                  theme === 'light' ? 'hover:bg-slate-200 text-slate-500' : 'hover:bg-slate-900 text-slate-400'
-                }`}
-              >
-                <X size={18} />
-              </button>
+              )}
             </div>
-
-            {/* Menu Items list */}
-            <div className="flex-1 overflow-y-auto p-3 space-y-1">
-              {menuItems.map((item) => {
-                const Icon = item.icon;
-                const isActive = location.pathname === item.path || (item.path !== '/admin' && location.pathname.startsWith(item.path));
-                return (
-                  <button
-                    key={item.path}
-                    onClick={() => {
-                      navigate(item.path);
-                      setIsMobileDrawerOpen(false);
-                    }}
-                    className={`flex items-center gap-3 w-full px-4 py-3 rounded-xl transition-all cursor-pointer ${
-                      isActive 
-                        ? 'bg-purple-900/30 text-purple-400 font-bold border border-purple-900/20 shadow-sm' 
-                        : theme === 'light' 
-                          ? 'text-slate-600 hover:bg-slate-100 hover:text-slate-900' 
-                          : 'text-slate-400 hover:bg-slate-900 hover:text-slate-100'
-                    }`}
-                  >
-                    <div className="relative">
-                      <Icon size={18} />
-                      {item.badge > 0 && (
-                        <span className="absolute -top-2 -right-2 bg-md-error text-white text-[8px] font-bold h-4 min-w-4 px-1 rounded-full flex items-center justify-center shadow-sm">
-                          {item.badge}
-                        </span>
-                      )}
-                    </div>
-                    <span className="text-xs font-bold">{item.name}</span>
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* Logout button */}
-            <div className={`p-3 border-t ${
-              theme === 'light' ? 'border-slate-200 bg-slate-50' : 'border-slate-850 bg-slate-900/20'
-            }`}>
-              <button
-                onClick={() => {
-                  setIsMobileDrawerOpen(false);
-                  handleLogout();
-                }}
-                className="flex items-center gap-3 w-full px-4 py-3 text-red-400 hover:bg-red-950/20 rounded-xl font-bold text-xs cursor-pointer transition-colors"
-              >
-                <LogOut size={18} />
-                Đăng xuất
-              </button>
+            <div className="flex flex-col min-w-0">
+              <span className={`text-xs font-bold truncate ${theme === 'light' ? 'text-slate-800' : 'text-slate-200'}`}>
+                {user?.name || 'Admin'}
+              </span>
+              <span className="text-[8px] text-purple-400 font-bold tracking-widest uppercase mt-0.5">Root Admin</span>
             </div>
           </div>
+          <button 
+            onClick={closeMobileDrawer}
+            className={`p-1.5 rounded-full transition-colors ${
+              theme === 'light' ? 'hover:bg-slate-200 text-slate-500' : 'hover:bg-slate-900 text-slate-400'
+            }`}
+          >
+            <X size={18} />
+          </button>
         </div>
-      )}
+
+        {/* Menu Items list */}
+        <div className="flex-1 overflow-y-auto p-3 space-y-1">
+          <NavMenuList
+            items={menuItems}
+            collapsed={false}
+            itemClass="flex items-center gap-3 w-full px-4 py-3 rounded-xl transition-all cursor-pointer"
+            activeClass="bg-purple-900/30 text-purple-400 font-bold border border-purple-900/20 shadow-sm"
+            inactiveClass={theme === 'light' ? 'text-slate-600 hover:bg-slate-100 hover:text-slate-900' : 'text-slate-400 hover:bg-slate-900 hover:text-slate-100'}
+            iconSize={18}
+            onItemClick={closeMobileDrawer}
+          />
+        </div>
+
+        {/* Logout button */}
+        <div className={`p-3 border-t ${
+          theme === 'light' ? 'border-slate-200 bg-slate-50' : 'border-slate-850 bg-slate-900/20'
+        }`}>
+          <button
+            onClick={() => {
+              closeMobileDrawer();
+              handleLogout();
+            }}
+            className="flex items-center gap-3 w-full px-4 py-3 text-red-400 hover:bg-red-950/20 rounded-xl font-bold text-xs cursor-pointer transition-colors"
+          >
+            <LogOut size={18} />
+            Đăng xuất
+          </button>
+        </div>
+      </MobileDrawer>
 
       {/* ─── MAIN ADMIN PORT ───────────────────────────────────────────────────── */}
       <main className={`flex-1 flex flex-col min-w-0 pt-16 md:pt-0 h-screen overflow-y-auto relative transition-colors duration-250 ${
@@ -434,7 +353,7 @@ export default function AdminLayout() {
         ref={fileInputRef} 
         className="hidden" 
         accept="image/*" 
-        onChange={handleAvatarChange} 
+        onChange={(e) => handleAvatarChange(e.target.files?.[0])} 
       />
     </div>
   );

@@ -44,18 +44,22 @@ export default function Modal({
 
       {/* Modal Dialog Content */}
       <div 
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={title ? "modal-title" : undefined}
         className={`bg-white w-full rounded-radius-xl shadow-shadow-5 border border-md-outline-variant/30 flex flex-col overflow-hidden relative z-10 scale-100 transition-all duration-300 animate-slide-up ${sizes[size]} ${className}`}
         {...props}
       >
         {/* Modal Header */}
         <div className="flex items-center justify-between p-5 border-b border-md-outline-variant/20 bg-slate-50/50">
           {title && (
-            <h2 className="text-lg font-extrabold text-md-on-surface font-google-sans leading-none">
+            <h2 id="modal-title" className="text-lg font-extrabold text-md-on-surface font-google-sans leading-none">
               {title}
             </h2>
           )}
           <button 
             onClick={onClose}
+            aria-label="Đóng"
             className="p-1 rounded-full text-md-outline hover:text-md-primary hover:bg-slate-100 transition-all cursor-pointer"
           >
             <X size={18} />

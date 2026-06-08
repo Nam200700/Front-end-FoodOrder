@@ -1,8 +1,13 @@
 import { useEffect, useState, useRef } from 'react';
 import { Client } from '@stomp/stompjs';
 import { useAuthStore } from '../stores/authStore';
+import { validateWsMessage } from '../utils/wsMessageValidator';
 
-const WS_URL = import.meta.env.VITE_WS_URL || 'ws://localhost:8080/ws';
+const WS_URL = import.meta.env.VITE_WS_URL || (
+  import.meta.env.PROD
+    ? (() => { throw new Error('[Config] VITE_WS_URL must be set in production!'); })()
+    : 'ws://localhost:8080/ws'
+);
 
 /**
  * Hook kết nối WebSocket STOMP với Spring Boot Backend
@@ -71,12 +76,9 @@ export function useWebSocket() {
     }
 
     return stompClientRef.current.subscribe(destination, (message) => {
-      try {
-        const payload = JSON.parse(message.body);
+      const payload = validateWsMessage(message.body);
+      if (payload) {
         onMessageReceived(payload);
-      } catch (e) {
-        // Fallback cho text thô
-        onMessageReceived(message.body);
       }
     });
   };

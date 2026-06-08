@@ -29,3 +29,21 @@ export const formatDateTime = (dateVal) => {
   const date = new Date(dateVal);
   return date.toLocaleDateString('vi-VN') + ' ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 };
+
+export const removeVietnameseTones = (str) => {
+  if (!str) return '';
+  return str
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/đ/g, 'd')
+    .replace(/Đ/g, 'D');
+};
+
+export const normalizeForMatch = (str) => {
+  if (!str) return '';
+  return removeVietnameseTones(str)
+    .toLowerCase()
+    .replace(/_/g, ' ')
+    .replace(/-/g, ' ')
+    .trim();
+};

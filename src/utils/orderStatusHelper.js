@@ -143,3 +143,28 @@ export function notifyStatusChange(parsedEvent) {
     });
   }
 }
+
+export const STATUS_CONFIG = {
+  PENDING:          { label: 'Chờ xác nhận',     badgeClass: 'bg-amber-50 text-amber-750 border-amber-200' },
+  CONFIRMED:        { label: 'Đã xác nhận',      badgeClass: 'bg-blue-50 text-blue-750 border-blue-200' },
+  ACCEPTED:         { label: 'Đã chấp nhận',     badgeClass: 'bg-blue-50 text-blue-750 border-blue-200' },
+  PREPARING:        { label: 'Đang chuẩn bị',    badgeClass: 'bg-violet-50 text-violet-750 border-violet-200' },
+  READY_FOR_PICKUP: { label: 'Chờ shipper lấy',  badgeClass: 'bg-sky-50 text-sky-750 border-sky-200' },
+  PICKED_UP:        { label: 'Đang giao hàng',   badgeClass: 'bg-indigo-50 text-indigo-750 border-indigo-200' },
+  DELIVERING:       { label: 'Đang giao',        badgeClass: 'bg-indigo-50 text-indigo-750 border-indigo-200' },
+  COMPLETED:        { label: 'Hoàn thành',       badgeClass: 'bg-emerald-50 text-emerald-750 border-emerald-200' },
+  CANCELLED:        { label: 'Đã hủy',           badgeClass: 'bg-red-50 text-red-750 border-red-200' },
+};
+
+export const getStatusConfig = (status) =>
+  STATUS_CONFIG[status] ?? { label: status, badgeClass: 'bg-slate-50 text-slate-550 border-slate-200' };
+
+export const ROLE_LABELS = {
+  CUSTOMER: 'Khách hàng', 
+  OWNER: 'Chủ quán', 
+  MERCHANT: 'Chủ quán',
+  SHIPPER: 'Tài xế', 
+  ADMIN: 'Ban quản trị',
+};
+export const getRoleLabel = (role) => ROLE_LABELS[role] ?? role;
+

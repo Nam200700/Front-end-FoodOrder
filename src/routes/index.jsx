@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuthStore } from '../stores/authStore';
 
@@ -13,6 +13,7 @@ import Login from '../pages/auth/Login';
 import Register from '../pages/auth/Register';
 import Otp from '../pages/auth/Otp';
 import PartnerApproval from '../pages/auth/PartnerApproval';
+import NotFound from '../pages/NotFound';
 
 // Customer Pages
 import Home from '../pages/customer/Home';
@@ -53,9 +54,25 @@ import AdminStats from '../pages/admin/Stats';
 // Protected Route Component
 import { useLocation } from 'react-router-dom';
 
+const isTokenExpired = (token) => {
+  if (!token) return true;
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1]));
+    return payload.exp * 1000 < Date.now();
+  } catch {
+    return true;
+  }
+};
+
 function ProtectedRoute({ children, allowedRoles }) {
-  const { isLoggedIn, role, user, hasHydrated } = useAuthStore();
+  const { isLoggedIn, role, token, user, hasHydrated, logout } = useAuthStore();
   const location = useLocation();
+
+  useEffect(() => {
+    if (isLoggedIn && isTokenExpired(token)) {
+      logout();
+    }
+  }, [isLoggedIn, token, logout]);
 
   // Đợi rehydrate xong từ localStorage để tránh bug flash-redirect về /login
   if (!hasHydrated) {
@@ -69,7 +86,7 @@ function ProtectedRoute({ children, allowedRoles }) {
     );
   }
 
-  if (!isLoggedIn) {
+  if (!isLoggedIn || isTokenExpired(token)) {
     return <Navigate to="/login" replace />;
   }
 
@@ -214,8 +231,8 @@ export default function AppRoutes() {
         <Route path="stats" element={<AdminStats />} />
       </Route>
 
-      {/* Fallback redirect */}
-      <Route path="*" element={<Navigate to="/" replace />} />
+      {/* Fallback NotFound */}
+      <Route path="*" element={<NotFound />} />
 
     </Routes>
   );

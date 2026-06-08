@@ -2,9 +2,14 @@ import React, { createContext, useContext, useState, useEffect, useRef } from 'r
 import { Client } from '@stomp/stompjs';
 import SockJS from 'sockjs-client';
 import { useAuthStore } from '../stores/authStore';
+import { validateWsMessage } from '../utils/wsMessageValidator';
 
 const WebSocketContext = createContext(null);
-const WS_URL = import.meta.env.VITE_WS_URL || 'http://localhost:8080/ws';
+const WS_URL = import.meta.env.VITE_WS_URL || (
+  import.meta.env.PROD
+    ? (() => { throw new Error('[Config] VITE_WS_URL must be set in production!'); })()
+    : 'http://localhost:8080/ws'
+);
 
 export function WebSocketProvider({ children }) {
   const token = useAuthStore((state) => state.token);
@@ -53,12 +58,9 @@ export function WebSocketProvider({ children }) {
           console.log(`[WebSocket Context]: Activating queued subscription for ${destination}`);
           try {
             const stompSub = client.subscribe(destination, (message) => {
-              let payload;
-              try {
-                payload = JSON.parse(message.body);
-              } catch (e) {
-                payload = message.body;
-              }
+              const payload = validateWsMessage(message.body);
+              if (!payload) return; // Malformed payload or validation failed, ignore
+              
               const currentSub = activeSubscriptionsRef.current[destination];
               if (currentSub) {
                 currentSub.callbacks.forEach((cb) => cb(payload));
@@ -119,12 +121,9 @@ export function WebSocketProvider({ children }) {
         console.log(`[WebSocket Context]: First subscribe on ${destination}. Calling STOMP client.subscribe.`);
         try {
           const stompSub = stompClientRef.current.subscribe(destination, (message) => {
-            let payload;
-            try {
-              payload = JSON.parse(message.body);
-            } catch (e) {
-              payload = message.body;
-            }
+            const payload = validateWsMessage(message.body);
+            if (!payload) return; // Malformed payload or validation failed, ignore
+            
             const currentSub = activeSubscriptionsRef.current[destination];
             if (currentSub) {
               currentSub.callbacks.forEach((cb) => cb(payload));

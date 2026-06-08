@@ -355,9 +355,102 @@
   background-color: #FFFFFF !important;
 }
 
+/* Badge & Card overrides for Light Theme */
+.theme-light .bg-purple-950 {
+  background-color: rgba(147, 52, 230, 0.08) !important;
+  color: #9334E6 !important;
+  border-color: rgba(147, 52, 230, 0.15) !important;
+}
+.theme-light .bg-blue-950 {
+  background-color: rgba(26, 115, 232, 0.08) !important;
+  color: #1A73E8 !important;
+  border-color: rgba(26, 115, 232, 0.15) !important;
+}
+.theme-light .bg-emerald-950 {
+  background-color: rgba(52, 168, 83, 0.08) !important;
+  color: #34A853 !important;
+  border-color: rgba(52, 168, 83, 0.15) !important;
+}
+.theme-light .bg-slate-800 {
+  background-color: #F1F3F4 !important;
+  color: #5F6368 !important;
+  border-color: #E8EAED !important;
+}
+.theme-light .bg-slate-900\/60 {
+  background-color: #F1F3F4 !important;
+  border-color: #DADCE0 !important;
+}
+.theme-light .bg-slate-900\/50 {
+  background-color: #FFFFFF !important;
+  border-color: #DADCE0 !important;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05), 0 4px 12px rgba(0,0,0,0.03) !important;
+}
+.theme-light .bg-slate-950\/40 {
+  background-color: #F8F9FA !important;
+  border-color: #E8EAED !important;
+}
+.theme-light .text-slate-350 {
+  color: #5F6368 !important;
+}
+
+/* Ghi đè text tím và badge tím Admin ở Light Theme */
+.theme-light .text-purple-400 {
+  color: #7E22CE !important;
+}
+.theme-light .bg-purple-950\/40 {
+  background-color: rgba(147, 52, 230, 0.08) !important;
+  color: #7E22CE !important;
+  border-color: rgba(147, 52, 230, 0.2) !important;
+}
+
+/* Badge trạng thái Admin Light Theme */
+.theme-light .bg-emerald-950\/45 {
+  background-color: #D1FAE5 !important;
+  color: #065F46 !important;
+  border-color: #A7F3D0 !important;
+}
+.theme-light .bg-red-950\/45 {
+  background-color: #FEE2E2 !important;
+  color: #991B1B !important;
+  border-color: #FCA5A5 !important;
+}
+.theme-light .bg-orange-950\/45 {
+  background-color: #FFEDD5 !important;
+  color: #9A3412 !important;
+  border-color: #FED7AA !important;
+}
+.theme-light .bg-slate-800 {
+  background-color: #F3F4F6 !important;
+  color: #374151 !important;
+  border-color: #E5E7EB !important;
+}
+.theme-light .bg-slate-800.text-slate-300 {
+  color: #374151 !important;
+}
+
 .theme-light select,
 .theme-light input {
   background-color: #FFFFFF !important;
   border-color: #DADCE0 !important;
   color: #202124 !important;
+}
+
+/* Donut Chart Text Colors for Dark/Light Themes */
+.donut-label {
+  color: #94A3B8 !important; /* default slate-400 for dark mode */
+}
+.donut-value {
+  color: #F8FAFC !important; /* default slate-50 for dark mode */
+}
+
+/* Override for Admin Light Theme and Merchant Light Theme */
+.theme-light .donut-value,
+.bg-white .donut-value,
+.bg-slate-50 .donut-value {
+  color: #1E293B !important; /* slate-800 */
+}
+.theme-light .donut-label,
+.bg-white .donut-label,
+.bg-slate-50 .donut-label {
+  color: #64748B !important; /* slate-500 */
 }

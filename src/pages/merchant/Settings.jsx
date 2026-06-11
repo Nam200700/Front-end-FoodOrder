@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Store, Camera, Save, Settings, Map } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { Store, Camera, Save, Map } from 'lucide-react';
 import { useFetchData } from '../../hooks/useFetchData';
 import apiClient from '../../services/api';
 import Spinner from '../../components/common/Spinner';
@@ -39,6 +39,16 @@ export default function MerchantSettings() {
       setLongitude(restaurant.longitude ? Number(restaurant.longitude) : 106.660172);
       setImageUrl(restaurant.imageUrl || '');
       setHasRestaurant(true);
+
+      // Extract times from description if present
+      if (restaurant.description) {
+        const timePattern = /Giờ mở cửa:\s*(\d{2}:\d{2})\s*-\s*(\d{2}:\d{2})/;
+        const match = restaurant.description.match(timePattern);
+        if (match) {
+          setOpenTime(match[1]);
+          setCloseTime(match[2]);
+        }
+      }
     }
   }, [restaurant]);
 

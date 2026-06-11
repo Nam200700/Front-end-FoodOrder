@@ -1,8 +1,4 @@
 import React from 'react';
-export default function OrderHistory() {
-  return (
-    <div className="min-h-screen">
-      <h1 className="text-2xl font-bold">Order History</h1>
 import { useNavigate } from 'react-router-dom';
 import { useCartStore } from '../../stores/cartStore';
 import { ShoppingBag, Calendar, RefreshCcw } from 'lucide-react';

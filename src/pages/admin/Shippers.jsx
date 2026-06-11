@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useFetchData } from '../../hooks/useFetchData';
 import apiClient from '../../services/api';
 import Spinner from '../../components/common/Spinner';
@@ -18,7 +18,6 @@ export default function AdminShippers() {
   const mapShipperRequests = (data) => {
     const allRegs = data?.content || [];
     return allRegs.map(reg => {
-      const dateObj = new Date(reg.createdAt);
       let vehicleLabel = 'Xe máy';
       if (reg.vehicleType === 'BICYCLE') vehicleLabel = 'Xe đạp';
       else if (reg.vehicleType === 'CAR') vehicleLabel = 'Ô tô';
@@ -54,6 +53,7 @@ export default function AdminShippers() {
   };
 
   const handleApproveConfirm = async () => {
+    if (actionLoading) return;
     const { id, name } = confirmApproveState;
     setActionLoading(true);
     try {
@@ -70,9 +70,11 @@ export default function AdminShippers() {
   };
 
   const handleReject = async (id, reason) => {
+    if (actionLoading) return;
     const list = requests || [];
     const reqObj = list.find(r => r.id === id);
     const name = reqObj ? reqObj.fullName : 'Tài xế';
+    setActionLoading(true);
     try {
       await apiClient.patch(`/admin/shipper-registers/${id}/review`, { status: 'REJECTED', rejectedReason: reason });
       toast.success(`Đã từ chối tài xế "${name}" với lý do: ${reason}`);
@@ -80,6 +82,8 @@ export default function AdminShippers() {
     } catch (err) {
       console.error(err);
       toast.error('Có lỗi xảy ra khi từ chối tài xế.');
+    } finally {
+      setActionLoading(false);
     }
   };
 
@@ -126,7 +130,7 @@ export default function AdminShippers() {
               { label: 'Số điện thoại', value: req.phone },
               { label: 'Email liên hệ', value: req.email },
               { label: 'Số CCCD/ID Card', value: req.idCard },
-              { label: 'Phương tiện di chuyển', value: `${req.vehicle} (Biển số: ${req.licensePlate})` }
+              { label: 'Phương tiện di chuyển', value: `${req.vehicle} (Biển số: ${req.licensePlate || 'N/A'})` }
             ];
 
             return (
@@ -136,7 +140,7 @@ export default function AdminShippers() {
                 fields={fields}
                 onApprove={handleApproveClick}
                 onReject={handleReject}
-                loading={loading}
+                loading={loading || actionLoading}
                 role="SHIPPER"
               />
             );

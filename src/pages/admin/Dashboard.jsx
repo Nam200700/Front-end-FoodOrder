@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Users, Store, Bike, Package, AlertTriangle, TrendingUp } from 'lucide-react';
 import RevenueAreaChart from '../../components/common/RevenueAreaChart';
@@ -10,15 +10,13 @@ export default function AdminDashboard() {
   const navigate = useNavigate();
 
   // Fetch dữ liệu bằng useFetchData
-  const { data: overviewStats, loading: loadingOverview } = useFetchData('/admin/stats/overview');
-  const { data: usersData, loading: loadingUsers } = useFetchData('/admin/users?size=100');
-  const { data: reportsData, loading: loadingReports } = useFetchData('/admin/reports?status=PENDING');
-  const { data: ordersData, loading: loadingOrders } = useFetchData('/admin/orders?size=2000');
+  const { data: overviewStats, loading: loadingOverview, error: overviewError, refetch: refetchOverview } = useFetchData('/admin/stats/overview');
+  const { data: usersData, loading: loadingUsers, error: usersError, refetch: refetchUsers } = useFetchData('/admin/users?size=100');
+  const { data: reportsData, loading: loadingReports, error: reportsError, refetch: refetchReports } = useFetchData('/admin/reports?status=PENDING');
+  const { data: ordersData, loading: loadingOrders, error: ordersError, refetch: refetchOrders } = useFetchData('/admin/orders?size=2000');
 
   const loading = loadingOverview || loadingUsers || loadingReports || loadingOrders;
-  
-  // Lấy theme hiện tại để vẽ màu biểu đồ đẹp mắt
-  const adminTheme = localStorage.getItem('admin-theme') || 'dark';
+  const hasError = overviewError || usersError || reportsError || ordersError;
 
   // Tính số tài khoản đang chờ phê duyệt (status === false)
   const pendingAccountsCount = useMemo(() => {
@@ -69,6 +67,36 @@ export default function AdminDashboard() {
 
   if (loading && !overviewStats) {
     return <Spinner fullScreen />;
+  }
+
+  // Handle errors with retry mechanism
+  if (hasError) {
+    const handleRetry = () => {
+      if (overviewError) refetchOverview();
+      if (usersError) refetchUsers();
+      if (reportsError) refetchReports();
+      if (ordersError) refetchOrders();
+    };
+
+    return (
+      <div className="flex-1 p-4 md:p-8 max-w-7xl mx-auto w-full">
+        <div className="bg-red-950/20 border border-red-500/30 rounded-radius-xl p-6 text-center space-y-4">
+          <div className="text-red-400 text-lg font-bold">❌ Lỗi tải dữ liệu</div>
+          <div className="text-slate-300 text-sm space-y-1">
+            {overviewError && <div>• Không thể tải thống kê tổng quan</div>}
+            {usersError && <div>• Không thể tải dữ liệu người dùng</div>}
+            {reportsError && <div>• Không thể tải báo cáo vi phạm</div>}
+            {ordersError && <div>• Không thể tải dữ liệu đơn hàng</div>}
+          </div>
+          <button
+            onClick={handleRetry}
+            className="mt-4 px-6 py-2.5 bg-red-600 hover:bg-red-700 text-white font-bold rounded-radius-lg transition-colors"
+          >
+            🔄 Thử lại
+          </button>
+        </div>
+      </div>
+    );
   }
 
   // Số liệu thật từ database
@@ -163,7 +191,7 @@ export default function AdminDashboard() {
               Tổng giao dịch hệ thống (GTV): {formatCurrency(totalRevenue)}
             </h3>
             <span className="text-[10px] text-purple-400 bg-purple-950/20 px-2.5 py-1 rounded-full border border-purple-900/30 font-bold">
-              Hoa hồng sàn ({overviewStats ? Math.round(overviewStats.commissionRate * 100) : 10}%): {formatCurrency(overviewStats ? overviewStats.totalCommission : totalRevenue * 0.1)}
+              Hoa hồng sàn ({Math.round((overviewStats?.commissionRate ?? 0.1) * 100)}%): {formatCurrency(overviewStats?.totalCommission ?? ((overviewStats?.totalRevenue ?? 0) * 0.1))}
             </span>
           </div>
 

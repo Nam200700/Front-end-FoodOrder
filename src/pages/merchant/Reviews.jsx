@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Reply, ClipboardList } from 'lucide-react';
+import { Reply, ClipboardList, Star } from 'lucide-react';
 import { useFetchData } from '../../hooks/useFetchData';
 import apiClient from '../../services/api';
 import Spinner from '../../components/common/Spinner';
@@ -11,7 +11,7 @@ export default function MerchantReviews() {
   const [replyText, setReplyText] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
-  const { data: restaurant, loading: loadingRestaurant } = useFetchData('/merchant/restaurant');
+  const { data: restaurant, loading: loadingRestaurant, error: errorRestaurant, refetch: refetchRestaurant } = useFetchData('/merchant/restaurant');
   const restaurantId = restaurant?.restaurantId || restaurant?.id;
 
   const mapReviews = (data) => {
@@ -26,7 +26,7 @@ export default function MerchantReviews() {
     }));
   };
 
-  const { data: reviews, loading: loadingReviews, refetch } = useFetchData(
+  const { data: reviews, loading: loadingReviews, error: errorReviews, refetch } = useFetchData(
     restaurantId ? `/restaurants/${restaurantId}/reviews` : null,
     {
       mapFn: mapReviews,
@@ -54,12 +54,42 @@ export default function MerchantReviews() {
   const loading = loadingRestaurant || loadingReviews || submitting;
   const reviewsList = reviews || [];
 
+  if (errorRestaurant) {
+    return (
+      <div className="flex-1 p-10 flex flex-col items-center justify-center text-center font-google-sans h-full min-h-[60vh] bg-md-surface">
+        <h2 className="text-xl font-bold text-md-on-surface">Lỗi tải dữ liệu</h2>
+        <p className="text-sm text-md-on-surface-variant mt-2">Không thể tải thông tin nhà hàng. Vui lòng thử lại.</p>
+        <button
+          onClick={() => refetchRestaurant()}
+          className="mt-4 bg-md-primary text-white px-5 py-2.5 rounded-full font-bold text-sm"
+        >
+          Thử lại
+        </button>
+      </div>
+    );
+  }
+
   if (!restaurantId && !loadingRestaurant) {
     return (
       <div className="flex-1 p-10 flex flex-col items-center justify-center text-center font-google-sans h-full min-h-[60vh] bg-md-surface">
         <ClipboardList size={56} className="text-md-outline/40 mb-4" />
         <h2 className="text-xl font-bold text-md-on-surface">Chưa đăng ký nhà hàng</h2>
         <p className="text-sm text-md-on-surface-variant mt-2 max-w-xs">Bạn cần tạo và đăng ký nhà hàng của mình để quản lý đánh giá.</p>
+      </div>
+    );
+  }
+
+  if (errorReviews) {
+    return (
+      <div className="flex-1 p-10 flex flex-col items-center justify-center text-center font-google-sans h-full min-h-[60vh] bg-md-surface">
+        <h2 className="text-xl font-bold text-md-on-surface">Lỗi tải đánh giá</h2>
+        <p className="text-sm text-md-on-surface-variant mt-2">Không thể tải danh sách đánh giá. Vui lòng thử lại.</p>
+        <button
+          onClick={() => refetch()}
+          className="mt-4 bg-md-primary text-white px-5 py-2.5 rounded-full font-bold text-sm"
+        >
+          Thử lại
+        </button>
       </div>
     );
   }

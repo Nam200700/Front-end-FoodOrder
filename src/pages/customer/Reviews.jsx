@@ -22,7 +22,7 @@ export default function Reviews() {
 
   const [submitting, setSubmitting] = useState(false);
 
-  const { data: order, loading } = useFetchData(`/orders/${orderId}`, {
+  const { data: order, loading, error, refetch } = useFetchData(`/orders/${orderId}`, {
     deps: [orderId],
   });
 
@@ -30,21 +30,32 @@ export default function Reviews() {
     e.preventDefault();
     setSubmitting(true);
     try {
-      await apiClient.post('/reviews', {
+      const reviewData = {
         orderId: Number(orderId),
         restaurantRating: Number(restaurantRating),
-        restaurantComment: restaurantComment,
-        shipperRating: Number(shipperRating),
-        shipperComment: shipperComment
-      });
+        restaurantComment: restaurantComment
+      };
+
+      // Only include shipper rating/comment if order has a shipper
+      if (order?.shipperId) {
+        reviewData.shipperRating = Number(shipperRating);
+        reviewData.shipperComment = shipperComment;
+      }
+
+      await apiClient.post('/reviews', reviewData);
 
       // Đồng bộ hóa với Store Front-end cục bộ
-      addReview(orderId, {
+      const localReviewData = {
         restaurant_rating: restaurantRating,
-        restaurant_comment: restaurantComment,
-        shipper_rating: shipperRating,
-        shipper_comment: shipperComment
-      });
+        restaurant_comment: restaurantComment
+      };
+
+      if (order?.shipperId) {
+        localReviewData.shipper_rating = shipperRating;
+        localReviewData.shipper_comment = shipperComment;
+      }
+
+      addReview(orderId, localReviewData);
 
       toast.success('Cảm ơn bạn đã gửi đánh giá! Ý kiến của bạn giúp chúng tôi nâng cao chất lượng dịch vụ.');
       navigate('/orders');
@@ -60,12 +71,27 @@ export default function Reviews() {
     return <Spinner fullScreen />;
   }
 
+  if (error) {
+    return (
+      <div className="flex-1 p-10 flex flex-col items-center justify-center text-center font-google-sans h-full min-h-[60vh] bg-md-surface">
+        <h2 className="text-xl font-bold text-md-on-surface">Lỗi tải dữ liệu</h2>
+        <p className="text-sm text-md-on-surface-variant mt-2">Không thể tải thông tin đơn hàng. Vui lòng thử lại.</p>
+        <button
+          onClick={() => refetch()}
+          className="mt-4 bg-md-primary text-white px-5 py-2.5 rounded-full font-bold text-sm"
+        >
+          Thử lại
+        </button>
+      </div>
+    );
+  }
+
   if (!order) {
     return (
       <div className="flex-1 p-10 flex flex-col items-center justify-center text-center font-google-sans h-full min-h-[60vh] bg-md-surface">
         <h2 className="text-xl font-bold text-md-on-surface">Không tìm thấy đơn hàng</h2>
-        <button 
-          onClick={() => navigate('/')} 
+        <button
+          onClick={() => navigate('/')}
           className="mt-4 bg-md-primary text-white px-5 py-2.5 rounded-full font-bold text-sm"
         >
           Quay lại trang chủ
@@ -114,9 +140,11 @@ export default function Reviews() {
                   onMouseEnter={() => setRestaurantHover(ratingValue)}
                   onMouseLeave={() => setRestaurantHover(0)}
                   className="focus:outline-none hover:scale-120 active:scale-95 transition-transform"
+                  aria-label={`Rate ${ratingValue} stars`}
+                  aria-pressed={ratingValue <= restaurantRating}
                 >
-                  <Star 
-                    size={28} 
+                  <Star
+                    size={28}
                     className={`transition-colors duration-150 ${
                       ratingValue <= (restaurantHover || restaurantRating)
                         ? 'fill-amber-500 text-amber-500'
@@ -164,9 +192,11 @@ export default function Reviews() {
                     onMouseEnter={() => setShipperHover(ratingValue)}
                     onMouseLeave={() => setShipperHover(0)}
                     className="focus:outline-none hover:scale-120 active:scale-95 transition-transform"
+                    aria-label={`Rate ${ratingValue} stars`}
+                    aria-pressed={ratingValue <= shipperRating}
                   >
-                    <Star 
-                      size={28} 
+                    <Star
+                      size={28}
                       className={`transition-colors duration-150 ${
                         ratingValue <= (shipperHover || shipperRating)
                           ? 'fill-amber-500 text-amber-500'

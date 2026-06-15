@@ -200,8 +200,7 @@ export default function Cart() {
   }
 
   return (
-    <div className="flex-1 p-6 md:p-10 max-w-5xl mx-auto w-full font-google-sans pb-24">
-      
+    <div className="flex-1 p-6 md:p-8 w-full font-google-sans pb-24">
       {/* Header */}
       <div className="flex items-center justify-between mb-8">
         <div className="flex items-center gap-4">
@@ -211,13 +210,13 @@ export default function Cart() {
           >
             <ArrowLeft size={22} />
           </button>
-          <h1 className="text-xl md:text-2xl font-extrabold text-md-on-surface">Giỏ hàng của tôi ({carts.length} quán)</h1>
+          <h1 className="text-xl md:text-2xl font-extrabold text-md-on-surface">Giỏ hàng của tôi</h1>
         </div>
       </div>
 
       {/* THÔNG TIN GIAO HÀNG CHUNG (ELEVATION 1) */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-8">
-        <Card variant="flat" className="p-5 border border-slate-200/60 shadow-sm flex flex-col justify-between">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-5">
+        <Card variant="flat" className="p-5 border border-slate-200 bg-white shadow-sm">
           <div>
             <h3 className="text-xs font-bold text-md-on-surface-variant uppercase tracking-wider mb-3.5 flex items-center gap-2">
               <MapPin size={16} className="text-md-primary" />
@@ -243,7 +242,7 @@ export default function Cart() {
           </div>
         </Card>
 
-        <Card variant="flat" className="p-5 border border-slate-200/60 shadow-sm">
+        <Card variant="flat" className="p-5 border border-slate-200 bg-white shadow-sm">
           <h3 className="text-xs font-bold text-md-on-surface-variant uppercase tracking-wider mb-3.5 flex items-center gap-2">
             <Phone size={16} className="text-md-primary" />
             Số điện thoại nhận hàng *
@@ -253,13 +252,13 @@ export default function Cart() {
             value={recipientPhone}
             onChange={(e) => setRecipientPhone(e.target.value)}
             placeholder="Số điện thoại shipper liên hệ nhận đồ..."
-            className="w-full text-xs"
+            className="w-full h-12 text-sm"
           />
         </Card>
       </div>
 
       {/* DANH SÁCH GIỎ HÀNG NHÓM THEO QUÁN */}
-      <div className="space-y-10">
+      <div className="space-y-6">
         {carts.map((cart) => {
           // Tính khoảng cách Haversine cho từng nhà hàng
           let dist = null;
@@ -280,13 +279,13 @@ export default function Cart() {
             <Card 
               key={cart.restaurantId}
               variant="flat" 
-              className="p-6 border border-slate-200 bg-white shadow-md rounded-radius-xl flex flex-col gap-6 relative"
+              className="p-6 border border-slate-200 bg-white rounded-lg shadow-sm"
             >
               {/* Header của nhà hàng */}
               <div className="flex items-center justify-between border-b border-slate-100 pb-4">
                 <div className="flex items-center gap-3 min-w-0">
                   <span className="text-[10px] bg-md-primary text-white font-extrabold px-2 py-0.5 rounded uppercase tracking-wider shrink-0">
-                    QUÁN AN
+                    QUÁN ĂN
                   </span>
                   <span className="font-extrabold text-base text-slate-800 truncate">{cart.restaurantName}</span>
                 </div>
@@ -299,57 +298,155 @@ export default function Cart() {
               </div>
 
               {/* Items của quán này */}
-              <div className="space-y-4">
-                {cart.items.map((item) => (
-                  <div key={item.id} className="flex gap-4 p-3 bg-slate-50 rounded-radius-lg border border-slate-100 relative group transition-all">
-                    <div className="w-16 h-16 sm:w-18 sm:h-18 rounded-radius-md overflow-hidden shrink-0 border border-slate-200">
-                      <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
-                    </div>
+              <div className="space-y-4 mt-4">
+                {cart.items.map((item) => {
+                  const lineTotal = item.price * item.quantity;
 
-                    <div className="flex-1 flex flex-col justify-between min-w-0 pr-16">
-                      <div>
-                        <div className="flex items-center justify-between gap-2">
-                          <h4 className="font-bold text-sm text-slate-800 truncate">{item.name}</h4>
-                          <button 
-                            onClick={() => removeItem(item.cartItemId)}
-                            className="text-slate-400 hover:text-red-500 transition-colors shrink-0 p-1 hover:scale-105 active:scale-95 cursor-pointer absolute right-3 top-3"
-                          >
-                            <Trash2 size={16} />
-                          </button>
+                  return (
+                    <div
+                      key={item.cartItemId}
+                      className="
+                        bg-slate-50
+                        border
+                        border-slate-200
+                        rounded-xl
+                        p-4
+                        hover:border-md-primary/30
+                        transition-all
+                      "
+                    >
+                      <div className="flex gap-4">
+                        {/* Ảnh */}
+                        <div className="w-20 h-20 shrink-0 rounded-xl overflow-hidden border border-slate-200 bg-white">
+                          <img
+                            src={item.image}
+                            alt={item.name}
+                            className="w-full h-full object-cover"
+                          />
                         </div>
-                        <span className="text-xs font-bold text-md-primary block mt-0.5">
-                          {formatCurrency(item.price)}
-                        </span>
+
+                        {/* Nội dung */}
+                        <div className="flex-1 min-w-0">
+                          {/* Header món */}
+                          <div className="flex justify-between items-start gap-4">
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center justify-between gap-3">
+                                <h4 className="font-bold text-base text-slate-800 truncate">
+                                  {item.name}
+                                </h4>
+
+                                {/* Số lượng */}
+                                <div
+                                  className="
+                                    flex items-center
+                                    border border-slate-200
+                                    rounded-full
+                                    bg-white
+                                    overflow-hidden
+                                    shrink-0
+                                  "
+                                >
+                                  <button
+                                    onClick={() =>
+                                      updateQty(
+                                        item.cartItemId,
+                                        item.quantity,
+                                        item.quantity - 1
+                                      )
+                                    }
+                                    className="
+                                      w-8 h-8
+                                      flex items-center justify-center
+                                      font-bold
+                                      hover:bg-slate-100
+                                    "
+                                  >
+                                    -
+                                  </button>
+
+                                  <span className="w-8 text-center font-bold text-sm">
+                                    {item.quantity}
+                                  </span>
+
+                                  <button
+                                    onClick={() =>
+                                      updateQty(
+                                        item.cartItemId,
+                                        item.quantity,
+                                        item.quantity + 1
+                                      )
+                                    }
+                                    className="
+                                      w-8 h-8
+                                      flex items-center justify-center
+                                      font-bold
+                                      hover:bg-slate-100
+                                    "
+                                  >
+                                    +
+                                  </button>
+                                </div>
+
+                                <button
+                                  onClick={() => removeItem(item.cartItemId)}
+                                  className="
+                                    p-2
+                                    rounded-lg
+                                    text-slate-400
+                                    hover:text-red-500
+                                    hover:bg-red-50
+                                    transition-all
+                                    shrink-0
+                                  "
+                                >
+                                  <Trash2 size={18} />
+                                </button>
+                              </div>
+
+                              <p className="text-sm text-slate-500 mt-2">
+                                Đơn giá:
+                                <span className="font-bold text-md-primary ml-1">
+                                  {formatCurrency(item.price)}
+                                </span>
+                              </p>
+
+                              <p className="text-sm text-slate-500">
+                                Thành tiền:
+                                <span className="font-bold text-orange-600 ml-1">
+                                  {formatCurrency(lineTotal)}
+                                </span>
+                              </p>
+                            </div>
+                          </div>
+
+                          {/* Ghi chú món */}
+                          <div className="mt-3">
+                            <input
+                              type="text"
+                              placeholder="Ghi chú cho món ăn..."
+                              value={item.note || ''}
+                              onChange={(e) =>
+                                updateNote(item.cartItemId, e.target.value)
+                              }
+                              className="
+                                w-full
+                                px-3
+                                py-2.5
+                                text-sm
+                                border
+                                border-slate-200
+                                rounded-lg
+                                bg-white
+                                focus:outline-none
+                                focus:border-md-primary
+                              "
+                            />
+                          </div>
+                        </div>
                       </div>
-
-                      {/* Ghi chú món */}
-                      <input
-                        type="text"
-                        placeholder="Ghi chú thêm..."
-                        value={item.note || ''}
-                        onChange={(e) => updateNote(item.id, e.target.value)}
-                        className="w-full text-[10px] bg-transparent border-b border-slate-200 py-0.5 mt-1 focus:outline-none focus:border-md-primary font-medium"
-                      />
                     </div>
-
-                    {/* Counter */}
-                    <div className="flex items-center bg-white border border-slate-200 rounded-full p-1 gap-2 h-max self-center shrink-0 shadow-sm">
-                      <button 
-                        onClick={() => updateQty(item.id, item.quantity, item.quantity - 1)}
-                        className="w-9 h-9 rounded-full bg-slate-50 hover:bg-slate-100 flex items-center justify-center text-slate-600 font-extrabold cursor-pointer text-sm"
-                      >
-                        -
-                      </button>
-                      <span className="text-sm font-extrabold w-6 text-center">{item.quantity}</span>
-                      <button 
-                        onClick={() => updateQty(item.id, item.quantity, item.quantity + 1)}
-                        className="w-9 h-9 rounded-full bg-slate-50 hover:bg-slate-100 flex items-center justify-center text-slate-600 font-extrabold cursor-pointer text-sm"
-                      >
-                        +
-                      </button>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
 
               {/* Phí ship, ghi chú và thanh toán của quán này */}
@@ -384,7 +481,7 @@ export default function Cart() {
                     <span className="font-bold text-slate-800">{formatCurrency(cart.subtotal)}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span>Phí ship (Haversine):</span>
+                    <span>Phí giao hàng:</span>
                     <span className={`font-bold ${dist === null ? 'text-amber-600' : 'text-slate-800'}`}>
                       {formatCurrency(shippingFee)} {dist === null && '(Tạm tính)'}
                     </span>

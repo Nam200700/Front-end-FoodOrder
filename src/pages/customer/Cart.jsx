@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCartStore } from '../../stores/cartStore';
 import { useAuthStore } from '../../stores/authStore';
-import { ArrowLeft, Trash2, MapPin, ShoppingCart, Map, Phone, Store, XCircle, X, AlertTriangle, Clock } from 'lucide-react'; 
+import { ArrowLeft, Trash2, MapPin, ShoppingCart, Map, Phone, Store, XCircle, X, AlertTriangle, Clock, ShoppingBag } from 'lucide-react'; 
 import { formatCurrency } from '../../utils/format';
 import Button from '../../components/common/Button';
 import Input from '../../components/common/Input';
@@ -106,19 +106,28 @@ export default function Cart() {
 
   if (loading && carts.length === 0) return <Spinner fullScreen />;
 
+  // ── GIAO DIỆN KHI GIỎ HÀNG TRỐNG  ──
   if (carts.length === 0) {
     return (
-      <div className="flex-1 p-6 flex flex-col items-center justify-center text-center font-google-sans h-full min-h-[60vh]">
-        <div className="w-16 h-16 bg-md-primary-container/20 text-md-primary rounded-full flex items-center justify-center mb-4">
-          <ShoppingCart size={28} />
+      <div className="flex-1 p-4 md:p-6 flex flex-col items-center justify-center font-google-sans min-h-screen bg-slate-50">
+        <div className="max-w-md w-full bg-white border border-slate-200 rounded-2xl p-8 shadow-sm flex flex-col items-center text-center">
+          
+          <div className="w-20 h-20 bg-orange-50 text-md-primary rounded-full flex items-center justify-center mb-5 border border-orange-100 shadow-inner animate-bounce">
+            <ShoppingBag size={36} className="text-[#ff6b35]" />
+          </div>
+          
+          <h2 className="text-xl font-extrabold text-slate-800 tracking-tight">Giỏ hàng của bạn đang trống</h2>
+          {/* <p className="text-xs text-slate-500 mt-2 max-w-xs leading-relaxed">
+            Có vẻ như bạn chưa thêm món ăn nào vào giỏ hàng. Hãy lấp đầy chiếc bụng đói với những món cực ngon từ MealDash nhé!
+          </p> */}
+        
+          <button 
+            onClick={() => navigate('/')} 
+            className="mt-6 w-full sm:w-auto bg-[#ff6b35] hover:bg-orange-600 text-white font-bold px-6 py-3 rounded-xl border border-[#ff6b35] text-xs uppercase tracking-wider shadow-md shadow-orange-500/10 hover:shadow-orange-500/20 active:scale-95 transition-all duration-200 cursor-pointer"
+          >
+            Khám phá món ngon ngay
+          </button>
         </div>
-        <h2 className="text-lg font-bold text-md-on-surface">Giỏ hàng của bạn đang trống</h2>
-        <p className="text-xs text-md-on-surface-variant mt-1.5 max-w-xs">
-          Bạn chưa có món ăn nào trong giỏ hàng. Hãy khám phá các món ăn ngon của MealDash!
-        </p>
-        <button onClick={() => navigate('/')} className="mt-5 bg-md-primary text-white font-bold px-5 py-2.5 rounded-full border border-md-primary text-xs uppercase cursor-pointer">
-          Khám phá món ngon
-        </button>
       </div>
     );
   }

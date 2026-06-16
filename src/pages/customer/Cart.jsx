@@ -106,21 +106,14 @@ export default function Cart() {
 
   if (loading && carts.length === 0) return <Spinner fullScreen />;
 
-  // ── GIAO DIỆN KHI GIỎ HÀNG TRỐNG  ──
   if (carts.length === 0) {
     return (
       <div className="flex-1 p-4 md:p-6 flex flex-col items-center justify-center font-google-sans min-h-screen bg-slate-50">
         <div className="max-w-md w-full bg-white border border-slate-200 rounded-2xl p-8 shadow-sm flex flex-col items-center text-center">
-          
           <div className="w-20 h-20 bg-orange-50 text-md-primary rounded-full flex items-center justify-center mb-5 border border-orange-100 shadow-inner animate-bounce">
             <ShoppingBag size={36} className="text-[#ff6b35]" />
           </div>
-          
           <h2 className="text-xl font-extrabold text-slate-800 tracking-tight">Giỏ hàng của bạn đang trống</h2>
-          {/* <p className="text-xs text-slate-500 mt-2 max-w-xs leading-relaxed">
-            Có vẻ như bạn chưa thêm món ăn nào vào giỏ hàng. Hãy lấp đầy chiếc bụng đói với những món cực ngon từ MealDash nhé!
-          </p> */}
-        
           <button 
             onClick={() => navigate('/')} 
             className="mt-6 w-full sm:w-auto bg-[#ff6b35] hover:bg-orange-600 text-white font-bold px-6 py-3 rounded-xl border border-[#ff6b35] text-xs uppercase tracking-wider shadow-md shadow-orange-500/10 hover:shadow-orange-500/20 active:scale-95 transition-all duration-200 cursor-pointer"
@@ -134,7 +127,6 @@ export default function Cart() {
 
   return (
     <div className="flex-1 p-4 md:p-5 w-full font-google-sans pb-24 bg-slate-50 min-h-screen">
-      {/* ── Header chính ── */}
       <div className="flex items-center gap-3 mb-5">
         <button onClick={() => navigate(-1)} className="p-1.5 rounded-full hover:bg-slate-200 text-slate-600 transition-colors cursor-pointer">
           <ArrowLeft size={18} />
@@ -181,72 +173,132 @@ export default function Cart() {
                   {cart.items.map(item => {
                     const lineTotal = item.price * item.quantity;
                     return (
-                      <div key={item.cartItemId} className="p-4 hover:bg-slate-50/30 transition-colors flex flex-col md:flex-row gap-4 items-start md:items-center">
+                      <div key={item.cartItemId}>
                         
-                        {/* 1. Hình ảnh món ăn */}
-                        <div className="w-16 h-16 rounded-lg overflow-hidden border border-slate-200 bg-slate-100 shrink-0 mx-auto md:mx-0">
-                          <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
-                        </div>
+                        {/* ── 1. GIAO DIỆN LAPTOP ── */}
+                        <div className="hidden md:flex p-4 hover:bg-slate-50/30 transition-colors flex-row gap-4 items-center">
+                          <div className="w-[72px] h-16 rounded-lg overflow-hidden border border-slate-200 bg-slate-100 shrink-0">
+                            <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
+                          </div>
 
-                        {/* 2. chi tiết*/}
-                        <div className="flex-1 w-full flex flex-col gap-3">
-                          
-                          {/* HÀNG 1: Thông tin chi tiết món ăn*/}
-                          <div className="flex flex-col md:flex-row justify-between items-center gap-4 w-full">
-                            
-                            {/* Tên món ăn */}
-                            <div className="w-full md:w-2/5 min-w-0 text-center md:text-left">
-                              <p className="font-bold text-slate-800 text-sm leading-snug line-clamp-2" title={item.name}>
-                                {item.name}
-                              </p>
-                            </div>
-
-                            {/*Đơn giá, Số lượng, Thành tiền, Nút xóa */}
-                            <div className="flex flex-1 items-center justify-between w-full md:w-auto gap-4 md:gap-8">
-                              
-                              {/* Đơn giá */}
-                              <div className="text-center md:text-left min-w-[70px]">
-                                <span className="text-[10px] font-medium text-slate-400 block mb-0.5">Đơn giá</span>
-                                <span className="text-xs font-semibold text-slate-600">{formatCurrency(item.price)}</span>
+                          <div className="flex-1 w-full flex flex-col gap-3">
+                            <div className="flex flex-row justify-between items-center gap-4 w-full">
+                              <div className="w-2/5 min-w-0">
+                                <p className="font-bold text-slate-800 text-sm leading-snug line-clamp-2" title={item.name}>
+                                  {item.name}
+                                </p>
                               </div>
 
-                              {/*tăng giảm số lượng */}
-                              <div className="flex flex-col items-center">
-                                <span className="text-[10px] font-medium text-slate-400 block mb-1">Số lượng</span>
-                                <div className="flex items-center border border-slate-200 rounded bg-white overflow-hidden">
-                                  <button onClick={() => updateQty(item.foodId, item.quantity, item.quantity - 1)} className="w-6 h-6 flex items-center justify-center font-bold text-slate-500 hover:bg-slate-100 transition text-xs">-</button>
-                                  <span className="w-8 text-center font-extrabold text-sm text-slate-800">{item.quantity}</span>
-                                  <button onClick={() => updateQty(item.foodId, item.quantity, item.quantity + 1)} className="w-6 h-6 flex items-center justify-center font-bold text-slate-500 hover:bg-slate-100 transition text-xs">+</button>
+                              <div className="flex flex-1 items-center justify-between gap-8">
+                                <div className="min-w-[70px]">
+                                  <span className="text-[10px] font-medium text-slate-400 block mb-0.5">Đơn giá</span>
+                                  <span className="text-xs font-semibold text-slate-600">{formatCurrency(item.price)}</span>
+                                </div>
+
+                                <div className="flex flex-col items-center">
+                                  <span className="text-[10px] font-medium text-slate-400 block mb-1">Số lượng</span>
+                                  
+                                  <div className="flex items-center border border-slate-200 rounded-lg bg-slate-50/50 p-0.5 shadow-none">
+                                    <button 
+                                      onClick={() => updateQty(item.foodId, item.quantity, item.quantity - 1)} 
+                                      className="w-6 h-6 flex items-center justify-center rounded-md font-bold text-slate-500 hover:bg-white hover:text-slate-800 transition-all duration-150 text-xs cursor-pointer active:scale-95 shadow-none"
+                                    >
+                                      -
+                                    </button>
+                                    <span className="w-8 text-center font-extrabold text-xs text-slate-800 select-none">{item.quantity}</span>
+                                    <button 
+                                      onClick={() => updateQty(item.foodId, item.quantity, item.quantity + 1)} 
+                                      className="w-6 h-6 flex items-center justify-center rounded-md font-bold text-slate-500 hover:bg-white hover:text-slate-800 transition-all duration-150 text-xs cursor-pointer active:scale-95 shadow-none"
+                                    >
+                                      +
+                                    </button>
+                                  </div>
+                                </div>
+
+                                <div className="text-right min-w-[80px]">
+                                  <span className="text-[10px] font-medium text-slate-400 block mb-0.5">Tổng</span>
+                                  <span className="text-sm font-extrabold text-[#ff6b35]">{formatCurrency(lineTotal)}</span>
+                                </div>
+
+                                <div className="flex items-center justify-center">
+                                  <button onClick={() => removeItem(item.cartItemId)} 
+                                    className="p-1.5 rounded-full bg-transparent hover:bg-red-50 text-slate-400 hover:text-red-500 border border-transparent hover:border-red-100 transition-all duration-200 cursor-pointer">
+                                    <X size={15} strokeWidth={2.5} />
+                                  </button>
                                 </div>
                               </div>
+                            </div>
 
-                              {/* Thành tiền */}
-                              <div className="text-center md:text-right min-w-[80px]">
-                                <span className="text-[10px] font-medium text-slate-400 block mb-0.5">Thành tiền</span>
-                                <span className="text-sm font-extrabold text-orange-600 md:text-[#ff6b35]">{formatCurrency(lineTotal)}</span>
-                              </div>
+                            {/*Ghi chú*/}
+                            <div className="w-full flex items-center gap-2">
+                              <span className="text-[10px] font-bold text-slate-400 shrink-0 uppercase tracking-wider w-[72px]">Ghi chú:</span>
+                              <input type="text" placeholder="Thêm ghi chú cho món ăn này" value={item.note || ''}
+                                onChange={(e) => updateNote(item.foodId, e.target.value)}
+                                className="flex-1 px-2.5 py-1 text-xs border border-slate-200 rounded bg-slate-50/50 focus:outline-none focus:border-md-primary text-slate-600 placeholder:text-[10px] placeholder:text-slate-400/80 transition-all focus:bg-white"/>
+                            </div>
+                          </div>
+                        </div>
 
-                              {/* Nút xóa sản phẩm */}
-                              <div className="flex items-center justify-center">
-                                <button onClick={() => removeItem(item.cartItemId)} 
-                                  className="p-1.5 rounded-full bg-transparent hover:bg-red-50 text-slate-400 hover:text-red-500 border border-transparent hover:border-red-100 transition-all duration-200 cursor-pointer"
-                                  title="Xóa món ăn">
-                                  <X size={15} strokeWidth={2.5} />
+                        {/* ── 2. GIAO DIỆN RESPONSIVE MOBILE ── */}
+                        <div className="flex md:hidden p-4 flex-col gap-3 hover:bg-slate-50/30 transition-colors">
+                          <div className="flex items-start gap-3 w-full">
+                            
+                            {/* Hình ảnh*/}
+                            <div className="w-20 h-20 rounded-lg overflow-hidden border border-slate-200 bg-slate-100 shrink-0">
+                              <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
+                            </div>
+
+                            {/* tên món*/}
+                            <div className="flex-1 min-w-0 flex flex-col justify-between h-20 py-0.5">
+                              <p className="font-bold text-slate-800 text-sm leading-snug line-clamp-2">
+                                {item.name}
+                              </p>
+                              
+                              {/*nút số lượng */}
+                              <div className="flex items-center border border-slate-200 rounded-lg bg-slate-50/50 p-0.5 shadow-none w-fit">
+                                <button 
+                                  onClick={() => updateQty(item.foodId, item.quantity, item.quantity - 1)} 
+                                  className="w-7 h-7 flex items-center justify-center rounded-md font-bold text-slate-500 hover:bg-white hover:text-slate-800 transition-all duration-150 text-sm cursor-pointer active:scale-95 shadow-none"
+                                >
+                                  -
+                                </button>
+                                <span className="w-9 text-center font-extrabold text-sm text-slate-800 select-none">{item.quantity}</span>
+                                <button 
+                                  onClick={() => updateQty(item.foodId, item.quantity, item.quantity + 1)} 
+                                  className="w-7 h-7 flex items-center justify-center rounded-md font-bold text-slate-500 hover:bg-white hover:text-slate-800 transition-all duration-150 text-sm cursor-pointer active:scale-95 shadow-none"
+                                >
+                                  +
                                 </button>
                               </div>
+                            </div>
 
+                            {/* Cột phải */}
+                            <div className="text-right flex flex-col justify-between h-20 min-w-[90px] relative pr-7">
+                              <button onClick={() => removeItem(item.cartItemId)} className="absolute top-0 right-0 p-0.5 text-slate-400 hover:text-red-500 transition-colors">
+                                <X size={16} strokeWidth={2.5} />
+                              </button>
+
+                              <div className="mt-0.5">
+                                <span className="text-[11px] font-medium text-slate-500 block">Đơn giá</span>
+                                <span className="text-xs font-bold text-slate-700">{formatCurrency(item.price)}</span>
+                              </div>
+
+                              <div className="mb-0.5">
+                                <span className="text-[11px] font-medium text-slate-500 block">Tổng</span>
+                                <span className="text-xs font-black text-orange-600">{formatCurrency(lineTotal)}</span>
+                              </div>
                             </div>
                           </div>
 
-                          {/* HÀNG 2: Ghi chú */}
-                          <div className="w-full flex items-center gap-2">
-                            <span className="text-[10px] font-bold text-slate-400 shrink-0 uppercase tracking-wider">Ghi chú:</span>
-                            <input type="text" placeholder="Thêm ghi chú cho món ăn này" value={item.note || ''}
+                          {/*Ghi chú*/}
+                          <div className="w-full flex items-center gap-2 pt-1 border-t border-dashed border-slate-100">
+                            <span className="text-xs font-bold text-slate-500 shrink-0">Ghi chú</span>
+                            <input type="text" placeholder="Thêm ghi chú..." value={item.note || ''}
                               onChange={(e) => updateNote(item.foodId, e.target.value)}
-                              className="flex-1 px-2.5 py-1 text-xs border border-slate-200 rounded bg-slate-50/50 focus:outline-none focus:border-md-primary text-slate-600 placeholder:text-[10px] placeholder:text-slate-400/80 transition-all focus:bg-white"/>
+                              className="flex-1 px-2.5 py-1 text-[11px] border border-slate-300 rounded-md bg-white focus:outline-none focus:border-orange-500 text-slate-700 placeholder:text-slate-400/80 transition-all"/>
                           </div>
-
                         </div>
+
                       </div>
                     );
                   })}
@@ -277,7 +329,7 @@ export default function Cart() {
         </div>
       </div>
 
-      {/* ── MODAL ĐẾM NGƯỢC ĐƠN HÀNG── */}
+      {/* ── MODAL ĐẾM NGƯỢC ĐƠN HÀNG ── */}
       {showCountdownModal && activeOrderCart && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 transition-all animate-fade-in">
           <div className="bg-white rounded-2xl p-6 max-w-sm w-full text-center shadow-2xl border border-slate-100 space-y-4 transform scale-100 transition-transform">
@@ -317,7 +369,6 @@ export default function Cart() {
       {confirmClearCartState.open && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in">
           <div className="bg-white rounded-2xl max-w-md w-full shadow-2xl border border-slate-100 overflow-hidden transform scale-100 transition-all">
-            
             <div className="p-6 flex gap-4 items-start">
               <div className="p-3 bg-red-50 text-red-500 rounded-2xl border border-red-100 shrink-0">
                 <AlertTriangle size={24} />
@@ -330,7 +381,6 @@ export default function Cart() {
               </div>
             </div>
 
-            {/*Button xác nhận*/}
             <div className="bg-slate-50 px-6 py-3.5 flex justify-end gap-2.5 border-t border-slate-100">
               <button 
                 onClick={() => setConfirmClearCartState({ open: false, restaurantId: null, restaurantName: '' })}
@@ -345,7 +395,6 @@ export default function Cart() {
                 Xác nhận 
               </button>
             </div>
-
           </div>
         </div>
       )}

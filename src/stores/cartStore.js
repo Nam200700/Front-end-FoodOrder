@@ -40,8 +40,8 @@ export const useCartStore = create((set, get) => ({
 
   addItem: async (item, resId, resName) => {
     try {
-      const numericId = parseInt(item.id.replace('food-', ''));
-      const foodId = isNaN(numericId) ? item.id : numericId;
+      const originId = item.foodId || item.id;
+      const foodId = typeof originId === 'string' ? parseInt(originId.replace('food-', '')) : originId;
       
       await apiClient.post('/carts/me/items', {
         foodId: foodId,
@@ -59,12 +59,13 @@ export const useCartStore = create((set, get) => ({
 
   updateQty: async (foodId, currentQty, targetQty) => {
     try {
+      const cleanFoodId = typeof foodId === 'string' ? parseInt(foodId.replace('food-', '')) : foodId;
       const delta = targetQty - currentQty;
       if (delta === 0) return;
 
       if (targetQty <= 0) {
         const allItems = get().carts.flatMap(c => c.items);
-        const targetItem = allItems.find(i => i.foodId === foodId);
+        const targetItem = allItems.find(i => i.foodId === cleanFoodId);
         if (targetItem) {
           await get().removeItem(targetItem.cartItemId);
         }
@@ -72,7 +73,7 @@ export const useCartStore = create((set, get) => ({
       }
       
       await apiClient.post('/carts/me/items', {
-        foodId: foodId,
+        foodId: cleanFoodId,
         quantity: delta,
         note: null
       });

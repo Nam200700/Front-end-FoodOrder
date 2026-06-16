@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCartStore } from '../../stores/cartStore';
 import { useAuthStore } from '../../stores/authStore';
-import { ArrowLeft, Trash2, MapPin, ShoppingCart, Map, Phone, Store, XCircle, X } from 'lucide-react'; 
+import { ArrowLeft, Trash2, MapPin, ShoppingCart, Map, Phone, Store, XCircle, X, AlertTriangle, Clock } from 'lucide-react'; 
 import { formatCurrency } from '../../utils/format';
 import Button from '../../components/common/Button';
 import Input from '../../components/common/Input';
@@ -11,7 +11,6 @@ import { calculateHaversineDistance } from '../../utils/haversine';
 import MapModal from '../../components/common/MapModal';
 import Spinner from '../../components/common/Spinner';
 import { toast } from 'react-toastify';
-import ConfirmDialog from '../../components/common/ConfirmDialog';
 
 export default function Cart() {
   const navigate = useNavigate();
@@ -134,7 +133,6 @@ export default function Cart() {
         <h1 className="text-lg font-extrabold text-slate-800">Giỏ hàng của tôi</h1>
       </div>
 
-      {/* ── Layout danh sách giỏ hàng ── */}
       <div className="flex flex-col lg:flex-row gap-5 items-start">
         <div className="flex-1 space-y-4 w-full">
           {carts.map(cart => {
@@ -181,7 +179,7 @@ export default function Cart() {
                           <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
                         </div>
 
-                        {/* 2. Khối nội dung chi tiết*/}
+                        {/* 2. chi tiết*/}
                         <div className="flex-1 w-full flex flex-col gap-3">
                           
                           {/* HÀNG 1: Thông tin chi tiết món ăn*/}
@@ -221,11 +219,9 @@ export default function Cart() {
 
                               {/* Nút xóa sản phẩm */}
                               <div className="flex items-center justify-center">
-                                <button 
-                                  onClick={() => removeItem(item.cartItemId)} 
+                                <button onClick={() => removeItem(item.cartItemId)} 
                                   className="p-1.5 rounded-full bg-transparent hover:bg-red-50 text-slate-400 hover:text-red-500 border border-transparent hover:border-red-100 transition-all duration-200 cursor-pointer"
-                                  title="Xóa món ăn"
-                                >
+                                  title="Xóa món ăn">
                                   <X size={15} strokeWidth={2.5} />
                                 </button>
                               </div>
@@ -236,13 +232,9 @@ export default function Cart() {
                           {/* HÀNG 2: Ghi chú */}
                           <div className="w-full flex items-center gap-2">
                             <span className="text-[10px] font-bold text-slate-400 shrink-0 uppercase tracking-wider">Ghi chú:</span>
-                            <input
-                              type="text"
-                              placeholder="Thêm ghi chú cho món ăn này"
-                              value={item.note || ''}
+                            <input type="text" placeholder="Thêm ghi chú cho món ăn này" value={item.note || ''}
                               onChange={(e) => updateNote(item.foodId, e.target.value)}
-                              className="flex-1 px-2.5 py-1 text-xs border border-slate-200 rounded bg-slate-50/50 focus:outline-none focus:border-md-primary text-slate-600 placeholder:text-[10px] placeholder:text-slate-400/80 transition-all focus:bg-white"
-                            />
+                              className="flex-1 px-2.5 py-1 text-xs border border-slate-200 rounded bg-slate-50/50 focus:outline-none focus:border-md-primary text-slate-600 placeholder:text-[10px] placeholder:text-slate-400/80 transition-all focus:bg-white"/>
                           </div>
 
                         </div>
@@ -264,13 +256,8 @@ export default function Cart() {
                         <span className="font-extrabold text-sm text-amber-600 md:text-[#ff6b35]">{formatCurrency(totalSubtotal)}</span>
                       </div>
                     </div>
-                    <Button
-                      onClick={() => handlePlaceOrder(cart)}
-                      loading={isSubmitting}
-                      disabled={isSubmitting}
-                      size="sm"
-                      className="text-xs font-bold uppercase tracking-wide px-4 py-2.5 cursor-pointer rounded transition-all duration-200 hover:bg-orange-600 hover:shadow-md active:scale-95"
-                    >
+                    <Button onClick={() => handlePlaceOrder(cart)} loading={isSubmitting} disabled={isSubmitting} size="sm"
+                      className="text-xs font-bold uppercase tracking-wide px-4 py-2.5 cursor-pointer rounded transition-all duration-200 hover:bg-orange-600 hover:shadow-md active:scale-95">
                       THANH TOÁN NGAY
                     </Button>
                   </div>
@@ -281,22 +268,35 @@ export default function Cart() {
         </div>
       </div>
 
-      {/* ── Modal đếm ngược đơn hàng ── */}
+      {/* ── MODAL ĐẾM NGƯỢC ĐƠN HÀNG── */}
       {showCountdownModal && activeOrderCart && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl p-5 max-w-sm w-full text-center space-y-4 font-google-sans">
-            <div className="w-14 h-14 rounded-full bg-md-primary/10 text-md-primary flex items-center justify-center mx-auto text-lg font-extrabold">
-              ⏱️ {countdown}s
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 transition-all animate-fade-in">
+          <div className="bg-white rounded-2xl p-6 max-w-sm w-full text-center shadow-2xl border border-slate-100 space-y-4 transform scale-100 transition-transform">
+            <div className="relative w-16 h-16 rounded-full bg-amber-50 text-amber-600 flex items-center justify-center mx-auto border border-amber-100">
+              <Clock size={26} className="animate-pulse" />
+              <span className="absolute -bottom-1 -right-1 bg-amber-500 text-white rounded-full text-[10px] px-1.5 py-0.5 font-black shadow-sm">
+                {countdown}s
+              </span>
             </div>
-            <div>
-              <h3 className="font-extrabold text-sm text-slate-800">Đang gửi đơn đến "{activeOrderCart.restaurantName}"</h3>
-              <p className="text-xs text-slate-500 mt-1">Bạn có <span className="text-md-primary font-bold">{countdown} giây</span> để hủy đặt hàng.</p>
+            
+            <div className="space-y-1">
+              <h3 className="font-black text-base text-slate-800">Xác nhận đặt đơn hàng</h3>
+              <p className="text-xs text-slate-500 px-2">
+                Hệ thống chuẩn bị gửi đơn đến <span className="font-bold text-slate-700">"Quán {activeOrderCart.restaurantName}"</span>. Bạn có thể bấm hủy trong thời gian đếm ngược.
+              </p>
             </div>
-            <div className="flex gap-2.5">
-              <button onClick={() => { setShowCountdownModal(false); setActiveOrderCart(null); setCountdown(10); }} className="flex-1 bg-red-50 hover:bg-red-100 text-red-600 font-extrabold py-2.5 rounded-full border border-red-200 text-[10px] uppercase transition cursor-pointer">
-                Hủy đặt hàng
+
+            <div className="flex gap-3 pt-2">
+              <button 
+                onClick={() => { setShowCountdownModal(false); setActiveOrderCart(null); setCountdown(10); }} 
+                className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold py-2.5 rounded-xl text-xs transition cursor-pointer active:scale-95"
+              >
+                Hủy đơn
               </button>
-              <button onClick={() => activeOrderCart && executePlaceOrder(activeOrderCart)} className="flex-1 bg-md-primary text-white font-extrabold py-2.5 rounded-full text-[10px] uppercase transition cursor-pointer hover:opacity-95">
+              <button 
+                onClick={() => activeOrderCart && executePlaceOrder(activeOrderCart)} 
+                className="flex-1 bg-md-primary hover:bg-md-primary/95 text-white font-bold py-2.5 rounded-xl text-xs shadow-md shadow-md-primary/20 transition cursor-pointer active:scale-95"
+              >
                 Đặt ngay 🚀
               </button>
             </div>
@@ -304,18 +304,44 @@ export default function Cart() {
         </div>
       )}
 
-      <MapModal isOpen={isMapOpen} onClose={() => setIsMapOpen(false)} onConfirm={handleConfirmLocation} initialLat={deliveryLat} initialLng={deliveryLng} />
+      {/* ── MODAL XÁC NHẬN XÓA GIỎ HÀNG ── */}
+      {confirmClearCartState.open && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in">
+          <div className="bg-white rounded-2xl max-w-md w-full shadow-2xl border border-slate-100 overflow-hidden transform scale-100 transition-all">
+            
+            <div className="p-6 flex gap-4 items-start">
+              <div className="p-3 bg-red-50 text-red-500 rounded-2xl border border-red-100 shrink-0">
+                <AlertTriangle size={24} />
+              </div>
+              <div className="space-y-1.5 min-w-0">
+                <h3 className="font-black text-base text-slate-800">Xóa toàn bộ giỏ hàng?</h3>
+                <p className="text-xs text-slate-500 leading-relaxed">
+                  Bạn có chắc muốn dọn sạch tất cả các món ăn của <span className="font-bold text-slate-700">Quán {confirmClearCartState.restaurantName}</span> ra khỏi giỏ?
+                </p>
+              </div>
+            </div>
 
-      <ConfirmDialog
-        isOpen={confirmClearCartState.open}
-        onClose={() => setConfirmClearCartState({ open: false, restaurantId: null, restaurantName: '' })}
-        onConfirm={handleClearCartConfirm}
-        title="Xóa giỏ hàng"
-        message={`Bạn có chắc muốn xóa toàn bộ giỏ hàng của "${confirmClearCartState.restaurantName}"?`}
-        confirmLabel="Xóa"
-        danger
-        loading={loading}
-      />
+            {/*Button xác nhận*/}
+            <div className="bg-slate-50 px-6 py-3.5 flex justify-end gap-2.5 border-t border-slate-100">
+              <button 
+                onClick={() => setConfirmClearCartState({ open: false, restaurantId: null, restaurantName: '' })}
+                className="px-4 py-2 rounded-xl text-xs font-bold text-slate-500 hover:bg-slate-200 transition-colors cursor-pointer"
+              >
+                Hủy bỏ
+              </button>
+              <button 
+                onClick={handleClearCartConfirm}
+                className="px-4 py-2 rounded-xl text-xs font-bold bg-red-500 hover:bg-red-600 text-white shadow-sm shadow-red-500/20 transition-all cursor-pointer active:scale-95"
+              >
+                Xác nhận 
+              </button>
+            </div>
+
+          </div>
+        </div>
+      )}
+
+      <MapModal isOpen={isMapOpen} onClose={() => setIsMapOpen(false)} onConfirm={handleConfirmLocation} initialLat={deliveryLat} initialLng={deliveryLng} />
     </div>
   );
 }

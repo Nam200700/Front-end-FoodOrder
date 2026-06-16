@@ -240,7 +240,7 @@ export default function Cart() {
                               type="text"
                               placeholder="Thêm ghi chú cho món ăn này"
                               value={item.note || ''}
-                              onChange={e => updateNote(item.cartItemId, e.target.value)}
+                              onChange={(e) => updateNote(item.foodId, e.target.value)}
                               className="flex-1 px-2.5 py-1 text-xs border border-slate-200 rounded bg-slate-50/50 focus:outline-none focus:border-md-primary text-slate-600 placeholder:text-[10px] placeholder:text-slate-400/80 transition-all focus:bg-white"
                             />
                           </div>

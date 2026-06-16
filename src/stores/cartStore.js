@@ -92,18 +92,21 @@ export const useCartStore = create((set, get) => ({
     }
   },
 
-  updateNote: async (itemId, note) => {
+  updateNote: async (foodId, note) => {
     try {
-      const numericId = parseInt(itemId.replace('food-', ''));
-      const foodId = isNaN(numericId) ? itemId : numericId;
+      set((state) => ({
+        carts: state.carts.map((cart) => ({
+          ...cart,
+          items: cart.items.map((item) =>
+            item.foodId === foodId ? { ...item, note: note } : item
+          ),
+        })),
+      }));
       
-      await apiClient.post('/carts/me/items', {
+      await apiClient.put('/carts/me/items/note', {
         foodId: foodId,
-        quantity: 0,
         note: note
       });
-      
-      await get().fetchCart();
     } catch (err) {
       console.error('Lỗi khi cập nhật ghi chú:', err);
     }

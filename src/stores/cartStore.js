@@ -40,8 +40,8 @@ export const useCartStore = create((set, get) => ({
 
   addItem: async (item, resId, resName) => {
     try {
-      const numericId = parseInt(item.id.replace('food-', ''));
-      const foodId = isNaN(numericId) ? item.id : numericId;
+      const originId = item.foodId || item.id;
+      const foodId = typeof originId === 'string' ? parseInt(originId.replace('food-', '')) : originId;
       
       await apiClient.post('/carts/me/items', {
         foodId: foodId,
@@ -57,18 +57,25 @@ export const useCartStore = create((set, get) => ({
     }
   },
 
-  updateQty: async (itemId, currentQty, targetQty) => {
+  updateQty: async (foodId, currentQty, targetQty) => {
     try {
-      const numericId = parseInt(itemId.replace('food-', ''));
-      const foodId = isNaN(numericId) ? itemId : numericId;
+      const cleanFoodId = typeof foodId === 'string' ? parseInt(foodId.replace('food-', '')) : foodId;
       const delta = targetQty - currentQty;
-      
       if (delta === 0) return;
+
+      if (targetQty <= 0) {
+        const allItems = get().carts.flatMap(c => c.items);
+        const targetItem = allItems.find(i => i.foodId === cleanFoodId);
+        if (targetItem) {
+          await get().removeItem(targetItem.cartItemId);
+        }
+        return;
+      }
       
       await apiClient.post('/carts/me/items', {
-        foodId: foodId,
+        foodId: cleanFoodId,
         quantity: delta,
-        note: ''
+        note: null
       });
       
       await get().fetchCart();
@@ -86,18 +93,21 @@ export const useCartStore = create((set, get) => ({
     }
   },
 
-  updateNote: async (itemId, note) => {
+  updateNote: async (foodId, note) => {
     try {
-      const numericId = parseInt(itemId.replace('food-', ''));
-      const foodId = isNaN(numericId) ? itemId : numericId;
+      set((state) => ({
+        carts: state.carts.map((cart) => ({
+          ...cart,
+          items: cart.items.map((item) =>
+            item.foodId === foodId ? { ...item, note: note } : item
+          ),
+        })),
+      }));
       
-      await apiClient.post('/carts/me/items', {
+      await apiClient.put('/carts/me/items/note', {
         foodId: foodId,
-        quantity: 0,
         note: note
       });
-      
-      await get().fetchCart();
     } catch (err) {
       console.error('Lỗi khi cập nhật ghi chú:', err);
     }

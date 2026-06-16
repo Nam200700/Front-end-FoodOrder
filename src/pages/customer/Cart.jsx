@@ -207,9 +207,9 @@ export default function Cart() {
                               <div className="flex flex-col items-center">
                                 <span className="text-[10px] font-medium text-slate-400 block mb-1">Số lượng</span>
                                 <div className="flex items-center border border-slate-200 rounded bg-white overflow-hidden">
-                                  <button onClick={() => updateQty(item.cartItemId, item.quantity, item.quantity - 1)} className="w-6 h-6 flex items-center justify-center font-bold text-slate-500 hover:bg-slate-100 transition text-xs">-</button>
+                                  <button onClick={() => updateQty(item.foodId, item.quantity, item.quantity - 1)} className="w-6 h-6 flex items-center justify-center font-bold text-slate-500 hover:bg-slate-100 transition text-xs">-</button>
                                   <span className="w-8 text-center font-extrabold text-sm text-slate-800">{item.quantity}</span>
-                                  <button onClick={() => updateQty(item.cartItemId, item.quantity, item.quantity + 1)} className="w-6 h-6 flex items-center justify-center font-bold text-slate-500 hover:bg-slate-100 transition text-xs">+</button>
+                                  <button onClick={() => updateQty(item.foodId, item.quantity, item.quantity + 1)} className="w-6 h-6 flex items-center justify-center font-bold text-slate-500 hover:bg-slate-100 transition text-xs">+</button>
                                 </div>
                               </div>
 

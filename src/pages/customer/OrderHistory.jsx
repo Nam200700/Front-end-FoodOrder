@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCartStore } from '../../stores/cartStore';
 import { ShoppingBag, RefreshCw, Ban, AlertCircle, X, MessageSquare } from 'lucide-react'; // Thêm MessageSquare icon
@@ -62,6 +62,10 @@ export default function OrderHistory() {
   const [cancelReasonInput, setCancelReasonInput] = useState('');
   const [submittingCancel, setSubmittingCancel] = useState(false);
 
+  const [orders, setOrders] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
   const mapOrders = (data) => {
     const realData = data?.content || [];
     return realData.map((order) => {
@@ -92,12 +96,25 @@ export default function OrderHistory() {
     });
   };
 
-  const queryParams = activeTab === 'ALL' ? {} : { status: activeTab };
+  const fetchOrderHistory = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const statusParam = activeTab === 'ALL' ? {} : { status: activeTab};
+      const response = await apiClient.get('/orders', { params: statusParam });
+      const mappedData = mapOrders(response.data?.data || response.data);
+      setOrders(mappedData);
+    } catch (err) {
+      console.error('Lỗi khi lấy danh sách đơn hàng:', err);
+      setError(err);
+    } finally {
+      setLoading(false);
+    }
+  }, [activeTab]);
 
-  const { data: orders, loading, error, refetch } = useFetchData('/orders', {
-    mapFn: mapOrders,
-    params: queryParams, 
-  });
+  useEffect(() => {
+    fetchOrderHistory();
+  }, [fetchOrderHistory]);
 
   // hiển thị modal hủy đơn
   const handleOpenCancelModal = (e, orderId) => {
@@ -116,7 +133,7 @@ export default function OrderHistory() {
   };
 
   // hủy đơn hàng
-  const handleCancelOrderSubmit = async () => {
+  const handleCancelOrder = async () => {
     if (!cancelReasonInput.trim()) {
       toast.error('Vui lòng nhập hoặc chọn lý do hủy!');
       return;
@@ -129,10 +146,10 @@ export default function OrderHistory() {
       });
       toast.success(`Đã hủy thành công đơn hàng #${selectedOrderId}!`);
       setIsCancelModalOpen(false);
-      refetch(); 
+      fetchOrderHistory(); 
     } catch (err) {
       console.error('Lỗi khi hủy đơn hàng:', err);
-      toast.error(err.response?.data?.message || 'Không thể hủy đơn hàng!');
+      toast.error(err.response?.data?.message);
     } finally {
       setSubmittingCancel(false);
     }
@@ -396,7 +413,7 @@ export default function OrderHistory() {
                 </button>
                 <button 
                   type="button" 
-                  onClick={handleCancelOrderSubmit}
+                  onClick={handleCancelOrder}
                   disabled={submittingCancel || !cancelReasonInput.trim()}
                   className="px-5 py-2 text-xs font-bold bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors disabled:bg-slate-300 disabled:cursor-not-allowed cursor-pointer flex items-center gap-1.5 shadow-sm"
                 >

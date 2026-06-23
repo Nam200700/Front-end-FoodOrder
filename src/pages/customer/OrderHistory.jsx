@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCartStore } from '../../stores/cartStore';
-import { ShoppingBag, RefreshCw, Ban, AlertCircle, X } from 'lucide-react';
+import { ShoppingBag, RefreshCw, Ban, AlertCircle, X, MessageSquare } from 'lucide-react'; // Thêm MessageSquare icon
 import { formatCurrency } from '../../utils/format';
 import { useFetchData } from '../../hooks/useFetchData';
 import { SkeletonOrderCard } from '../../components/common/SkeletonCard';
@@ -99,7 +99,7 @@ export default function OrderHistory() {
     params: queryParams, 
   });
 
-  // Kích hoạt hiển thị modal hủy đơn
+  // hiển thị modal hủy đơn
   const handleOpenCancelModal = (e, orderId) => {
     e.stopPropagation(); 
     setSelectedOrderId(orderId);
@@ -107,7 +107,7 @@ export default function OrderHistory() {
     setIsCancelModalOpen(true);
   };
 
-  // Đóng modal và reset trạng thái dữ liệu tạm thời
+  // Đóng modal và reset trạng thái dữ liệu
   const handleCloseCancelModal = () => {
     if (submittingCancel) return;
     setIsCancelModalOpen(false);
@@ -115,7 +115,7 @@ export default function OrderHistory() {
     setCancelReasonInput('');
   };
 
-  // Thực hiện call API gửi lý do hủy đơn hàng
+  // hủy đơn hàng
   const handleCancelOrderSubmit = async () => {
     if (!cancelReasonInput.trim()) {
       toast.error('Vui lòng nhập hoặc chọn lý do hủy!');
@@ -138,7 +138,7 @@ export default function OrderHistory() {
     }
   };
 
-  // Tái đặt hàng (Đẩy ngược danh sách item cũ vào giỏ hàng và chuyển trang)
+  // mua lại
   const handleReorder = (e, order) => {
     e.stopPropagation(); 
     const newItems = order.items.map((item) => ({
@@ -275,25 +275,43 @@ export default function OrderHistory() {
                       </span>
                     </div>
 
-                    {order.status === 'PENDING' ? (
-                      <button
-                        type="button"
-                        onClick={(e) => handleOpenCancelModal(e, order.id)}
-                        className="flex items-center justify-center gap-1.5 px-5 py-2.5 bg-red-500 hover:bg-red-600 text-white rounded-lg text-xs font-bold transition-all shadow-sm active:scale-[0.98] w-full sm:w-auto cursor-pointer"
-                      >
-                        <Ban size={13} />
-                        Hủy đơn hàng
-                      </button>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={(e) => handleReorder(e, order)}
-                        className="flex items-center justify-center gap-1.5 px-5 py-2.5 bg-orange-500 hover:bg-orange-600 text-white rounded-lg text-xs font-bold transition-all shadow-sm active:scale-[0.98] w-full sm:w-auto cursor-pointer"
-                      >
-                        <RefreshCw size={13} />
-                        Mua lại
-                      </button>
-                    )}
+                    <div className="flex items-center gap-2 w-full sm:w-auto">
+                      {order.status === 'PENDING' ? (
+                        <button
+                          type="button"
+                          onClick={(e) => handleOpenCancelModal(e, order.id)}
+                          className="flex items-center justify-center gap-1.5 px-5 py-2.5 bg-red-500 hover:bg-red-600 text-white rounded-lg text-xs font-bold transition-all shadow-sm active:scale-[0.98] w-full sm:w-auto cursor-pointer"
+                        >
+                          <Ban size={13} />
+                          Hủy đơn hàng
+                        </button>
+                      ) : (
+                        <>
+                          {order.status === 'COMPLETED' && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation(); 
+                                navigate(`/reviews/${order.id}`);
+                              }}
+                              className="flex items-center justify-center gap-1.5 px-5 py-2.5 border border-orange-500 text-orange-500 hover:bg-orange-50 rounded-lg text-xs font-bold transition-all shadow-sm active:scale-[0.98] w-full sm:w-auto cursor-pointer"
+                            >
+                              <MessageSquare size={13} />
+                              Viết đánh giá
+                            </button>
+                          )}
+                          
+                          <button
+                            type="button"
+                            onClick={(e) => handleReorder(e, order)}
+                            className="flex items-center justify-center gap-1.5 px-5 py-2.5 bg-orange-500 hover:bg-orange-600 text-white rounded-lg text-xs font-bold transition-all shadow-sm active:scale-[0.98] w-full sm:w-auto cursor-pointer"
+                          >
+                            <RefreshCw size={13} />
+                            Mua lại
+                          </button>
+                        </>
+                      )}
+                    </div>
                   </div>
                 </div>
               ))}
@@ -358,7 +376,7 @@ export default function OrderHistory() {
                 <textarea 
                   value={cancelReasonInput} 
                   onChange={(e) => setCancelReasonInput(e.target.value)} 
-                  placeholder="Nhập chi tiết lý do hủy đơn hàng..." 
+                  placeholder="Nhập lý do hủy đơn hàng" 
                   rows={3} 
                   disabled={submittingCancel}
                   className="w-full p-3 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-orange-400 bg-slate-50/50 text-slate-800 resize-none disabled:opacity-50" 

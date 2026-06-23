@@ -1,9 +1,8 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCartStore } from '../../stores/cartStore';
-import { ShoppingBag, RefreshCw, Ban, AlertCircle, X, MessageSquare } from 'lucide-react'; // Thêm MessageSquare icon
+import { ShoppingBag, RefreshCw, Ban, AlertCircle, X, MessageSquare } from 'lucide-react'; 
 import { formatCurrency } from '../../utils/format';
-import { useFetchData } from '../../hooks/useFetchData';
 import { SkeletonOrderCard } from '../../components/common/SkeletonCard';
 import EmptyState from '../../components/common/EmptyState';
 import ErrorState from '../../components/common/ErrorState';
@@ -21,50 +20,21 @@ const ORDER_STATUS_TABS = [
   { id: 'CANCELLED', label: 'Đã hủy' },
 ];
 
-// Component hiển thị danh sách sản phẩm
-function OrderProductRow({ items }) {
-  return (
-    <div 
-      className="w-full overflow-x-auto scrollbar-none touch-pan-x" 
-      onClick={(e) => e.stopPropagation()}
-    >
-      <div className="flex flex-row gap-3 sm:gap-4 w-max max-w-full pb-1">
-        {items.map((item, idx) => (
-          <div 
-            key={idx}
-            className="flex gap-3 items-center border border-slate-100 rounded-lg p-3 bg-slate-50/50 w-[260px] sm:w-[280px] shrink-0 select-none"
-          >
-            <div className="w-16 h-16 rounded-md overflow-hidden shrink-0 border border-slate-200 bg-white">
-              <img src={item.image} alt={item.name} className="w-full h-full object-cover" draggable="false" />
-            </div>
-            <div className="min-w-0 flex-1">
-              <h4 className="font-bold text-slate-800 text-sm truncate">{item.name}</h4>
-              <p className="text-xs text-orange-500 font-bold mt-1">
-                {formatCurrency(item.price)}{' '}
-                <span className="text-slate-400 font-normal text-[11px] ml-1">x{item.quantity}</span>
-              </p>
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
 export default function OrderHistory() {
   const navigate = useNavigate();
   const replaceCart = useCartStore((state) => state.replaceCart);
   const [activeTab, setActiveTab] = useState('ALL');
+
+  // Các States xử lý dữ liệu và lỗi
+  const [orders, setOrders] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   // Các States xử lý nghiệp vụ hủy đơn hàng
   const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
   const [selectedOrderId, setSelectedOrderId] = useState(null);
   const [cancelReasonInput, setCancelReasonInput] = useState('');
   const [submittingCancel, setSubmittingCancel] = useState(false);
-
-  const [orders, setOrders] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
 
   const mapOrders = (data) => {
     const realData = data?.content || [];
@@ -83,7 +53,7 @@ export default function OrderHistory() {
         restaurantId: order.restaurantId.toString(),
         restaurantName: order.restaurantName,
         items: (order.items || []).map((i) => ({
-          id: `food-${i.foodId}`,
+          id: i.foodId,
           name: i.foodName,
           price: Number(i.priceAtOrder),
           quantity: i.quantity,
@@ -149,7 +119,7 @@ export default function OrderHistory() {
       fetchOrderHistory(); 
     } catch (err) {
       console.error('Lỗi khi hủy đơn hàng:', err);
-      toast.error(err.response?.data?.message);
+      toast.error(err.response?.data?.message || 'Không thể hủy đơn hàng!');
     } finally {
       setSubmittingCancel(false);
     }
@@ -236,7 +206,7 @@ export default function OrderHistory() {
             </div>
           ) : error ? (
             <div className="flex justify-center items-center py-12">
-              <ErrorState onRetry={refetch} />
+              <ErrorState onRetry={fetchOrderHistory} />
             </div>
           ) : list.length === 0 ? (
             <div className="flex justify-center items-center py-12">
@@ -278,9 +248,32 @@ export default function OrderHistory() {
                     </div>
                   </div>
 
-                  {/* Card Body */}
+                  {/* danh sách món ăn */}
                   <div className="w-full">
-                    <OrderProductRow items={order.items} />
+                    <div 
+                      className="w-full overflow-x-auto scrollbar-none touch-pan-x" 
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <div className="flex flex-row gap-3 sm:gap-4 w-max max-w-full pb-1">
+                        {order.items.map((item, idx) => (
+                          <div 
+                            key={idx}
+                            className="flex gap-3 items-center border border-slate-100 rounded-lg p-3 bg-slate-50/50 w-[260px] sm:w-[280px] shrink-0 select-none"
+                          >
+                            <div className="w-16 h-16 rounded-md overflow-hidden shrink-0 border border-slate-200 bg-white">
+                              <img src={item.image} alt={item.name} className="w-full h-full object-cover" draggable="false" />
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <h4 className="font-bold text-slate-800 text-sm truncate">{item.name}</h4>
+                              <p className="text-xs text-orange-500 font-bold mt-1">
+                                {formatCurrency(item.price)}{' '}
+                                <span className="text-slate-400 font-normal text-[11px] ml-1">x{item.quantity}</span>
+                              </p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
                   </div>
 
                   {/* Card Footer */}
@@ -292,7 +285,7 @@ export default function OrderHistory() {
                       </span>
                     </div>
 
-                    <div className="flex items-center gap-2 w-full sm:w-auto">
+                    <div className="flex items-center gap-2 w-full sm:w-auto" onClick={(e) => e.stopPropagation()}>
                       {order.status === 'PENDING' ? (
                         <button
                           type="button"
@@ -360,7 +353,6 @@ export default function OrderHistory() {
 
             {/* Modal Content */}
             <div className="space-y-4 text-slate-700">
-              
               <div className="p-3 bg-amber-50 text-amber-800 rounded-lg text-xs font-medium border border-amber-100 flex items-start gap-2">
                 <AlertCircle className="shrink-0 mt-0.5 text-amber-600" size={15} />
                 <span>Lưu ý: Hành động hủy đơn hàng không thể hoàn tác sau khi hệ thống đã xác nhận xử lý.</span>

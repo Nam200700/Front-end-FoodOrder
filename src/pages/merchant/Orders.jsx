@@ -264,10 +264,17 @@ export default function MerchantOrders() {
   // Hiển thị nhãn loại thanh toán mượt mà hơn
   const getPaymentMethodLabel = (method) => {
     switch (method) {
-      case 'CASH': return 'Tiền mặt (COD)';
+      case 'COD': return 'Thanh toán khi nhận hàng (COD)';
       case 'VNPAY': return 'Chuyển khoản VNPAY';
       default: return method || 'Chưa xác định';
     }
+  };
+
+  const maskPhone = (phone) => {
+    if (!phone) return 'Chưa có SĐT';
+    const cleaned = phone.toString().trim();
+    if (cleaned.length < 6) return '****'; 
+    return `${cleaned.slice(0, 3)}****${cleaned.slice(-3)}`;
   };
 
   if (!restaurantId && !loading) {
@@ -393,7 +400,6 @@ export default function MerchantOrders() {
                     </div>
 
                     <div className="flex items-center gap-2 w-full sm:w-auto" onClick={(e) => e.stopPropagation()}>
-                      {/*Xem chi tiết */}
                       <button
                         type="button"
                         onClick={() => handleViewDetails(order.id)}
@@ -456,7 +462,6 @@ export default function MerchantOrders() {
       {cancelModal.isOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40">
           <div className="w-full max-w-md bg-white rounded-xl shadow-xl p-5 md:p-6 relative animate-in fade-in zoom-in duration-200 font-google-sans">
-            
             <div className="flex items-center justify-between border-b pb-3 mb-4">
               <h3 className="text-base md:text-lg font-bold text-slate-900">Xác Nhận Từ Chối Đơn Hàng #{cancelModal.data}</h3>
               <button 
@@ -534,87 +539,101 @@ export default function MerchantOrders() {
 
       {/* MODAL CHI TIẾT ĐƠN HÀNG */}
       {detailModal.isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40">
-          <div className="w-full max-w-2xl bg-white rounded-xl shadow-xl p-5 md:p-6 relative animate-in fade-in zoom-in duration-200 font-google-sans max-h-[90vh] flex flex-col">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/40">
+          <div className="w-full max-w-2xl bg-white rounded-xl shadow-xl p-4 md:p-6 relative animate-in fade-in zoom-in duration-200 font-google-sans max-h-[82vh] md:max-h-[90vh] flex flex-col">
             
             {/* Header Modal */}
-            <div className="flex items-center justify-between border-b pb-3 mb-4 shrink-0">
+            <div className="flex items-center justify-between border-b pb-2.5 mb-3 shrink-0">
               <div className="flex items-center gap-2">
-                <FileText className="text-blue-600" size={22} />
-                <h3 className="text-base md:text-lg font-bold text-slate-900">
+                <FileText className="text-blue-600 shrink-0" size={20} />
+                <h3 className="text-sm md:text-lg font-bold text-slate-900 truncate max-w-[240px] sm:max-w-none">
                   Chi Tiết Đơn Hàng #{detailModal.data?.orderId}
                 </h3>
               </div>
               <button 
                 type="button"
                 onClick={detailModal.close} 
-                className="text-slate-400 hover:text-slate-600 transition-colors cursor-pointer"
+                className="text-slate-400 hover:text-slate-600 transition-colors p-1 rounded-lg hover:bg-slate-100 cursor-pointer"
               >
-                <X size={20} />
+                <X size={18} />
               </button>
             </div>
 
-            <div className="space-y-5 overflow-y-auto pr-1 flex-1 text-slate-700 text-xs md:text-sm custom-scrollbar">
+            {/* Nội dung Modal dạng Scroll */}
+            <div className="space-y-3.5 overflow-y-auto pr-1 flex-1 text-slate-700 text-xs md:text-sm custom-scrollbar">
               
               {/* THÔNG TIN ĐƠN HÀNG */}
-              <div className="bg-slate-50 rounded-xl p-4 border border-slate-100">
-                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-2.5">
+              <div className="bg-slate-50 rounded-xl p-3 md:p-5 border border-slate-100">
+                <span className="text-[11px] md:text-[12px] font-extrabold text-slate-400 uppercase tracking-wider block mb-2.5 border-b border-slate-200/60 pb-1">
                   Thông tin đơn hàng
                 </span>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 md:gap-4">
                   <div>
-                    <span className="text-slate-500 block text-[11px]">Mã đơn:</span>
-                    <span className="font-bold text-slate-800">#{detailModal.data?.orderId}</span>
+                    <span className="text-slate-500 block text-[11px] font-semibold text-xs">Mã đơn:</span>
+                    <span className="text-slate-900 font-medium">#{detailModal.data?.orderId}</span>
                   </div>
+                  
                   <div>
-                    <span className="text-slate-500 block text-[11px]">Ngày đặt:</span>
-                    <span className="font-semibold text-slate-800">
+                    <span className="text-slate-500 block text-[11px] font-semibold text-xs">Ngày đặt:</span>
+                    <span className="text-slate-800 font-medium">
                       {formatOrderDate(detailModal.data?.createdAt)}
                     </span>
                   </div>
+                  
                   <div>
-                    <span className="text-slate-500 block text-[11px]">Trạng thái:</span>
-                    <span className={`inline-block px-2 py-0.5 mt-0.5 rounded-full text-[11px] font-bold border ${getStatusStyles(detailModal.data?.orderStatus)}`}>
+                    <span className="text-slate-500 block text-[11px] font-semibold mb-0.5 text-xs">Trạng thái:</span>
+                    <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] md:text-[11px] font-bold border ${getStatusStyles(detailModal.data?.orderStatus)}`}>
                       {getStatusLabel(detailModal.data?.orderStatus)}
                     </span>
                   </div>
+                  
                   <div>
-                    <span className="text-slate-500 block text-[11px]">Khách hàng:</span>
-                    <span className="font-semibold text-slate-800">
-                      {detailModal.data?.customerName} {detailModal.data?.customerPhone}
+                    <span className="text-slate-500 block text-[11px] font-semibold text-xs">Khách hàng:</span>
+                    <span className="text-slate-900 font-medium">
+                      {detailModal.data?.customerName} | {maskPhone(detailModal.data?.customerPhone)}
                     </span>
                   </div>
+                  
                   <div className="sm:col-span-2">
-                    <span className="text-slate-500 flex items-center gap-1 text-[11px]">
-                      <MapPin size={12} className="text-slate-400" /> Địa chỉ giao hàng:
+                    <span className="text-slate-500 flex items-center gap-1 text-[11px] font-semibold mb-0.5 text-xs">
+                       Địa chỉ giao hàng:
                     </span>
-                    <span className="font-medium text-slate-800 block mt-0.5 leading-relaxed">
+                    <span className="text-slate-800 font-medium block leading-normal bg-white/60 p-2 rounded-lg border border-slate-100 text-[11px] md:text-sm">
                       {detailModal.data?.deliveryAddress}
                     </span>
                   </div>
+                  
                   <div className="sm:col-span-2">
-                    <span className="text-slate-500 block text-[11px]">Ghi chú đơn hàng:</span>
-                    <span className="font-medium text-slate-800 block mt-0.5 italic bg-white/80 p-2 rounded border border-dashed border-slate-200">
-                      {detailModal.data?.note || 'Không có ghi chú'}
+                    <span className="text-slate-500 flex items-center gap-1 text-[11px] font-semibold mb-0.5 text-xs">
+                       Ghi chú đơn hàng:
                     </span>
+                    {detailModal.data?.note ? (
+                      <span className="text-slate-800 font-medium block leading-normal bg-white/60 p-2 rounded-lg border border-slate-100 text-[11px] md:text-sm">
+                        "{detailModal.data?.note}"
+                      </span>
+                    ) : (
+                      <div className="bg-slate-100/60 border border-slate-200/40 rounded-lg p-2 text-slate-400 text-[11px] italic">
+                        Không có ghi chú đơn hàng từ khách hàng
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
 
               {/* THÔNG TIN SẢN PHẨM */}
               <div>
-                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-2">
+                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-1.5">
                   Danh sách sản phẩm ({detailModal.data?.items?.length || 0})
                 </span>
                 <div className="border border-slate-100 rounded-xl overflow-hidden shadow-sm">
                   <div className="overflow-x-auto">
                     <table className="w-full text-left border-collapse">
                       <thead>
-                        <tr className="bg-slate-100/70 border-b border-slate-200 text-[11px] font-bold text-slate-600 uppercase tracking-wider">
-                          <th className="py-2 px-3">Sản phẩm</th>
-                          <th className="py-2 px-3 text-right">Đơn giá</th>
-                          <th className="py-2 px-3 text-center">SL</th>
-                          <th className="py-2 px-3 text-right">Thành tiền</th>
+                        <tr className="bg-slate-100/70 border-b border-slate-200 text-[10px] md:text-[11px] font-bold text-slate-600 uppercase tracking-wider">
+                          <th className="py-1.5 px-2.5">Sản phẩm</th>
+                          <th className="py-1.5 px-2.5 text-right">Đơn giá</th>
+                          <th className="py-1.5 px-2.5 text-center">SL</th>
+                          <th className="py-1.5 px-2.5 text-right">Tổng</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100 bg-white">
@@ -623,10 +642,10 @@ export default function MerchantOrders() {
                           const qty = Number(item.quantity || 0);
                           const subTotal = price * qty;
                           return (
-                            <tr key={idx} className="hover:bg-slate-50/50 transition-colors">
-                              <td className="py-3 px-3">
-                                <div className="flex items-center gap-2.5">
-                                  <div className="w-10 h-10 rounded border border-slate-200 overflow-hidden shrink-0 bg-slate-50">
+                            <tr key={idx} className="hover:bg-slate-50/50 transition-colors text-[11px] md:text-sm">
+                              <td className="py-2 px-2.5">
+                                <div className="flex items-center gap-2">
+                                  <div className="w-8 h-8 rounded border border-slate-200 overflow-hidden shrink-0 bg-slate-50 hidden sm:block">
                                     <img 
                                       src={item.foodImageUrl || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=150&q=80'} 
                                       alt={item.foodName} 
@@ -634,24 +653,24 @@ export default function MerchantOrders() {
                                     />
                                   </div>
                                   <div className="min-w-0">
-                                    <p className="font-bold text-slate-800 truncate max-w-[180px] sm:max-w-xs">
+                                    <p className="font-bold text-slate-800 truncate max-w-[140px] sm:max-w-xs">
                                       {item.foodName}
                                     </p>
                                     {item.note && (
-                                      <span className="text-[10px] text-slate-400 block truncate mt-0.5">
-                                        Ghi chú: {item.note}
+                                      <span className="text-[10px] text-slate-400 block truncate mt-0.5 italic">
+                                        Chu thích: {item.note}
                                       </span>
                                     )}
                                   </div>
                                 </div>
                               </td>
-                              <td className="py-3 px-3 text-right font-medium text-slate-600">
+                              <td className="py-2 px-2.5 text-right font-medium text-slate-600">
                                 {formatCurrency(price)}
                               </td>
-                              <td className="py-3 px-3 text-center font-bold text-slate-700">
+                              <td className="py-2 px-2.5 text-center font-medium text-slate-600">
                                 {qty}
                               </td>
-                              <td className="py-3 px-3 text-right font-bold text-blue-600">
+                              <td className="py-2 px-2.5 text-right font-medium text-slate-600">
                                 {formatCurrency(subTotal)}
                               </td>
                             </tr>
@@ -663,42 +682,43 @@ export default function MerchantOrders() {
                 </div>
               </div>
 
-              {/*THÔNG TIN THANH TOÁN & TỔNG QUÁT*/}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {/* HÌNH THỨC THANH TOÁN */}
                 <div className="border border-slate-100 rounded-xl p-4 bg-slate-50/30 flex flex-col justify-between">
                   <div>
-                    <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-2">
+                    <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block border-b border-slate-200/60 pb-1.5 mb-3">
                       Hình thức thanh toán
                     </span>
                     <div className="flex items-center gap-2 p-2.5 bg-white rounded-lg border border-slate-100 shadow-sm">
                       <div className="p-1.5 bg-blue-50 rounded text-blue-600">
                         <CreditCard size={16} />
                       </div>
-                      <span className="font-bold text-slate-800">
+                      <span className="text-slate-800 font-medium">
                         {getPaymentMethodLabel(detailModal.data?.paymentMethod)}
                       </span>
                     </div>
                   </div>
                 </div>
 
+                {/* CHI TIẾT THANH TOÁN */}
                 <div className="bg-slate-50/80 border border-slate-100 rounded-xl p-4 space-y-2">
-                  <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
+                  <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block border-b border-slate-200/60 pb-1.5 mb-2">
                     Chi tiết thanh toán
                   </span>
                   <div className="flex justify-between items-center text-slate-600">
-                    <span className="text-xs">Tổng tiền hàng:</span>
+                    <span className="text-xs font-semibold">Tổng tiền hàng:</span>
                     <span className="font-medium">
                       {formatCurrency(Number(detailModal.data?.totalAmount || 0) - Number(detailModal.data?.shippingFee || 0))}
                     </span>
                   </div>
                   <div className="flex justify-between items-center text-slate-600 border-b border-slate-200/60 pb-2">
-                    <span className="text-xs">Phí vận chuyển:</span>
+                    <span className="text-xs font-semibold">Phí vận chuyển:</span>
                     <span className="font-medium">
                       {formatCurrency(Number(detailModal.data?.shippingFee || 0))}
                     </span>
                   </div>
                   <div className="flex justify-between items-center pt-1">
-                    <span className="font-bold text-slate-800 text-xs md:text-sm">Tổng cộng thanh toán:</span>
+                    <span className="font-bold text-slate-800 text-xs md:text-sm">Tổng cộng:</span>
                     <span className="text-base md:text-lg font-extrabold text-blue-600">
                       {formatCurrency(Number(detailModal.data?.totalAmount || 0))}
                     </span>
@@ -758,9 +778,11 @@ export default function MerchantOrders() {
                 </button>
               )}
             </div>
+
           </div>
         </div>
       )}
+
     </div>
   );
 }

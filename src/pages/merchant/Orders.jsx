@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { ClipboardList, ShoppingBag, Check, X, Ban, Eye, MapPin, Phone, CreditCard, Clock, FileText, AlertCircle } from 'lucide-react';
+import { ClipboardList, ShoppingBag, Check, X, Ban, Eye, MapPin, Phone, CreditCard, Clock, FileText, AlertCircle, ShoppingCart, DollarSign, Truck } from 'lucide-react';
 import { formatCurrency } from '../../utils/format';
 import apiClient from '../../services/api';
 import { useWebSocketContext } from '../../contexts/WebSocketContext';
@@ -57,6 +57,13 @@ export default function MerchantOrders() {
     fetchRestaurant();
   }, []);
 
+  // Hàm định dạng ngày tháng hiển thị
+  const formatOrderDate = (dateString) => {
+    if (!dateString) return '';
+    const dateObj = new Date(dateString);
+    return `${String(dateObj.getDate()).padStart(2, '0')}-${String(dateObj.getMonth() + 1).padStart(2, '0')}-${dateObj.getFullYear()} ${String(dateObj.getHours()).padStart(2, '0')}:${String(dateObj.getMinutes()).padStart(2, '0')}`;
+  };
+
   // Lấy danh sách đơn hàng của quán
   const fetchOrders = useCallback(async () => {
     if (!restaurantId) return;
@@ -68,9 +75,6 @@ export default function MerchantOrders() {
       const realData = response.data?.data?.content || [];
       
       const mapped = realData.map(ord => {
-        const dateObj = new Date(ord.createdAt);
-        const formattedDate = `${String(dateObj.getDate()).padStart(2, '0')}-${String(dateObj.getMonth() + 1).padStart(2, '0')}-${dateObj.getFullYear()} ${String(dateObj.getHours()).padStart(2, '0')}:${String(dateObj.getMinutes()).padStart(2, '0')}`;
-        
         return {
           id: ord.orderId.toString(),
           customer: ord.customerName,
@@ -80,9 +84,9 @@ export default function MerchantOrders() {
             price: Number(i.priceAtOrder || 0),
             note: i.note,
             image: i.foodImageUrl || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=150&q=80'
-          })),
+          })), 
           total: Number(ord.totalAmount),
-          createdAt: formattedDate,
+          createdAt: formatOrderDate(ord.createdAt),
           phone: ord.customerPhone,
           status: ord.orderStatus,
           shipper: ord.shipperName ? `${ord.shipperName} (${ord.shipperPhone || ''})` : null
@@ -152,7 +156,7 @@ export default function MerchantOrders() {
       }
       fetchOrders();
     } catch (err) {
-      console.error('Lỗi khi xác nhận chế biên món ăn:', err);
+      console.error('Lỗi khi xác nhận đang chuẩn bị món ăn:', err);
       toast.error(err.response?.data?.message);
     } finally {
       setLoading(false);
@@ -165,7 +169,7 @@ export default function MerchantOrders() {
     try {
       setLoading(true);
       await apiClient.patch(`/merchant/orders/${orderId}/ready`);
-      toast.success(`Đã báo sẵn sàng giao cho đơn hàng #${orderId}!`);
+      toast.success(`Đã xác nhận sẵn sàng giao thành công đơn hàng #${orderId}!`);
       if (detailModal.data && detailModal.data.orderId.toString() === orderId.toString()) {
         detailModal.close();
       }
@@ -203,7 +207,7 @@ export default function MerchantOrders() {
       await apiClient.patch(`/merchant/orders/${orderIdToCancel}/reject`, {
         rejectReason: cancelReasonInput.trim()
       });
-      toast.success(`Đã từ chối đơn hàng #${orderIdToCancel} thành công`);
+      toast.success(`Đã từ chối thành công đơn hàng #${orderIdToCancel}`);
       cancelModal.close();
       if (detailModal.data && detailModal.data.orderId.toString() === orderIdToCancel.toString()) {
         detailModal.close();
@@ -249,11 +253,20 @@ export default function MerchantOrders() {
 
   const getStatusStyles = (status) => {
     switch (status) {
-      case 'COMPLETED': return 'bg-emerald-50 text-emerald-700';
-      case 'CANCELLED': return 'bg-rose-50 text-rose-700';
-      case 'PENDING': return 'bg-amber-50 text-amber-700';
-      case 'CONFIRMED': return 'bg-blue-50 text-blue-700';
-      default: return 'bg-orange-50 text-orange-700';
+      case 'COMPLETED': return 'bg-emerald-50 text-emerald-700 border-emerald-100';
+      case 'CANCELLED': return 'bg-rose-50 text-rose-700 border-rose-100';
+      case 'PENDING': return 'bg-amber-50 text-amber-700 border-amber-100';
+      case 'CONFIRMED': return 'bg-blue-50 text-blue-700 border-blue-100';
+      default: return 'bg-orange-50 text-orange-700 border-orange-100';
+    }
+  };
+
+  // Hiển thị nhãn loại thanh toán mượt mà hơn
+  const getPaymentMethodLabel = (method) => {
+    switch (method) {
+      case 'CASH': return 'Tiền mặt (COD)';
+      case 'VNPAY': return 'Chuyển khoản VNPAY';
+      default: return method || 'Chưa xác định';
     }
   };
 
@@ -334,7 +347,7 @@ export default function MerchantOrders() {
                         <Clock size={13} />
                         {order.createdAt}
                       </span>
-                      <span className={`px-2 py-0.5 sm:px-3 sm:py-1 rounded-full font-semibold text-[10px] sm:text-[11px] transition-colors shrink-0 ${getStatusStyles(order.status)}`}>
+                      <span className={`px-2 py-0.5 sm:px-3 sm:py-1 rounded-full font-semibold text-[10px] sm:text-[11px] border transition-colors shrink-0 ${getStatusStyles(order.status)}`}>
                         {getStatusLabel(order.status)}
                       </span>
                     </div>
@@ -439,13 +452,13 @@ export default function MerchantOrders() {
         </div>
       </div>
 
-      {/* 3. MODAL TỪ CHỐI / HỦY ĐƠN HÀNG */}
+      {/* MODAL TỪ CHỐI / HỦY ĐƠN HÀNG */}
       {cancelModal.isOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40">
           <div className="w-full max-w-md bg-white rounded-xl shadow-xl p-5 md:p-6 relative animate-in fade-in zoom-in duration-200 font-google-sans">
             
             <div className="flex items-center justify-between border-b pb-3 mb-4">
-              <h3 className="text-base md:text-lg font-bold text-slate-900">Từ Chối Đơn Hàng #{cancelModal.data}</h3>
+              <h3 className="text-base md:text-lg font-bold text-slate-900">Xác Nhận Từ Chối Đơn Hàng #{cancelModal.data}</h3>
               <button 
                 type="button"
                 disabled={submittingCancel}
@@ -462,9 +475,8 @@ export default function MerchantOrders() {
                 <span>Lưu ý: Hành động từ chối đơn hàng sẽ hủy giao dịch của khách hàng ngay lập tức.</span>
               </div>
 
-              {/* Lợi chọn lý do nhanh dành cho Chủ nhà hàng */}
               <div className="space-y-1.5">
-                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Chọn lý do từ chối đơn hàng:</span>
+                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Chọn nhanh lý do từ chối đơn hàng:</span>
                 <div className="grid grid-cols-1 gap-1.5">
                   {['Nhà hàng đã hết món này', 'Quán đang quá tải đơn hàng', 'Cửa hàng đang chuẩn bị đóng cửa', 'Không thể liên hệ giải quyết ghi chú'].map((reason, idx) => (
                     <button 
@@ -489,7 +501,7 @@ export default function MerchantOrders() {
                 <textarea 
                   value={cancelReasonInput} 
                   onChange={(e) => setCancelReasonInput(e.target.value)} 
-                  placeholder="Nhập lý do chi tiết từ chối đơn hàng..." 
+                  placeholder="Nhập lý do chi tiết từ chối đơn hàng" 
                   rows={3} 
                   disabled={submittingCancel}
                   className="w-full p-3 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-400 bg-slate-50/50 text-slate-800 resize-none disabled:opacity-50" 
@@ -520,15 +532,234 @@ export default function MerchantOrders() {
         </div>
       )}
 
-      {/* 4. MODAL CHI TIẾT ĐƠN HÀNG */}
+      {/* MODAL CHI TIẾT ĐƠN HÀNG */}
       {detailModal.isOpen && (
-        <Modal isOpen={detailModal.isOpen} onClose={detailModal.close} title="Thông Tin Đơn Hàng Chi Tiết">
-          <div className="p-2 text-sm font-google-sans">
-             <p className="mb-2 font-bold text-slate-800">Mã Đơn Hàng: #{detailModal.data?.orderId}</p>
-             <p className="mb-2">Khách hàng: <span className="font-semibold">{detailModal.data?.customerName}</span></p>
-             <p className="mb-4">Trạng thái: <span className="text-blue-600 font-bold">{getStatusLabel(detailModal.data?.orderStatus)}</span></p>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40">
+          <div className="w-full max-w-2xl bg-white rounded-xl shadow-xl p-5 md:p-6 relative animate-in fade-in zoom-in duration-200 font-google-sans max-h-[90vh] flex flex-col">
+            
+            {/* Header Modal */}
+            <div className="flex items-center justify-between border-b pb-3 mb-4 shrink-0">
+              <div className="flex items-center gap-2">
+                <FileText className="text-blue-600" size={22} />
+                <h3 className="text-base md:text-lg font-bold text-slate-900">
+                  Chi Tiết Đơn Hàng #{detailModal.data?.orderId}
+                </h3>
+              </div>
+              <button 
+                type="button"
+                onClick={detailModal.close} 
+                className="text-slate-400 hover:text-slate-600 transition-colors cursor-pointer"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="space-y-5 overflow-y-auto pr-1 flex-1 text-slate-700 text-xs md:text-sm custom-scrollbar">
+              
+              {/* THÔNG TIN ĐƠN HÀNG */}
+              <div className="bg-slate-50 rounded-xl p-4 border border-slate-100">
+                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-2.5">
+                  Thông tin đơn hàng
+                </span>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <span className="text-slate-500 block text-[11px]">Mã đơn:</span>
+                    <span className="font-bold text-slate-800">#{detailModal.data?.orderId}</span>
+                  </div>
+                  <div>
+                    <span className="text-slate-500 block text-[11px]">Ngày đặt:</span>
+                    <span className="font-semibold text-slate-800">
+                      {formatOrderDate(detailModal.data?.createdAt)}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-slate-500 block text-[11px]">Trạng thái:</span>
+                    <span className={`inline-block px-2 py-0.5 mt-0.5 rounded-full text-[11px] font-bold border ${getStatusStyles(detailModal.data?.orderStatus)}`}>
+                      {getStatusLabel(detailModal.data?.orderStatus)}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-slate-500 block text-[11px]">Khách hàng:</span>
+                    <span className="font-semibold text-slate-800">
+                      {detailModal.data?.customerName} {detailModal.data?.customerPhone}
+                    </span>
+                  </div>
+                  <div className="sm:col-span-2">
+                    <span className="text-slate-500 flex items-center gap-1 text-[11px]">
+                      <MapPin size={12} className="text-slate-400" /> Địa chỉ giao hàng:
+                    </span>
+                    <span className="font-medium text-slate-800 block mt-0.5 leading-relaxed">
+                      {detailModal.data?.deliveryAddress}
+                    </span>
+                  </div>
+                  <div className="sm:col-span-2">
+                    <span className="text-slate-500 block text-[11px]">Ghi chú đơn hàng:</span>
+                    <span className="font-medium text-slate-800 block mt-0.5 italic bg-white/80 p-2 rounded border border-dashed border-slate-200">
+                      {detailModal.data?.note || 'Không có ghi chú'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* THÔNG TIN SẢN PHẨM */}
+              <div>
+                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-2">
+                  Danh sách sản phẩm ({detailModal.data?.items?.length || 0})
+                </span>
+                <div className="border border-slate-100 rounded-xl overflow-hidden shadow-sm">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left border-collapse">
+                      <thead>
+                        <tr className="bg-slate-100/70 border-b border-slate-200 text-[11px] font-bold text-slate-600 uppercase tracking-wider">
+                          <th className="py-2 px-3">Sản phẩm</th>
+                          <th className="py-2 px-3 text-right">Đơn giá</th>
+                          <th className="py-2 px-3 text-center">SL</th>
+                          <th className="py-2 px-3 text-right">Thành tiền</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100 bg-white">
+                        {(detailModal.data?.items || []).map((item, idx) => {
+                          const price = Number(item.priceAtOrder || 0);
+                          const qty = Number(item.quantity || 0);
+                          const subTotal = price * qty;
+                          return (
+                            <tr key={idx} className="hover:bg-slate-50/50 transition-colors">
+                              <td className="py-3 px-3">
+                                <div className="flex items-center gap-2.5">
+                                  <div className="w-10 h-10 rounded border border-slate-200 overflow-hidden shrink-0 bg-slate-50">
+                                    <img 
+                                      src={item.foodImageUrl || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=150&q=80'} 
+                                      alt={item.foodName} 
+                                      className="w-full h-full object-cover"
+                                    />
+                                  </div>
+                                  <div className="min-w-0">
+                                    <p className="font-bold text-slate-800 truncate max-w-[180px] sm:max-w-xs">
+                                      {item.foodName}
+                                    </p>
+                                    {item.note && (
+                                      <span className="text-[10px] text-slate-400 block truncate mt-0.5">
+                                        Ghi chú: {item.note}
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                              </td>
+                              <td className="py-3 px-3 text-right font-medium text-slate-600">
+                                {formatCurrency(price)}
+                              </td>
+                              <td className="py-3 px-3 text-center font-bold text-slate-700">
+                                {qty}
+                              </td>
+                              <td className="py-3 px-3 text-right font-bold text-blue-600">
+                                {formatCurrency(subTotal)}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+
+              {/*THÔNG TIN THANH TOÁN & TỔNG QUÁT*/}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="border border-slate-100 rounded-xl p-4 bg-slate-50/30 flex flex-col justify-between">
+                  <div>
+                    <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-2">
+                      Hình thức thanh toán
+                    </span>
+                    <div className="flex items-center gap-2 p-2.5 bg-white rounded-lg border border-slate-100 shadow-sm">
+                      <div className="p-1.5 bg-blue-50 rounded text-blue-600">
+                        <CreditCard size={16} />
+                      </div>
+                      <span className="font-bold text-slate-800">
+                        {getPaymentMethodLabel(detailModal.data?.paymentMethod)}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-slate-50/80 border border-slate-100 rounded-xl p-4 space-y-2">
+                  <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
+                    Chi tiết thanh toán
+                  </span>
+                  <div className="flex justify-between items-center text-slate-600">
+                    <span className="text-xs">Tổng tiền hàng:</span>
+                    <span className="font-medium">
+                      {formatCurrency(Number(detailModal.data?.totalAmount || 0) - Number(detailModal.data?.shippingFee || 0))}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center text-slate-600 border-b border-slate-200/60 pb-2">
+                    <span className="text-xs">Phí vận chuyển:</span>
+                    <span className="font-medium">
+                      {formatCurrency(Number(detailModal.data?.shippingFee || 0))}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center pt-1">
+                    <span className="font-bold text-slate-800 text-xs md:text-sm">Tổng cộng thanh toán:</span>
+                    <span className="text-base md:text-lg font-extrabold text-blue-600">
+                      {formatCurrency(Number(detailModal.data?.totalAmount || 0))}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Footer Modal*/}
+            <div className="flex justify-end gap-3 pt-3 mt-4 border-t border-slate-100 shrink-0">
+              <button 
+                type="button" 
+                onClick={detailModal.close}
+                className="px-4 py-2 text-xs font-bold border border-slate-200 text-slate-500 rounded-lg hover:bg-slate-50 transition-colors cursor-pointer"
+              >
+                Đóng
+              </button>
+
+              {detailModal.data?.orderStatus === 'PENDING' && (
+                <>
+                  <button
+                    type="button"
+                    onClick={(e) => handleOpenCancelModal(e, detailModal.data.orderId)}
+                    className="flex items-center justify-center gap-1.5 px-4 py-2 text-xs font-bold bg-rose-500 hover:bg-rose-600 text-white rounded-lg transition-colors cursor-pointer shadow-sm"
+                  >
+                    <Ban size={13} />
+                    Từ chối
+                  </button>
+                  <button
+                    type="button"
+                    onClick={(e) => handleConfirm(e, detailModal.data.orderId)}
+                    className="flex items-center justify-center gap-1.5 px-4 py-2 text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors cursor-pointer shadow-sm"
+                  >
+                    <Check size={13} className="stroke-[3px]" />
+                    Nhận đơn
+                  </button>
+                </>
+              )}
+
+              {detailModal.data?.orderStatus === 'CONFIRMED' && (
+                <button
+                  type="button"
+                  onClick={(e) => handlePreparing(e, detailModal.data.orderId)}
+                  className="flex items-center justify-center gap-1.5 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold transition-all shadow-sm active:scale-[0.98] w-full sm:w-auto cursor-pointer"
+                > 
+                  Chuẩn bị món
+                </button>
+              )}
+
+              {detailModal.data?.orderStatus === 'PREPARING' && (
+                <button
+                  type="button"
+                  onClick={(e) => handleReady(e, detailModal.data.orderId)}
+                  className="flex items-center justify-center gap-1.5 px-5 py-2.5 bg-orange-500 hover:bg-orange-600 text-white rounded-lg text-xs font-bold transition-all shadow-sm active:scale-[0.98] w-full sm:w-auto cursor-pointer"
+                >
+                  Sẵn sàng giao
+                </button>
+              )}
+            </div>
           </div>
-        </Modal>
+        </div>
       )}
     </div>
   );

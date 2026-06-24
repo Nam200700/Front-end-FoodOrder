@@ -69,9 +69,15 @@ export default function MerchantOrders() {
     if (!restaurantId) return;
     try {
       setLoading(true);
-      const statusParam = activeTab === 'ALL' ? '' : activeTab;
-
-      const response = await apiClient.get(`/merchant/orders?restaurantId=${restaurantId}&status=${statusParam}`);
+      const response = await apiClient.get('/merchant/orders', 
+        { 
+          params: {
+            restaurantId: restaurantId,
+            status: activeTab === 'ALL' ? undefined : activeTab
+          }
+        }        
+      );
+      
       const realData = response.data?.data?.content || [];
       
       const mapped = realData.map(ord => {
@@ -156,7 +162,7 @@ export default function MerchantOrders() {
       }
       fetchOrders();
     } catch (err) {
-      console.error('Lỗi khi xác nhận đang chuẩn bị món ăn:', err);
+      console.error('Lỗi khi xác nhận đang chuẩn bị món:', err);
       toast.error(err.response?.data?.message);
     } finally {
       setLoading(false);
@@ -625,14 +631,14 @@ export default function MerchantOrders() {
                 <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-1.5">
                   Danh sách sản phẩm ({detailModal.data?.items?.length || 0})
                 </span>
-                <div className="border border-slate-100 rounded-xl overflow-hidden shadow-sm">
+                <div className="border border-slate-100 rounded-xl overflow-hidden">
                   <div className="overflow-x-auto">
                     <table className="w-full text-left border-collapse">
                       <thead>
                         <tr className="bg-slate-100/70 border-b border-slate-200 text-[10px] md:text-[11px] font-bold text-slate-600 uppercase tracking-wider">
-                          <th className="py-1.5 px-2.5">Sản phẩm</th>
+                          <th className="py-1.5 px-2.5 ">Sản phẩm</th>
                           <th className="py-1.5 px-2.5 text-right">Đơn giá</th>
-                          <th className="py-1.5 px-2.5 text-center">SL</th>
+                          <th className="py-1.5 px-2.5 text-center">Số lượng</th>
                           <th className="py-1.5 px-2.5 text-right">Tổng</th>
                         </tr>
                       </thead>
@@ -658,7 +664,7 @@ export default function MerchantOrders() {
                                     </p>
                                     {item.note && (
                                       <span className="text-[10px] text-slate-400 block truncate mt-0.5 italic">
-                                        Chu thích: {item.note}
+                                        Ghi chú: {item.note}
                                       </span>
                                     )}
                                   </div>
@@ -684,12 +690,12 @@ export default function MerchantOrders() {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {/* HÌNH THỨC THANH TOÁN */}
-                <div className="border border-slate-100 rounded-xl p-4 bg-slate-50/30 flex flex-col justify-between">
+                <div className="bg-slate-50/80 border border-slate-100 rounded-xl p-4 space-y-2">
                   <div>
                     <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block border-b border-slate-200/60 pb-1.5 mb-3">
                       Hình thức thanh toán
                     </span>
-                    <div className="flex items-center gap-2 p-2.5 bg-white rounded-lg border border-slate-100 shadow-sm">
+                    <div className="flex items-center gap-2 p-2.5 rounded-lg border border-slate-100">
                       <div className="p-1.5 bg-blue-50 rounded text-blue-600">
                         <CreditCard size={16} />
                       </div>
@@ -778,11 +784,9 @@ export default function MerchantOrders() {
                 </button>
               )}
             </div>
-
           </div>
         </div>
       )}
-
     </div>
   );
 }

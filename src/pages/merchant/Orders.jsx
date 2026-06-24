@@ -15,7 +15,7 @@ const ORDER_STATUS_TABS = [
   { id: 'PENDING', label: 'Chờ xác nhận' },
   { id: 'CONFIRMED', label: 'Đã xác nhận' },
   { id: 'PREPARING', label: 'Đang chuẩn bị' },
-  { id: 'READY_FOR_PICKUP', label: 'Đang sẵn sàng' }, 
+  { id: 'READY_FOR_PICKUP', label: 'Chờ lấy hàng' }, 
   { id: 'CANCELLED', label: 'Đã từ chối' },
 ];
 
@@ -244,7 +244,7 @@ export default function MerchantOrders() {
       case 'PENDING': return 'Chờ xác nhận';
       case 'CONFIRMED': return 'Đã xác nhận';
       case 'PREPARING': return 'Đang chuẩn bị';
-      case 'READY_FOR_PICKUP': return 'Đang sẵn sàng';
+      case 'READY_FOR_PICKUP': return 'Chờ lấy hàng';
       case 'COMPLETED': return 'Thành công';
       case 'CANCELLED': return 'Đã từ chối';
       default: return status;

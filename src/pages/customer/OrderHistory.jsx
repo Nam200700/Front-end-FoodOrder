@@ -53,7 +53,7 @@ export default function OrderHistory() {
         restaurantId: order.restaurantId.toString(),
         restaurantName: order.restaurantName,
         items: (order.items || []).map((i) => ({
-          id: i.foodId,
+          id: `food-${i.foodId}`,
           name: i.foodName,
           price: Number(i.priceAtOrder),
           quantity: i.quantity,
@@ -102,7 +102,7 @@ export default function OrderHistory() {
     setCancelReasonInput('');
   };
 
-  // hủy đơn hàng
+  // Hủy đơn hàng
   const handleCancelOrder = async () => {
     if (!cancelReasonInput.trim()) {
       toast.error('Vui lòng nhập hoặc chọn lý do hủy!');
@@ -119,13 +119,13 @@ export default function OrderHistory() {
       fetchOrderHistory(); 
     } catch (err) {
       console.error('Lỗi khi hủy đơn hàng:', err);
-      toast.error(err.response?.data?.message || 'Không thể hủy đơn hàng!');
+      toast.error(err.response?.data?.message);
     } finally {
       setSubmittingCancel(false);
     }
   };
 
-  // mua lại
+  // Mua lại
   const handleReorder = (e, order) => {
     e.stopPropagation(); 
     const newItems = order.items.map((item) => ({
@@ -338,7 +338,7 @@ export default function OrderHistory() {
             {/* Modal Header */}
             <div className="flex items-center justify-between border-b pb-3 mb-4">
               <div className="flex items-center gap-2 text-orange-500">
-                <AlertCircle size={22} className="shrink-0" />
+                {/* <AlertCircle size={22} className="shrink-0" /> */}
                 <h3 className="text-base md:text-lg font-bold text-slate-900">Xác Nhận Hủy Đơn Hàng #{selectedOrderId}</h3>
               </div>
               <button 
@@ -355,7 +355,7 @@ export default function OrderHistory() {
             <div className="space-y-4 text-slate-700">
               <div className="p-3 bg-amber-50 text-amber-800 rounded-lg text-xs font-medium border border-amber-100 flex items-start gap-2">
                 <AlertCircle className="shrink-0 mt-0.5 text-amber-600" size={15} />
-                <span>Lưu ý: Hành động hủy đơn hàng không thể hoàn tác sau khi hệ thống đã xác nhận xử lý.</span>
+                <span>Lưu ý: Hành động hủy đơn hàng không thể hoàn tác sau khi hệ thống đã xử lý.</span>
               </div>
 
               {/* Lựa chọn lý do nhanh */}

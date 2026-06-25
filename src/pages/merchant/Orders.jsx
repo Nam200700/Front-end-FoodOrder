@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { ClipboardList, ShoppingBag, Check, X, Ban, Eye, MapPin, Phone, CreditCard, Clock, FileText, AlertCircle, ShoppingCart, DollarSign, Truck } from 'lucide-react';
+import { ClipboardList, ShoppingBag, Check, X, Ban, Eye, Clock, AlertCircle } from 'lucide-react';
 import { formatCurrency } from '../../utils/format';
 import apiClient from '../../services/api';
 import { useWebSocketContext } from '../../contexts/WebSocketContext';
@@ -7,7 +7,9 @@ import { SkeletonOrderCard } from '../../components/common/SkeletonCard';
 import EmptyState from '../../components/common/EmptyState';
 import { toast } from 'react-toastify';
 import { useModalState } from '../../hooks/useModalState';
-import Modal from '../../components/common/Modal';
+import FilterTabs from '../../components/common/FilterTabs';
+import Badge from '../../components/common/Badge';
+import Button from '../../components/common/Button';
 
 // Tabs trạng thái đơn hàng 
 const ORDER_STATUS_TABS = [
@@ -61,7 +63,7 @@ export default function MerchantOrders() {
         }
       } catch (err) {
         console.error('Lỗi khi lấy thông tin nhà hàng:', err);
-        toast.error(err.response?.data?.message);
+        toast.error(err.response?.data?.message || 'Không thể lấy thông tin nhà hàng');
       } finally {
         setLoading(false);
       }
@@ -86,7 +88,7 @@ export default function MerchantOrders() {
           params: {
             restaurantId: restaurantId,
             status: activeTab === 'ALL' ? undefined : activeTab,
-            page: currentPage - 1, //
+            page: currentPage - 1,
             size: pageSize
           }
         }        
@@ -116,7 +118,7 @@ export default function MerchantOrders() {
       setOrders(mapped);
     } catch (err) {
       console.error('Lỗi khi lấy danh sách đơn hàng:', err);
-      toast.error(err.response?.data?.message);
+      toast.error(err.response?.data?.message || 'Lỗi tải danh sách đơn hàng');
       setOrders([]);
     } finally {
       setLoading(false);
@@ -151,7 +153,6 @@ export default function MerchantOrders() {
   const handleConfirm = async (e, orderId) => {
     e.stopPropagation();
     try {
-      setLoading(true);
       await apiClient.patch(`/merchant/orders/${orderId}/confirm`);
       toast.success(`Đã xác nhận thành công đơn hàng #${orderId}`);
       if (detailModal.data && detailModal.data.orderId.toString() === orderId.toString()) {
@@ -161,8 +162,6 @@ export default function MerchantOrders() {
     } catch (err) {
       console.error('Lỗi khi xác nhận đơn hàng:', err);
       toast.error(err.response?.data?.message);
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -170,7 +169,6 @@ export default function MerchantOrders() {
   const handlePreparing = async (e, orderId) => {
     e.stopPropagation();
     try {
-      setLoading(true);
       await apiClient.patch(`/merchant/orders/${orderId}/preparing`);
       toast.success(`Đã xác nhận đang chuẩn bị món thành công đơn hàng #${orderId}`);
       if (detailModal.data && detailModal.data.orderId.toString() === orderId.toString()) {
@@ -180,8 +178,6 @@ export default function MerchantOrders() {
     } catch (err) {
       console.error('Lỗi khi xác nhận đang chuẩn bị món:', err);
       toast.error(err.response?.data?.message);
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -189,7 +185,6 @@ export default function MerchantOrders() {
   const handleReady = async (e, orderId) => {
     e.stopPropagation();
     try {
-      setLoading(true);
       await apiClient.patch(`/merchant/orders/${orderId}/ready`);
       toast.success(`Đã xác nhận sẵn sàng giao thành công đơn hàng #${orderId}!`);
       if (detailModal.data && detailModal.data.orderId.toString() === orderId.toString()) {
@@ -199,8 +194,6 @@ export default function MerchantOrders() {
     } catch (err) {
       console.error('Lỗi khi xác nhận đã sẵn sàng giao đơn:', err);
       toast.error(err.response?.data?.message);
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -260,55 +253,6 @@ export default function MerchantOrders() {
     }
   };
 
-  //  hiển thị nhãn trạng thái đơn hàng
-  const getStatusLabel = (status) => {
-    switch (status) {
-      case 'PENDING': return 'Chờ xác nhận';
-      case 'CONFIRMED': return 'Đã xác nhận';
-      case 'PREPARING': return 'Đang chuẩn bị';
-      case 'READY_FOR_PICKUP': return 'Chờ lấy hàng';
-      case 'COMPLETED': return 'Thành công';
-      case 'CANCELLED': return 'Đã từ chối';
-      default: return status;
-    }
-  };
-
-  //  màu nhãn trạng thái đơn hàng
-  const getStatusStyles = (status) => {
-    switch (status) {
-      case 'PENDING': 
-        return 'bg-amber-50 text-amber-700 border-amber-100'; 
-      case 'CONFIRMED': 
-        return 'bg-blue-50 text-blue-700 border-blue-100'; 
-      case 'PREPARING': 
-        return 'bg-purple-50 text-purple-700 border-purple-100'; 
-      case 'READY_FOR_PICKUP': 
-        return 'bg-indigo-50 text-indigo-700 border-indigo-100';
-      case 'COMPLETED': 
-        return 'bg-emerald-50 text-emerald-700 border-emerald-100'; 
-      case 'CANCELLED': 
-        return 'bg-rose-50 text-rose-700 border-rose-100'; 
-      default: 
-        return 'bg-slate-50 text-slate-600 border-slate-200'; 
-    }
-  };
-
-  // Hiển thị nhãn loại thanh toán
-  const getPaymentMethodLabel = (method) => {
-    switch (method) {
-      case 'COD': return 'Thanh toán khi nhận hàng (COD)';
-      case 'VNPAY': return 'Chuyển khoản VNPAY';
-      default: return method || 'Chưa xác định';
-    }
-  };
-
-  const maskPhone = (phone) => {
-    if (!phone) return 'Chưa có SĐT';
-    const cleaned = phone.toString().trim();
-    if (cleaned.length < 6) return '****'; 
-    return `${cleaned.slice(0, 3)}****${cleaned.slice(-3)}`;
-  };
-
   if (!restaurantId && !loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center text-center font-google-sans p-6">
@@ -319,43 +263,35 @@ export default function MerchantOrders() {
     );
   }
 
-  const list = orders || [];
-
   return (
-    <div className="min-h-screen bg-gray-50 py-4 md:py-8 font-google-sans text-gray-800">
-      <div className="max-w-[1400px] mx-auto px-4 md:px-6">
-        <h1 className="text-xl md:text-2xl font-bold mb-4 md:mb-6 text-gray-900">Quản Lý Đơn Hàng</h1>
-
-        {/*Tabs Trạng thái*/}
-        <div className="mb-6 overflow-x-auto scrollbar-none touch-pan-x border-b border-slate-200">
-          <div className="flex gap-2.5 min-w-max pb-3">
-            {ORDER_STATUS_TABS.map((tab) => {
-              const isActive = activeTab === tab.id;
-              return (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  className={`text-center py-2 px-4 text-xs md:text-sm font-bold rounded-lg transition-all border whitespace-nowrap cursor-pointer
-                    ${isActive
-                      ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
-                      : 'bg-white text-slate-600 border-slate-200/80 hover:bg-slate-50 hover:text-slate-800'
-                    }`}
-                >
-                  {tab.label}
-                </button>
-              );
-            })}
+    <div className="min-h-screen bg-gray-50 py-4 md:py-8 font-google-sans text-gray-800 relative">
+      {loadingDetail && (
+        <div className="fixed inset-0 bg-black/10 z-50 flex items-center justify-center pointer-events-auto">
+          <div className="bg-white p-3 rounded-lg shadow-md flex items-center gap-2 text-xs font-semibold text-blue-600">
+            <span className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></span>
+            Đang tải chi tiết...
           </div>
         </div>
+      )}
 
-        {/* Danh sách Đơn hàng */}
+      <div className="max-w-[1400px] mx-auto px-4 md:px-6">
+        <h1 className="text-xl md:text-2xl font-bold mb-4 md:mb-6 text-gray-900">Quản Lý Đơn Hàng</h1>
+        <div className="mb-6 border-b border-slate-200 pb-3 overflow-x-auto scrollbar-none">
+          <FilterTabs 
+            tabs={ORDER_STATUS_TABS} 
+            activeTab={activeTab} 
+            onTabChange={setActiveTab}
+            className="[&_button.bg-md-primary]:!bg-blue-600 [&_button.bg-md-primary]:!text-white [&_button.bg-md-primary]:!shadow-blue-100" 
+          />
+        </div>
+
         <div className="min-h-[600px] w-full">
-          {loading && !loadingDetail ? (
+          {loading ? (
             <div className="space-y-4">
               <SkeletonOrderCard />
               <SkeletonOrderCard />
             </div>
-          ) : list.length === 0 ? (
+          ) : orders.length === 0 ? (
             <div className="flex justify-center items-center py-12">
               <EmptyState 
                 title="Không tìm thấy đơn hàng" 
@@ -369,13 +305,13 @@ export default function MerchantOrders() {
             </div>
           ) : (
             <div className="space-y-4">
-              {list.map((order) => (
+              {orders.map((order) => (
                 <div 
                   key={order.id}
                   onClick={() => handleViewDetails(order.id)}
                   className="bg-white rounded-xl border border-slate-100 shadow-sm p-4 md:p-5 flex flex-col gap-4 cursor-pointer group transition-colors hover:border-slate-200"
                 >
-                  {/* Card Header*/}
+                  {/* Card Header */}
                   <div className="flex flex-row justify-between items-center gap-2 border-b border-slate-100 pb-3 flex-wrap sm:flex-nowrap">
                     <div className="text-[11px] sm:text-sm font-bold text-slate-800 uppercase tracking-wide whitespace-nowrap shrink-0">
                       MÃ ĐƠN <span className="text-slate-900 font-extrabold">#{order.id}</span>
@@ -386,13 +322,11 @@ export default function MerchantOrders() {
                         <Clock size={13} />
                         {order.createdAt}
                       </span>
-                      <span className={`px-2 py-0.5 sm:px-3 sm:py-1 rounded-full font-semibold text-[10px] sm:text-[11px] border transition-colors shrink-0 ${getStatusStyles(order.status)}`}>
-                        {getStatusLabel(order.status)}
-                      </span>
+                      <Badge status={order.status} className="text-[10px] sm:text-[11px] px-2 py-0.5 sm:px-3 sm:py-1 rounded-full" />
                     </div>
                   </div>
 
-                  {/* Danh sách món ăn*/}
+                  {/* Danh sách món ăn */}
                   <div className="w-full">
                     <div className="w-full overflow-x-auto scrollbar-none touch-pan-x" onClick={(e) => e.stopPropagation()}>
                       <div className="flex flex-row gap-3 sm:gap-4 w-max max-w-full pb-1">
@@ -422,7 +356,7 @@ export default function MerchantOrders() {
                     </div>
                   </div>
 
-                  {/* Card Footer*/}
+                  {/* Card Footer */}
                   <div className="flex flex-col sm:flex-row justify-between sm:items-center border-t border-slate-100 pt-4 mt-1 gap-3">
                     <div className="text-sm text-slate-500 font-medium">
                       Tổng tiền:{' '}
@@ -431,55 +365,63 @@ export default function MerchantOrders() {
                       </span>
                     </div>
 
-                    <div className="flex items-center gap-2 w-full sm:w-auto" onClick={(e) => e.stopPropagation()}>
-                      <button
-                        type="button"
-                        onClick={() => handleViewDetails(order.id)}
-                        className="flex items-center justify-center gap-1.5 px-4 py-2.5 border border-slate-200 text-slate-600 hover:bg-slate-50 rounded-lg text-xs font-bold transition-all w-full sm:w-auto cursor-pointer"
+                    <div className="flex items-center gap-2 w-full sm:w-auto">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        icon={Eye}
+                        onClick={(e) => {
+                          e.stopPropagation(); 
+                          handleViewDetails(order.id);
+                        }}
+                        className="w-full sm:w-auto !py-2.5 rounded-lg text-xs hover:border-blue-600 hover:text-blue-600"
                       >
-                        <Eye size={13} />
                         Chi tiết
-                      </button>
+                      </Button>
 
                       {order.status === 'PENDING' && (
                         <>
-                          <button
-                            type="button"
+                          <Button
+                            variant="danger"
+                            size="sm"
+                            icon={Ban}
                             onClick={(e) => handleOpenCancelModal(e, order.id)}
-                            className="flex items-center justify-center gap-1.5 px-4 py-2.5 bg-rose-500 hover:bg-rose-600 text-white rounded-lg text-xs font-bold transition-all shadow-sm active:scale-[0.98] w-full sm:w-auto cursor-pointer"
+                            className="w-full sm:w-auto !py-2.5 rounded-lg text-xs"
                           >
-                            <Ban size={13} />
                             Từ chối
-                          </button>
-                          <button
-                            type="button"
+                          </Button>
+                          <Button
+                            variant="primary"
+                            size="sm"
+                            icon={Check}
                             onClick={(e) => handleConfirm(e, order.id)}
-                            className="flex items-center justify-center gap-1.5 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition-all shadow-sm active:scale-[0.98] w-full sm:w-auto cursor-pointer"
+                            className="w-full sm:w-auto !py-2.5 rounded-lg text-xs bg-emerald-600 hover:bg-emerald-700"
                           >
-                            <Check size={13} className="stroke-[3px]" />
                             Nhận đơn
-                          </button>
+                          </Button>
                         </>
                       )}
 
                       {order.status === 'CONFIRMED' && (
-                        <button
-                          type="button"
+                        <Button
+                          variant="primary"
+                          size="sm"
                           onClick={(e) => handlePreparing(e, order.id)}
-                          className="flex items-center justify-center gap-1.5 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold transition-all shadow-sm active:scale-[0.98] w-full sm:w-auto cursor-pointer"
+                          className="w-full sm:w-auto !py-2.5 rounded-lg text-xs bg-blue-600 hover:bg-blue-700"
                         >
                           Chuẩn bị món
-                        </button>
+                        </Button>
                       )}
 
                       {order.status === 'PREPARING' && (
-                        <button
-                          type="button"
+                        <Button
+                          variant="secondary"
+                          size="sm"
                           onClick={(e) => handleReady(e, order.id)}
-                          className="flex items-center justify-center gap-1.5 px-5 py-2.5 bg-orange-500 hover:bg-orange-600 text-white rounded-lg text-xs font-bold transition-all shadow-sm active:scale-[0.98] w-full sm:w-auto cursor-pointer"
+                          className="w-full sm:w-auto !py-2.5 rounded-lg text-xs bg-orange-500 hover:bg-orange-600"
                         >
                           Sẵn sàng giao
-                        </button>
+                        </Button>
                       )}
                     </div>
                   </div>
@@ -489,7 +431,6 @@ export default function MerchantOrders() {
               {/* PAGINATION */}
               {totalPages > 1 && (
                 <div className="flex justify-center items-center gap-1.5 mt-5 mb-5 pt-2 pb-2 border-t border-slate-100 selection:bg-transparent">
-                  
                   <button
                     type="button"
                     disabled={currentPage === 1}
@@ -502,11 +443,9 @@ export default function MerchantOrders() {
                     </svg>
                   </button>
 
-                  {/* Danh sách số trang */}
                   {[...Array(totalPages)].map((_, index) => {
                     const pageNumber = index + 1;
                     const isActive = currentPage === pageNumber;
-                    
                     return (
                       <button
                         key={pageNumber}
@@ -598,267 +537,124 @@ export default function MerchantOrders() {
               </div>
 
               <div className="flex justify-end gap-3 pt-3 border-t border-slate-100">
-                <button 
-                  type="button" 
+                <Button 
+                  variant="outline" 
+                  size="sm" 
                   disabled={submittingCancel}
                   onClick={handleCloseCancelModal}
-                  className="px-4 py-2 text-xs font-bold border border-slate-200 text-slate-500 rounded-lg hover:bg-slate-50 transition-colors cursor-pointer disabled:opacity-50"
+                  className="!py-2 rounded-lg text-xs"
                 >
                   Đóng
-                </button>
-                <button 
-                  type="button" 
+                </Button>
+                <Button 
+                  variant="danger" 
+                  size="sm" 
+                  loading={submittingCancel}
                   onClick={handleCancelSubmit}
-                  disabled={submittingCancel || !cancelReasonInput.trim()}
-                  className="px-5 py-2 text-xs font-bold bg-rose-500 text-white rounded-lg hover:bg-rose-600 transition-colors disabled:bg-slate-300 disabled:cursor-not-allowed cursor-pointer flex items-center gap-1.5 shadow-sm"
+                  className="!py-2 rounded-lg text-xs"
                 >
-                  {submittingCancel ? 'Đang xử lý...' : 'Xác nhận từ chối'}
-                </button>
+                  Xác nhận từ chối
+                </Button>
               </div>
             </div>
           </div>
         </div>
       )}
 
-      {/* MODAL CHI TIẾT ĐƠN HÀNG */}
-      {detailModal.isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/40">
-          <div className="w-full max-w-2xl bg-white rounded-xl shadow-xl p-4 md:p-6 relative animate-in fade-in zoom-in duration-200 font-google-sans max-h-[82vh] md:max-h-[90vh] flex flex-col">
-            
-            {/* Header Modal */}
-            <div className="flex items-center justify-between border-b pb-2.5 mb-3 shrink-0">
-              <div className="flex items-center gap-2">
-                <FileText className="text-blue-600 shrink-0" size={20} />
-                <h3 className="text-sm md:text-lg font-bold text-slate-900 truncate max-w-[240px] sm:max-w-none">
-                  Chi Tiết Đơn Hàng #{detailModal.data?.orderId}
-                </h3>
-              </div>
-              <button 
-                type="button"
-                onClick={detailModal.close} 
-                className="text-slate-400 hover:text-slate-600 transition-colors p-1 rounded-lg hover:bg-slate-100 cursor-pointer"
-              >
-                <X size={18} />
-              </button>
-            </div>
-
-            {/* Nội dung Modal dạng Scroll */}
-            <div className="space-y-3.5 overflow-y-auto pr-1 flex-1 text-slate-700 text-xs md:text-sm custom-scrollbar">
-              
-              {/* THÔNG TIN ĐƠN HÀNG */}
-              <div className="bg-slate-50 rounded-xl p-3 md:p-5 border border-slate-100">
-                <span className="text-[11px] md:text-[12px] font-extrabold text-slate-400 uppercase tracking-wider block mb-2.5 border-b border-slate-200/60 pb-1">
-                  Thông tin đơn hàng
-                </span>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 md:gap-4">
-                  <div>
-                    <span className="text-slate-500 block text-[11px] font-semibold text-xs">Mã đơn:</span>
-                    <span className="text-slate-900 font-medium">#{detailModal.data?.orderId}</span>
-                  </div>
-                  
-                  <div>
-                    <span className="text-slate-500 block text-[11px] font-semibold text-xs">Ngày đặt:</span>
-                    <span className="text-slate-800 font-medium">
-                      {formatOrderDate(detailModal.data?.createdAt)}
-                    </span>
-                  </div>
-                  
-                  <div>
-                    <span className="text-slate-500 block text-[11px] font-semibold mb-0.5 text-xs">Trạng thái:</span>
-                    <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] md:text-[11px] font-bold border ${getStatusStyles(detailModal.data?.orderStatus)}`}>
-                      {getStatusLabel(detailModal.data?.orderStatus)}
-                    </span>
-                  </div>
-                  
-                  <div>
-                    <span className="text-slate-500 block text-[11px] font-semibold text-xs">Khách hàng:</span>
-                    <span className="text-slate-900 font-medium">
-                      {detailModal.data?.customerName} | {maskPhone(detailModal.data?.customerPhone)}
-                    </span>
-                  </div>
-                  
-                  <div className="sm:col-span-2">
-                    <span className="text-slate-500 flex items-center gap-1 text-[11px] font-semibold mb-0.5 text-xs">
-                       Địa chỉ giao hàng:
-                    </span>
-                    <span className="text-slate-800 font-medium block leading-normal bg-white/60 p-2 rounded-lg border border-slate-100 text-[11px] md:text-sm">
-                      {detailModal.data?.deliveryAddress}
-                    </span>
-                  </div>
-                  
-                  <div className="sm:col-span-2">
-                    <span className="text-slate-500 flex items-center gap-1 text-[11px] font-semibold mb-0.5 text-xs">
-                       Ghi chú đơn hàng:
-                    </span>
-                    {detailModal.data?.note ? (
-                      <span className="text-slate-800 font-medium block leading-normal bg-white/60 p-2 rounded-lg border border-slate-100 text-[11px] md:text-sm">
-                        "{detailModal.data?.note}"
-                      </span>
-                    ) : (
-                      <div className="bg-slate-100/60 border border-slate-200/40 rounded-lg p-2 text-slate-400 text-[11px] italic">
-                        Không có ghi chú đơn hàng từ khách hàng
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              {/* THÔNG TIN SẢN PHẨM */}
+      {/* BỔ SUNG: MODAL CHI TIẾT ĐƠN HÀNG (Hiển thị dữ liệu từ detailModal.data) */}
+      {detailModal.isOpen && detailModal.data && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 overflow-y-auto">
+          <div className="w-full max-w-2xl bg-white rounded-xl shadow-xl p-5 md:p-6 relative animate-in fade-in zoom-in duration-200 font-google-sans my-8">
+            <div className="flex items-center justify-between border-b pb-3 mb-4">
               <div>
-                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-1.5">
-                  Danh sách sản phẩm ({detailModal.data?.items?.length || 0})
-                </span>
-                <div className="border border-slate-100 rounded-xl overflow-hidden">
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-left border-collapse">
-                      <thead>
-                        <tr className="bg-slate-100/70 border-b border-slate-200 text-[10px] md:text-[11px] font-bold text-slate-600 uppercase tracking-wider">
-                          <th className="py-1.5 px-2.5 ">Sản phẩm</th>
-                          <th className="py-1.5 px-2.5 text-right">Đơn giá</th>
-                          <th className="py-1.5 px-2.5 text-center">Số lượng</th>
-                          <th className="py-1.5 px-2.5 text-right">Tổng</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-100 bg-white">
-                        {(detailModal.data?.items || []).map((item, idx) => {
-                          const price = Number(item.priceAtOrder || 0);
-                          const qty = Number(item.quantity || 0);
-                          const subTotal = price * qty;
-                          return (
-                            <tr key={idx} className="hover:bg-slate-50/50 transition-colors text-[11px] md:text-sm">
-                              <td className="py-2 px-2.5">
-                                <div className="flex items-center gap-2">
-                                  <div className="w-8 h-8 rounded border border-slate-200 overflow-hidden shrink-0 bg-slate-50 hidden sm:block">
-                                    <img 
-                                      src={item.foodImageUrl || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=150&q=80'} 
-                                      alt={item.foodName} 
-                                      className="w-full h-full object-cover"
-                                    />
-                                  </div>
-                                  <div className="min-w-0">
-                                    <p className="font-bold text-slate-800 truncate max-w-[140px] sm:max-w-xs">
-                                      {item.foodName}
-                                    </p>
-                                    {item.note && (
-                                      <span className="text-[10px] text-slate-400 block truncate mt-0.5 italic">
-                                        Ghi chú: {item.note}
-                                      </span>
-                                    )}
-                                  </div>
-                                </div>
-                              </td>
-                              <td className="py-2 px-2.5 text-right font-medium text-slate-600">
-                                {formatCurrency(price)}
-                              </td>
-                              <td className="py-2 px-2.5 text-center font-medium text-slate-600">
-                                {qty}
-                              </td>
-                              <td className="py-2 px-2.5 text-right font-medium text-slate-600">
-                                {formatCurrency(subTotal)}
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
+                <h3 className="text-base md:text-lg font-bold text-slate-900">Chi Tiết Đơn Hàng #{detailModal.data.orderId || detailModal.data.id}</h3>
+                <p className="text-xs text-slate-400 mt-0.5">Thời gian đặt: {formatOrderDate(detailModal.data.createdAt)}</p>
               </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {/* HÌNH THỨC THANH TOÁN */}
-                <div className="bg-slate-50/80 border border-slate-100 rounded-xl p-4 space-y-2">
-                  <div>
-                    <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block border-b border-slate-200/60 pb-1.5 mb-3">
-                      Hình thức thanh toán
-                    </span>
-                    <div className="flex items-center gap-2 p-2.5 rounded-lg border border-slate-100">
-                      <div className="p-1.5 bg-blue-50 rounded text-blue-600">
-                        <CreditCard size={16} />
-                      </div>
-                      <span className="text-slate-800 font-medium">
-                        {getPaymentMethodLabel(detailModal.data?.paymentMethod)}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* CHI TIẾT THANH TOÁN */}
-                <div className="bg-slate-50/80 border border-slate-100 rounded-xl p-4 space-y-2">
-                  <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block border-b border-slate-200/60 pb-1.5 mb-2">
-                    Chi tiết thanh toán
-                  </span>
-                  <div className="flex justify-between items-center text-slate-600">
-                    <span className="text-xs font-semibold">Tổng tiền hàng:</span>
-                    <span className="font-medium">
-                      {formatCurrency(Number(detailModal.data?.totalAmount || 0) - Number(detailModal.data?.shippingFee || 0))}
-                    </span>
-                  </div>
-                  <div className="flex justify-between items-center text-slate-600 border-b border-slate-200/60 pb-2">
-                    <span className="text-xs font-semibold">Phí vận chuyển:</span>
-                    <span className="font-medium">
-                      {formatCurrency(Number(detailModal.data?.shippingFee || 0))}
-                    </span>
-                  </div>
-                  <div className="flex justify-between items-center pt-1">
-                    <span className="font-bold text-slate-800 text-xs md:text-sm">Tổng cộng:</span>
-                    <span className="text-base md:text-lg font-extrabold text-blue-600">
-                      {formatCurrency(Number(detailModal.data?.totalAmount || 0))}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Footer Modal*/}
-            <div className="flex justify-end gap-3 pt-3 mt-4 border-t border-slate-100 shrink-0">
               <button 
                 type="button" 
-                onClick={detailModal.close}
-                className="px-4 py-2 text-xs font-bold border border-slate-200 text-slate-500 rounded-lg hover:bg-slate-50 transition-colors cursor-pointer"
+                onClick={detailModal.close} 
+                className="text-slate-400 hover:text-slate-600 transition-colors cursor-pointer p-1"
               >
-                Đóng
+                <X size={20} />
               </button>
+            </div>
 
-              {detailModal.data?.orderStatus === 'PENDING' && (
+            {/* Thông tin khách hàng & Shipper */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4 text-xs bg-slate-50 p-3 rounded-lg border border-slate-100">
+              <div>
+                <h4 className="font-bold text-slate-500 uppercase tracking-wide mb-1">Thông tin khách hàng</h4>
+                <p className="font-semibold text-slate-800">{detailModal.data.customerName || detailModal.data.customer}</p>
+                <p className="text-slate-600 mt-0.5">SĐT: {detailModal.data.customerPhone || detailModal.data.phone || 'Không có'}</p>
+                <p className="text-slate-600 mt-0.5 truncate" title={detailModal.data.deliveryAddress}>Địa chỉ: {detailModal.data.deliveryAddress || 'Đang cập nhật'}</p>
+              </div>
+              <div>
+                <h4 className="font-bold text-slate-500 uppercase tracking-wide mb-1">Thông tin giao hàng</h4>
+                <p className="text-slate-600">Trạng thái: <span className="font-bold text-blue-600">{detailModal.data.orderStatus || detailModal.data.status}</span></p>
+                <p className="text-slate-600 mt-0.5">Tài xế: {detailModal.data.shipperName ? `${detailModal.data.shipperName} (${detailModal.data.shipperPhone})` : 'Chưa có tài xế nhận'}</p>
+                {detailModal.data.rejectReason && (
+                  <p className="text-rose-600 font-medium mt-1">Lý do hủy: {detailModal.data.rejectReason}</p>
+                )}
+              </div>
+            </div>
+
+            {/* Chi tiết danh sách món ăn */}
+            <div className="space-y-2 max-h-[240px] overflow-y-auto pr-1 border-b pb-4 mb-4 scrollbar-thin">
+              <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wide mb-1">Danh sách món ăn</h4>
+              {(detailModal.data.items || []).map((item, index) => (
+                <div key={index} className="flex items-center justify-between bg-white border border-slate-100 p-2.5 rounded-lg text-sm shadow-2.5">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <img 
+                      src={item.foodImageUrl || item.image || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=150&q=80'} 
+                      alt={item.foodName || item.name} 
+                      className="w-10 h-10 object-cover rounded border border-slate-200" 
+                    />
+                    <div className="min-w-0">
+                      <p className="font-bold text-slate-800 truncate">{item.foodName || item.name}</p>
+                      <p className="text-xs text-slate-400">Số lượng: <span className="font-semibold text-slate-700">x{item.quantity}</span></p>
+                      {item.note && <p className="text-[11px] text-amber-600 italic">"{item.note}"</p>}
+                    </div>
+                  </div>
+                  <p className="font-bold text-slate-900 shrink-0 text-xs text-right">
+                    {formatCurrency((item.priceAtOrder || item.price) * item.quantity)}
+                  </p>
+                </div>
+              ))}
+            </div>
+
+            {/* Tổng kết tiền bạc */}
+            <div className="flex flex-col gap-1.5 text-xs text-slate-600 items-end mb-5">
+              <div>Tạm tính: <span className="font-semibold text-slate-800">{formatCurrency(detailModal.data.totalAmount || detailModal.data.total)}</span></div>
+              <div>Phí vận chuyển: <span className="font-semibold text-slate-800">{formatCurrency(detailModal.data.shippingFee || 0)}</span></div>
+              <div className="text-sm font-bold text-slate-900 mt-1">
+                Tổng cộng: <span className="text-base font-extrabold text-blue-600 ml-1">{formatCurrency((detailModal.data.totalAmount || detailModal.data.total) + (detailModal.data.shippingFee || 0))}</span>
+              </div>
+            </div>
+
+            {/* Thanh Button Điều khiển trong Modal */}
+            <div className="flex justify-end gap-2.5 pt-3 border-t border-slate-100">
+              <Button variant="outline" size="sm" onClick={detailModal.close} className="!py-2 rounded-lg text-xs">
+                Đóng
+              </Button>
+              
+              {(detailModal.data.orderStatus === 'PENDING' || detailModal.data.status === 'PENDING') && (
                 <>
-                  <button
-                    type="button"
-                    onClick={(e) => handleOpenCancelModal(e, detailModal.data.orderId)}
-                    className="flex items-center justify-center gap-1.5 px-4 py-2 text-xs font-bold bg-rose-500 hover:bg-rose-600 text-white rounded-lg transition-colors cursor-pointer shadow-sm"
+                  <Button 
+                    variant="danger" 
+                    size="sm" 
+                    onClick={(e) => handleOpenCancelModal(e, detailModal.data.orderId || detailModal.data.id)}
+                    className="!py-2 rounded-lg text-xs"
                   >
-                    <Ban size={13} />
                     Từ chối
-                  </button>
-                  <button
-                    type="button"
-                    onClick={(e) => handleConfirm(e, detailModal.data.orderId)}
-                    className="flex items-center justify-center gap-1.5 px-4 py-2 text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors cursor-pointer shadow-sm"
+                  </Button>
+                  <Button 
+                    variant="primary" 
+                    size="sm" 
+                    onClick={(e) => handleConfirm(e, detailModal.data.orderId || detailModal.data.id)}
+                    className="!py-2 rounded-lg text-xs bg-emerald-600 hover:bg-emerald-700"
                   >
-                    <Check size={13} className="stroke-[3px]" />
                     Nhận đơn
-                  </button>
+                  </Button>
                 </>
-              )}
-
-              {detailModal.data?.orderStatus === 'CONFIRMED' && (
-                <button
-                  type="button"
-                  onClick={(e) => handlePreparing(e, detailModal.data.orderId)}
-                  className="flex items-center justify-center gap-1.5 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold transition-all shadow-sm active:scale-[0.98] w-full sm:w-auto cursor-pointer"
-                > 
-                  Chuẩn bị món
-                </button>
-              )}
-
-              {detailModal.data?.orderStatus === 'PREPARING' && (
-                <button
-                  type="button"
-                  onClick={(e) => handleReady(e, detailModal.data.orderId)}
-                  className="flex items-center justify-center gap-1.5 px-5 py-2.5 bg-orange-500 hover:bg-orange-600 text-white rounded-lg text-xs font-bold transition-all shadow-sm active:scale-[0.98] w-full sm:w-auto cursor-pointer"
-                >
-                  Sẵn sàng giao
-                </button>
               )}
             </div>
           </div>

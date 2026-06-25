@@ -16,6 +16,7 @@ const ORDER_STATUS_TABS = [
   { id: 'CONFIRMED', label: 'Đã xác nhận' },
   { id: 'PREPARING', label: 'Đang chuẩn bị' },
   { id: 'READY_FOR_PICKUP', label: 'Chờ lấy hàng' }, 
+  { id: 'COMPLETED', label: 'Thành công' },
   { id: 'CANCELLED', label: 'Đã từ chối' },
 ];
 
@@ -50,6 +51,7 @@ export default function MerchantOrders() {
         }
       } catch (err) {
         console.error('Lỗi khi lấy thông tin nhà hàng:', err);
+        toast.error(err.response?.data?.message);
       } finally {
         setLoading(false);
       }
@@ -101,6 +103,7 @@ export default function MerchantOrders() {
       setOrders(mapped);
     } catch (err) {
       console.error('Lỗi khi lấy danh sách đơn hàng:', err);
+      toast.error(err.response?.data?.message);
       setOrders([]);
     } finally {
       setLoading(false);
@@ -188,7 +191,7 @@ export default function MerchantOrders() {
     }
   };
 
-  // Mở/Đóng Modal hủy đơn hàng của Chủ quán
+  // Mở Modal hủy đơn hàng của Chủ quán
   const handleOpenCancelModal = (e, orderId) => {
     e.stopPropagation();
     cancelModal.open(orderId);
@@ -204,7 +207,7 @@ export default function MerchantOrders() {
   //Từ chối đơn hàng
   const handleCancelSubmit = async () => {
     if (!cancelReasonInput.trim()) {
-      toast.error('Vui lòng chọn hoặc nhập lý do từ chối!');
+      toast.error('Vui lòng chọn hoặc nhập lý do từ chối đơn hàng!');
       return;
     }
     setSubmittingCancel(true);
@@ -257,17 +260,27 @@ export default function MerchantOrders() {
     }
   };
 
+  //  màu nhãn trạng thái đơn hàng
   const getStatusStyles = (status) => {
     switch (status) {
-      case 'COMPLETED': return 'bg-emerald-50 text-emerald-700 border-emerald-100';
-      case 'CANCELLED': return 'bg-rose-50 text-rose-700 border-rose-100';
-      case 'PENDING': return 'bg-amber-50 text-amber-700 border-amber-100';
-      case 'CONFIRMED': return 'bg-blue-50 text-blue-700 border-blue-100';
-      default: return 'bg-orange-50 text-orange-700 border-orange-100';
+      case 'PENDING': 
+        return 'bg-amber-50 text-amber-700 border-amber-100'; 
+      case 'CONFIRMED': 
+        return 'bg-blue-50 text-blue-700 border-blue-100'; 
+      case 'PREPARING': 
+        return 'bg-purple-50 text-purple-700 border-purple-100'; 
+      case 'READY_FOR_PICKUP': 
+        return 'bg-indigo-50 text-indigo-700 border-indigo-100';
+      case 'COMPLETED': 
+        return 'bg-emerald-50 text-emerald-700 border-emerald-100'; 
+      case 'CANCELLED': 
+        return 'bg-rose-50 text-rose-700 border-rose-100'; 
+      default: 
+        return 'bg-slate-50 text-slate-600 border-slate-200'; 
     }
   };
 
-  // Hiển thị nhãn loại thanh toán mượt mà hơn
+  // Hiển thị nhãn loại thanh toán
   const getPaymentMethodLabel = (method) => {
     switch (method) {
       case 'COD': return 'Thanh toán khi nhận hàng (COD)';

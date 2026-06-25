@@ -26,6 +26,11 @@ export default function MerchantOrders() {
   const [restaurantId, setRestaurantId] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  // STATE PHÂN TRANG
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const pageSize = 5;
+
   // State lý do từ chối đơn hàng 
   const [cancelReasonInput, setCancelReasonInput] = useState('');
   const [submittingCancel, setSubmittingCancel] = useState(false);
@@ -38,6 +43,11 @@ export default function MerchantOrders() {
   const cancelModal = useModalState();
 
   const { subscribe } = useWebSocketContext();
+
+  // Reset về trang 1 khi đổi tab
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [activeTab]);
 
   // Lấy thông tin nhà hàng 
   useEffect(() => {
@@ -75,12 +85,15 @@ export default function MerchantOrders() {
         { 
           params: {
             restaurantId: restaurantId,
-            status: activeTab === 'ALL' ? undefined : activeTab
+            status: activeTab === 'ALL' ? undefined : activeTab,
+            page: currentPage - 1, //
+            size: pageSize
           }
         }        
       );
       
       const realData = response.data?.data?.content || [];
+      setTotalPages(response.data?.data?.totalPages || 1);
       
       const mapped = realData.map(ord => {
         return {
@@ -108,7 +121,7 @@ export default function MerchantOrders() {
     } finally {
       setLoading(false);
     }
-  }, [restaurantId, activeTab]);
+  }, [restaurantId, activeTab, currentPage]);
 
   useEffect(() => {
     fetchOrders();
@@ -472,6 +485,57 @@ export default function MerchantOrders() {
                   </div>
                 </div>
               ))}
+
+              {/* PAGINATION */}
+              {totalPages > 1 && (
+                <div className="flex justify-center items-center gap-1.5 mt-5 mb-5 pt-2 pb-2 border-t border-slate-100 selection:bg-transparent">
+                  
+                  <button
+                    type="button"
+                    disabled={currentPage === 1}
+                    onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                    className="w-8 h-8 flex items-center justify-center rounded-lg border border-slate-200 text-slate-500 bg-white shadow-sm transition-all duration-200 hover:bg-slate-50 hover:text-slate-800 active:scale-95 disabled:opacity-40 disabled:hover:bg-white disabled:hover:text-slate-500 disabled:active:scale-100 disabled:cursor-not-allowed cursor-pointer"
+                    title="Trang trước"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-4 h-4">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
+                    </svg>
+                  </button>
+
+                  {/* Danh sách số trang */}
+                  {[...Array(totalPages)].map((_, index) => {
+                    const pageNumber = index + 1;
+                    const isActive = currentPage === pageNumber;
+                    
+                    return (
+                      <button
+                        key={pageNumber}
+                        type="button"
+                        onClick={() => setCurrentPage(pageNumber)}
+                        className={`w-8 h-8 rounded-lg text-xs font-semibold border transition-all duration-200 cursor-pointer flex items-center justify-center active:scale-95 ${
+                          isActive
+                            ? 'bg-blue-600 text-white border-blue-600 shadow-md shadow-blue-100'
+                            : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50 hover:border-slate-300 hover:text-slate-800'
+                        }`}
+                      >
+                        {pageNumber}
+                      </button>
+                    );
+                  })}
+
+                  <button
+                    type="button"
+                    disabled={currentPage === totalPages}
+                    onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                    className="w-8 h-8 flex items-center justify-center rounded-lg border border-slate-200 text-slate-500 bg-white shadow-sm transition-all duration-200 hover:bg-slate-50 hover:text-slate-800 active:scale-95 disabled:opacity-40 disabled:hover:bg-white disabled:hover:text-slate-500 disabled:active:scale-100 disabled:cursor-not-allowed cursor-pointer"
+                    title="Trang sau"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-4 h-4">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+                    </svg>
+                  </button>
+                </div>
+              )}
             </div>
           )}
         </div>

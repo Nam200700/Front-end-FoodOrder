@@ -10,8 +10,11 @@ import { useModalState } from '../../hooks/useModalState';
 import FilterTabs from '../../components/common/FilterTabs';
 import Badge from '../../components/common/Badge';
 import Button from '../../components/common/Button';
+import Spinner from '../../components/common/Spinner';
+import Modal from '../../components/common/Modal'; 
+import OrderCancelModal from '../../components/common/OrderCancelModal';
+import { getStatusConfig } from '../../utils/orderStatusHelper';
 
-// Tabs trạng thái đơn hàng 
 const ORDER_STATUS_TABS = [
   { id: 'ALL', label: 'Tất cả' },
   { id: 'PENDING', label: 'Chờ xác nhận' },
@@ -197,7 +200,6 @@ export default function MerchantOrders() {
     }
   };
 
-  // Mở Modal hủy đơn hàng của Chủ quán
   const handleOpenCancelModal = (e, orderId) => {
     e.stopPropagation();
     cancelModal.open(orderId);
@@ -253,6 +255,33 @@ export default function MerchantOrders() {
     }
   };
 
+  const maskPhone = (phone) => {
+    if (!phone) return 'Chưa có SĐT';
+    const cleaned = phone.toString().trim();
+    if (cleaned.length < 6) return '****'; 
+    return `${cleaned.slice(0, 3)}****${cleaned.slice(-3)}`;
+  };
+
+  const getStatus = (status) => {
+    switch (status) {
+      case 'PENDING': return 'Chờ xác nhận';
+      case 'CONFIRMED': return 'Đã xác nhận';
+      case 'PREPARING': return 'Đang chuẩn bị';
+      case 'READY_FOR_PICKUP': return 'Chờ lấy hàng';
+      case 'COMPLETED': return 'Thành công';
+      case 'CANCELLED': return 'Đã từ chối';
+      default: return status;
+    }
+  };
+
+  const getPaymentMethodLabel = (method) => {
+    switch (method) {
+      case 'COD': return 'Thanh toán khi nhận hàng (COD)';
+      case 'VNPAY': return 'Chuyển khoản VNPAY';
+      default: return method || 'Chưa xác định';
+    }
+  };
+
   if (!restaurantId && !loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center text-center font-google-sans p-6">
@@ -276,12 +305,13 @@ export default function MerchantOrders() {
 
       <div className="max-w-[1400px] mx-auto px-4 md:px-6">
         <h1 className="text-xl md:text-2xl font-bold mb-4 md:mb-6 text-gray-900">Quản Lý Đơn Hàng</h1>
-        <div className="mb-6 border-b border-slate-200 pb-3 overflow-x-auto scrollbar-none">
+        
+        <div className="mb-6 border-b border-slate-200 pb-3 overflow-x-auto scrollbar-none w-full">
           <FilterTabs 
             tabs={ORDER_STATUS_TABS} 
             activeTab={activeTab} 
             onTabChange={setActiveTab}
-            className="[&_button.bg-md-primary]:!bg-blue-600 [&_button.bg-md-primary]:!text-white [&_button.bg-md-primary]:!shadow-blue-100" 
+            className="flex flex-row !flex-nowrap whitespace-nowrap [&_div]:flex [&_div]:flex-row [&_div]:flex-nowrap [&_button]:shrink-0 [&_button.bg-md-primary]:!bg-blue-600 [&_button.bg-md-primary]:!text-white [&_button.bg-md-primary]:!shadow-blue-100" 
           />
         </div>
 
@@ -311,7 +341,6 @@ export default function MerchantOrders() {
                   onClick={() => handleViewDetails(order.id)}
                   className="bg-white rounded-xl border border-slate-100 shadow-sm p-4 md:p-5 flex flex-col gap-4 cursor-pointer group transition-colors hover:border-slate-200"
                 >
-                  {/* Card Header */}
                   <div className="flex flex-row justify-between items-center gap-2 border-b border-slate-100 pb-3 flex-wrap sm:flex-nowrap">
                     <div className="text-[11px] sm:text-sm font-bold text-slate-800 uppercase tracking-wide whitespace-nowrap shrink-0">
                       MÃ ĐƠN <span className="text-slate-900 font-extrabold">#{order.id}</span>
@@ -332,7 +361,7 @@ export default function MerchantOrders() {
                       <div className="flex flex-row gap-3 sm:gap-4 w-max max-w-full pb-1">
                         {order.items.map((item, idx) => (
                           <div 
-                            key={idx}
+                            key={idx} 
                             className="flex gap-3 items-center border border-slate-100 rounded-lg p-3 bg-slate-50/50 w-[260px] sm:w-[280px] shrink-0 select-none relative"
                           >
                             <div className="w-14 h-14 rounded-md overflow-hidden shrink-0 border border-slate-200 bg-white">
@@ -356,7 +385,6 @@ export default function MerchantOrders() {
                     </div>
                   </div>
 
-                  {/* Card Footer */}
                   <div className="flex flex-col sm:flex-row justify-between sm:items-center border-t border-slate-100 pt-4 mt-1 gap-3">
                     <div className="text-sm text-slate-500 font-medium">
                       Tổng tiền:{' '}
@@ -395,7 +423,7 @@ export default function MerchantOrders() {
                             size="sm"
                             icon={Check}
                             onClick={(e) => handleConfirm(e, order.id)}
-                            className="w-full sm:w-auto !py-2.5 rounded-lg text-xs bg-emerald-600 hover:bg-emerald-700"
+                            className="w-full sm:w-auto !py-2.5 rounded-lg text-xs bg-emerald-600"
                           >
                             Nhận đơn
                           </Button>
@@ -407,7 +435,7 @@ export default function MerchantOrders() {
                           variant="primary"
                           size="sm"
                           onClick={(e) => handlePreparing(e, order.id)}
-                          className="w-full sm:w-auto !py-2.5 rounded-lg text-xs bg-blue-600 hover:bg-blue-700"
+                          className="w-full sm:w-auto !py-2.5 rounded-lg text-xs bg-blue-600"
                         >
                           Chuẩn bị món
                         </Button>
@@ -480,186 +508,205 @@ export default function MerchantOrders() {
         </div>
       </div>
 
-      {/* MODAL TỪ CHỐI / HỦY ĐƠN HÀNG */}
-      {cancelModal.isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40">
-          <div className="w-full max-w-md bg-white rounded-xl shadow-xl p-5 md:p-6 relative animate-in fade-in zoom-in duration-200 font-google-sans">
-            <div className="flex items-center justify-between border-b pb-3 mb-4">
-              <h3 className="text-base md:text-lg font-bold text-slate-900">Xác Nhận Từ Chối Đơn Hàng #{cancelModal.data}</h3>
-              <button 
-                type="button"
-                disabled={submittingCancel}
-                onClick={handleCloseCancelModal} 
-                className="text-slate-400 hover:text-slate-600 transition-colors disabled:opacity-50 cursor-pointer"
-              >
-                <X size={20} />
-              </button>
-            </div>
+      <Modal
+        isOpen={cancelModal.isOpen}
+        onClose={handleCloseCancelModal}
+        title={`Xác Nhận Từ Chối Đơn Hàng #${cancelModal.data}`}
+        size="sm"
+      >
+        <div className="space-y-4 text-slate-700">
+          <div className="p-3 bg-rose-50 text-rose-800 rounded-lg text-xs font-medium border border-rose-100 flex items-start gap-2">
+            <AlertCircle className="shrink-0 mt-0.5 text-rose-600" size={15} />
+            <span>Lưu ý: Hành động từ chối đơn hàng sẽ hủy giao dịch của khách hàng ngay lập tức.</span>
+          </div>
 
-            <div className="space-y-4 text-slate-700">
-              <div className="p-3 bg-rose-50 text-rose-800 rounded-lg text-xs font-medium border border-rose-100 flex items-start gap-2">
-                <AlertCircle className="shrink-0 mt-0.5 text-rose-600" size={15} />
-                <span>Lưu ý: Hành động từ chối đơn hàng sẽ hủy giao dịch của khách hàng ngay lập tức.</span>
-              </div>
-
-              <div className="space-y-1.5">
-                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Chọn nhanh lý do từ chối đơn hàng:</span>
-                <div className="grid grid-cols-1 gap-1.5">
-                  {['Nhà hàng đã hết món này', 'Quán đang quá tải đơn hàng', 'Cửa hàng đang chuẩn bị đóng cửa', 'Không thể liên hệ giải quyết ghi chú'].map((reason, idx) => (
-                    <button 
-                      key={idx} 
-                      type="button" 
-                      disabled={submittingCancel}
-                      onClick={() => setCancelReasonInput(reason)} 
-                      className={`text-left px-3.5 py-2 border rounded-lg text-xs font-semibold transition-all cursor-pointer disabled:opacity-50 ${
-                        cancelReasonInput === reason 
-                          ? 'border-blue-600 bg-blue-50/50 text-blue-600' 
-                          : 'border-slate-200 text-slate-600 hover:bg-slate-50 hover:border-blue-300'
-                      }`}
-                    >
-                      {reason}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div className="space-y-1.5">
-                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Hoặc nhập lý do khác:</span>
-                <textarea 
-                  value={cancelReasonInput} 
-                  onChange={(e) => setCancelReasonInput(e.target.value)} 
-                  placeholder="Nhập lý do chi tiết từ chối đơn hàng" 
-                  rows={3} 
+          <div className="space-y-1.5">
+            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Chọn nhanh lý do từ chối đơn hàng:</span>
+            <div className="grid grid-cols-1 gap-1.5">
+              {['Nhà hàng đã hết món này', 'Quán đang quá tải đơn hàng', 'Cửa hàng đang chuẩn bị đóng cửa', 'Không thể liên hệ giải quyết ghi chú'].map((reason, idx) => (
+                <button 
+                  key={idx} 
+                  type="button" 
                   disabled={submittingCancel}
-                  className="w-full p-3 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-400 bg-slate-50/50 text-slate-800 resize-none disabled:opacity-50" 
-                  maxLength={300} 
-                />
-              </div>
-
-              <div className="flex justify-end gap-3 pt-3 border-t border-slate-100">
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  disabled={submittingCancel}
-                  onClick={handleCloseCancelModal}
-                  className="!py-2 rounded-lg text-xs"
+                  onClick={() => setCancelReasonInput(reason)} 
+                  className={`text-left px-3.5 py-2 border rounded-lg text-xs font-semibold transition-all cursor-pointer disabled:opacity-50 ${
+                    cancelReasonInput === reason 
+                      ? 'border-blue-600 bg-blue-50/50 text-blue-600' 
+                      : 'border-slate-200 text-slate-600 hover:bg-slate-50 hover:border-blue-300'
+                  }`}
                 >
-                  Đóng
-                </Button>
-                <Button 
-                  variant="danger" 
-                  size="sm" 
-                  loading={submittingCancel}
-                  onClick={handleCancelSubmit}
-                  className="!py-2 rounded-lg text-xs"
-                >
-                  Xác nhận từ chối
-                </Button>
-              </div>
+                  {reason}
+                </button>
+              ))}
             </div>
           </div>
+
+          <div className="space-y-1.5">
+            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Hoặc nhập lý do khác:</span>
+            <textarea 
+              value={cancelReasonInput} 
+              onChange={(e) => setCancelReasonInput(e.target.value)} 
+              placeholder="Nhập lý do chi tiết từ chối đơn hàng" 
+              rows={3} 
+              disabled={submittingCancel}
+              className="w-full p-3 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-400 bg-slate-50/50 text-slate-800 resize-none disabled:opacity-50" 
+              maxLength={300} 
+            />
+          </div>
+
+          <div className="flex justify-end gap-3 pt-3 border-t border-slate-100">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              disabled={submittingCancel}
+              onClick={handleCloseCancelModal}
+              className="!py-2 rounded-lg text-xs hover:border-blue-600 hover:text-blue-600"
+            >
+              Đóng
+            </Button>
+            <Button 
+              variant="danger" 
+              size="sm" 
+              loading={submittingCancel}
+              onClick={handleCancelSubmit}
+              className="!py-2 rounded-lg text-xs"
+            >
+              Xác nhận từ chối
+            </Button>
+          </div>
         </div>
-      )}
+      </Modal>
 
-      {/* BỔ SUNG: MODAL CHI TIẾT ĐƠN HÀNG (Hiển thị dữ liệu từ detailModal.data) */}
-      {detailModal.isOpen && detailModal.data && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 overflow-y-auto">
-          <div className="w-full max-w-2xl bg-white rounded-xl shadow-xl p-5 md:p-6 relative animate-in fade-in zoom-in duration-200 font-google-sans my-8">
-            <div className="flex items-center justify-between border-b pb-3 mb-4">
-              <div>
-                <h3 className="text-base md:text-lg font-bold text-slate-900">Chi Tiết Đơn Hàng #{detailModal.data.orderId || detailModal.data.id}</h3>
-                <p className="text-xs text-slate-400 mt-0.5">Thời gian đặt: {formatOrderDate(detailModal.data.createdAt)}</p>
+      {/* MODAL CHI TIẾT ĐƠN HÀNG */}
+      <Modal
+        isOpen={detailModal.isOpen && !!detailModal.data}
+        onClose={detailModal.close}
+        title={detailModal.data ? `Chi Tiết Đơn Hàng #${detailModal.data.orderId}` : ''}
+        size="lg"
+      >
+        {detailModal.data && (
+          <>
+            <p className="text-xs text-slate-400 -mt-3 mb-3">Thời gian đặt: {formatOrderDate(detailModal.data.createdAt)}</p>
+            
+            <div className="mb-3 text-xs bg-slate-50 p-2.5 rounded-lg border border-slate-100">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pb-2 border-b border-slate-200/60">
+                <div>
+                  <h4 className="font-bold text-slate-500 uppercase tracking-wide mb-0.5">Thông tin khách hàng</h4>
+                  <p className="text-slate-600"><span className="font-medium">Họ và tên:</span> {detailModal.data.customerName}</p>
+                  <p className="text-slate-600 mt-0.5"><span className="font-medium">SĐT:</span> {maskPhone(detailModal.data?.customerPhone)}</p>
+                </div>
+                <div>
+                  <h4 className="font-bold text-slate-500 uppercase tracking-wide mb-0.5">Thông tin giao hàng</h4>
+                  <p className="text-slate-600">Trạng thái: {getStatus(detailModal.data?.orderStatus)}</p>
+                  <p className="text-slate-600 mt-0.5">Người giao hàng: {detailModal.data.shipperName ? `${detailModal.data.shipperName} - ${detailModal.data.shipperPhone}` : 'Chưa có tài xế nhận'}</p>
+                </div>
               </div>
-              <button 
-                type="button" 
-                onClick={detailModal.close} 
-                className="text-slate-400 hover:text-slate-600 transition-colors cursor-pointer p-1"
-              >
-                <X size={20} />
-              </button>
-            </div>
-
-            {/* Thông tin khách hàng & Shipper */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4 text-xs bg-slate-50 p-3 rounded-lg border border-slate-100">
-              <div>
-                <h4 className="font-bold text-slate-500 uppercase tracking-wide mb-1">Thông tin khách hàng</h4>
-                <p className="font-semibold text-slate-800">{detailModal.data.customerName || detailModal.data.customer}</p>
-                <p className="text-slate-600 mt-0.5">SĐT: {detailModal.data.customerPhone || detailModal.data.phone || 'Không có'}</p>
-                <p className="text-slate-600 mt-0.5 truncate" title={detailModal.data.deliveryAddress}>Địa chỉ: {detailModal.data.deliveryAddress || 'Đang cập nhật'}</p>
-              </div>
-              <div>
-                <h4 className="font-bold text-slate-500 uppercase tracking-wide mb-1">Thông tin giao hàng</h4>
-                <p className="text-slate-600">Trạng thái: <span className="font-bold text-blue-600">{detailModal.data.orderStatus || detailModal.data.status}</span></p>
-                <p className="text-slate-600 mt-0.5">Tài xế: {detailModal.data.shipperName ? `${detailModal.data.shipperName} (${detailModal.data.shipperPhone})` : 'Chưa có tài xế nhận'}</p>
-                {detailModal.data.rejectReason && (
-                  <p className="text-rose-600 font-medium mt-1">Lý do hủy: {detailModal.data.rejectReason}</p>
-                )}
+              
+              <div className="pt-2">
+                <p className="text-slate-600 break-words" title={detailModal.data.deliveryAddress}>
+                  <span className="font-medium text-slate-700">Địa chỉ giao hàng:</span> {detailModal.data.deliveryAddress}
+                </p>
               </div>
             </div>
 
             {/* Chi tiết danh sách món ăn */}
-            <div className="space-y-2 max-h-[240px] overflow-y-auto pr-1 border-b pb-4 mb-4 scrollbar-thin">
+            <div className="space-y-1.5 max-h-[200px] overflow-y-auto pr-1 border-b pb-3 mb-3 scrollbar-thin">
               <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wide mb-1">Danh sách món ăn</h4>
               {(detailModal.data.items || []).map((item, index) => (
-                <div key={index} className="flex items-center justify-between bg-white border border-slate-100 p-2.5 rounded-lg text-sm shadow-2.5">
-                  <div className="flex items-center gap-3 min-w-0">
+                <div key={index} className="flex items-center justify-between bg-white border border-slate-100 p-2 rounded-lg text-sm shadow-2.5">
+                  <div className="flex items-center gap-2.5 min-w-0">
                     <img 
-                      src={item.foodImageUrl || item.image || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=150&q=80'} 
-                      alt={item.foodName || item.name} 
-                      className="w-10 h-10 object-cover rounded border border-slate-200" 
+                      src={item.foodImageUrl || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=150&q=80'} 
+                      alt={item.foodName} 
+                      className="w-9 h-9 object-cover rounded border border-slate-200" 
                     />
                     <div className="min-w-0">
-                      <p className="font-bold text-slate-800 truncate">{item.foodName || item.name}</p>
-                      <p className="text-xs text-slate-400">Số lượng: <span className="font-semibold text-slate-700">x{item.quantity}</span></p>
-                      {item.note && <p className="text-[11px] text-amber-600 italic">"{item.note}"</p>}
+                      <p className="font-bold text-slate-800 truncate leading-tight">{item.foodName}</p>
+                      <p className="text-xs text-slate-400 mt-0.5">Số lượng: {item.quantity}</p>
+                      {item.note && <p className="text-[11px] text-amber-600 italic">Ghi chú: "{item.note}"</p>}
                     </div>
                   </div>
                   <p className="font-bold text-slate-900 shrink-0 text-xs text-right">
-                    {formatCurrency((item.priceAtOrder || item.price) * item.quantity)}
+                    {formatCurrency((item.priceAtOrder) * item.quantity)}
                   </p>
                 </div>
               ))}
             </div>
 
-            {/* Tổng kết tiền bạc */}
-            <div className="flex flex-col gap-1.5 text-xs text-slate-600 items-end mb-5">
-              <div>Tạm tính: <span className="font-semibold text-slate-800">{formatCurrency(detailModal.data.totalAmount || detailModal.data.total)}</span></div>
-              <div>Phí vận chuyển: <span className="font-semibold text-slate-800">{formatCurrency(detailModal.data.shippingFee || 0)}</span></div>
-              <div className="text-sm font-bold text-slate-900 mt-1">
-                Tổng cộng: <span className="text-base font-extrabold text-blue-600 ml-1">{formatCurrency((detailModal.data.totalAmount || detailModal.data.total) + (detailModal.data.shippingFee || 0))}</span>
+            <div className="flex flex-col sm:flex-row justify-between items-start gap-4 border-b pb-3 mb-4 text-xs">
+              {/* Phương thức thanh toán & Ghi chú đơn hàng */}
+              <div className="flex-1 space-y-2 w-full sm:w-auto">
+                <div className="p-2 bg-blue-50/50 border border-blue-100 rounded-lg text-slate-700">
+                  <span className="font-bold text-slate-600">Phương thức thanh toán:</span>
+                  <p className="font-medium mt-0.5">{getPaymentMethodLabel(detailModal.data?.paymentMethod)}</p>
+                </div>
+                {detailModal.data.note && (
+                  <div className="p-2 bg-amber-50/60 border border-amber-100 text-amber-800 rounded-lg italic">
+                    <span className="font-bold not-italic">Ghi chú đơn hàng:</span> "{detailModal.data.note}"
+                  </div>
+                )}
+              </div>
+
+              {/* tổng tiền */}
+              <div className="w-full sm:max-w-[260px] shrink-0 space-y-1.5 self-end sm:self-auto">
+                <div className="flex justify-between items-center text-slate-500 font-medium">
+                  <span>Tạm tính</span>
+                  <span className="text-slate-800 font-bold">{formatCurrency(detailModal.data.subtotalAmount || detailModal.data.totalAmount - (detailModal.data.shippingFee || 0))}</span>
+                </div>
+                <div className="flex justify-between items-center text-slate-500 font-medium">
+                  <span>Phí giao hàng</span>
+                  <span className="text-slate-800 font-bold">{formatCurrency(detailModal.data.shippingFee || 0)}</span>
+                </div>
+                <div className="flex justify-between items-center pt-1 border-t border-dashed border-slate-200">
+                  <span className="text-sm font-bold text-slate-800">Tổng cộng</span>
+                  <span className="text-blue-600 text-base font-extrabold">{formatCurrency(detailModal.data.totalAmount)}</span>
+                </div>
               </div>
             </div>
 
-            {/* Thanh Button Điều khiển trong Modal */}
-            <div className="flex justify-end gap-2.5 pt-3 border-t border-slate-100">
-              <Button variant="outline" size="sm" onClick={detailModal.close} className="!py-2 rounded-lg text-xs">
+            {/* Khối điều hướng các Button */}
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" size="sm" onClick={detailModal.close} className="rounded-lg text-xs !py-1.5 hover:border-blue-600 hover:text-blue-600">
                 Đóng
               </Button>
               
-              {(detailModal.data.orderStatus === 'PENDING' || detailModal.data.status === 'PENDING') && (
-                <>
-                  <Button 
-                    variant="danger" 
-                    size="sm" 
-                    onClick={(e) => handleOpenCancelModal(e, detailModal.data.orderId || detailModal.data.id)}
-                    className="!py-2 rounded-lg text-xs"
-                  >
-                    Từ chối
-                  </Button>
-                  <Button 
+              {(detailModal.data.orderStatus === 'PENDING') && (
+                <Button 
                     variant="primary" 
                     size="sm" 
-                    onClick={(e) => handleConfirm(e, detailModal.data.orderId || detailModal.data.id)}
-                    className="!py-2 rounded-lg text-xs bg-emerald-600 hover:bg-emerald-700"
+                    icon={Check} 
+                    onClick={(e) => handleConfirm(e, detailModal.data.orderId)}
+                    className="rounded-lg text-xs !py-1.5 bg-emerald-600"
                   >
                     Nhận đơn
-                  </Button>
-                </>
+                </Button>
+              )}
+
+              {(detailModal.data.orderStatus === 'CONFIRMED') && (
+                <Button 
+                  variant="primary" 
+                  size="sm" 
+                  onClick={(e) => handlePreparing(e, detailModal.data.orderId)}
+                  className="rounded-lg text-xs !py-1.5 bg-blue-600"
+                >
+                  Chuẩn bị món
+                </Button>
+              )}
+
+              {(detailModal.data.orderStatus === 'PREPARING') && (
+                <Button 
+                  variant="secondary" 
+                  size="sm" 
+                  onClick={(e) => handleReady(e, detailModal.data.orderId)}
+                  className="rounded-lg text-xs !py-1.5 bg-orange-500 hover:bg-orange-600"
+                >
+                  Sẵn sàng giao
+                </Button>
               )}
             </div>
-          </div>
-        </div>
-      )}
+          </>
+        )}
+      </Modal>
     </div>
   );
 }

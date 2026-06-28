@@ -336,7 +336,7 @@ export default function OrderTracking() {
   };
 
   return (
-    <div className="flex-1 p-6 md:p-10 max-w-4xl mx-auto w-full font-google-sans pb-24 space-y-6">
+    <div className="flex-1 p-6 md:p-10 max-w-6xl mx-auto w-full font-google-sans pb-24 space-y-6">
       
       {/* Header */}
       <div className="flex items-center gap-4 mb-4">
@@ -355,6 +355,11 @@ export default function OrderTracking() {
           </span>
         </div>
       </div>
+
+      {/* Bố cục 2 cột (desktop): trạng thái + bản đồ (trái) | tài xế + hóa đơn (phải) */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+        {/* ── CỘT TRÁI: trạng thái + bản đồ ── */}
+        <div className="space-y-6">
 
       {/* Stepper Status Box */}
       <Card variant="elevated" className="p-6.5 md:p-8 shadow-shadow-2">
@@ -464,6 +469,9 @@ export default function OrderTracking() {
           </div>
         </Card>
       )}
+        </div>
+        {/* ── CỘT PHẢI: tài xế + hóa đơn ── */}
+        <div className="space-y-6">
 
       {/* Shipper Info Box */}
       {displayOrder.shipper && (
@@ -562,6 +570,8 @@ export default function OrderTracking() {
           </div>
         )}
       </Card>
+        </div>
+      </div>
 
       {/* Cancel Order Action Button */}
       {(displayOrder.status === 'PENDING' || displayOrder.status === 'CONFIRMED') && (

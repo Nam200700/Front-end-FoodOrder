@@ -496,12 +496,13 @@ export default function Explore() {
                       Món ăn xu hướng gần bạn
                     </h3>
                     
-                    <div className="divide-y divide-slate-50">
+                    {/* Bảng xếp hạng: 1 cột ở màn nhỏ, 2 cột ở desktop (lg+) cho đỡ trống */}
+                    <div className="grid grid-cols-1 lg:grid-cols-2 lg:gap-x-8">
                       {trendingFoods.map((item) => (
-                        <div 
-                          key={item.rank} 
+                        <div
+                          key={item.rank}
                           onClick={() => navigate(`/restaurants/${item.restaurantId}`)}
-                          className="py-4.5 flex items-center justify-between text-xs hover:bg-slate-50/50 rounded-radius-lg px-2 transition-all cursor-pointer group"
+                          className="py-4.5 flex items-center justify-between text-xs hover:bg-slate-50/50 rounded-radius-lg px-2 transition-all cursor-pointer group border-b border-slate-50"
                         >
                           <div className="flex items-center gap-3.5 min-w-0">
                             <span className="font-display-medium text-slate-200 text-base leading-none font-extrabold group-hover:text-[#1A73E8] transition-colors">

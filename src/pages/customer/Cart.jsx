@@ -358,7 +358,7 @@ export default function Cart() {
                 onClick={() => activeOrderCart && executePlaceOrder(activeOrderCart)} 
                 className="flex-1 bg-md-primary hover:bg-md-primary/95 text-white font-bold py-2.5 rounded-xl text-xs shadow-md shadow-md-primary/20 transition cursor-pointer active:scale-95"
               >
-                Đặt ngay 🚀
+                Đặt ngay
               </button>
             </div>
           </div>

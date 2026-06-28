@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, Suspense, lazy } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCartStore } from '../../stores/cartStore';
 import { useAuthStore } from '../../stores/authStore';
@@ -14,8 +14,6 @@ import { mapRestaurant } from '../../utils/mappers';
 import FilterTabs from '../../components/common/FilterTabs';
 import { getCategoryIcon } from '../../utils/iconMap';
 import HeroCarousel from '../../components/customer/HeroCarousel';
-// Nạp khối 3D theo kiểu lazy để không làm nặng bundle khởi tạo; chỉ tải khi cần hiển thị.
-const HeroScene = lazy(() => import('../../components/customer/HeroScene'));
 
 const CATEGORIES = [
   { id: 'all', name: 'Tất cả', icon: '🍽️' },
@@ -45,15 +43,6 @@ export default function Home() {
   const [pastOrders, setPastOrders] = useState([]);
   const [sortByFilter, setSortByFilter] = useState('distance'); // distance, rating, ship
   const [isMapOpen, setIsMapOpen] = useState(false);
-
-  // Chỉ bật khối 3D khi màn đủ rộng & người dùng KHÔNG bật "giảm chuyển động"
-  // (tối ưu hiệu năng + tôn trọng trợ năng). Mobile/cấu hình thấp dùng fallback tĩnh.
-  const [show3D, setShow3D] = useState(false);
-  useEffect(() => {
-    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    const wide = window.matchMedia('(min-width: 768px)').matches;
-    setShow3D(!reduce && wide);
-  }, []);
 
   useEffect(() => {
     const fetchRestaurants = async () => {
@@ -380,8 +369,8 @@ export default function Home() {
   return (
     <div className="flex-1 p-6 md:p-10 max-w-6xl mx-auto w-full font-google-sans pb-24">
       
-      {/* ─── HEADER (lời chào + chip địa chỉ) + KHỐI 3D ACCENT ──────────────────── */}
-      <div className="flex items-center justify-between gap-6 mb-8">
+      {/* ─── HEADER (lời chào + chip địa chỉ giao hàng) ─────────────────────────── */}
+      <div className="mb-8">
         <div className="min-w-0">
           {/* Lời chào — đã bỏ emoji 🔍 */}
           <h1 className="text-2xl md:text-3xl font-extrabold text-md-on-surface tracking-tight">
@@ -399,17 +388,6 @@ export default function Home() {
             </span>
             <ChevronDown size={14} className="shrink-0" />
           </button>
-        </div>
-
-        {/* Khối 3D nhỏ trang trí (chỉ desktop). Tắt 3D thì dùng vòng gradient tĩnh. */}
-        <div className="hidden md:block w-32 h-32 lg:w-40 lg:h-40 shrink-0" aria-hidden="true">
-          {show3D ? (
-            <Suspense fallback={<div className="w-full h-full rounded-full bg-gradient-to-br from-md-primary/25 to-md-secondary/10" />}>
-              <HeroScene />
-            </Suspense>
-          ) : (
-            <div className="w-full h-full rounded-full bg-gradient-to-br from-md-primary/25 to-md-secondary/10" />
-          )}
         </div>
       </div>
 

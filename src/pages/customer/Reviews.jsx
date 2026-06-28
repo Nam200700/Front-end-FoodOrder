@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useOrderStore } from '../../stores/orderStore';
-import { ArrowLeft, Star, Send } from 'lucide-react';
+import { ArrowLeft, Star, Send, Utensils } from 'lucide-react';
 import { useFetchData } from '../../hooks/useFetchData';
 import apiClient from '../../services/api';
 import Spinner from '../../components/common/Spinner';
@@ -119,8 +119,8 @@ export default function Reviews() {
         {/* ĐÁNH GIÁ QUÁN */}
         <div className="bg-white rounded-radius-xl p-5 border border-md-outline-variant/20 shadow-sm space-y-4">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-md-primary-container/20 text-md-primary rounded-radius-lg flex items-center justify-center font-bold text-lg">
-              🍜
+            <div className="w-10 h-10 bg-md-primary-container/20 text-md-primary rounded-radius-lg flex items-center justify-center">
+              <Utensils size={20} />
             </div>
             <div>
               <span className="text-[10px] text-md-outline font-bold uppercase block">ĐÁNH GIÁ</span>

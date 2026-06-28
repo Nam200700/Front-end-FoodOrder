@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../stores/authStore';
-import { User, Phone, Mail, MapPin, LogOut, Camera, Map } from 'lucide-react';
+import { User, Phone, Mail, MapPin, LogOut, Camera, Map, Utensils, Sparkles } from 'lucide-react';
 import MapModal from '../../components/common/MapModal';
 import apiClient from '../../services/api';
 import { getAvatarUrl } from '../../utils/avatarHelper';
@@ -58,7 +58,7 @@ export default function Profile() {
         longitude: Number(lng)
       });
       updateProfile({ name, phone, address, lat, lng });
-      toast.success('Đã cập nhật thông tin cá nhân và vị trí mặc định thành công! 📍');
+      toast.success('Đã cập nhật thông tin cá nhân và vị trí mặc định thành công!');
     } catch (err) {
       console.error('Lỗi khi lưu profile thật lên DB:', err);
       toast.error(err.response?.data?.message || 'Có lỗi xảy ra khi cập nhật thông tin cá nhân.');
@@ -76,39 +76,50 @@ export default function Profile() {
 
   return (
     <div className="flex-1 p-4 md:p-8 max-w-xl mx-auto w-full font-google-sans pb-24 space-y-6">
-      
-      <h1 className="text-xl font-bold text-md-on-surface">Tài khoản của tôi</h1>
+      {/* ─── THẺ THÀNH VIÊN ẨM THỰC (membership card, accent cam) ─────────────────── */}
+      <div className="relative overflow-hidden rounded-radius-xl p-6 shadow-shadow-2 bg-gradient-to-br from-md-primary to-[#FF8C42] text-white animate-fade-in">
+        {/* Hoạ tiết line-art mờ ở góc tạo cảm giác "sổ tay ẩm thực" */}
+        <Utensils className="absolute -right-4 -bottom-4 text-white/10" size={120} strokeWidth={1.2} />
 
-      {/* Profile Header Avatar */}
-      <div className="bg-white rounded-radius-xl p-6 border border-md-outline-variant/20 shadow-sm flex flex-col items-center text-center relative animate-fade-in">
-        <div className="relative">
-          <img 
-            src={getAvatarUrl(user.avatar)} 
-            alt="Avatar" 
-            className="w-24 h-24 rounded-radius-full border-4 border-md-primary/10 object-cover shadow-sm"
-          />
-          <button 
-            type="button"
-            onClick={handleAvatarClick}
-            disabled={uploadingAvatar}
-            className="absolute bottom-0 right-0 p-2 bg-md-primary text-white rounded-radius-full shadow-shadow-2 hover:scale-105 active:scale-95 transition-all cursor-pointer flex items-center justify-center"
-          >
-            {uploadingAvatar ? (
-              <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
-            ) : (
-              <Camera size={14} />
-            )}
-          </button>
+        <div className="relative flex items-center gap-5">
+          <div className="relative shrink-0">
+            <img
+              src={getAvatarUrl(user.avatar)}
+              alt="Avatar"
+              className="w-20 h-20 rounded-radius-full border-4 border-white/30 object-cover shadow-sm"
+            />
+            <button
+              type="button"
+              onClick={handleAvatarClick}
+              disabled={uploadingAvatar}
+              className="absolute bottom-0 right-0 p-1.5 bg-white text-md-primary rounded-radius-full shadow-shadow-2 hover:scale-105 active:scale-95 transition-all cursor-pointer flex items-center justify-center"
+              title="Đổi ảnh đại diện"
+            >
+              {uploadingAvatar ? (
+                <span className="w-3 h-3 border-2 border-md-primary border-t-transparent rounded-full animate-spin"></span>
+              ) : (
+                <Camera size={13} />
+              )}
+            </button>
+          </div>
+
+          <div className="min-w-0">
+            <span className="inline-flex items-center gap-1 text-[10px] font-bold bg-white/20 px-2.5 py-0.5 rounded-full uppercase tracking-wider">
+              <Sparkles size={11} /> Thành viên Foodie
+            </span>
+            <h2 className="font-extrabold text-xl mt-2 truncate">{user.name}</h2>
+            <p className="text-xs text-white/85 font-semibold mt-0.5 truncate">{user.email}</p>
+          </div>
         </div>
-        
-        <h2 className="font-bold text-base text-md-on-surface mt-4">{user.name}</h2>
-        <span className="text-[10px] text-md-primary bg-md-primary-container/20 font-bold px-3 py-1 rounded-full uppercase mt-1.5 tracking-wider shadow-sm border border-md-primary/5">
-          Khách hàng thân thiết
-        </span>
       </div>
 
       {/* Info Form */}
       <form onSubmit={handleSave} className="bg-white rounded-radius-xl p-5 border border-md-outline-variant/20 shadow-sm space-y-5.5 animate-slide-up">
+        {/* Mục "Hồ sơ" của sổ tay */}
+        <div className="flex items-center gap-2 pb-1 border-b border-md-outline-variant/20">
+          <User size={16} className="text-md-primary" />
+          <h3 className="text-sm font-extrabold text-md-on-surface">Hồ sơ của bạn</h3>
+        </div>
         <div>
           <label className="block text-[10px] font-bold text-md-on-surface-variant uppercase tracking-wider mb-2">
             Họ và tên

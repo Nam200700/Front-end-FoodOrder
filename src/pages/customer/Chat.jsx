@@ -148,11 +148,14 @@ export default function Chat() {
                   </h3>
                   {orderId ? (
                     <span className="text-[10px] text-emerald-600 font-bold block mt-1 animate-fade-in">
-                      🟢 Hoạt động • Giao dịch đơn #{orderId}
+                      {/* Chấm xanh báo trạng thái online thay cho emoji 🟢 */}
+                      <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1 align-middle"></span>
+                      Hoạt động • Giao dịch đơn #{orderId}
                     </span>
                   ) : (
                     <span className="text-[10px] text-emerald-600 font-bold block mt-1 animate-fade-in">
-                      🟢 Hoạt động
+                      <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1 align-middle"></span>
+                      Hoạt động
                     </span>
                   )}
                 </div>

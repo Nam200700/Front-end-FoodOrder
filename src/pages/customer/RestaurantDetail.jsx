@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useCartStore } from '../../stores/cartStore';
 import { useChatStore } from '../../stores/chatStore';
 import { useAuthStore } from '../../stores/authStore';
-import { ArrowLeft, Star, Clock, MapPin, Phone, Search, ShoppingBag, Heart, Share2, Plus, Minus, MessageSquare, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, Star, Clock, MapPin, Phone, Search, ShoppingBag, Heart, Share2, Plus, Minus, MessageSquare, AlertTriangle, Bike } from 'lucide-react';
 import { formatCurrency } from '../../utils/format';
 import Button from '../../components/common/Button';
 import Card from '../../components/common/Card';
@@ -311,8 +311,8 @@ export default function RestaurantDetail() {
                   <Clock size={16} />
                   {restaurant.time}
                 </span>
-                <span className="bg-slate-100 px-3 py-1 rounded-radius-sm text-md-on-surface-variant">
-                  📍 {restaurant.distance}
+                <span className="flex items-center gap-1.5 bg-slate-100 px-3 py-1 rounded-radius-sm text-md-on-surface-variant">
+                  <MapPin size={16} /> {restaurant.distance}
                 </span>
               </div>
             </div>
@@ -339,19 +339,19 @@ export default function RestaurantDetail() {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-6 pt-6 border-t border-md-outline-variant/30 text-xs md:text-sm text-md-on-surface-variant text-left font-medium">
             <div className="flex items-center gap-2">
-              <span className="font-extrabold text-md-on-surface shrink-0">📍 Địa chỉ:</span>
+              <span className="flex items-center gap-1.5 font-extrabold text-md-on-surface shrink-0"><MapPin size={15} /> Địa chỉ:</span>
               <span className="truncate">{restaurant.address}</span>
             </div>
             <div className="flex items-center gap-2">
-              <span className="font-extrabold text-md-on-surface shrink-0">⏰ Mở cửa:</span>
+              <span className="flex items-center gap-1.5 font-extrabold text-md-on-surface shrink-0"><Clock size={15} /> Mở cửa:</span>
               <span>{restaurant.openTime}</span>
             </div>
             <div className="flex items-center gap-2">
-              <span className="font-extrabold text-md-on-surface shrink-0">☎️ Điện thoại:</span>
+              <span className="flex items-center gap-1.5 font-extrabold text-md-on-surface shrink-0"><Phone size={15} /> Điện thoại:</span>
               <span>{restaurant.phone}</span>
             </div>
             <div className="flex items-center gap-2">
-              <span className="font-extrabold text-md-on-surface shrink-0">💸 Phí ship:</span>
+              <span className="flex items-center gap-1.5 font-extrabold text-md-on-surface shrink-0"><Bike size={15} /> Phí ship:</span>
               <span className="text-md-primary font-bold">Từ {formatCurrency(restaurant.shippingFee)}</span>
             </div>
           </div>

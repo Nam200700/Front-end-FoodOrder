@@ -18,7 +18,7 @@ export function useAvatarUpload(onSuccess) {
       } else {
         await apiClient.put('/users/profile', { avatar: newUrl });
         updateProfile({ avatar: newUrl });
-        toast.success('Cập nhật ảnh đại diện thành công! 🎉');
+        toast.success('Cập nhật ảnh đại diện thành công!');
       }
       return newUrl;
     } catch (err) {

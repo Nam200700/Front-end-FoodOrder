@@ -454,3 +454,16 @@
 .bg-slate-50 .donut-label {
   color: #64748B !important; /* slate-500 */
 }
+
+/* ─── Gauge Chart (cung 270°) ───────────────────────────────────────────────
+   GaugeChart tái dùng class .donut-label/.donut-value ở giữa để khớp theme.
+   Bổ sung thêm bí danh .gauge-label/.gauge-value (cùng quy tắc màu) để code
+   tương lai có thể dùng tên rõ nghĩa hơn mà vẫn hiển thị đúng ở mọi nền. */
+.gauge-label { color: #94A3B8 !important; }            /* mặc định nền tối */
+.gauge-value { color: #F8FAFC !important; }
+.theme-light .gauge-value,
+.bg-white .gauge-value,
+.bg-slate-50 .gauge-value { color: #1E293B !important; }
+.theme-light .gauge-label,
+.bg-white .gauge-label,
+.bg-slate-50 .gauge-label { color: #64748B !important; }

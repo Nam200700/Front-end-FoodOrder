@@ -1,8 +1,8 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, Suspense, lazy } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCartStore } from '../../stores/cartStore';
 import { useAuthStore } from '../../stores/authStore';
-import { Search, MapPin, ShoppingBag, Star, Clock, Heart, Award, ArrowRight } from 'lucide-react';
+import { Search, MapPin, ShoppingBag, Star, Clock, Heart, Award, ArrowRight, RotateCcw, Sparkles, ChevronDown } from 'lucide-react';
 import { formatCurrency, removeVietnameseTones, normalizeForMatch } from '../../utils/format';
 import Input from '../../components/common/Input';
 import Card from '../../components/common/Card';
@@ -12,6 +12,10 @@ import MapModal from '../../components/common/MapModal';
 import { SkeletonRestaurantCard } from '../../components/common/SkeletonCard';
 import { mapRestaurant } from '../../utils/mappers';
 import FilterTabs from '../../components/common/FilterTabs';
+import { getCategoryIcon } from '../../utils/iconMap';
+import HeroCarousel from '../../components/customer/HeroCarousel';
+// Nạp khối 3D theo kiểu lazy để không làm nặng bundle khởi tạo; chỉ tải khi cần hiển thị.
+const HeroScene = lazy(() => import('../../components/customer/HeroScene'));
 
 const CATEGORIES = [
   { id: 'all', name: 'Tất cả', icon: '🍽️' },
@@ -41,6 +45,15 @@ export default function Home() {
   const [pastOrders, setPastOrders] = useState([]);
   const [sortByFilter, setSortByFilter] = useState('distance'); // distance, rating, ship
   const [isMapOpen, setIsMapOpen] = useState(false);
+
+  // Chỉ bật khối 3D khi màn đủ rộng & người dùng KHÔNG bật "giảm chuyển động"
+  // (tối ưu hiệu năng + tôn trọng trợ năng). Mobile/cấu hình thấp dùng fallback tĩnh.
+  const [show3D, setShow3D] = useState(false);
+  useEffect(() => {
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const wide = window.matchMedia('(min-width: 768px)').matches;
+    setShow3D(!reduce && wide);
+  }, []);
 
   useEffect(() => {
     const fetchRestaurants = async () => {
@@ -367,25 +380,41 @@ export default function Home() {
   return (
     <div className="flex-1 p-6 md:p-10 max-w-6xl mx-auto w-full font-google-sans pb-24">
       
-      {/* ─── HEADER / LOCATION CHIP ────────────────────────────────────────────── */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 mb-8">
-        <div>
-          <h1 className="text-2xl md:text-3xl font-extrabold text-md-on-surface tracking-tight">Bạn muốn ăn gì hôm nay? 🔍</h1>
-          <div 
+      {/* ─── HEADER (lời chào + chip địa chỉ) + KHỐI 3D ACCENT ──────────────────── */}
+      <div className="flex items-center justify-between gap-6 mb-8">
+        <div className="min-w-0">
+          {/* Lời chào — đã bỏ emoji 🔍 */}
+          <h1 className="text-2xl md:text-3xl font-extrabold text-md-on-surface tracking-tight">
+            Bạn muốn ăn gì hôm nay?
+          </h1>
+          {/* Chip địa chỉ giao hàng: bấm mở MapModal, icon MapPin thay cho emoji 📍 */}
+          <button
+            type="button"
             onClick={() => setIsMapOpen(true)}
-            className="inline-flex items-center gap-2 px-4.5 py-2 bg-gradient-to-r from-md-primary/10 to-md-secondary/5 text-md-primary rounded-radius-full text-sm font-extrabold mt-3.5 cursor-pointer border border-md-primary/15 hover:from-md-primary/20 hover:to-md-secondary/15 transition-all shadow-sm"
+            className="inline-flex items-center gap-2 max-w-full px-4.5 py-2 bg-gradient-to-r from-md-primary/10 to-md-secondary/5 text-md-primary rounded-radius-full text-sm font-extrabold mt-3.5 cursor-pointer border border-md-primary/15 hover:from-md-primary/20 hover:to-md-secondary/15 transition-all shadow-sm"
           >
-            <MapPin size={16} />
-            <span className={!user?.address ? "text-amber-600 font-extrabold animate-pulse" : ""}>
-              📍 {user?.address ? (user.address.length > 40 ? user.address.slice(0, 40) + '...' : user.address) : 'Vui lòng chọn địa chỉ giao hàng'}
+            <MapPin size={16} className="shrink-0" />
+            <span className={`truncate ${!user?.address ? "text-amber-600 animate-pulse" : ""}`}>
+              {user?.address ? (user.address.length > 40 ? user.address.slice(0, 40) + '...' : user.address) : 'Vui lòng chọn địa chỉ giao hàng'}
             </span>
-            <span className="text-[11px] ml-1">▼</span>
-          </div>
+            <ChevronDown size={14} className="shrink-0" />
+          </button>
+        </div>
+
+        {/* Khối 3D nhỏ trang trí (chỉ desktop). Tắt 3D thì dùng vòng gradient tĩnh. */}
+        <div className="hidden md:block w-32 h-32 lg:w-40 lg:h-40 shrink-0" aria-hidden="true">
+          {show3D ? (
+            <Suspense fallback={<div className="w-full h-full rounded-full bg-gradient-to-br from-md-primary/25 to-md-secondary/10" />}>
+              <HeroScene />
+            </Suspense>
+          ) : (
+            <div className="w-full h-full rounded-full bg-gradient-to-br from-md-primary/25 to-md-secondary/10" />
+          )}
         </div>
       </div>
 
       {/* ─── SEARCH BAR (Pill Shape & Expand on focus) ─────────────────────────── */}
-      <div className="mb-10 relative z-20">
+      <div className="mb-8 relative z-20">
         <Input
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
@@ -394,6 +423,17 @@ export default function Home() {
           className="w-full"
         />
       </div>
+
+      {/* ─── HERO CAROUSEL: QUÁN NỔI BẬT (điểm nhấn kích thích thèm ăn) ─────────── */}
+      {/* Dùng lại danh sách featuredRestaurants đã tính sẵn (data thật), bấm vào mở quán. */}
+      {featuredRestaurants.length > 0 && (
+        <div className="mb-10">
+          <HeroCarousel
+            items={featuredRestaurants.slice(0, 6)}
+            onSelect={(res) => navigate(`/restaurants/${res.id}`)}
+          />
+        </div>
+      )}
 
       {/* ─── CATEGORY CHIPS (Horizontal snap scroll) ───────────────────────────── */}
       <div className="mb-10 overflow-hidden">
@@ -413,7 +453,11 @@ export default function Home() {
                     : 'bg-white text-md-on-surface border-md-outline-variant/50 hover:bg-md-surface-variant/40'
                 }`}
               >
-                <span className="text-lg">{cat.icon}</span>
+                {(() => {
+                  // Render icon lucide theo id danh mục (thay cho emoji cũ trong CATEGORIES)
+                  const CatIcon = getCategoryIcon(cat.id);
+                  return <CatIcon size={18} className="shrink-0" />;
+                })()}
                 <span>{cat.name}</span>
               </button>
             );
@@ -425,7 +469,7 @@ export default function Home() {
       {orderAgainRestaurants.length > 0 && (
         <div className="mb-12 overflow-hidden animate-fade-in">
           <h2 className="text-lg md:text-xl font-extrabold text-md-on-surface mb-4 flex items-center gap-2">
-            🔄 Đặt Lại Quán Cũ
+            <RotateCcw className="text-md-primary" size={20} /> Đặt Lại Quán Cũ
           </h2>
           <div className="flex gap-4 overflow-x-auto no-scrollbar py-1.5">
             {orderAgainRestaurants.map((res) => (
@@ -537,9 +581,11 @@ export default function Home() {
         <div className="mb-12 animate-fade-in">
           <div className="flex items-center justify-between mb-5">
             <h2 className="text-xl md:text-2xl font-extrabold text-md-on-surface flex items-center gap-2">
-              ✨ Dành Riêng Cho Bạn 
-              <span className="text-[10px] md:text-xs font-bold text-md-primary bg-md-primary-container/20 px-3 py-1.5 rounded-full uppercase tracking-wider ml-1">
-                {favCuisineName === 'Được đánh giá cao' ? '✨ Gợi ý hot' : `❤️ Thích: ${favCuisineName}`}
+              <Sparkles className="text-md-primary" size={22} /> Dành Riêng Cho Bạn
+              <span className="inline-flex items-center gap-1 text-[10px] md:text-xs font-bold text-md-primary bg-md-primary-container/20 px-3 py-1.5 rounded-full uppercase tracking-wider ml-1">
+                {favCuisineName === 'Được đánh giá cao'
+                  ? (<><Sparkles size={12} /> Gợi ý hot</>)
+                  : (<><Heart size={12} className="fill-md-primary" /> Thích: {favCuisineName}</>)}
               </span>
             </h2>
           </div>
@@ -591,9 +637,9 @@ export default function Home() {
           {/* Advanced Sorting Filter Tabs */}
           <FilterTabs
             tabs={[
-              { id: 'distance', label: '📍 Gần nhất' },
-              { id: 'rating', label: '⭐ Đánh giá cao' },
-              { id: 'ship', label: '💸 Phí ship rẻ' }
+              { id: 'distance', label: 'Gần nhất' },
+              { id: 'rating', label: 'Đánh giá cao' },
+              { id: 'ship', label: 'Phí ship rẻ' }
             ]}
             activeTab={sortByFilter}
             onTabChange={setSortByFilter}
@@ -690,7 +736,7 @@ export default function Home() {
                   Đang tải thêm...
                 </>
               ) : (
-                'Tải thêm quán ăn 🍲'
+                'Tải thêm quán ăn'
               )}
             </button>
           </div>

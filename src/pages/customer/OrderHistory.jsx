@@ -221,7 +221,8 @@ export default function OrderHistory() {
               />
             </div>
           ) : (
-            <div className="space-y-4">
+            // Lưới 2 cột trên màn rộng (xl+) để tận dụng không gian; 1 cột ở màn nhỏ
+            <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
               {list.map((order) => (
                 <div 
                   key={order.id}

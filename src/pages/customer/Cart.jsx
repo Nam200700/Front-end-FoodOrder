@@ -141,6 +141,9 @@ export default function Cart() {
             if (cart.latitude && cart.longitude && deliveryLat && deliveryLng)
               dist = calculateHaversineDistance(cart.latitude, cart.longitude, deliveryLat, deliveryLng);
             const shippingFee = dist !== null ? Math.max(15000, 15000 + Math.ceil(Math.max(0, dist - 2)) * 5000) : 15000;
+            // Số lượng & tổng tiền RIÊNG của quán này (trước đây footer hiển thị nhầm tổng toàn giỏ)
+            const cartItemCount = cart.items.reduce((a, i) => a + i.quantity, 0);
+            const cartTotal = cart.subtotal + shippingFee;
             const isSubmitting = submittingCartId === cart.restaurantId;
 
             return (
@@ -310,11 +313,19 @@ export default function Cart() {
                     <div className="space-y-0.5">
                       <div className="flex gap-1.5 items-center">
                         <span className="text-xs text-slate-500">Số lượng sản phẩm:</span>
-                        <span className="font-extrabold text-sm text-amber-600 md:text-[#ff6b35]">{totalItems}</span>
+                        <span className="font-extrabold text-sm text-slate-700">{cartItemCount}</span>
+                      </div>
+                      <div className="flex gap-1.5 items-center">
+                        <span className="text-xs text-slate-500">Tạm tính:</span>
+                        <span className="font-bold text-xs text-slate-700">{formatCurrency(cart.subtotal)}</span>
+                      </div>
+                      <div className="flex gap-1.5 items-center">
+                        <span className="text-xs text-slate-500">Phí ship:</span>
+                        <span className="font-bold text-xs text-slate-700">{formatCurrency(shippingFee)}</span>
                       </div>
                       <div className="flex gap-1.5 items-center">
                         <span className="text-xs text-slate-500">Tổng cộng:</span>
-                        <span className="font-extrabold text-sm text-amber-600 md:text-[#ff6b35]">{formatCurrency(totalSubtotal)}</span>
+                        <span className="font-extrabold text-sm text-amber-600 md:text-[#ff6b35]">{formatCurrency(cartTotal)}</span>
                       </div>
                     </div>
                     <Button onClick={() => handlePlaceOrder(cart)} loading={isSubmitting} disabled={isSubmitting} size="sm"
@@ -327,6 +338,59 @@ export default function Cart() {
             );
           })}
         </div>
+
+        {/* ── CỘT PHẢI: thông tin giao hàng + tổng quan (sticky trên desktop) ──
+            Dùng state address/recipientPhone/deliveryLat-Lng & handler sẵn có,
+            KHÔNG thêm logic mới. Mỗi quán vẫn thanh toán riêng ở card của quán. */}
+        <aside className="w-full lg:w-80 shrink-0 lg:sticky lg:top-5 space-y-4">
+          {/* Địa chỉ giao hàng (bấm "Chọn trên bản đồ" mở MapModal sẵn có) */}
+          <div className="bg-white rounded-xl p-4 border border-slate-200 shadow-sm">
+            <h3 className="text-xs font-extrabold text-slate-800 uppercase tracking-wider flex items-center gap-1.5 mb-3">
+              <MapPin size={15} className="text-md-primary" /> Giao tới
+            </h3>
+            <p className="text-xs text-slate-600 font-semibold leading-relaxed min-h-[2.5rem]">
+              {address || 'Chưa chọn địa chỉ giao hàng'}
+            </p>
+            <button
+              onClick={() => setIsMapOpen(true)}
+              className="mt-2 w-full flex items-center justify-center gap-1.5 text-xs font-extrabold text-md-primary bg-md-primary/10 hover:bg-md-primary/20 border border-md-primary/15 py-2 rounded-lg transition-all cursor-pointer"
+            >
+              <Map size={14} /> Chọn trên bản đồ
+            </button>
+          </div>
+
+          {/* Số điện thoại nhận hàng */}
+          <div className="bg-white rounded-xl p-4 border border-slate-200 shadow-sm">
+            <h3 className="text-xs font-extrabold text-slate-800 uppercase tracking-wider flex items-center gap-1.5 mb-3">
+              <Phone size={15} className="text-md-primary" /> SĐT nhận hàng
+            </h3>
+            <input
+              type="tel"
+              value={recipientPhone}
+              onChange={(e) => setRecipientPhone(e.target.value)}
+              placeholder="Nhập số điện thoại..."
+              className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg bg-slate-50/50 focus:outline-none focus:border-md-primary focus:bg-white text-slate-700 font-semibold transition-all"
+            />
+          </div>
+
+          {/* Tổng quan toàn bộ giỏ (tổng hợp các quán) */}
+          <div className="bg-white rounded-xl p-4 border border-slate-200 shadow-sm">
+            <h3 className="text-xs font-extrabold text-slate-800 uppercase tracking-wider flex items-center gap-1.5 mb-3">
+              <ShoppingBag size={15} className="text-md-primary" /> Tổng quan
+            </h3>
+            <div className="flex items-center justify-between text-xs text-slate-600 mb-1.5">
+              <span>Số món</span>
+              <span className="font-extrabold text-slate-800">{totalItems}</span>
+            </div>
+            <div className="flex items-center justify-between text-xs text-slate-600">
+              <span>Tạm tính + phí ship</span>
+              <span className="font-extrabold text-md-primary text-base">{formatCurrency(totalSubtotal)}</span>
+            </div>
+            <p className="text-[10px] text-slate-400 mt-3 leading-relaxed">
+              Mỗi quán được đặt thành đơn riêng. Bấm "Thanh toán ngay" ở từng quán để đặt đơn.
+            </p>
+          </div>
+        </aside>
       </div>
 
       {/* ── MODAL ĐẾM NGƯỢC ĐƠN HÀNG ── */}

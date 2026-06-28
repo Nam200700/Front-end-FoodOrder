@@ -386,8 +386,8 @@ export default function RestaurantDetail() {
 
       {/* ─── TAB CONTENT: MENU ─────────────────────────────────────────────────── */}
       {activeTab === 'menu' && (
-        <div className="max-w-5xl mx-auto px-6 mt-8 flex flex-col md:flex-row gap-8">
-          
+        <div className="max-w-6xl mx-auto px-6 mt-8 flex flex-col md:flex-row gap-8">
+
           {/* Category Anchor Sidebar (Sticky, on larger screens) */}
           <aside className="w-full md:w-52 shrink-0 md:sticky md:top-24 h-max self-start py-2.5">
             <h4 className="text-[11px] font-extrabold text-md-on-surface-variant tracking-wider uppercase mb-4 px-2 hidden md:block">
@@ -494,6 +494,37 @@ export default function RestaurantDetail() {
             ))}
           </div>
 
+          {/* ── PANEL GIỎ HÀNG (desktop xl+): tóm tắt giỏ của quán này ──
+              Dùng cartItems/currentCart sẵn có; mobile/tablet vẫn dùng thanh đáy nổi. */}
+          <aside className="hidden xl:block w-80 shrink-0 sticky top-24 self-start">
+            <div className="bg-white rounded-radius-xl p-5 border border-md-outline-variant/20 shadow-sm">
+              <h3 className="text-xs font-extrabold text-md-on-surface uppercase tracking-wider flex items-center gap-1.5 mb-3">
+                <ShoppingBag size={15} className="text-md-primary" /> Giỏ hàng
+              </h3>
+              {cartItems.length === 0 ? (
+                <p className="text-xs text-md-outline font-semibold py-2">Chưa có món nào. Hãy thêm món từ thực đơn.</p>
+              ) : (
+                <>
+                  <div className="space-y-2 max-h-72 overflow-y-auto no-scrollbar">
+                    {cartItems.map((item) => (
+                      <div key={item.id} className="flex items-center justify-between text-xs gap-2">
+                        <span className="text-md-on-surface-variant truncate pr-2">{item.quantity}× {item.name}</span>
+                        <span className="font-bold text-md-on-surface shrink-0">{formatCurrency((item.price || 0) * item.quantity)}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="flex items-center justify-between border-t border-slate-100 pt-3 mt-3">
+                    <span className="text-xs font-bold text-md-on-surface-variant">Tạm tính</span>
+                    <span className="text-base font-extrabold text-md-primary">{formatCurrency(currentCart?.subtotal || 0)}</span>
+                  </div>
+                  <button onClick={() => navigate('/cart')} className="w-full mt-3 bg-md-primary text-white font-extrabold py-2.5 rounded-radius-full text-sm hover:bg-opacity-95 transition-all">
+                    Xem giỏ hàng &amp; đặt
+                  </button>
+                </>
+              )}
+            </div>
+          </aside>
+
         </div>
       )}
 
@@ -561,7 +592,7 @@ export default function RestaurantDetail() {
 
       {/* ─── FLOATING CART BOTTOM BAR (Shows when there is item in cart) ────────── */}
       {cartItems.length > 0 && (
-        <div className="fixed bottom-0 left-0 right-0 p-5 bg-white/80 backdrop-blur-md border-t border-md-outline-variant/30 flex justify-center z-35 shadow-shadow-4">
+        <div className="fixed bottom-0 left-0 right-0 p-5 bg-white/80 backdrop-blur-md border-t border-md-outline-variant/30 flex justify-center z-35 shadow-shadow-4 xl:hidden">
           <div className="w-full max-w-5xl flex items-center justify-between bg-md-primary text-white px-6 py-4.5 rounded-radius-full shadow-shadow-4 hover:scale-[1.01] active:scale-[0.99] transition-all cursor-pointer" onClick={() => navigate('/cart')}>
             <div className="flex items-center gap-4">
               <div className="relative shrink-0">

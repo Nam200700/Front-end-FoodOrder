@@ -75,9 +75,11 @@ export default function Profile() {
   if (!user) return null;
 
   return (
-    <div className="flex-1 p-4 md:p-8 max-w-xl mx-auto w-full font-google-sans pb-24 space-y-6">
+    <div className="flex-1 p-4 md:p-8 max-w-4xl mx-auto w-full font-google-sans pb-24 space-y-6">
+      {/* Bố cục 2 cột (desktop): thẻ thành viên (trái) + form hồ sơ (phải) */}
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 items-start">
       {/* ─── THẺ THÀNH VIÊN ẨM THỰC (membership card, accent cam) ─────────────────── */}
-      <div className="relative overflow-hidden rounded-radius-xl p-6 shadow-shadow-2 bg-gradient-to-br from-md-primary to-[#FF8C42] text-white animate-fade-in">
+      <div className="lg:col-span-2 relative overflow-hidden rounded-radius-xl p-6 shadow-shadow-2 bg-gradient-to-br from-md-primary to-[#FF8C42] text-white animate-fade-in">
         {/* Hoạ tiết line-art mờ ở góc tạo cảm giác "sổ tay ẩm thực" */}
         <Utensils className="absolute -right-4 -bottom-4 text-white/10" size={120} strokeWidth={1.2} />
 
@@ -114,7 +116,7 @@ export default function Profile() {
       </div>
 
       {/* Info Form */}
-      <form onSubmit={handleSave} className="bg-white rounded-radius-xl p-5 border border-md-outline-variant/20 shadow-sm space-y-5.5 animate-slide-up">
+      <form onSubmit={handleSave} className="lg:col-span-3 bg-white rounded-radius-xl p-5 border border-md-outline-variant/20 shadow-sm space-y-5.5 animate-slide-up">
         {/* Mục "Hồ sơ" của sổ tay */}
         <div className="flex items-center gap-2 pb-1 border-b border-md-outline-variant/20">
           <User size={16} className="text-md-primary" />
@@ -206,6 +208,7 @@ export default function Profile() {
           )}
         </button>
       </form>
+      </div>
 
       {/* Dangerous Operations */}
       <button

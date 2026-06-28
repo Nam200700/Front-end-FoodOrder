@@ -367,8 +367,12 @@ export default function Home() {
   };
 
   return (
-    <div className="flex-1 p-6 md:p-10 max-w-6xl mx-auto w-full font-google-sans pb-24">
-      
+    <div className="flex-1 p-6 md:p-10 max-w-7xl mx-auto w-full font-google-sans pb-24">
+      {/* Bố cục dashboard: cột feed chính (trái) + panel đơn hàng/địa chỉ (phải, desktop lg+) */}
+      <div className="flex gap-8 items-start">
+        {/* ═══ CỘT CHÍNH: feed khám phá món ═══ */}
+        <div className="flex-1 min-w-0">
+
       {/* ─── HEADER (lời chào + chip địa chỉ giao hàng) ─────────────────────────── */}
       <div className="mb-8">
         <div className="min-w-0">
@@ -493,7 +497,7 @@ export default function Home() {
             </span>
           </div>
 
-          <div className="flex md:grid gap-6 overflow-x-auto md:overflow-visible no-scrollbar py-2.5 snap-x md:snap-none scroll-smooth md:grid-cols-4">
+          <div className="flex md:grid gap-6 overflow-x-auto md:overflow-visible no-scrollbar py-2.5 snap-x md:snap-none scroll-smooth md:grid-cols-2 xl:grid-cols-3">
             {featuredRestaurants.map((res) => (
               <Card
                 key={res.id}
@@ -567,7 +571,7 @@ export default function Home() {
               </span>
             </h2>
           </div>
-          <div className="flex md:grid gap-4 md:gap-6 overflow-x-auto md:overflow-visible no-scrollbar py-1.5 snap-x md:snap-none scroll-smooth md:grid-cols-4">
+          <div className="flex md:grid gap-4 md:gap-6 overflow-x-auto md:overflow-visible no-scrollbar py-1.5 snap-x md:snap-none scroll-smooth md:grid-cols-2 xl:grid-cols-3">
             {recommendedRestaurants.map((res) => (
               <Card
                 key={`recom-${res.id}`}
@@ -720,12 +724,66 @@ export default function Home() {
           </div>
         )}
       </div>
+        </div>
+        {/* ═══ PANEL PHẢI: địa chỉ giao + tóm tắt giỏ hàng (chỉ desktop lg+) ═══ */}
+        {/* Toàn bộ dữ liệu lấy từ user & cartStore đã có — KHÔNG thêm logic mới. */}
+        <aside className="hidden lg:block w-80 shrink-0 sticky top-6 space-y-4">
+          {/* Thẻ địa chỉ giao hàng (bấm "Đổi" mở MapModal sẵn có) */}
+          <div className="bg-white rounded-radius-xl p-5 border border-md-outline-variant/20 shadow-sm">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-xs font-extrabold text-md-on-surface uppercase tracking-wider flex items-center gap-1.5">
+                <MapPin size={15} className="text-md-primary" /> Giao tới
+              </h3>
+              <button onClick={() => setIsMapOpen(true)} className="text-[11px] font-extrabold text-md-primary hover:underline">Đổi</button>
+            </div>
+            <p className="text-xs text-md-on-surface-variant font-semibold leading-relaxed">
+              {user?.address || 'Chưa chọn địa chỉ giao hàng'}
+            </p>
+          </div>
 
-      {/* ─── FLOATING CART FAB (Shows if there is items in cart) ───────────────── */}
+          {/* Thẻ tóm tắt giỏ hàng (carts từ cartStore) */}
+          <div className="bg-white rounded-radius-xl p-5 border border-md-outline-variant/20 shadow-sm">
+            <h3 className="text-xs font-extrabold text-md-on-surface uppercase tracking-wider flex items-center gap-1.5 mb-3">
+              <ShoppingBag size={15} className="text-md-primary" /> Giỏ hàng của bạn
+            </h3>
+            {cartItemsCount === 0 ? (
+              <p className="text-xs text-md-outline font-semibold py-2">Chưa có món nào trong giỏ.</p>
+            ) : (
+              <>
+                {/* Hiển thị GỌN theo từng quán (tên + số món + tổng tiền quán) để panel
+                    không bị kéo dài khi giỏ có quá nhiều món. Có scroll nếu nhiều quán. */}
+                <div className="space-y-2.5 max-h-64 overflow-y-auto no-scrollbar">
+                  {carts.map((cart) => {
+                    const itemCount = (cart.items || []).reduce((s, it) => s + it.quantity, 0);
+                    return (
+                      <div key={cart.restaurantId} className="flex items-center justify-between gap-2">
+                        <div className="min-w-0">
+                          <p className="text-xs font-extrabold text-md-on-surface truncate">{cart.restaurantName}</p>
+                          <p className="text-[11px] text-md-on-surface-variant font-semibold">{itemCount} món</p>
+                        </div>
+                        <span className="text-xs font-extrabold text-md-on-surface shrink-0">{formatCurrency(cart.subtotal || 0)}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+                <div className="flex items-center justify-between border-t border-slate-100 pt-3 mt-2">
+                  <span className="text-xs font-bold text-md-on-surface-variant">Tổng ({cartItemsCount} món)</span>
+                  <span className="text-base font-extrabold text-md-primary">{formatCurrency(cartTotal)}</span>
+                </div>
+                <button onClick={() => navigate('/cart')} className="w-full mt-3 bg-md-primary text-white font-extrabold py-2.5 rounded-radius-full text-sm hover:bg-opacity-95 transition-all">
+                  Tới giỏ hàng
+                </button>
+              </>
+            )}
+          </div>
+        </aside>
+      </div>
+
+      {/* ─── FLOATING CART FAB (chỉ mobile/tablet; desktop đã có panel phải) ───── */}
       {cartItemsCount > 0 && (
         <button
           onClick={() => navigate('/cart')}
-          className="fixed bottom-24 left-6 md:left-auto md:right-80 z-40 bg-md-primary text-white pl-5 pr-6 py-3.5 rounded-radius-full shadow-shadow-5 flex items-center gap-3.5 hover:scale-105 active:scale-95 transition-all font-extrabold text-base"
+          className="fixed bottom-24 left-6 md:left-auto md:right-80 z-40 lg:hidden bg-md-primary text-white pl-5 pr-6 py-3.5 rounded-radius-full shadow-shadow-5 flex items-center gap-3.5 hover:scale-105 active:scale-95 transition-all font-extrabold text-base"
         >
           <div className="relative">
             <ShoppingBag size={22} />

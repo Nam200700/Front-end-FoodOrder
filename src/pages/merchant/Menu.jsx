@@ -843,7 +843,7 @@ export default function MerchantMenu() {
               value={newCatName}
               onChange={(e) => setNewCatName(e.target.value)}
               placeholder="Ví dụ: Món nướng, Khai vị..."
-              className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-md-primary text-slate-800"
+              className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-md-secondary text-slate-800"
             />
           </div>
           <div className="flex justify-end gap-3 pt-2">
@@ -883,7 +883,7 @@ export default function MerchantMenu() {
               value={editCatName}
               onChange={(e) => setEditCatName(e.target.value)}
               placeholder="Nhập tên danh mục..."
-              className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-md-primary text-slate-800"
+              className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-md-secondary text-slate-800"
             />
           </div>
           <div className="flex justify-end gap-3 pt-2">

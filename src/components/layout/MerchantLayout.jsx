@@ -20,7 +20,8 @@ import {
   ChevronRight,
   LogOut,
   Bell,
-  X
+  X,
+  Store
 } from 'lucide-react';
 
 import { useAvatarUpload } from '../../hooks/useAvatarUpload';
@@ -108,7 +109,7 @@ export default function MerchantLayout() {
       imageUrl: newUrl
     });
     setRestaurant(prev => prev ? { ...prev, imageUrl: newUrl } : null);
-    toast.success("Cập nhật logo nhà hàng thành công! 🏪");
+    toast.success("Cập nhật logo nhà hàng thành công!");
   });
 
   const handleLogoClick = () => {
@@ -145,8 +146,8 @@ export default function MerchantLayout() {
 
         {/* Brand / Logo */}
         <div className="p-5 flex items-center gap-3 border-b border-md-outline-variant">
-          <div className="w-10 h-10 bg-md-secondary rounded-radius-md flex items-center justify-center text-white font-bold text-lg shadow-shadow-2">
-            🏪
+          <div className="w-10 h-10 bg-md-secondary rounded-radius-md flex items-center justify-center text-white shadow-shadow-2">
+            <Store size={20} />
           </div>
           {!sidebarCollapsed && (
             <div className="flex flex-col">
@@ -223,8 +224,8 @@ export default function MerchantLayout() {
       {/* ─── MOBILE MERCHANT NAVIGATION HEADER ───────────────────────────────────── */}
       <nav className="md:hidden fixed top-0 left-0 right-0 h-16 border-b border-md-outline-variant bg-white flex items-center justify-between px-4 z-40 shadow-sm">
         <div className="flex items-center gap-2">
-          <div className="w-8 h-8 bg-md-secondary rounded-lg flex items-center justify-center text-white font-bold text-sm shadow-sm">
-            🏪
+          <div className="w-8 h-8 bg-md-secondary rounded-lg flex items-center justify-center text-white shadow-sm">
+            <Store size={16} />
           </div>
           <span className="font-bold text-md-secondary text-sm">Merchant Hub</span>
         </div>

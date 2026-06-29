@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Reply, ClipboardList, Star } from 'lucide-react';
+import { Reply, ClipboardList, Star, Store } from 'lucide-react';
 import { useFetchData } from '../../hooks/useFetchData';
 import apiClient from '../../services/api';
 import Spinner from '../../components/common/Spinner';
@@ -54,6 +54,15 @@ export default function MerchantReviews() {
   const loading = loadingRestaurant || loadingReviews || submitting;
   const reviewsList = reviews || [];
 
+  // Tổng quan đánh giá (THUẦN hiển thị, không gọi API): điểm trung bình + phân bố
+  // sao 5→1 tính từ danh sách review đã có.
+  const totalReviews = reviewsList.length;
+  const avgRating = totalReviews ? reviewsList.reduce((s, r) => s + (r.rating || 0), 0) / totalReviews : 0;
+  const ratingDist = [5, 4, 3, 2, 1].map((star) => {
+    const count = reviewsList.filter((r) => Math.round(r.rating) === star).length;
+    return { star, count, pct: totalReviews ? (count / totalReviews) * 100 : 0 };
+  });
+
   if (errorRestaurant) {
     return (
       <div className="flex-1 p-10 flex flex-col items-center justify-center text-center font-google-sans h-full min-h-[60vh] bg-md-surface">
@@ -61,7 +70,7 @@ export default function MerchantReviews() {
         <p className="text-sm text-md-on-surface-variant mt-2">Không thể tải thông tin nhà hàng. Vui lòng thử lại.</p>
         <button
           onClick={() => refetchRestaurant()}
-          className="mt-4 bg-md-primary text-white px-5 py-2.5 rounded-full font-bold text-sm"
+          className="mt-4 bg-md-secondary text-white px-5 py-2.5 rounded-full font-bold text-sm"
         >
           Thử lại
         </button>
@@ -86,7 +95,7 @@ export default function MerchantReviews() {
         <p className="text-sm text-md-on-surface-variant mt-2">Không thể tải danh sách đánh giá. Vui lòng thử lại.</p>
         <button
           onClick={() => refetch()}
-          className="mt-4 bg-md-primary text-white px-5 py-2.5 rounded-full font-bold text-sm"
+          className="mt-4 bg-md-secondary text-white px-5 py-2.5 rounded-full font-bold text-sm"
         >
           Thử lại
         </button>
@@ -97,6 +106,34 @@ export default function MerchantReviews() {
   return (
     <div className="flex-1 p-6 md:p-10 max-w-2xl mx-auto w-full font-google-sans space-y-6 pb-24">
       <h1 className="text-xl md:text-2xl font-bold text-slate-800">Quản lý Đánh giá</h1>
+
+      {/* ─── TỔNG QUAN: điểm trung bình + phân bố sao (chỉ hiện khi có đánh giá) ─── */}
+      {reviewsList.length > 0 && (
+        <div className="bg-white rounded-radius-xl p-5 border border-slate-200/60 shadow-sm flex flex-col sm:flex-row gap-5 sm:gap-6 items-center">
+          {/* Điểm trung bình */}
+          <div className="flex flex-col items-center justify-center shrink-0 sm:border-r sm:border-slate-100 sm:pr-6">
+            <span className="text-4xl font-black text-slate-800 leading-none">{avgRating.toFixed(1)}</span>
+            <div className="mt-1.5">
+              <StarRating rating={Math.round(avgRating)} size={14} />
+            </div>
+            <span className="text-[10px] text-slate-400 font-bold mt-1.5">{totalReviews} đánh giá</span>
+          </div>
+          {/* Phân bố sao 5→1 */}
+          <div className="flex-1 w-full space-y-1.5">
+            {ratingDist.map(({ star, count, pct }) => (
+              <div key={star} className="flex items-center gap-2 text-[11px] font-bold">
+                <span className="flex items-center gap-0.5 text-slate-500 w-7 shrink-0">
+                  {star}<Star size={10} className="fill-amber-400 text-amber-400" />
+                </span>
+                <div className="flex-1 h-2 bg-slate-100 rounded-full overflow-hidden">
+                  <div className="h-full bg-amber-400 rounded-full transition-all duration-500" style={{ width: `${pct}%` }} />
+                </div>
+                <span className="text-slate-400 w-6 text-right shrink-0">{count}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {loading && reviewsList.length === 0 ? (
         <Spinner />
@@ -124,8 +161,8 @@ export default function MerchantReviews() {
               {/* Replied block */}
               {rev.reply ? (
                 <div className="bg-md-secondary-container/10 p-3.5 rounded-radius-lg border border-md-secondary/10 ml-4 text-xs font-semibold">
-                  <span className="font-extrabold text-md-secondary block mb-1">
-                    🏪 Phản hồi từ quán:
+                  <span className="font-extrabold text-md-secondary flex items-center gap-1 mb-1">
+                    <Store size={12} /> Phản hồi từ quán:
                   </span>
                   <p className="text-slate-700 leading-relaxed">
                     {rev.reply}

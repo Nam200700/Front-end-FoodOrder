@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Store, Camera, Save, Map } from 'lucide-react';
+import { Store, Camera, Save, Map, Clock, MapPin, Phone, Eye } from 'lucide-react';
 import { useFetchData } from '../../hooks/useFetchData';
 import apiClient from '../../services/api';
 import Spinner from '../../components/common/Spinner';
@@ -135,7 +135,7 @@ export default function MerchantSettings() {
           imageUrl: imageUrl
         };
         await apiClient.put(`/merchant/restaurants/${restaurantId}`, updateReq);
-        toast.success('Cập nhật cấu hình và toạ độ địa lý thật của nhà hàng thành công! 📍');
+        toast.success('Cập nhật cấu hình và toạ độ địa lý thật của nhà hàng thành công!');
       }
     } catch (err) {
       console.error(err);
@@ -150,13 +150,59 @@ export default function MerchantSettings() {
   }
 
   return (
-    <div className="flex-1 p-4 md:p-8 max-w-xl mx-auto w-full font-google-sans space-y-6 pb-24">
+    <div className="flex-1 p-4 md:p-8 max-w-5xl mx-auto w-full font-google-sans space-y-6 pb-24">
       <h1 className="text-xl font-bold text-slate-800 flex items-center gap-2">
         <Store className="text-md-secondary" size={24} />
         {hasRestaurant ? 'Thông tin quán ăn của bạn' : 'Đăng ký nhà hàng mới của bạn'}
       </h1>
 
-      <form onSubmit={handleSave} className="bg-white rounded-radius-xl p-5 border border-slate-200/60 shadow-sm space-y-5 animate-slide-up">
+      {/* Bố cục 2 cột: LIVE PREVIEW bảng hiệu (trái) + form chỉnh sửa (phải).
+          Preview render TRỰC TIẾP từ state form (resName/imageUrl/openTime/closeTime/
+          address/phone) nên gõ tới đâu cập nhật tới đó — chỉ trình bày, không thêm fetch. */}
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 items-start">
+
+      {/* ─── LIVE PREVIEW: thẻ quán như khách nhìn thấy ─────────────────────────── */}
+      <div className="lg:col-span-2 lg:sticky lg:top-6 space-y-2.5">
+        <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+          <Eye size={13} /> Xem trước (như khách thấy)
+        </span>
+        <div className="bg-white rounded-radius-xl border border-slate-200/60 shadow-sm overflow-hidden">
+          {/* Banner + trạng thái mở/đóng */}
+          <div className="relative h-28 bg-slate-100">
+            <img src={getRestaurantBannerUrl(imageUrl)} alt="Banner xem trước" className="w-full h-full object-cover" />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent" />
+            <span className={`absolute top-2 right-2 text-[9px] font-extrabold px-2 py-0.5 rounded-full shadow-sm ${
+              hasRestaurant && restaurant?.status
+                ? 'bg-emerald-500 text-white'
+                : hasRestaurant
+                  ? 'bg-rose-500 text-white'
+                  : 'bg-slate-700/80 text-white'
+            }`}>
+              {hasRestaurant ? (restaurant?.status ? 'Đang mở cửa' : 'Đang đóng cửa') : 'Bản xem trước'}
+            </span>
+          </div>
+          <div className="p-4">
+            <h3 className="font-extrabold text-base text-slate-800 truncate">
+              {resName || 'Tên quán của bạn'}
+            </h3>
+            <div className="flex items-center gap-1.5 text-xs text-slate-500 font-semibold mt-2">
+              <Clock size={13} className="text-md-secondary shrink-0" /> {openTime} – {closeTime}
+            </div>
+            <div className="flex items-start gap-1.5 text-xs text-slate-500 font-semibold mt-2">
+              <MapPin size={13} className="text-md-secondary mt-0.5 shrink-0" />
+              <span className="line-clamp-2">{address || 'Địa chỉ quán sẽ hiển thị ở đây...'}</span>
+            </div>
+            <div className="flex items-center gap-1.5 text-xs text-slate-500 font-semibold mt-2">
+              <Phone size={13} className="text-md-secondary shrink-0" /> {phone || 'Số điện thoại liên hệ...'}
+            </div>
+          </div>
+        </div>
+        <p className="text-[10px] text-slate-400 font-medium px-1">
+          Thẻ này cập nhật trực tiếp khi bạn chỉnh form bên phải.
+        </p>
+      </div>
+
+      <form onSubmit={handleSave} className="lg:col-span-3 bg-white rounded-radius-xl p-5 border border-slate-200/60 shadow-sm space-y-5 animate-slide-up">
         
         {/* Banner upload section */}
         <div className="relative h-32 rounded-radius-lg overflow-hidden border border-slate-100 bg-slate-100 flex items-center justify-center">
@@ -281,6 +327,9 @@ export default function MerchantSettings() {
         </button>
 
       </form>
+
+      </div>
+      {/* đóng grid 2 cột preview + form */}
 
       {/* MapModal chọn địa chỉ Quán ăn */}
       <MapModal

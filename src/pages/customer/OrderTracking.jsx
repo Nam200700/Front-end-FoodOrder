@@ -65,11 +65,11 @@ export default function OrderTracking() {
           if (mapped) {
             mapped.timestamps = {
               PENDING: mapped.createdAtTime,
-              CONFIRMED: mapped.confirmedAt || mapped.createdAtTime,
-              PREPARING: mapped.confirmedAt || mapped.createdAtTime,
-              READY_FOR_PICKUP: mapped.confirmedAt,
-              PICKED_UP: mapped.confirmedAt,
-              DELIVERING: mapped.confirmedAt,
+              CONFIRMED: mapped.confirmedAt,
+              PREPARING: mapped.preparingAt,
+              READY_FOR_PICKUP: mapped.readyAt,
+              PICKED_UP: mapped.pickedUpAt,
+              DELIVERING: mapped.pickedUpAt,
               COMPLETED: mapped.completedAt,
             };
           }
@@ -314,11 +314,11 @@ export default function OrderTracking() {
         if (mapped) {
           mapped.timestamps = {
             PENDING: mapped.createdAtTime,
-            CONFIRMED: mapped.confirmedAt || mapped.createdAtTime,
-            PREPARING: mapped.confirmedAt || mapped.createdAtTime,
-            READY_FOR_PICKUP: mapped.confirmedAt,
-            PICKED_UP: mapped.confirmedAt,
-            DELIVERING: mapped.confirmedAt,
+            CONFIRMED: mapped.confirmedAt,
+            PREPARING: mapped.preparingAt,
+            READY_FOR_PICKUP: mapped.readyAt,
+            PICKED_UP: mapped.pickedUpAt,
+            DELIVERING: mapped.pickedUpAt,
             COMPLETED: mapped.completedAt,
           };
         }

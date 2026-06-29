@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ClipboardList, Check, X, ShieldAlert, Sparkles, TrendingUp, Star, DollarSign, PackageOpen } from 'lucide-react';
+import { ClipboardList, Check, X, ShieldAlert, Sparkles, TrendingUp, Star, DollarSign, PackageOpen, Clock } from 'lucide-react';
 import RevenueAreaChart from '../../components/common/RevenueAreaChart';
 import { formatCurrency } from '../../utils/format';
 import apiClient from '../../services/api';
@@ -142,7 +142,8 @@ export default function MerchantDashboard() {
       .slice(0, 4);
 
     const maxCount = sortedFoods.length > 0 ? sortedFoods[0].count : 1;
-    const colorClasses = ['bg-md-primary', 'bg-md-secondary', 'bg-md-tertiary', 'bg-purple-500'];
+    // Màu thanh top-món: dẫn đầu xanh merchant, không dùng cam Customer.
+    const colorClasses = ['bg-md-secondary', 'bg-emerald-500', 'bg-amber-500', 'bg-purple-500'];
     return sortedFoods.map((f, idx) => ({
       name: f.name,
       count: `${f.count} phần`,
@@ -272,6 +273,14 @@ export default function MerchantDashboard() {
   const displayTotalOrders = stats ? stats.totalOrders : 0;
   const displayCompletedOrders = stats ? stats.completedOrders : 0;
 
+  // Tỉ lệ THẬT (dùng cho KPI mini-bar) — hoàn tất & huỷ trên tổng đơn.
+  const completionRate = displayTotalOrders > 0 ? Math.round((displayCompletedOrders / displayTotalOrders) * 100) : 0;
+  const cancelRate = displayTotalOrders > 0 ? Math.round(((stats?.cancelledOrders || 0) / displayTotalOrders) * 100) : 0;
+
+  // Sắp xếp đơn chờ: đơn GẤP (timeLeft nhỏ) lên đầu — CHỈ sắp xếp hiển thị, không
+  // đụng state/logic countdown bên trên.
+  const sortedPendingOrders = [...pendingOrders].sort((a, b) => a.timeLeft - b.timeLeft);
+
   return (
     <div className="flex-1 p-4 md:p-8 max-w-7xl mx-auto w-full font-google-sans space-y-6">
       
@@ -279,7 +288,7 @@ export default function MerchantDashboard() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-xl md:text-2xl font-bold text-slate-800 flex items-center gap-2">
-            Xin chào, {restaurant.restaurantName} 👋
+            Xin chào, {restaurant.restaurantName}
           </h1>
           <p className="text-xs text-slate-500 mt-1">Cửa hàng của bạn hoạt động trên cổng API động</p>
         </div>
@@ -302,9 +311,11 @@ export default function MerchantDashboard() {
       {/* THỐNG KÊ HÔM NAY */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[
-          { title: 'Doanh thu món ăn', value: formatCurrency(displayRevenue), change: `Thực nhận: ${formatCurrency(stats?.revenue || 0)} (đã trừ ${stats ? Math.round(stats.commissionRate * 100) : 10}% hoa hồng)`, icon: DollarSign, color: 'bg-md-primary/10 text-md-primary' },
+          // Doanh thu: đổi cam #FF6B35 (màu Customer) → emerald (tiền/tăng trưởng).
+          { title: 'Doanh thu món ăn', value: formatCurrency(displayRevenue), change: `Thực nhận: ${formatCurrency(stats?.revenue || 0)} (đã trừ ${stats ? Math.round(stats.commissionRate * 100) : 10}% hoa hồng)`, icon: DollarSign, color: 'bg-emerald-100 text-emerald-600' },
           { title: 'Đơn mới chờ duyệt', value: pendingOrders.length + ' đơn', change: 'Đang đợi bạn bấm nhận', icon: ClipboardList, color: 'bg-md-secondary/10 text-md-secondary' },
-          { title: 'Tổng đơn hoàn tất', value: displayCompletedOrders + ' đơn', change: `Tỉ lệ trên tổng ${displayTotalOrders} đơn`, icon: PackageOpen, color: 'bg-md-tertiary/10 text-md-tertiary' },
+          // Mini-bar tỉ lệ hoàn tất THẬT (completed/total); kèm tỉ lệ huỷ.
+          { title: 'Tổng đơn hoàn tất', value: displayCompletedOrders + ' đơn', change: `Hoàn tất ${completionRate}% · Huỷ ${cancelRate}% / ${displayTotalOrders} đơn`, icon: PackageOpen, color: 'bg-md-tertiary/10 text-md-tertiary', bar: { pct: completionRate, color: 'bg-md-tertiary' } },
           { title: 'Đánh giá trung bình', value: `${averageRating} ★`, change: `Từ ${reviewsCount} đánh giá`, icon: Star, color: 'bg-amber-100 text-amber-600' },
         ].map((item, idx) => {
           const Icon = item.icon;
@@ -313,10 +324,16 @@ export default function MerchantDashboard() {
               <div className={`p-2.5 rounded-radius-md shrink-0 ${item.color}`}>
                 <Icon size={20} />
               </div>
-              <div className="min-w-0">
+              <div className="min-w-0 flex-1">
                 <span className="text-[10px] text-slate-400 font-bold block truncate uppercase tracking-wider">{item.title}</span>
                 <span className="text-sm sm:text-base font-bold text-slate-800 block mt-0.5">{item.value}</span>
                 <span className="text-[9px] text-slate-500 font-medium block mt-0.5">{item.change}</span>
+                {/* Mini-bar tỉ lệ (chỉ render khi KPI có field bar) */}
+                {item.bar && (
+                  <div className="mt-1.5 h-1 bg-slate-100 rounded-full overflow-hidden">
+                    <div className={`h-full rounded-full ${item.bar.color}`} style={{ width: `${item.bar.pct}%` }} />
+                  </div>
+                )}
               </div>
             </div>
           );
@@ -339,13 +356,17 @@ export default function MerchantDashboard() {
         </div>
 
         {pendingOrders.length === 0 ? (
-          <div className="text-center py-8 text-slate-400 text-xs font-semibold">
-            🎉 Tuyệt vời! Không còn đơn hàng nào đang chờ duyệt.
+          <div className="text-center py-8 text-slate-400 text-xs font-semibold flex flex-col items-center gap-2">
+            <Check size={28} className="text-emerald-400" />
+            Tuyệt vời! Không còn đơn hàng nào đang chờ duyệt.
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {pendingOrders.map((order) => {
+            {/* Dùng danh sách ĐÃ SẮP XẾP (đơn gấp lên đầu) */}
+            {sortedPendingOrders.map((order) => {
               const isUrgent = order.timeLeft < 120; // Dưới 2 phút thì gấp (chuyển đỏ)
+              // % thời gian còn lại trên tổng 600s (10 phút) cho thanh countdown.
+              const timePct = Math.max(0, Math.min(100, Math.round((order.timeLeft / 600) * 100)));
               return (
                 <div 
                   key={order.id}
@@ -368,12 +389,20 @@ export default function MerchantDashboard() {
                     </div>
 
                     <div className={`px-2.5 py-1 rounded-full text-[10px] font-bold shadow-sm inline-flex items-center gap-1 ${
-                      isUrgent 
-                        ? 'bg-md-error text-white animate-pulse' 
-                        : 'bg-md-primary/10 text-md-primary'
+                      isUrgent
+                        ? 'bg-md-error text-white animate-pulse'
+                        : 'bg-amber-100 text-amber-700'
                     }`}>
-                      ⏰ Còn {formatTimeLeft(order.timeLeft)}
+                      <Clock size={11} /> Còn {formatTimeLeft(order.timeLeft)}
                     </div>
+                  </div>
+
+                  {/* Thanh đếm ngược trực quan: cạn dần theo timeLeft, đỏ khi gấp */}
+                  <div className="mt-3 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                    <div
+                      className={`h-full rounded-full transition-all duration-1000 ease-linear ${isUrgent ? 'bg-md-error' : 'bg-amber-400'}`}
+                      style={{ width: `${timePct}%` }}
+                    />
                   </div>
 
                   <div className="flex items-center justify-between border-t border-slate-100 pt-3 mt-4">
@@ -502,7 +531,7 @@ export default function MerchantDashboard() {
             <textarea
               value={rejectReason}
               onChange={(e) => setRejectReason(e.target.value)}
-              className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-md-primary text-slate-800"
+              className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-md-secondary text-slate-800"
               rows={3}
               placeholder="Nhập lý do từ chối..."
             />

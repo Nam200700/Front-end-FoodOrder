@@ -4,15 +4,18 @@ import { formatCurrency } from '../../utils/format';
 import apiClient from '../../services/api';
 import Spinner from '../../components/common/Spinner';
 import KPICard from '../../components/common/KPICard';
-import DonutChart from '../../components/common/DonutChart';
-import { 
-  ClipboardList, TrendingUp, ShoppingBag, Users, DollarSign, 
-  Award, Calendar, CreditCard, Percent 
+import GaugeChart from '../../components/common/GaugeChart';
+import {
+  ClipboardList, TrendingUp, ShoppingBag, Users, DollarSign,
+  Award, Calendar, CreditCard, Percent, Store, Flame, BarChart3, AreaChart
 } from 'lucide-react';
 import { filterByDateRange } from '../../utils/filterUtils';
 import FilterTabs from '../../components/common/FilterTabs';
 
-const COLORS = ['#FF6B35', '#1A73E8', '#34A853', '#EA4335', '#FBBC05', '#9C27B0'];
+// Bảng màu báo cáo Merchant: DẪN ĐẦU bằng xanh dương #1A73E8 (màu thương hiệu
+// merchant), tuyệt đối KHÔNG dùng cam #FF6B35 của Customer. Các màu sau mang ý
+// nghĩa ngữ nghĩa (xanh lá = tốt, vàng = chờ, đỏ = huỷ, tím/teal phụ trợ).
+const COLORS = ['#1A73E8', '#34A853', '#FBBC05', '#EA4335', '#9C27B0', '#00897B'];
 
 export default function MerchantStats() {
   const [restaurantId, setRestaurantId] = useState(null);
@@ -272,7 +275,10 @@ export default function MerchantStats() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-5">
         <div>
           <h1 className="text-xl md:text-2xl font-bold text-slate-800 flex items-center gap-2">
-            🏪 Báo Cáo Tài Chính Nhà Hàng
+            <span className="w-9 h-9 rounded-radius-md bg-md-secondary/10 text-md-secondary flex items-center justify-center shrink-0">
+              <Store size={20} />
+            </span>
+            Báo Cáo Tài Chính Nhà Hàng
           </h1>
           <p className="text-xs text-slate-400 mt-1">Hệ thống phân chia doanh thu & chiết khấu hoa hồng tự động chuẩn 100%</p>
         </div>
@@ -288,6 +294,7 @@ export default function MerchantStats() {
           activeTab={filterRange}
           onTabChange={setFilterRange}
           className="self-start sm:self-center bg-slate-100 p-1 rounded-radius-lg border border-slate-200/40"
+          activeClassName="bg-md-secondary text-white shadow-sm shadow-md-secondary/25"
         />
       </div>
 
@@ -303,7 +310,7 @@ export default function MerchantStats() {
               description={`Sau khi trừ ${stats ? Math.round(stats.commissionRate * 100) : 10}% hoa hồng sàn`}
               icon={DollarSign}
               color="border-md-secondary/15 bg-md-secondary-container/5 text-md-secondary bg-white"
-              badge="📈 Net Revenue"
+              badge="Net Revenue"
             />
 
             <KPICard
@@ -312,7 +319,7 @@ export default function MerchantStats() {
               description="Khớp 100% với tổng doanh thu món"
               icon={ShoppingBag}
               color="border-blue-500/15 bg-blue-500/5 text-blue-600 bg-white"
-              badge="🍜 Subtotal"
+              badge="Subtotal"
             />
 
             <KPICard
@@ -321,7 +328,7 @@ export default function MerchantStats() {
               description="Khấu trừ duy trì hệ thống"
               icon={Percent}
               color="border-orange-500/15 bg-orange-500/5 text-orange-600 bg-white"
-              badge="💸 Commission"
+              badge="Commission"
             />
 
             <KPICard
@@ -330,7 +337,7 @@ export default function MerchantStats() {
               description="Phí giao hàng trả cho Shipper"
               icon={Users}
               color="border-purple-500/15 bg-purple-500/5 text-purple-600 bg-white"
-              badge="🚴 Shipping Fees"
+              badge="Shipping Fees"
             />
           </div>
 
@@ -371,15 +378,17 @@ export default function MerchantStats() {
                   Biểu Đồ Xu Hướng Doanh Thu Thực Tế (Khấu Trừ Hoa Hồng)
                 </h3>
                 <div className="flex items-center gap-2">
-                  <button 
+                  <button
                     onClick={() => setChartType(prev => prev === 'area' ? 'bar' : 'area')}
                     className="px-2 py-1.5 rounded bg-slate-50 border border-slate-200 text-slate-600 hover:text-md-secondary cursor-pointer text-[10px] font-bold transition-all flex items-center gap-1"
                     title="Click để chuyển đổi giữa biểu đồ miền và biểu đồ cột"
                   >
-                    {chartType === 'area' ? '📊 Dạng Cột' : '📈 Dạng Miền'}
+                    {chartType === 'area'
+                      ? (<><BarChart3 size={11} /> Dạng Cột</>)
+                      : (<><AreaChart size={11} /> Dạng Miền</>)}
                   </button>
-                  <span className="text-[9px] text-emerald-600 bg-emerald-50 border border-emerald-100/50 px-2.5 py-1 rounded-full font-extrabold">
-                    📊 Chart Trend
+                  <span className="text-[9px] text-emerald-600 bg-emerald-50 border border-emerald-100/50 px-2.5 py-1 rounded-full font-extrabold flex items-center gap-1">
+                    <TrendingUp size={11} /> Chart Trend
                   </span>
                 </div>
               </div>
@@ -399,7 +408,8 @@ export default function MerchantStats() {
                     chartType={chartType}
                     areas={[
                       { key: 'Doanh thu món', name: 'Tiền món ăn', color: '#1A73E8' },
-                      { key: 'Thực nhận', name: 'Quán thực nhận (90%)', color: '#FF6B35' }
+                      // Đổi cam #FF6B35 (màu Customer) → teal #00897B để không lẫn thương hiệu
+                      { key: 'Thực nhận', name: 'Quán thực nhận (90%)', color: '#00897B' }
                     ]}
                   />
                 </div>
@@ -421,7 +431,7 @@ export default function MerchantStats() {
                 </div>
               ) : (
                 <div className="flex-1 flex items-center justify-around flex-col sm:flex-row lg:flex-col gap-4">
-                  <DonutChart
+                  <GaugeChart
                     data={paymentChartData}
                     label={merchantPieMode === 'count' ? "Tổng đơn" : "Tổng tiền"}
                     value={merchantPieMode === 'count' ? `${statsSummary.totalOrders} đơn` : formatCurrency(statsSummary.gtv)}
@@ -474,8 +484,8 @@ export default function MerchantStats() {
                   <Award className="text-yellow-500" size={18} />
                   Top 5 Món Ăn Bán Chạy Nhất (Khớp Doanh Thu Món Ăn)
                 </h3>
-                <span className="text-[9px] text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full font-extrabold">
-                  🔥 Best-Sellers
+                <span className="text-[9px] text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full font-extrabold flex items-center gap-1">
+                  <Flame size={11} /> Best-Sellers
                 </span>
               </div>
 
@@ -538,7 +548,7 @@ export default function MerchantStats() {
                 </div>
               ) : (
                 <div className="flex-1 flex items-center justify-around flex-col sm:flex-row lg:flex-col gap-4">
-                  <DonutChart
+                  <GaugeChart
                     data={statusChartData}
                     label={merchantPieMode === 'count' ? "Tổng đơn" : "Tổng tiền"}
                     value={merchantPieMode === 'count' ? `${statsSummary.totalOrders} đơn` : formatCurrency(statsSummary.gtv)}

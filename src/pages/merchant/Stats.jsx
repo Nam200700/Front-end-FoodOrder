@@ -294,6 +294,7 @@ export default function MerchantStats() {
           activeTab={filterRange}
           onTabChange={setFilterRange}
           className="self-start sm:self-center bg-slate-100 p-1 rounded-radius-lg border border-slate-200/40"
+          activeClassName="bg-md-secondary text-white shadow-sm shadow-md-secondary/25"
         />
       </div>
 

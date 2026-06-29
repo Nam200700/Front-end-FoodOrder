@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Plus, ToggleLeft, ToggleRight, Edit, Trash2, GripVertical, Check, X, ClipboardList } from 'lucide-react';
+import { Plus, ToggleLeft, ToggleRight, Edit, Trash2, GripVertical, Check, X, ClipboardList, UtensilsCrossed } from 'lucide-react';
 import { formatCurrency } from '../../utils/format';
 import apiClient from '../../services/api';
 import Spinner from '../../components/common/Spinner';
@@ -384,8 +384,8 @@ export default function MerchantMenu() {
   };
 
   return (
-    <div className="flex-1 p-4 md:p-8 max-w-4xl mx-auto w-full font-google-sans pb-24">
-      
+    <div className="flex-1 p-4 md:p-8 max-w-6xl mx-auto w-full font-google-sans pb-24">
+
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-xl font-bold text-slate-800">Quản lý Thực Đơn</h1>
@@ -396,6 +396,28 @@ export default function MerchantMenu() {
           <Plus size={16} />
           Thêm món mới
         </button>
+      </div>
+
+      {/* ─── HÀNG KPI TÓM TẮT THỰC ĐƠN (đếm THẬT từ menuItems toàn quán) ──────────── */}
+      <div className="grid grid-cols-3 gap-3 sm:gap-4 mb-6">
+        {[
+          { label: 'Tổng số món', value: menuItems.length, icon: UtensilsCrossed, color: 'bg-md-secondary/10 text-md-secondary' },
+          { label: 'Đang bán', value: menuItems.filter(i => i.active).length, icon: ToggleRight, color: 'bg-emerald-100 text-emerald-600' },
+          { label: 'Tạm hết', value: menuItems.filter(i => !i.active).length, icon: ToggleLeft, color: 'bg-rose-100 text-rose-600' },
+        ].map((kpi, idx) => {
+          const KIcon = kpi.icon;
+          return (
+            <div key={idx} className="bg-white rounded-radius-xl p-3.5 border border-slate-200/60 shadow-sm flex items-center gap-3">
+              <span className={`p-2 rounded-radius-md shrink-0 ${kpi.color}`}>
+                <KIcon size={18} />
+              </span>
+              <div className="min-w-0">
+                <span className="text-lg font-black text-slate-800 block leading-none">{kpi.value}</span>
+                <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block mt-0.5 truncate">{kpi.label}</span>
+              </div>
+            </div>
+          );
+        })}
       </div>
 
       {/* Category List Row */}
@@ -491,27 +513,28 @@ export default function MerchantMenu() {
           activeTab={statusFilter}
           onTabChange={setStatusFilter}
           className="mb-5 border-b border-slate-150 pb-2.5"
+          activeClassName="bg-md-secondary text-white shadow-sm shadow-md-secondary/25"
         />
       )}
 
       {/* Loading Spinner hoặc Food List */}
       {loading && menuItems.length === 0 ? (
         <Spinner />
+      ) : categories.length === 0 ? (
+        <div className="text-center py-12 bg-white rounded-radius-xl border border-slate-200/60 shadow-sm text-slate-400 text-xs font-bold">
+          Chủ quán chưa tạo danh mục nào. Hãy nhấn nút "+ Thêm danh mục" phía trên để bắt đầu!
+        </div>
+      ) : displayedItems.length === 0 ? (
+        <div className="text-center py-12 bg-white rounded-radius-xl border border-slate-200/60 shadow-sm text-slate-400 text-xs font-bold">
+          Không tìm thấy món ăn nào phù hợp với bộ lọc.
+        </div>
       ) : (
-        <div className="space-y-4">
-          {categories.length === 0 ? (
-            <div className="text-center py-12 bg-white rounded-radius-xl border border-slate-200/60 shadow-sm text-slate-400 text-xs font-bold">
-              Chủ quán chưa tạo danh mục nào. Hãy nhấn nút "+ Thêm danh mục" phía trên để bắt đầu!
-            </div>
-          ) : displayedItems.length === 0 ? (
-            <div className="text-center py-12 bg-white rounded-radius-xl border border-slate-200/60 shadow-sm text-slate-400 text-xs font-bold">
-              Không tìm thấy món ăn nào phù hợp với bộ lọc.
-            </div>
-          ) : (
-            displayedItems.map((item) => (
-              <div 
+        // Lưới 2 cột trên màn rộng (xl) để tận dụng không gian, 1 cột ở màn hẹp.
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+          {displayedItems.map((item) => (
+              <div
                 key={item.id}
-                className={`bg-white rounded-radius-xl p-3 border border-slate-200/60 shadow-sm flex gap-4 transition-all ${
+                className={`bg-white rounded-radius-xl p-3 border border-slate-200/60 shadow-sm flex gap-4 transition-all hover:shadow-md ${
                   !item.active ? 'opacity-65 bg-slate-50/50' : ''
                 }`}
               >
@@ -580,8 +603,7 @@ export default function MerchantMenu() {
                 </div>
 
               </div>
-            ))
-          )}
+            ))}
         </div>
       )}
 

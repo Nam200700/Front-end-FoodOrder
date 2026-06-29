@@ -183,7 +183,9 @@ export default function Home() {
         distance: `${dist.toFixed(1)}km`,
         distanceNum: dist,
         time: `${Math.max(10, duration - 3)}-${duration + 3} phút`,
-        shipping: dist <= 2 ? 'Miễn phí giao hàng' : 'Phí ship rẻ',
+        // Nhãn phí ship TRUNG THỰC theo mức phí thật (không hứa "miễn phí" vì luôn có
+        // phí ≥ 15k): <=15k = rẻ, <=20k = vừa, còn lại = cao.
+        shipping: shippingFee <= 15000 ? 'Phí ship rẻ' : shippingFee <= 20000 ? 'Phí ship vừa' : 'Phí ship cao',
         shippingFee: shippingFee,
       };
     });
@@ -489,12 +491,15 @@ export default function Home() {
               <Award className="text-md-primary" size={24} />
               Quán Nổi Bật
             </h2>
-            <span 
-              onClick={() => scrollToExploreAndFilter('rating')}
+            {/* "Xem thêm" → sang trang Khám phá để xem đầy đủ quán, thay vì chỉ cuộn
+                nội trang (trước đây cảm giác như không phản hồi). */}
+            <button
+              type="button"
+              onClick={() => navigate('/explore')}
               className="text-sm font-extrabold text-md-primary flex items-center gap-1 cursor-pointer hover:underline"
             >
               Xem thêm <ArrowRight size={16} />
-            </span>
+            </button>
           </div>
 
           <div className="flex md:grid gap-6 overflow-x-auto md:overflow-visible no-scrollbar py-2.5 snap-x md:snap-none scroll-smooth md:grid-cols-2 xl:grid-cols-3">
@@ -544,7 +549,7 @@ export default function Home() {
                   </div>
 
                   <div className="mt-4 pt-4 border-t border-md-outline-variant/30 flex items-center justify-between">
-                    <span className="text-xs font-extrabold bg-[#E8F5E9] text-[#2E7D32] px-3 py-1 rounded">
+                    <span className="text-xs font-extrabold bg-slate-100 text-slate-600 px-3 py-1 rounded">
                       {res.shipping}
                     </span>
                     <span className="text-xs text-[#FF6B35] font-extrabold bg-[#FFE8DF] px-2.5 py-1 rounded">
@@ -570,6 +575,14 @@ export default function Home() {
                   : (<><Heart size={12} className="fill-md-primary" /> Thích: {favCuisineName}</>)}
               </span>
             </h2>
+            {/* "Xem thêm" gợi ý: sang trang Khám phá để xem nhiều quán hơn. */}
+            <button
+              type="button"
+              onClick={() => navigate('/explore')}
+              className="text-sm font-extrabold text-md-primary flex items-center gap-1 cursor-pointer hover:underline shrink-0"
+            >
+              Xem thêm <ArrowRight size={16} />
+            </button>
           </div>
           <div className="flex md:grid gap-4 md:gap-6 overflow-x-auto md:overflow-visible no-scrollbar py-1.5 snap-x md:snap-none scroll-smooth md:grid-cols-2 xl:grid-cols-3">
             {recommendedRestaurants.map((res) => (
@@ -601,7 +614,7 @@ export default function Home() {
                     <span>{res.distance}</span>
                     <span>{res.time}</span>
                     <span className="text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded">
-                      {res.shippingFee === 15000 ? 'Ship rẻ' : 'Giao nhanh'}
+                      {res.shippingFee <= 15000 ? 'Ship rẻ' : res.shippingFee <= 20000 ? 'Ship vừa' : 'Ship cao'}
                     </span>
                   </div>
                 </div>
@@ -695,8 +708,10 @@ export default function Home() {
                     <span className="text-xs font-extrabold text-md-primary">
                       {res.shipping}
                     </span>
+                    {/* Trước đây hiện "Giá TB ~45.000đ" hardcode (giả) → thay bằng số
+                        đơn đã bán thật từ backend (orderCount). */}
                     <span className="text-xs text-md-outline font-extrabold">
-                      Giá TB: ~{formatCurrency(res.avgPrice)}
+                      Đã bán {res.orderCount || 0} đơn
                     </span>
                   </div>
                 </div>

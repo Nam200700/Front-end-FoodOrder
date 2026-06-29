@@ -65,11 +65,11 @@ export default function OrderTracking() {
           if (mapped) {
             mapped.timestamps = {
               PENDING: mapped.createdAtTime,
-              CONFIRMED: mapped.confirmedAt || mapped.createdAtTime,
-              PREPARING: mapped.confirmedAt || mapped.createdAtTime,
-              READY_FOR_PICKUP: mapped.confirmedAt,
-              PICKED_UP: mapped.confirmedAt,
-              DELIVERING: mapped.confirmedAt,
+              CONFIRMED: mapped.confirmedAt,
+              PREPARING: mapped.preparingAt,
+              READY_FOR_PICKUP: mapped.readyAt,
+              PICKED_UP: mapped.pickedUpAt,
+              DELIVERING: mapped.pickedUpAt,
               COMPLETED: mapped.completedAt,
             };
           }
@@ -127,7 +127,7 @@ export default function OrderTracking() {
     fetchRestaurantCoords();
   }, [order?.restaurantId]);
 
-  // 3. Khởi tạo bản đồ Leaflet thật 100% (chỉ hiển thị Quán ăn và Khách hàng)
+  // 3. Khởi tạo bản đồ Leaflet(chỉ hiển thị Quán ăn và Khách hàng)
   useEffect(() => {
     if (!order || !restaurantCoords.lat || !order.deliveryLat || !mapContainerRef.current) return;
 
@@ -148,8 +148,6 @@ export default function OrderTracking() {
         attribution: '&copy; OpenStreetMap contributors'
       }).addTo(map);
 
-      // Marker Quán ăn với Icon DIV tuỳ biến (miễn phí, không bị lỗi icon)
-      // Dùng SVG (lucide "utensils") thay cho emoji 🍜 để đồng bộ phong cách icon.
       const resIcon = L.divIcon({
         html: `<div class="flex items-center justify-center w-8 h-8 rounded-full bg-orange-500 text-white shadow-md border-2 border-white"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"/><path d="M7 2v20"/><path d="M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"/></svg></div>`,
         className: 'custom-div-icon',
@@ -159,8 +157,6 @@ export default function OrderTracking() {
       markersRef.current.restaurant = L.marker([rLat, rLng], { icon: resIcon }).addTo(map)
         .bindPopup(`<b>${order.restaurantName}</b><br/>Nơi chế biến món ăn.`);
 
-      // Marker Khách hàng
-      // Dùng SVG (lucide "house") thay cho emoji 🏠.
       const custIcon = L.divIcon({
         html: `<div class="flex items-center justify-center w-8 h-8 rounded-full bg-red-500 text-white shadow-md border-2 border-white"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"/><path d="M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg></div>`,
         className: 'custom-div-icon',
@@ -314,11 +310,11 @@ export default function OrderTracking() {
         if (mapped) {
           mapped.timestamps = {
             PENDING: mapped.createdAtTime,
-            CONFIRMED: mapped.confirmedAt || mapped.createdAtTime,
-            PREPARING: mapped.confirmedAt || mapped.createdAtTime,
-            READY_FOR_PICKUP: mapped.confirmedAt,
-            PICKED_UP: mapped.confirmedAt,
-            DELIVERING: mapped.confirmedAt,
+            CONFIRMED: mapped.confirmedAt,
+            PREPARING: mapped.preparingAt,
+            READY_FOR_PICKUP: mapped.readyAt,
+            PICKED_UP: mapped.pickedUpAt,
+            DELIVERING: mapped.pickedUpAt,
             COMPLETED: mapped.completedAt,
           };
         }
@@ -336,8 +332,7 @@ export default function OrderTracking() {
   };
 
   return (
-    <div className="flex-1 p-6 md:p-10 max-w-6xl mx-auto w-full font-google-sans pb-24 space-y-6">
-      
+    <div className="flex-1 px-4 md:px-8 pt-4 md:pt-6 w-full font-google-sans pb-24 space-y-6">      
       {/* Header */}
       <div className="flex items-center gap-4 mb-4">
         <button 
@@ -348,18 +343,15 @@ export default function OrderTracking() {
         </button>
         <div>
           <h1 className="text-xl md:text-2xl font-extrabold text-md-on-surface leading-none tracking-tight">
-            Theo dõi đơn hàng #{displayOrder.id}
+            Theo Dõi Đơn Hàng #{displayOrder.id}
           </h1>
-          <span className="text-xs text-md-outline font-bold mt-2 block">
-            Quán: {displayOrder.restaurantName}
-          </span>
         </div>
       </div>
 
-      {/* Bố cục 2 cột (desktop): trạng thái + bản đồ (trái) | tài xế + hóa đơn (phải) */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+      {/* 2 cột: trạng thái + bản đồ | tài xế + hóa đơn*/}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start w-full">
         {/* ── CỘT TRÁI: trạng thái + bản đồ ── */}
-        <div className="space-y-6">
+        <div className="space-y-6 w-full">
 
       {/* Stepper Status Box */}
       <Card variant="elevated" className="p-6.5 md:p-8 shadow-shadow-2">
@@ -427,11 +419,11 @@ export default function OrderTracking() {
                           </span>
                         )}
                       </div>
-                      {isActive && step.key !== 'COMPLETED' && (
+                      {/* {isActive && step.key !== 'COMPLETED' && (
                         <span className="text-[10px] md:text-xs text-md-primary font-bold inline-flex items-center gap-1.5 mt-2 bg-md-primary-container/20 px-2.5 py-1 rounded animate-pulse">
                           Đang xử lý...
                         </span>
-                      )}
+                      )} */}
                     </div>
                   </div>
                 );
@@ -453,7 +445,7 @@ export default function OrderTracking() {
         )}
       </Card>
 
-      {/* BẢN ĐỒ DẪN ĐƯỜNG THỰC TẾ (Leaflet Map thật - Miễn phí 100%) */}
+      {/* BẢN ĐỒ DẪN ĐƯỜNG THỰC TẾ */}
       {!isCancelled && restaurantCoords.lat && displayOrder.deliveryLat && (
         <Card variant="flat" className="p-0 overflow-hidden bg-white border border-slate-200 shadow-sm rounded-radius-xl">
           <div className="px-5 py-4 border-b border-slate-100 flex items-center bg-slate-50/50">
@@ -471,7 +463,7 @@ export default function OrderTracking() {
       )}
         </div>
         {/* ── CỘT PHẢI: tài xế + hóa đơn ── */}
-        <div className="space-y-6">
+        <div className="space-y-6 w-full">
 
       {/* Shipper Info Box */}
       {displayOrder.shipper && (
@@ -529,8 +521,10 @@ export default function OrderTracking() {
               {displayOrder.items.map((item, idx) => (
                 <div key={idx} className="flex justify-between items-start text-sm font-semibold">
                   <div className="min-w-0 pr-4">
-                    <span className="font-extrabold text-md-primary">{item.quantity}x</span>
-                    <span className="ml-2.5 font-bold text-md-on-surface-variant">{item.name}</span>
+                    <span className="font-bold text-md-on-surface-variant">{item.name}</span>
+                    <span className="block text-[11px] text-slate-500 font-medium mt-0.5">
+                      {formatCurrency(item.price)} x{item.quantity}
+                    </span>
                     {item.note && (
                       <span className="block text-xs text-md-outline italic mt-1 font-medium">
                         Ghi chú: "{item.note}"
@@ -555,12 +549,16 @@ export default function OrderTracking() {
             {/* Payment Summary */}
             <div className="pt-4 border-t border-slate-100 space-y-2.5 text-sm font-medium">
               <div className="flex justify-between text-md-on-surface-variant">
+                <span>Tạm tính:</span>
+                <span className="font-bold">{formatCurrency(displayOrder.subtotalAmount)}</span>
+              </div>
+              <div className="flex justify-between text-md-on-surface-variant">
                 <span>Phí giao hàng:</span>
                 <span className="font-bold">{formatCurrency(displayOrder.shippingFee)}</span>
               </div>
               <div className="flex justify-between text-md-on-surface-variant">
                 <span>Phương thức:</span>
-                <span className="font-extrabold text-md-secondary">{displayOrder.paymentMethod}</span>
+                <span className="font-bold">{displayOrder.paymentMethod}</span>
               </div>
               <div className="flex justify-between text-base font-extrabold pt-3.5 border-t border-slate-100 flex-wrap">
                 <span>Tổng thanh toán:</span>
@@ -600,7 +598,7 @@ export default function OrderTracking() {
       <Modal
         isOpen={reportModal.isOpen}
         onClose={() => reportModal.close()}
-        title="Báo cáo vi phạm đơn hàng"
+        title="Báo Cáo Vi Phạm Đơn Hàng"
         size="md"
       >
         <div className="space-y-5">
@@ -698,10 +696,11 @@ export default function OrderTracking() {
           </div>
 
           <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-100">
-            <Button variant="outline" onClick={() => reportModal.close()} disabled={submittingReport}>
-              Hủy
+            <Button variant="outline" size="sm" onClick={() => reportModal.close()} disabled={submittingReport}>
+              Đóng
             </Button>
             <Button
+              size="sm"
               variant="secondary"
               onClick={handleSubmitReport}
               disabled={submittingReport || !reportReason.trim()}
@@ -720,7 +719,7 @@ export default function OrderTracking() {
           cancelModal.close();
           setCancelReasonInput('');
         }}
-        title="Lý do hủy đơn hàng"
+        title="Xác Nhận Hủy Đơn Hàng"
         size="md"
       >
         <div className="space-y-5">
@@ -773,15 +772,17 @@ export default function OrderTracking() {
 
           <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-100">
             <Button
+              size="sm"
               variant="outline"
               onClick={() => {
                 cancelModal.close();
                 setCancelReasonInput('');
               }}
             >
-              Quay lại
+              Đóng
             </Button>
             <Button
+              size="sm"
               variant="secondary"
               onClick={submitCancel}
               disabled={!cancelReasonInput.trim()}

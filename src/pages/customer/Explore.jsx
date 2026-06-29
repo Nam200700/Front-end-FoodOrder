@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, Flame, TrendingUp, Compass, Clock, Star, MapPin, Store, ArrowLeft } from 'lucide-react';
+import { Search, Flame, TrendingUp, Compass, Clock, Star, MapPin, Store, ArrowLeft, Utensils } from 'lucide-react';
 import { formatCurrency, removeVietnameseTones } from '../../utils/format';
 import { useAuthStore } from '../../stores/authStore';
 import apiClient from '../../services/api';
@@ -115,9 +115,9 @@ export default function Explore() {
             const ranks = ['01', '02', '03'];
             const orderCount = food.orderCount || 0;
             const changes = [
-              `📈 +24%`,
-              `📈 +18%`,
-              `📈 +12%`
+              `+24%`,
+              `+18%`,
+              `+12%`
             ];
             return {
               rank: ranks[index] || `0${index + 1}`,
@@ -309,12 +309,12 @@ export default function Explore() {
                               <h4 className="font-extrabold text-xs sm:text-sm text-slate-800 truncate leading-tight flex items-center gap-1">
                                 {res.name}
                               </h4>
-                              <p className="text-[10px] text-slate-400 font-bold uppercase mt-1 truncate">
-                                🍳 {res.cuisineType}
+                              <p className="text-[10px] text-slate-400 font-bold uppercase mt-1 truncate flex items-center gap-1">
+                                <Utensils size={11} /> {res.cuisineType}
                               </p>
                               <div className="flex items-center gap-2 text-[9px] text-slate-450 font-bold uppercase mt-2.5">
                                 <span className="flex items-center gap-0.5 text-amber-500">★ {res.rating}</span>
-                                <span className="flex items-center gap-0.5 text-slate-450">📍 {res.distance}</span>
+                                <span className="flex items-center gap-0.5 text-slate-450"><MapPin size={12} /> {res.distance}</span>
                               </div>
                             </div>
                           </div>
@@ -346,14 +346,14 @@ export default function Explore() {
                               <div>
                                 <h4 className="font-extrabold text-xs sm:text-sm text-slate-800 truncate leading-snug">{item.name}</h4>
                                 <p className="text-[10px] text-[#1A73E8] font-extrabold truncate mt-1 flex items-center gap-1">
-                                  🏪 {item.restaurantName}
+                                  <Store size={12} /> {item.restaurantName}
                                 </p>
                               </div>
                               <div className="flex items-center justify-between mt-2.5">
                                 <span className="text-xs font-extrabold text-[#FF6B35]">{formatCurrency(item.price)}</span>
                                 <div className="flex items-center gap-2.5 text-[9px] text-slate-450 font-bold uppercase tracking-wider">
                                   <span className="flex items-center gap-0.5 text-amber-500 font-extrabold">★ {item.rating}</span>
-                                  <span className="flex items-center gap-0.5 text-slate-400">📍 {item.distance}</span>
+                                  <span className="flex items-center gap-0.5 text-slate-400"><MapPin size={12} /> {item.distance}</span>
                                 </div>
                               </div>
                             </div>
@@ -496,12 +496,13 @@ export default function Explore() {
                       Món ăn xu hướng gần bạn
                     </h3>
                     
-                    <div className="divide-y divide-slate-50">
+                    {/* Bảng xếp hạng: 1 cột ở màn nhỏ, 2 cột ở desktop (lg+) cho đỡ trống */}
+                    <div className="grid grid-cols-1 lg:grid-cols-2 lg:gap-x-8">
                       {trendingFoods.map((item) => (
-                        <div 
-                          key={item.rank} 
+                        <div
+                          key={item.rank}
                           onClick={() => navigate(`/restaurants/${item.restaurantId}`)}
-                          className="py-4.5 flex items-center justify-between text-xs hover:bg-slate-50/50 rounded-radius-lg px-2 transition-all cursor-pointer group"
+                          className="py-4.5 flex items-center justify-between text-xs hover:bg-slate-50/50 rounded-radius-lg px-2 transition-all cursor-pointer group border-b border-slate-50"
                         >
                           <div className="flex items-center gap-3.5 min-w-0">
                             <span className="font-display-medium text-slate-200 text-base leading-none font-extrabold group-hover:text-[#1A73E8] transition-colors">
@@ -511,8 +512,8 @@ export default function Explore() {
                               <span className="font-extrabold text-slate-700 leading-snug truncate group-hover:text-slate-900 transition-colors">
                                 {item.name}
                               </span>
-                              <span className="text-[9px] text-[#1A73E8] font-extrabold uppercase mt-1 truncate">
-                                🏪 {item.food?.restaurantName}
+                              <span className="text-[9px] text-[#1A73E8] font-extrabold uppercase mt-1 truncate flex items-center gap-1">
+                                <Store size={11} /> {item.food?.restaurantName}
                               </span>
                             </div>
                           </div>

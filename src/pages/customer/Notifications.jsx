@@ -63,6 +63,44 @@ export default function Notifications() {
     return <Spinner fullScreen />;
   }
 
+  // Tách danh sách theo trạng thái đọc để nhóm "Chưa đọc" / "Đã đọc"
+  const unreadList = notifications.filter((n) => !n.isRead);
+  const readList = notifications.filter((n) => n.isRead);
+
+  // Render 1 thẻ thông báo (tách ra để tái dùng cho cả 2 nhóm)
+  const renderNotification = (n) => (
+    <div
+      key={n.id}
+      onClick={() => markRead(n.id)}
+      className={`bg-white rounded-radius-lg p-4 border transition-all cursor-pointer relative flex gap-3.5 items-start ${
+        n.isRead
+          ? 'border-md-outline-variant/20 hover:bg-slate-50/50'
+          : 'border-md-primary/20 ring-1 ring-md-primary/5 hover:bg-md-primary-container/5 shadow-sm'
+      }`}
+    >
+      {/* Icon theo loại thông báo */}
+      <div className={`p-2.5 rounded-radius-md ${getIconBg(n.type)} shrink-0`}>
+        {getIcon(n.type)}
+      </div>
+      {/* Nội dung */}
+      <div className="flex-1 min-w-0 pr-4">
+        <h3 className={`font-title-small text-xs sm:text-sm leading-tight text-md-on-surface ${!n.isRead ? 'font-bold' : ''}`}>
+          {n.title}
+        </h3>
+        <p className="font-body-medium text-xs text-md-on-surface-variant mt-1.5 leading-relaxed line-clamp-2">
+          {n.body}
+        </p>
+        <span className="font-label-small text-[10px] text-md-outline mt-2.5 block">
+          {n.time}
+        </span>
+      </div>
+      {/* Chấm cam báo chưa đọc */}
+      {!n.isRead && (
+        <span className="absolute top-4 right-4 w-2 h-2 rounded-full bg-md-primary animate-pulse shrink-0" />
+      )}
+    </div>
+  );
+
   return (
     <div className="flex-1 p-4 md:p-8 max-w-xl mx-auto w-full font-google-sans pb-24">
       
@@ -89,59 +127,32 @@ export default function Notifications() {
         )}
       </div>
 
-      {/* Notifications list */}
-      <div className="space-y-3">
-        {notifications.length === 0 ? (
-          <div className="text-center py-12 bg-white rounded-radius-xl border border-md-outline-variant/30">
-            <Bell size={40} className="mx-auto text-slate-300 mb-2" />
-            <p className="text-sm font-semibold text-md-on-surface-variant">Không có thông báo nào</p>
-          </div>
-        ) : (
-          notifications.map((n) => {
-            return (
-              <div
-                key={n.id}
-                onClick={() => markRead(n.id)}
-                className={`bg-white rounded-radius-lg p-4 border transition-all cursor-pointer relative flex gap-3.5 items-start ${
-                  n.isRead 
-                    ? 'border-md-outline-variant/20 hover:bg-slate-50/50' 
-                    : 'border-md-primary/20 ring-1 ring-md-primary/5 hover:bg-md-primary-container/5 shadow-sm'
-                }`}
-              >
-                {/* Type Icon */}
-                <div className={`p-2.5 rounded-radius-md ${getIconBg(n.type)} shrink-0`}>
-                  {getIcon(n.type)}
-                </div>
-
-                {/* Content */}
-                <div className="flex-1 min-w-0 pr-4">
-                  {/* Title (Title Small) */}
-                  <h3 className={`font-title-small text-xs sm:text-sm leading-tight text-md-on-surface ${
-                    !n.isRead ? 'font-bold' : ''
-                  }`}>
-                    {n.title}
-                  </h3>
-
-                  {/* Body (Body Medium, 2 lines max) */}
-                  <p className="font-body-medium text-xs text-md-on-surface-variant mt-1.5 leading-relaxed line-clamp-2">
-                    {n.body}
-                  </p>
-
-                  {/* Time (Label Small, gray) */}
-                  <span className="font-label-small text-[10px] text-md-outline mt-2.5 block">
-                    {n.time}
-                  </span>
-                </div>
-
-                {/* Unread dot 8px orange */}
-                {!n.isRead && (
-                  <span className="absolute top-4 right-4 w-2 h-2 rounded-full bg-md-primary animate-pulse shrink-0" />
-                )}
-              </div>
-            );
-          })
-        )}
-      </div>
+      {/* Notifications list — nhóm "Chưa đọc" / "Đã đọc" */}
+      {notifications.length === 0 ? (
+        <div className="text-center py-12 bg-white rounded-radius-xl border border-md-outline-variant/30">
+          <Bell size={40} className="mx-auto text-slate-300 mb-2" />
+          <p className="text-sm font-semibold text-md-on-surface-variant">Không có thông báo nào</p>
+        </div>
+      ) : (
+        <div className="space-y-6">
+          {unreadList.length > 0 && (
+            <div>
+              <h2 className="text-xs font-extrabold text-md-on-surface-variant uppercase tracking-wider mb-3">
+                Chưa đọc ({unreadList.length})
+              </h2>
+              <div className="space-y-3">{unreadList.map(renderNotification)}</div>
+            </div>
+          )}
+          {readList.length > 0 && (
+            <div>
+              <h2 className="text-xs font-extrabold text-md-on-surface-variant uppercase tracking-wider mb-3">
+                Đã đọc
+              </h2>
+              <div className="space-y-3">{readList.map(renderNotification)}</div>
+            </div>
+          )}
+        </div>
+      )}
 
     </div>
   );

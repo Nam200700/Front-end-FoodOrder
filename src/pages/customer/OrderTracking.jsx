@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useOrderStore } from '../../stores/orderStore';
 import { useChatStore } from '../../stores/chatStore';
-import { ArrowLeft, Phone, MessageSquare, ChevronDown, ChevronUp, CheckCircle, Clock, Ban, AlertCircle, Map, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, Phone, MessageSquare, ChevronDown, ChevronUp, CheckCircle, Clock, Ban, AlertCircle, Map, AlertTriangle, Store, Bike } from 'lucide-react';
 import { formatCurrency } from '../../utils/format';
 import Button from '../../components/common/Button';
 import Card from '../../components/common/Card';
@@ -149,8 +149,9 @@ export default function OrderTracking() {
       }).addTo(map);
 
       // Marker Quán ăn với Icon DIV tuỳ biến (miễn phí, không bị lỗi icon)
+      // Dùng SVG (lucide "utensils") thay cho emoji 🍜 để đồng bộ phong cách icon.
       const resIcon = L.divIcon({
-        html: `<div class="flex items-center justify-center w-8 h-8 rounded-full bg-orange-500 text-white shadow-md border-2 border-white text-base">🍜</div>`,
+        html: `<div class="flex items-center justify-center w-8 h-8 rounded-full bg-orange-500 text-white shadow-md border-2 border-white"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"/><path d="M7 2v20"/><path d="M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"/></svg></div>`,
         className: 'custom-div-icon',
         iconSize: [32, 32],
         iconAnchor: [16, 16]
@@ -159,8 +160,9 @@ export default function OrderTracking() {
         .bindPopup(`<b>${order.restaurantName}</b><br/>Nơi chế biến món ăn.`);
 
       // Marker Khách hàng
+      // Dùng SVG (lucide "house") thay cho emoji 🏠.
       const custIcon = L.divIcon({
-        html: `<div class="flex items-center justify-center w-8 h-8 rounded-full bg-red-500 text-white shadow-md border-2 border-white text-base">🏠</div>`,
+        html: `<div class="flex items-center justify-center w-8 h-8 rounded-full bg-red-500 text-white shadow-md border-2 border-white"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"/><path d="M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg></div>`,
         className: 'custom-div-icon',
         iconSize: [32, 32],
         iconAnchor: [16, 16]
@@ -334,7 +336,7 @@ export default function OrderTracking() {
   };
 
   return (
-    <div className="flex-1 p-6 md:p-10 max-w-4xl mx-auto w-full font-google-sans pb-24 space-y-6">
+    <div className="flex-1 p-6 md:p-10 max-w-6xl mx-auto w-full font-google-sans pb-24 space-y-6">
       
       {/* Header */}
       <div className="flex items-center gap-4 mb-4">
@@ -353,6 +355,11 @@ export default function OrderTracking() {
           </span>
         </div>
       </div>
+
+      {/* Bố cục 2 cột (desktop): trạng thái + bản đồ (trái) | tài xế + hóa đơn (phải) */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+        {/* ── CỘT TRÁI: trạng thái + bản đồ ── */}
+        <div className="space-y-6">
 
       {/* Stepper Status Box */}
       <Card variant="elevated" className="p-6.5 md:p-8 shadow-shadow-2">
@@ -439,7 +446,7 @@ export default function OrderTracking() {
                 size="lg"
                 className="w-full text-sm uppercase tracking-wider bg-md-tertiary hover:bg-opacity-95 cursor-pointer shadow-sm"
               >
-                Đánh giá đơn hàng ngay ⭐
+                Đánh giá đơn hàng ngay
               </Button>
             )}
           </div>
@@ -462,6 +469,9 @@ export default function OrderTracking() {
           </div>
         </Card>
       )}
+        </div>
+        {/* ── CỘT PHẢI: tài xế + hóa đơn ── */}
+        <div className="space-y-6">
 
       {/* Shipper Info Box */}
       {displayOrder.shipper && (
@@ -560,6 +570,8 @@ export default function OrderTracking() {
           </div>
         )}
       </Card>
+        </div>
+      </div>
 
       {/* Cancel Order Action Button */}
       {(displayOrder.status === 'PENDING' || displayOrder.status === 'CONFIRMED') && (
@@ -617,7 +629,7 @@ export default function OrderTracking() {
                     : 'border-slate-200 hover:bg-slate-50 text-slate-600'
                 }`}
               >
-                🏪 Báo cáo Quán ăn
+                <Store size={15} /> Báo cáo Quán ăn
               </button>
               
               <button
@@ -636,7 +648,7 @@ export default function OrderTracking() {
                 }`}
                 title={!displayOrder.shipper ? 'Chưa có tài xế nhận đơn để báo cáo' : 'Báo cáo shipper'}
               >
-                🚴 Báo cáo Shipper
+                <Bike size={15} /> Báo cáo Shipper
               </button>
             </div>
           </div>

@@ -18,7 +18,7 @@ export default function MobileDrawer({ isOpen, onClose, children, drawerClass = 
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex md:hidden">
+    <div className="fixed inset-0 z-50 flex justify-end md:hidden">
       {/* Backdrop */}
       <div
         className="absolute inset-0 bg-black/50 backdrop-blur-sm transition-opacity duration-300 animate-fade-in"

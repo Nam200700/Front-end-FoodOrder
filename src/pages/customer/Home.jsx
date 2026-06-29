@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCartStore } from '../../stores/cartStore';
 import { useAuthStore } from '../../stores/authStore';
-import { Search, MapPin, ShoppingBag, Star, Clock, Heart, Award, ArrowRight } from 'lucide-react';
+import { Search, MapPin, ShoppingBag, Star, Clock, Heart, Award, ArrowRight, RotateCcw, Sparkles, ChevronDown } from 'lucide-react';
 import { formatCurrency, removeVietnameseTones, normalizeForMatch } from '../../utils/format';
 import Input from '../../components/common/Input';
 import Card from '../../components/common/Card';
@@ -12,6 +12,8 @@ import MapModal from '../../components/common/MapModal';
 import { SkeletonRestaurantCard } from '../../components/common/SkeletonCard';
 import { mapRestaurant } from '../../utils/mappers';
 import FilterTabs from '../../components/common/FilterTabs';
+import { getCategoryIcon } from '../../utils/iconMap';
+import HeroCarousel from '../../components/customer/HeroCarousel';
 
 const CATEGORIES = [
   { id: 'all', name: 'Tất cả', icon: '🍽️' },
@@ -181,7 +183,9 @@ export default function Home() {
         distance: `${dist.toFixed(1)}km`,
         distanceNum: dist,
         time: `${Math.max(10, duration - 3)}-${duration + 3} phút`,
-        shipping: dist <= 2 ? 'Miễn phí giao hàng' : 'Phí ship rẻ',
+        // Nhãn phí ship TRUNG THỰC theo mức phí thật (không hứa "miễn phí" vì luôn có
+        // phí ≥ 15k): <=15k = rẻ, <=20k = vừa, còn lại = cao.
+        shipping: shippingFee <= 15000 ? 'Phí ship rẻ' : shippingFee <= 20000 ? 'Phí ship vừa' : 'Phí ship cao',
         shippingFee: shippingFee,
       };
     });
@@ -365,27 +369,36 @@ export default function Home() {
   };
 
   return (
-    <div className="flex-1 p-6 md:p-10 max-w-6xl mx-auto w-full font-google-sans pb-24">
-      
-      {/* ─── HEADER / LOCATION CHIP ────────────────────────────────────────────── */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 mb-8">
-        <div>
-          <h1 className="text-2xl md:text-3xl font-extrabold text-md-on-surface tracking-tight">Bạn muốn ăn gì hôm nay? 🔍</h1>
-          <div 
+    <div className="flex-1 p-6 md:p-10 max-w-7xl mx-auto w-full font-google-sans pb-24">
+      {/* Bố cục dashboard: cột feed chính (trái) + panel đơn hàng/địa chỉ (phải, desktop lg+) */}
+      <div className="flex gap-8 items-start">
+        {/* ═══ CỘT CHÍNH: feed khám phá món ═══ */}
+        <div className="flex-1 min-w-0">
+
+      {/* ─── HEADER (lời chào + chip địa chỉ giao hàng) ─────────────────────────── */}
+      <div className="mb-8">
+        <div className="min-w-0">
+          {/* Lời chào — đã bỏ emoji 🔍 */}
+          <h1 className="text-2xl md:text-3xl font-extrabold text-md-on-surface tracking-tight">
+            Bạn muốn ăn gì hôm nay?
+          </h1>
+          {/* Chip địa chỉ giao hàng: bấm mở MapModal, icon MapPin thay cho emoji 📍 */}
+          <button
+            type="button"
             onClick={() => setIsMapOpen(true)}
-            className="inline-flex items-center gap-2 px-4.5 py-2 bg-gradient-to-r from-md-primary/10 to-md-secondary/5 text-md-primary rounded-radius-full text-sm font-extrabold mt-3.5 cursor-pointer border border-md-primary/15 hover:from-md-primary/20 hover:to-md-secondary/15 transition-all shadow-sm"
+            className="inline-flex items-center gap-2 max-w-full px-4.5 py-2 bg-gradient-to-r from-md-primary/10 to-md-secondary/5 text-md-primary rounded-radius-full text-sm font-extrabold mt-3.5 cursor-pointer border border-md-primary/15 hover:from-md-primary/20 hover:to-md-secondary/15 transition-all shadow-sm"
           >
-            <MapPin size={16} />
-            <span className={!user?.address ? "text-amber-600 font-extrabold animate-pulse" : ""}>
-              📍 {user?.address ? (user.address.length > 40 ? user.address.slice(0, 40) + '...' : user.address) : 'Vui lòng chọn địa chỉ giao hàng'}
+            <MapPin size={16} className="shrink-0" />
+            <span className={`truncate ${!user?.address ? "text-amber-600 animate-pulse" : ""}`}>
+              {user?.address ? (user.address.length > 40 ? user.address.slice(0, 40) + '...' : user.address) : 'Vui lòng chọn địa chỉ giao hàng'}
             </span>
-            <span className="text-[11px] ml-1">▼</span>
-          </div>
+            <ChevronDown size={14} className="shrink-0" />
+          </button>
         </div>
       </div>
 
       {/* ─── SEARCH BAR (Pill Shape & Expand on focus) ─────────────────────────── */}
-      <div className="mb-10 relative z-20">
+      <div className="mb-8 relative z-20">
         <Input
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
@@ -394,6 +407,17 @@ export default function Home() {
           className="w-full"
         />
       </div>
+
+      {/* ─── HERO CAROUSEL: QUÁN NỔI BẬT (điểm nhấn kích thích thèm ăn) ─────────── */}
+      {/* Dùng lại danh sách featuredRestaurants đã tính sẵn (data thật), bấm vào mở quán. */}
+      {featuredRestaurants.length > 0 && (
+        <div className="mb-10">
+          <HeroCarousel
+            items={featuredRestaurants.slice(0, 6)}
+            onSelect={(res) => navigate(`/restaurants/${res.id}`)}
+          />
+        </div>
+      )}
 
       {/* ─── CATEGORY CHIPS (Horizontal snap scroll) ───────────────────────────── */}
       <div className="mb-10 overflow-hidden">
@@ -413,7 +437,11 @@ export default function Home() {
                     : 'bg-white text-md-on-surface border-md-outline-variant/50 hover:bg-md-surface-variant/40'
                 }`}
               >
-                <span className="text-lg">{cat.icon}</span>
+                {(() => {
+                  // Render icon lucide theo id danh mục (thay cho emoji cũ trong CATEGORIES)
+                  const CatIcon = getCategoryIcon(cat.id);
+                  return <CatIcon size={18} className="shrink-0" />;
+                })()}
                 <span>{cat.name}</span>
               </button>
             );
@@ -425,7 +453,7 @@ export default function Home() {
       {orderAgainRestaurants.length > 0 && (
         <div className="mb-12 overflow-hidden animate-fade-in">
           <h2 className="text-lg md:text-xl font-extrabold text-md-on-surface mb-4 flex items-center gap-2">
-            🔄 Đặt Lại Quán Cũ
+            <RotateCcw className="text-md-primary" size={20} /> Đặt Lại Quán Cũ
           </h2>
           <div className="flex gap-4 overflow-x-auto no-scrollbar py-1.5">
             {orderAgainRestaurants.map((res) => (
@@ -463,15 +491,18 @@ export default function Home() {
               <Award className="text-md-primary" size={24} />
               Quán Nổi Bật
             </h2>
-            <span 
-              onClick={() => scrollToExploreAndFilter('rating')}
+            {/* "Xem thêm" → sang trang Khám phá để xem đầy đủ quán, thay vì chỉ cuộn
+                nội trang (trước đây cảm giác như không phản hồi). */}
+            <button
+              type="button"
+              onClick={() => navigate('/explore')}
               className="text-sm font-extrabold text-md-primary flex items-center gap-1 cursor-pointer hover:underline"
             >
               Xem thêm <ArrowRight size={16} />
-            </span>
+            </button>
           </div>
 
-          <div className="flex md:grid gap-6 overflow-x-auto md:overflow-visible no-scrollbar py-2.5 snap-x md:snap-none scroll-smooth md:grid-cols-4">
+          <div className="flex md:grid gap-6 overflow-x-auto md:overflow-visible no-scrollbar py-2.5 snap-x md:snap-none scroll-smooth md:grid-cols-2 xl:grid-cols-3">
             {featuredRestaurants.map((res) => (
               <Card
                 key={res.id}
@@ -518,7 +549,7 @@ export default function Home() {
                   </div>
 
                   <div className="mt-4 pt-4 border-t border-md-outline-variant/30 flex items-center justify-between">
-                    <span className="text-xs font-extrabold bg-[#E8F5E9] text-[#2E7D32] px-3 py-1 rounded">
+                    <span className="text-xs font-extrabold bg-slate-100 text-slate-600 px-3 py-1 rounded">
                       {res.shipping}
                     </span>
                     <span className="text-xs text-[#FF6B35] font-extrabold bg-[#FFE8DF] px-2.5 py-1 rounded">
@@ -537,13 +568,23 @@ export default function Home() {
         <div className="mb-12 animate-fade-in">
           <div className="flex items-center justify-between mb-5">
             <h2 className="text-xl md:text-2xl font-extrabold text-md-on-surface flex items-center gap-2">
-              ✨ Dành Riêng Cho Bạn 
-              <span className="text-[10px] md:text-xs font-bold text-md-primary bg-md-primary-container/20 px-3 py-1.5 rounded-full uppercase tracking-wider ml-1">
-                {favCuisineName === 'Được đánh giá cao' ? '✨ Gợi ý hot' : `❤️ Thích: ${favCuisineName}`}
+              <Sparkles className="text-md-primary" size={22} /> Dành Riêng Cho Bạn
+              <span className="inline-flex items-center gap-1 text-[10px] md:text-xs font-bold text-md-primary bg-md-primary-container/20 px-3 py-1.5 rounded-full uppercase tracking-wider ml-1">
+                {favCuisineName === 'Được đánh giá cao'
+                  ? (<><Sparkles size={12} /> Gợi ý hot</>)
+                  : (<><Heart size={12} className="fill-md-primary" /> Thích: {favCuisineName}</>)}
               </span>
             </h2>
+            {/* "Xem thêm" gợi ý: sang trang Khám phá để xem nhiều quán hơn. */}
+            <button
+              type="button"
+              onClick={() => navigate('/explore')}
+              className="text-sm font-extrabold text-md-primary flex items-center gap-1 cursor-pointer hover:underline shrink-0"
+            >
+              Xem thêm <ArrowRight size={16} />
+            </button>
           </div>
-          <div className="flex md:grid gap-4 md:gap-6 overflow-x-auto md:overflow-visible no-scrollbar py-1.5 snap-x md:snap-none scroll-smooth md:grid-cols-4">
+          <div className="flex md:grid gap-4 md:gap-6 overflow-x-auto md:overflow-visible no-scrollbar py-1.5 snap-x md:snap-none scroll-smooth md:grid-cols-2 xl:grid-cols-3">
             {recommendedRestaurants.map((res) => (
               <Card
                 key={`recom-${res.id}`}
@@ -573,7 +614,7 @@ export default function Home() {
                     <span>{res.distance}</span>
                     <span>{res.time}</span>
                     <span className="text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded">
-                      {res.shippingFee === 15000 ? 'Ship rẻ' : 'Giao nhanh'}
+                      {res.shippingFee <= 15000 ? 'Ship rẻ' : res.shippingFee <= 20000 ? 'Ship vừa' : 'Ship cao'}
                     </span>
                   </div>
                 </div>
@@ -591,9 +632,9 @@ export default function Home() {
           {/* Advanced Sorting Filter Tabs */}
           <FilterTabs
             tabs={[
-              { id: 'distance', label: '📍 Gần nhất' },
-              { id: 'rating', label: '⭐ Đánh giá cao' },
-              { id: 'ship', label: '💸 Phí ship rẻ' }
+              { id: 'distance', label: 'Gần nhất' },
+              { id: 'rating', label: 'Đánh giá cao' },
+              { id: 'ship', label: 'Phí ship rẻ' }
             ]}
             activeTab={sortByFilter}
             onTabChange={setSortByFilter}
@@ -667,8 +708,10 @@ export default function Home() {
                     <span className="text-xs font-extrabold text-md-primary">
                       {res.shipping}
                     </span>
+                    {/* Trước đây hiện "Giá TB ~45.000đ" hardcode (giả) → thay bằng số
+                        đơn đã bán thật từ backend (orderCount). */}
                     <span className="text-xs text-md-outline font-extrabold">
-                      Giá TB: ~{formatCurrency(res.avgPrice)}
+                      Đã bán {res.orderCount || 0} đơn
                     </span>
                   </div>
                 </div>
@@ -690,18 +733,72 @@ export default function Home() {
                   Đang tải thêm...
                 </>
               ) : (
-                'Tải thêm quán ăn 🍲'
+                'Tải thêm quán ăn'
               )}
             </button>
           </div>
         )}
       </div>
+        </div>
+        {/* ═══ PANEL PHẢI: địa chỉ giao + tóm tắt giỏ hàng (chỉ desktop lg+) ═══ */}
+        {/* Toàn bộ dữ liệu lấy từ user & cartStore đã có — KHÔNG thêm logic mới. */}
+        <aside className="hidden lg:block w-80 shrink-0 sticky top-6 space-y-4">
+          {/* Thẻ địa chỉ giao hàng (bấm "Đổi" mở MapModal sẵn có) */}
+          <div className="bg-white rounded-radius-xl p-5 border border-md-outline-variant/20 shadow-sm">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-xs font-extrabold text-md-on-surface uppercase tracking-wider flex items-center gap-1.5">
+                <MapPin size={15} className="text-md-primary" /> Giao tới
+              </h3>
+              <button onClick={() => setIsMapOpen(true)} className="text-[11px] font-extrabold text-md-primary hover:underline">Đổi</button>
+            </div>
+            <p className="text-xs text-md-on-surface-variant font-semibold leading-relaxed">
+              {user?.address || 'Chưa chọn địa chỉ giao hàng'}
+            </p>
+          </div>
 
-      {/* ─── FLOATING CART FAB (Shows if there is items in cart) ───────────────── */}
+          {/* Thẻ tóm tắt giỏ hàng (carts từ cartStore) */}
+          <div className="bg-white rounded-radius-xl p-5 border border-md-outline-variant/20 shadow-sm">
+            <h3 className="text-xs font-extrabold text-md-on-surface uppercase tracking-wider flex items-center gap-1.5 mb-3">
+              <ShoppingBag size={15} className="text-md-primary" /> Giỏ hàng của bạn
+            </h3>
+            {cartItemsCount === 0 ? (
+              <p className="text-xs text-md-outline font-semibold py-2">Chưa có món nào trong giỏ.</p>
+            ) : (
+              <>
+                {/* Hiển thị GỌN theo từng quán (tên + số món + tổng tiền quán) để panel
+                    không bị kéo dài khi giỏ có quá nhiều món. Có scroll nếu nhiều quán. */}
+                <div className="space-y-2.5 max-h-64 overflow-y-auto no-scrollbar">
+                  {carts.map((cart) => {
+                    const itemCount = (cart.items || []).reduce((s, it) => s + it.quantity, 0);
+                    return (
+                      <div key={cart.restaurantId} className="flex items-center justify-between gap-2">
+                        <div className="min-w-0">
+                          <p className="text-xs font-extrabold text-md-on-surface truncate">{cart.restaurantName}</p>
+                          <p className="text-[11px] text-md-on-surface-variant font-semibold">{itemCount} món</p>
+                        </div>
+                        <span className="text-xs font-extrabold text-md-on-surface shrink-0">{formatCurrency(cart.subtotal || 0)}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+                <div className="flex items-center justify-between border-t border-slate-100 pt-3 mt-2">
+                  <span className="text-xs font-bold text-md-on-surface-variant">Tổng ({cartItemsCount} món)</span>
+                  <span className="text-base font-extrabold text-md-primary">{formatCurrency(cartTotal)}</span>
+                </div>
+                <button onClick={() => navigate('/cart')} className="w-full mt-3 bg-md-primary text-white font-extrabold py-2.5 rounded-radius-full text-sm hover:bg-opacity-95 transition-all">
+                  Tới giỏ hàng
+                </button>
+              </>
+            )}
+          </div>
+        </aside>
+      </div>
+
+      {/* ─── FLOATING CART FAB (chỉ mobile/tablet; desktop đã có panel phải) ───── */}
       {cartItemsCount > 0 && (
         <button
           onClick={() => navigate('/cart')}
-          className="fixed bottom-24 left-6 md:left-auto md:right-80 z-40 bg-md-primary text-white pl-5 pr-6 py-3.5 rounded-radius-full shadow-shadow-5 flex items-center gap-3.5 hover:scale-105 active:scale-95 transition-all font-extrabold text-base"
+          className="fixed bottom-24 left-6 md:left-auto md:right-80 z-40 lg:hidden bg-md-primary text-white pl-5 pr-6 py-3.5 rounded-radius-full shadow-shadow-5 flex items-center gap-3.5 hover:scale-105 active:scale-95 transition-all font-extrabold text-base"
         >
           <div className="relative">
             <ShoppingBag size={22} />

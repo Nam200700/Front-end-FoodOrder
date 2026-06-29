@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../stores/authStore';
-import { User, Phone, Mail, MapPin, LogOut, Camera, Map } from 'lucide-react';
+import { User, Phone, Mail, MapPin, LogOut, Camera, Map, Utensils, Sparkles, ShoppingBag, Heart, Bell, MessageCircle, ChevronRight, ShieldCheck } from 'lucide-react';
 import MapModal from '../../components/common/MapModal';
 import apiClient from '../../services/api';
 import { getAvatarUrl } from '../../utils/avatarHelper';
@@ -58,7 +58,7 @@ export default function Profile() {
         longitude: Number(lng)
       });
       updateProfile({ name, phone, address, lat, lng });
-      toast.success('Đã cập nhật thông tin cá nhân và vị trí mặc định thành công! 📍');
+      toast.success('Đã cập nhật thông tin cá nhân và vị trí mặc định thành công!');
     } catch (err) {
       console.error('Lỗi khi lưu profile thật lên DB:', err);
       toast.error(err.response?.data?.message || 'Có lỗi xảy ra khi cập nhật thông tin cá nhân.');
@@ -75,40 +75,109 @@ export default function Profile() {
   if (!user) return null;
 
   return (
-    <div className="flex-1 p-4 md:p-8 max-w-xl mx-auto w-full font-google-sans pb-24 space-y-6">
-      
-      <h1 className="text-xl font-bold text-md-on-surface">Tài khoản của tôi</h1>
+    <div className="flex-1 p-4 md:p-8 max-w-4xl mx-auto w-full font-google-sans pb-24 space-y-6">
+      {/* Bố cục 2 cột BẰNG NHAU (desktop): thẻ thành viên (trái) + form hồ sơ (phải).
+          Bỏ items-start → 2 cột kéo giãn cao bằng nhau (form cao = thẻ thành viên +
+          truy cập nhanh). Mini-map đưa xuống dưới full-width. */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
+      {/* ─── CỘT TRÁI: thẻ thành viên + thẻ truy cập nhanh ───────────────────────── */}
+      <div className="space-y-6">
 
-      {/* Profile Header Avatar */}
-      <div className="bg-white rounded-radius-xl p-6 border border-md-outline-variant/20 shadow-sm flex flex-col items-center text-center relative animate-fade-in">
-        <div className="relative">
-          <img 
-            src={getAvatarUrl(user.avatar)} 
-            alt="Avatar" 
-            className="w-24 h-24 rounded-radius-full border-4 border-md-primary/10 object-cover shadow-sm"
-          />
-          <button 
-            type="button"
-            onClick={handleAvatarClick}
-            disabled={uploadingAvatar}
-            className="absolute bottom-0 right-0 p-2 bg-md-primary text-white rounded-radius-full shadow-shadow-2 hover:scale-105 active:scale-95 transition-all cursor-pointer flex items-center justify-center"
-          >
-            {uploadingAvatar ? (
-              <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
-            ) : (
-              <Camera size={14} />
-            )}
-          </button>
+      {/* ─── THẺ THÀNH VIÊN ẨM THỰC (membership card, accent cam) ─────────────────── */}
+      <div className="relative overflow-hidden rounded-radius-xl p-6 shadow-shadow-2 bg-gradient-to-br from-md-primary to-[#FF8C42] text-white animate-fade-in">
+        {/* Hoạ tiết line-art mờ ở góc tạo cảm giác "sổ tay ẩm thực" */}
+        <Utensils className="absolute -right-4 -bottom-4 text-white/10" size={120} strokeWidth={1.2} />
+
+        <div className="relative flex items-center gap-5">
+          <div className="relative shrink-0">
+            <img
+              src={getAvatarUrl(user.avatar)}
+              alt="Avatar"
+              className="w-20 h-20 rounded-radius-full border-4 border-white/30 object-cover shadow-sm"
+            />
+            <button
+              type="button"
+              onClick={handleAvatarClick}
+              disabled={uploadingAvatar}
+              className="absolute bottom-0 right-0 p-1.5 bg-white text-md-primary rounded-radius-full shadow-shadow-2 hover:scale-105 active:scale-95 transition-all cursor-pointer flex items-center justify-center"
+              title="Đổi ảnh đại diện"
+            >
+              {uploadingAvatar ? (
+                <span className="w-3 h-3 border-2 border-md-primary border-t-transparent rounded-full animate-spin"></span>
+              ) : (
+                <Camera size={13} />
+              )}
+            </button>
+          </div>
+
+          <div className="min-w-0">
+            <span className="inline-flex items-center gap-1 text-[10px] font-bold bg-white/20 px-2.5 py-0.5 rounded-full uppercase tracking-wider">
+              <Sparkles size={11} /> Thành viên Foodie
+            </span>
+            <h2 className="font-extrabold text-xl mt-2 truncate">{user.name}</h2>
+            <p className="text-xs text-white/85 font-semibold mt-0.5 truncate">{user.email}</p>
+          </div>
         </div>
-        
-        <h2 className="font-bold text-base text-md-on-surface mt-4">{user.name}</h2>
-        <span className="text-[10px] text-md-primary bg-md-primary-container/20 font-bold px-3 py-1 rounded-full uppercase mt-1.5 tracking-wider shadow-sm border border-md-primary/5">
-          Khách hàng thân thiết
-        </span>
+
+        {/* Dải chân thẻ kiểu thẻ hội viên thật: mã thành viên (từ userId thật) +
+            trạng thái xác thực — lấp khoảng trống & tăng cảm giác "thẻ" chỉn chu.
+            Chỉ dùng dữ liệu đang có (userId/email), KHÔNG bịa điểm/hạng. */}
+        <div className="relative mt-6 pt-4 border-t border-white/25 flex items-end justify-between gap-3">
+          <div className="min-w-0">
+            <p className="text-[9px] font-bold text-white/70 uppercase tracking-[0.15em]">Mã thành viên</p>
+            <p className="text-base font-extrabold tracking-widest mt-1 font-mono">
+              FD-{String(user.userId || user.id || '').padStart(6, '0').slice(-6)}
+            </p>
+          </div>
+          <span className="inline-flex items-center gap-1 text-[10px] font-bold bg-white/15 px-2.5 py-1 rounded-full shrink-0">
+            <ShieldCheck size={12} /> Đã xác thực
+          </span>
+        </div>
       </div>
 
-      {/* Info Form */}
-      <form onSubmit={handleSave} className="bg-white rounded-radius-xl p-5 border border-md-outline-variant/20 shadow-sm space-y-5.5 animate-slide-up">
+      {/* ─── THẺ TRUY CẬP NHANH: lối tắt tới các trang sẵn có (orders/favorites/...) ──
+          Dùng navigate() tới đúng route đang tồn tại — không thêm logic/route mới,
+          vừa lấp khoảng trống vừa tăng tiện ích cho "sổ tay ẩm thực". */}
+      <div className="bg-white rounded-radius-xl p-5 border border-md-outline-variant/20 shadow-sm">
+        <h3 className="text-sm font-extrabold text-md-on-surface flex items-center gap-2 pb-3 mb-2 border-b border-md-outline-variant/20">
+          <Sparkles size={16} className="text-md-primary" /> Truy cập nhanh
+        </h3>
+        <div className="space-y-1">
+          {[
+            { icon: ShoppingBag, label: 'Đơn hàng của tôi', desc: 'Theo dõi & lịch sử đơn', to: '/orders' },
+            { icon: Heart, label: 'Quán yêu thích', desc: 'Bộ sưu tập ẩm thực', to: '/favorites' },
+            { icon: Bell, label: 'Thông báo', desc: 'Cập nhật & ưu đãi', to: '/notifications' },
+            { icon: MessageCircle, label: 'Tin nhắn', desc: 'Trò chuyện với quán', to: '/chat' },
+          ].map(({ icon: ItemIcon, label, desc, to }) => (
+            <button
+              key={to}
+              type="button"
+              onClick={() => navigate(to)}
+              className="w-full flex items-center gap-3 p-2.5 rounded-radius-lg hover:bg-md-primary/5 transition-colors text-left cursor-pointer group"
+            >
+              <span className="p-2 bg-md-primary/10 text-md-primary rounded-radius-md shrink-0">
+                <ItemIcon size={16} />
+              </span>
+              <span className="flex-1 min-w-0">
+                <span className="block text-xs font-extrabold text-md-on-surface truncate">{label}</span>
+                <span className="block text-[11px] text-md-on-surface-variant font-medium truncate">{desc}</span>
+              </span>
+              <ChevronRight size={16} className="text-md-outline group-hover:text-md-primary group-hover:translate-x-0.5 transition-all shrink-0" />
+            </button>
+          ))}
+        </div>
+      </div>
+
+      </div>
+
+      {/* ─── CỘT PHẢI: form hồ sơ (mini-map tách xuống dưới full-width) ────────────
+          h-full + flex-col để form cao bằng cột trái; nút Lưu đẩy xuống đáy (mt-auto). */}
+      <form onSubmit={handleSave} className="bg-white rounded-radius-xl p-5 border border-md-outline-variant/20 shadow-sm space-y-5.5 animate-slide-up h-full flex flex-col">
+        {/* Mục "Hồ sơ" của sổ tay */}
+        <div className="flex items-center gap-2 pb-1 border-b border-md-outline-variant/20">
+          <User size={16} className="text-md-primary" />
+          <h3 className="text-sm font-extrabold text-md-on-surface">Hồ sơ của bạn</h3>
+        </div>
         <div>
           <label className="block text-[10px] font-bold text-md-on-surface-variant uppercase tracking-wider mb-2">
             Họ và tên
@@ -186,7 +255,7 @@ export default function Profile() {
         <button
           type="submit"
           disabled={updating}
-          className="w-full bg-md-primary text-white font-bold py-3.5 px-4 rounded-radius-full shadow-shadow-2 hover:shadow-shadow-3 hover:translate-y-[-1.5px] active:translate-y-[0px] transition-all flex items-center justify-center gap-2 text-xs uppercase tracking-wider cursor-pointer"
+          className="w-full mt-auto bg-md-primary text-white font-bold py-3.5 px-4 rounded-radius-full shadow-shadow-2 hover:shadow-shadow-3 hover:translate-y-[-1.5px] active:translate-y-[0px] transition-all flex items-center justify-center gap-2 text-xs uppercase tracking-wider cursor-pointer"
         >
           {updating ? (
             <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
@@ -195,6 +264,41 @@ export default function Profile() {
           )}
         </button>
       </form>
+
+      </div>
+      {/* đóng grid 2 cột */}
+
+      {/* ─── THẺ XEM TRƯỚC VỊ TRÍ GIAO HÀNG (FULL-WIDTH, nằm dưới 2 cột) ───────────
+          Hiển thị bản đồ tĩnh (nhúng OpenStreetMap, miễn phí, không cần API key)
+          theo đúng toạ độ lat/lng đang lưu trong state — tự cập nhật khi user chọn
+          lại địa chỉ qua MapModal. Thuần trình bày, không đụng logic/backend. */}
+      <div className="bg-white rounded-radius-xl p-5 border border-md-outline-variant/20 shadow-sm">
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="text-sm font-extrabold text-md-on-surface flex items-center gap-2">
+            <MapPin size={16} className="text-md-primary" /> Vị trí giao hàng
+          </h3>
+          <button
+            type="button"
+            onClick={() => setIsMapOpen(true)}
+            className="text-xs font-bold text-md-primary hover:underline flex items-center gap-1 cursor-pointer"
+          >
+            <Map size={13} /> Chọn lại
+          </button>
+        </div>
+        {/* Khung map preview: bbox quanh toạ độ + marker tại đúng vị trí đã lưu */}
+        <div className="rounded-radius-lg overflow-hidden border border-md-outline-variant/30">
+          <iframe
+            title="Bản đồ vị trí giao hàng"
+            className="w-full h-56 md:h-72 block"
+            loading="lazy"
+            src={`https://www.openstreetmap.org/export/embed.html?bbox=${Number(lng) - 0.008}%2C${Number(lat) - 0.006}%2C${Number(lng) + 0.008}%2C${Number(lat) + 0.006}&layer=mapnik&marker=${lat}%2C${lng}`}
+          />
+        </div>
+        <p className="text-xs text-md-on-surface-variant font-semibold mt-3 flex items-start gap-1.5 leading-relaxed">
+          <MapPin size={14} className="mt-0.5 shrink-0 text-md-primary" />
+          {address}
+        </p>
+      </div>
 
       {/* Dangerous Operations */}
       <button
@@ -221,5 +325,6 @@ export default function Profile() {
         onChange={handleAvatarChange} 
       />
     </div>
+      
   );
 }

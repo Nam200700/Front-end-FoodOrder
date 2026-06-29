@@ -9,22 +9,22 @@ export const STATUS_META = {
   },
   CONFIRMED: {
     label: 'Quán đã xác nhận',
-    toastText: '📋 Đơn hàng #{orderId}: Quán đã xác nhận đơn hàng! 👨‍🍳',
+    toastText: 'Đơn hàng #{orderId}: Quán đã xác nhận đơn hàng!',
     color: 'md-primary',
   },
   PREPARING: {
     label: 'Đang chuẩn bị món',
-    toastText: '👨‍🍳 Đơn hàng #{orderId}: Quán đang chuẩn bị món ăn! 🍲',
+    toastText: 'Đơn hàng #{orderId}: Quán đang chuẩn bị món ăn!',
     color: 'md-primary',
   },
   READY_FOR_PICKUP: {
     label: 'Chờ shipper lấy hàng',
-    toastText: '⏳ Đơn hàng #{orderId}: Món ăn đã chuẩn bị xong! Đang chờ tài xế đến lấy món. 🍳',
+    toastText: 'Đơn hàng #{orderId}: Món ăn đã chuẩn bị xong! Đang chờ tài xế đến lấy món.',
     color: 'md-secondary',
   },
   PICKED_UP: {
     label: 'Đang giao tới bạn',
-    toastText: '🚚 Đơn hàng #{orderId}: Shipper đã lấy món ăn và đang giao tới bạn! Hãy chuẩn bị nhận món. 🥰',
+    toastText: 'Đơn hàng #{orderId}: Shipper đã lấy món ăn và đang giao tới bạn! Hãy chuẩn bị nhận món.',
     color: 'md-tertiary',
   },
   DELIVERING: {
@@ -34,33 +34,33 @@ export const STATUS_META = {
   },
   COMPLETED: {
     label: 'Giao hàng thành công',
-    toastText: '🎉 Đơn hàng #{orderId}: Đã giao thành công! Ăn ngon miệng nhé! 😋',
+    toastText: 'Đơn hàng #{orderId}: Đã giao thành công! Ăn ngon miệng nhé!',
     color: 'md-tertiary',
   },
   CANCELLED: {
     label: 'Đơn hàng đã bị hủy',
-    toastText: '❌ Đơn hàng #{orderId} đã bị hủy.',
+    toastText: 'Đơn hàng #{orderId} đã bị hủy.',
     color: 'md-error',
   },
 
   // Map các sự kiện từ Hàng đợi Thông báo Cá nhân (NotificationType)
   ORDER_CONFIRMED: {
-    toastText: '📋 Đơn hàng #{orderId}: Quán đã xác nhận đơn hàng! 👨‍🍳',
+    toastText: 'Đơn hàng #{orderId}: Quán đã xác nhận đơn hàng!',
   },
   ORDER_PREPARING: {
-    toastText: '👨‍🍳 Đơn hàng #{orderId}: Quán đang chuẩn bị món ăn! 🍲',
+    toastText: 'Đơn hàng #{orderId}: Quán đang chuẩn bị món ăn!',
   },
   ORDER_READY_PICKUP: {
-    toastText: '⏳ Đơn hàng #{orderId}: Món ăn đã chuẩn bị xong! Đang chờ tài xế đến lấy món. 🍳',
+    toastText: 'Đơn hàng #{orderId}: Món ăn đã chuẩn bị xong! Đang chờ tài xế đến lấy món.',
   },
   SHIPPER_ASSIGNED: {
-    toastText: '🚴 Đơn hàng #{orderId}: Đã tìm thấy tài xế giao hàng! Đang đến quán lấy món.',
+    toastText: 'Đơn hàng #{orderId}: Đã tìm thấy tài xế giao hàng! Đang đến quán lấy món.',
   },
   ORDER_COMPLETED: {
-    toastText: '🎉 Đơn hàng #{orderId}: Đã giao thành công! Ăn ngon miệng nhé! 😋',
+    toastText: 'Đơn hàng #{orderId}: Đã giao thành công! Ăn ngon miệng nhé!',
   },
   ORDER_CANCELLED: {
-    toastText: '❌ Đơn hàng #{orderId} đã bị hủy.',
+    toastText: 'Đơn hàng #{orderId} đã bị hủy.',
   },
 };
 

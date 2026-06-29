@@ -348,15 +348,15 @@ export default function OrderTracking() {
         </button>
         <div>
           <h1 className="text-xl md:text-2xl font-extrabold text-md-on-surface leading-none tracking-tight">
-            Theo dõi đơn hàng #{displayOrder.id}
+            Theo Dõi Đơn Hàng #{displayOrder.id}
           </h1>
-          <span className="text-xs text-md-outline font-bold mt-2 block">
+          {/* <span className="text-xs text-md-outline font-bold mt-2 block">
             Quán: {displayOrder.restaurantName}
-          </span>
+          </span> */}
         </div>
       </div>
 
-      {/* Bố cục 2 cột (desktop): trạng thái + bản đồ (trái) | tài xế + hóa đơn (phải) */}
+      {/* Bố cục 2 cột: trạng thái + bản đồ | tài xế + hóa đơn*/}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
         {/* ── CỘT TRÁI: trạng thái + bản đồ ── */}
         <div className="space-y-6">
@@ -529,8 +529,10 @@ export default function OrderTracking() {
               {displayOrder.items.map((item, idx) => (
                 <div key={idx} className="flex justify-between items-start text-sm font-semibold">
                   <div className="min-w-0 pr-4">
-                    <span className="font-extrabold text-md-primary">{item.quantity}x</span>
-                    <span className="ml-2.5 font-bold text-md-on-surface-variant">{item.name}</span>
+                    <span className="font-bold text-md-on-surface-variant">{item.name}</span>
+                    <span className="block text-[11px] text-slate-500 font-medium mt-0.5">
+                      {formatCurrency(item.price)} x{item.quantity}
+                    </span>
                     {item.note && (
                       <span className="block text-xs text-md-outline italic mt-1 font-medium">
                         Ghi chú: "{item.note}"
@@ -555,12 +557,16 @@ export default function OrderTracking() {
             {/* Payment Summary */}
             <div className="pt-4 border-t border-slate-100 space-y-2.5 text-sm font-medium">
               <div className="flex justify-between text-md-on-surface-variant">
+                <span>Tạm tính:</span>
+                <span className="font-bold">{formatCurrency(displayOrder.subtotalAmount)}</span>
+              </div>
+              <div className="flex justify-between text-md-on-surface-variant">
                 <span>Phí giao hàng:</span>
                 <span className="font-bold">{formatCurrency(displayOrder.shippingFee)}</span>
               </div>
               <div className="flex justify-between text-md-on-surface-variant">
                 <span>Phương thức:</span>
-                <span className="font-extrabold text-md-secondary">{displayOrder.paymentMethod}</span>
+                <span className="font-bold">{displayOrder.paymentMethod}</span>
               </div>
               <div className="flex justify-between text-base font-extrabold pt-3.5 border-t border-slate-100 flex-wrap">
                 <span>Tổng thanh toán:</span>

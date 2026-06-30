@@ -26,13 +26,6 @@ export default function RegistrationRequestCard({
     return 'bg-[#34A853]/10 text-[#34A853] border-[#34A853]/20';
   };
 
-  // Màu nút "Phê Duyệt" theo đúng màu vai trò để Admin nhìn là biết duyệt loại nào:
-  // OWNER (quán) -> xanh dương merchant #1A73E8, SHIPPER (tài xế) -> xanh lá #34A853.
-  const getApproveBtnColor = () => {
-    if (role === 'OWNER') return 'bg-[#1A73E8] hover:bg-[#1560C4] border-[#1A73E8]';
-    return 'bg-[#34A853] hover:bg-[#2C8C46] border-[#34A853]';
-  };
-
   const getStatusBadgeColor = (status) => {
     switch (status) {
       case 'APPROVED': return 'bg-emerald-50 text-emerald-700 border-emerald-200';
@@ -126,22 +119,23 @@ export default function RegistrationRequestCard({
         <div className="border-t border-slate-800 pt-4 flex flex-col gap-3">
           {!showRejectInput ? (
             <div className="flex gap-3 justify-end">
+              {/* Nút Từ Chối: tông đỏ nhạt (đỏ pastel), dùng ! để đè nền outline mặc định */}
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => setShowRejectInput(true)}
                 disabled={loading}
-                className="bg-transparent hover:bg-red-950/30 hover:text-red-400 hover:border-red-900/40 border-slate-700 text-slate-400 font-extrabold"
+                className="font-extrabold !bg-red-100 !text-red-600 !border !border-red-200 hover:!bg-red-200 hover:!text-red-700"
               >
                 <X size={14} className="mr-1.5" /> Từ Chối
               </Button>
-              {/* Nút phê duyệt: override màu cam md-primary mặc định → màu theo vai trò */}
+              {/* Nút Phê Duyệt: tông xanh lá nhạt (pastel), ! để đè màu cam md-primary mặc định */}
               <Button
                 variant="primary"
                 size="sm"
                 onClick={() => onApprove(request.id || request.userId)}
                 disabled={loading}
-                className={`font-extrabold shadow-sm text-white ${getApproveBtnColor()}`}
+                className="font-extrabold shadow-sm !bg-emerald-100 !text-emerald-700 !border !border-emerald-200 hover:!bg-emerald-200"
               >
                 <Check size={14} className="mr-1.5" /> Phê Duyệt
               </Button>

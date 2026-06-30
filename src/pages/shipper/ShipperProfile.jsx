@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../stores/authStore';
-import { User, Bike, Phone, LogOut, Camera, Mail, ShieldCheck, Clipboard, Trophy } from 'lucide-react';
+import { User, Bike, Phone, LogOut, Camera, Mail, ShieldCheck, Clipboard, Trophy, Star, Package, CheckCircle2 } from 'lucide-react';
 import apiClient from '../../services/api';
 import Spinner from '../../components/common/Spinner';
 import { getAvatarUrl } from '../../utils/avatarHelper';
@@ -119,42 +119,57 @@ export default function ShipperProfile() {
         <Spinner />
       ) : (
         <>
-          {/* Shipper Avatar card */}
-          <div className="bg-white rounded-radius-xl p-6 border border-slate-200/60 shadow-sm flex flex-col items-center text-center relative animate-fade-in">
-            <div className="relative">
-              <img 
-                src={getAvatarUrl(user.avatar)} 
-                alt="Shipper Avatar" 
-                className="w-24 h-24 rounded-radius-full border-4 border-[#E8F5E9] object-cover shadow-sm"
-              />
-              <button 
-                type="button"
-                onClick={handleAvatarClick}
-                disabled={uploadingAvatar}
-                className="absolute bottom-0 right-0 p-2 bg-md-tertiary text-white rounded-radius-full shadow-sm hover:scale-105 transition-all cursor-pointer border border-[#E8F5E9]/20 flex items-center justify-center"
-              >
-                {uploadingAvatar ? (
-                  <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
-                ) : (
-                  <Camera size={14} />
-                )}
-              </button>
+          {/* Shipper Avatar card — cover gradient + avatar đè lên + 3 thẻ thống kê */}
+          <div className="bg-white rounded-radius-xl border border-slate-200/60 shadow-sm overflow-hidden relative animate-fade-in">
+            {/* Cover gradient xanh shipper */}
+            <div className="h-24 bg-gradient-to-br from-[#2E7D32] to-md-tertiary relative">
+              <div className="absolute -right-6 -top-6 w-28 h-28 rounded-full bg-white/10" />
+              <Bike className="absolute right-4 bottom-3 text-white/20" size={40} />
             </div>
-            <h2 className="font-bold text-base text-slate-800 mt-4">{name}</h2>
-            <span className="text-[10px] text-md-tertiary bg-[#E8F5E9] font-bold px-3 py-1 rounded-full uppercase mt-1.5 tracking-wider border border-[#C8E6C9] inline-flex items-center gap-1">
-              {/* icon Trophy thay emoji 🏆 */}
-              <Trophy size={11} /> TÀI XẾ {Number(avgRating).toFixed(1)} SAO
-            </span>
 
-            {/* Stats block */}
-            <div className="grid grid-cols-2 gap-4 w-full mt-5 pt-5 border-t border-slate-100">
-              <div className="bg-slate-50/70 rounded-2xl p-3 flex flex-col items-center border border-slate-100/50">
-                <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">Đơn đang giao</span>
-                <span className="text-base font-black text-amber-500 mt-1">{activeDelivery} đơn</span>
+            <div className="px-6 pb-6 flex flex-col items-center text-center -mt-12">
+              <div className="relative">
+                <img
+                  src={getAvatarUrl(user.avatar)}
+                  alt="Shipper Avatar"
+                  className="w-24 h-24 rounded-radius-full border-4 border-white object-cover shadow-md"
+                />
+                <button
+                  type="button"
+                  onClick={handleAvatarClick}
+                  disabled={uploadingAvatar}
+                  className="absolute bottom-0 right-0 p-2 bg-md-tertiary text-white rounded-radius-full shadow-sm hover:scale-105 transition-all cursor-pointer border-2 border-white flex items-center justify-center"
+                >
+                  {uploadingAvatar ? (
+                    <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+                  ) : (
+                    <Camera size={14} />
+                  )}
+                </button>
               </div>
-              <div className="bg-slate-50/70 rounded-2xl p-3 flex flex-col items-center border border-slate-100/50">
-                <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">Đơn hoàn thành</span>
-                <span className="text-base font-black text-emerald-500 mt-1">{totalDelivery} đơn</span>
+              <h2 className="font-bold text-base text-slate-800 mt-3">{name}</h2>
+              <span className="text-[10px] text-md-tertiary bg-[#E8F5E9] font-bold px-3 py-1 rounded-full uppercase mt-1.5 tracking-wider border border-[#C8E6C9] inline-flex items-center gap-1">
+                {/* icon Trophy thay emoji 🏆 */}
+                <Trophy size={11} /> TÀI XẾ {Number(avgRating).toFixed(1)} SAO
+              </span>
+
+              {/* Stats block: đang giao · hoàn thành · đánh giá */}
+              <div className="grid grid-cols-3 gap-3 w-full mt-5 pt-5 border-t border-slate-100">
+                <div className="bg-amber-50/60 rounded-2xl p-3 flex flex-col items-center border border-amber-100/50">
+                  <Package size={16} className="text-amber-500" />
+                  <span className="text-base font-black text-amber-500 mt-1.5 leading-none">{activeDelivery}</span>
+                  <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider mt-1">Đang giao</span>
+                </div>
+                <div className="bg-emerald-50/60 rounded-2xl p-3 flex flex-col items-center border border-emerald-100/50">
+                  <CheckCircle2 size={16} className="text-emerald-500" />
+                  <span className="text-base font-black text-emerald-500 mt-1.5 leading-none">{totalDelivery}</span>
+                  <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider mt-1">Hoàn thành</span>
+                </div>
+                <div className="bg-[#E8F5E9]/60 rounded-2xl p-3 flex flex-col items-center border border-[#C8E6C9]/50">
+                  <Star size={16} className="text-amber-400 fill-amber-400" />
+                  <span className="text-base font-black text-md-tertiary mt-1.5 leading-none">{Number(avgRating).toFixed(1)}</span>
+                  <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider mt-1">Đánh giá</span>
+                </div>
               </div>
             </div>
           </div>

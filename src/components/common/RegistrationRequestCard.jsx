@@ -50,12 +50,13 @@ export default function RegistrationRequestCard({
     : 'Chưa cập nhật';
 
   return (
-    <div className="bg-white rounded-radius-xl border border-slate-100 shadow-sm overflow-hidden p-6 transition-all duration-300 hover:shadow-md hover:border-slate-200/60">
-      
+    // Card duyệt hồ sơ đối tác — dùng riêng cho Admin nên đồng bộ tông dark + tím
+    <div className="bg-slate-950 rounded-radius-xl border border-slate-800 shadow-md overflow-hidden p-6 transition-all duration-300 hover:shadow-lg hover:border-slate-700">
+
       {/* Header Info */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-slate-100 pb-4 mb-4">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-slate-800 pb-4 mb-4">
         <div className="flex items-center gap-3">
-          <div className="w-12 h-12 rounded-radius-lg bg-slate-50 border border-slate-100 overflow-hidden flex items-center justify-center font-extrabold text-slate-500 shrink-0">
+          <div className="w-12 h-12 rounded-radius-lg bg-slate-900 border border-slate-800 overflow-hidden flex items-center justify-center font-extrabold text-slate-400 shrink-0">
             {request.avatar || request.restaurantImageUrl ? (
               <img 
                 src={request.avatar || request.restaurantImageUrl} 
@@ -67,7 +68,7 @@ export default function RegistrationRequestCard({
             )}
           </div>
           <div>
-            <h4 className="text-sm font-black text-slate-800 leading-snug">
+            <h4 className="text-sm font-black text-slate-100 leading-snug">
               {request.restaurantName || request.fullName}
             </h4>
             <div className="flex items-center gap-2 mt-1 flex-wrap">
@@ -93,7 +94,7 @@ export default function RegistrationRequestCard({
             <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider mb-1">
               {field.label}
             </span>
-            <span className="text-xs font-semibold text-slate-700 leading-relaxed break-all">
+            <span className="text-xs font-semibold text-slate-300 leading-relaxed break-all">
               {field.value || 'Chưa cung cấp'}
             </span>
           </div>
@@ -102,11 +103,11 @@ export default function RegistrationRequestCard({
 
       {/* Rejection Reason (If status is rejected) */}
       {(request.rejectedReason || request.rejectedReason === '') && (request.status === 'REJECTED' || request.registerStatus === 'REJECTED') && (
-        <div className="mb-4 bg-red-50/50 border border-red-100 rounded-radius-lg p-3 flex items-start gap-2.5">
-          <BadgeAlert size={16} className="text-red-500 shrink-0 mt-0.5" />
+        <div className="mb-4 bg-red-950/20 border border-red-900/30 rounded-radius-lg p-3 flex items-start gap-2.5">
+          <BadgeAlert size={16} className="text-red-400 shrink-0 mt-0.5" />
           <div>
-            <span className="text-[9px] font-extrabold text-red-500 uppercase tracking-widest block mb-0.5">Lý do từ chối</span>
-            <p className="text-xs font-bold text-red-700 leading-relaxed">
+            <span className="text-[9px] font-extrabold text-red-400 uppercase tracking-widest block mb-0.5">Lý do từ chối</span>
+            <p className="text-xs font-bold text-red-300 leading-relaxed">
               {request.rejectedReason || 'Không có lý do cụ thể.'}
             </p>
           </div>
@@ -115,24 +116,26 @@ export default function RegistrationRequestCard({
 
       {/* Actions */}
       {(request.status === 'PENDING' || request.registerStatus === 'PENDING') && (
-        <div className="border-t border-slate-50 pt-4 flex flex-col gap-3">
+        <div className="border-t border-slate-800 pt-4 flex flex-col gap-3">
           {!showRejectInput ? (
             <div className="flex gap-3 justify-end">
-              <Button 
-                variant="outline" 
-                size="sm" 
+              {/* Nút Từ Chối: tông đỏ nhạt (đỏ pastel), dùng ! để đè nền outline mặc định */}
+              <Button
+                variant="outline"
+                size="sm"
                 onClick={() => setShowRejectInput(true)}
                 disabled={loading}
-                className="hover:bg-red-50 hover:text-red-600 hover:border-red-200 border-slate-200 text-slate-500 font-extrabold"
+                className="font-extrabold !bg-red-100 !text-red-600 !border !border-red-200 hover:!bg-red-200 hover:!text-red-700"
               >
                 <X size={14} className="mr-1.5" /> Từ Chối
               </Button>
-              <Button 
-                variant="primary" 
-                size="sm" 
+              {/* Nút Phê Duyệt: tông xanh lá nhạt (pastel), ! để đè màu cam md-primary mặc định */}
+              <Button
+                variant="primary"
+                size="sm"
                 onClick={() => onApprove(request.id || request.userId)}
                 disabled={loading}
-                className="font-extrabold shadow-sm"
+                className="font-extrabold shadow-sm !bg-emerald-100 !text-emerald-700 !border !border-emerald-200 hover:!bg-emerald-200"
               >
                 <Check size={14} className="mr-1.5" /> Phê Duyệt
               </Button>
@@ -148,7 +151,7 @@ export default function RegistrationRequestCard({
                   placeholder="Nhập lý do từ chối (ví dụ: Biển số xe không rõ ràng, Hình ảnh CCCD mờ...)"
                   value={rejectReason}
                   onChange={(e) => setRejectReason(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-radius-lg p-3 text-xs font-semibold focus:outline-none focus:border-red-500 focus:bg-white transition-all text-slate-700 min-h-[70px]"
+                  className="w-full bg-slate-900 border border-slate-800 rounded-radius-lg p-3 text-xs font-semibold focus:outline-none focus:border-red-500 transition-all text-slate-200 min-h-[70px]"
                 />
               </div>
               <div className="flex justify-end gap-2.5">
@@ -157,7 +160,7 @@ export default function RegistrationRequestCard({
                   variant="outline" 
                   size="sm" 
                   onClick={() => setShowRejectInput(false)}
-                  className="border-slate-200 text-slate-500 font-extrabold text-xs"
+                  className="bg-transparent border-slate-700 text-slate-400 font-extrabold text-xs"
                 >
                   Hủy
                 </Button>

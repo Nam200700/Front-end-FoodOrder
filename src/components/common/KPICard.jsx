@@ -1,6 +1,8 @@
 import React from 'react';
 
-export default function KPICard({ title, value, description, icon: Icon, color = 'bg-white border-slate-100', badge, trend }) {
+// valueClassName: cho phép override màu/chữ của số liệu chính (mặc định chữ đậm tối cho
+// card nền sáng ở Customer/Merchant; Admin dùng card nền tối nên truyền chữ sáng vào).
+export default function KPICard({ title, value, description, icon: Icon, color = 'bg-white border-slate-100', badge, trend, valueClassName = 'text-slate-800' }) {
   return (
     <div className={`rounded-radius-xl p-5 border shadow-sm ${color} transition-all duration-300 hover:shadow-md`}>
       <div className="flex items-center justify-between mb-2">
@@ -8,7 +10,7 @@ export default function KPICard({ title, value, description, icon: Icon, color =
         {Icon && <Icon size={18} className="text-slate-400" />}
       </div>
       <div className="mb-2">
-        <span className="text-2xl font-black text-slate-800 tracking-tight">{value}</span>
+        <span className={`text-2xl font-black tracking-tight ${valueClassName}`}>{value}</span>
         {description && <p className="text-xs text-slate-450 mt-1 font-medium">{description}</p>}
       </div>
       {badge && (

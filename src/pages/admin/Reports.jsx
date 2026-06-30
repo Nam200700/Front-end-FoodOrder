@@ -1,5 +1,5 @@
 import React from 'react';
-import { AlertTriangle, ShieldCheck } from 'lucide-react';
+import { AlertTriangle, ShieldCheck, RefreshCw, CheckCircle2, User, Flag, Quote, ShieldAlert } from 'lucide-react';
 import { useFetchData } from '../../hooks/useFetchData';
 import apiClient from '../../services/api';
 import Spinner from '../../components/common/Spinner';
@@ -64,42 +64,76 @@ export default function AdminReports() {
   const list = reports || [];
 
   return (
-    <div className="flex-1 p-4 md:p-8 max-w-4xl mx-auto w-full font-google-sans text-slate-100 pb-24 space-y-6">
-      
+    <div className="flex-1 p-4 md:p-8 max-w-6xl mx-auto w-full font-google-sans text-slate-100 pb-24 space-y-6">
+
       <div className="flex justify-between items-center flex-wrap gap-4">
-        <h1 className="text-xl font-bold text-slate-100 flex items-center gap-2">
-          <AlertTriangle className="text-red-500 animate-pulse" size={24} />
-          Xử lý báo cáo vi phạm từ khách hàng
-        </h1>
+        <div>
+          <h1 className="text-xl font-bold text-slate-100 flex items-center gap-2">
+            <AlertTriangle className="text-red-500 animate-pulse" size={24} />
+            Xử lý báo cáo vi phạm từ khách hàng
+          </h1>
+          <p className="text-xs text-slate-400 mt-1">Xác minh & xử lý các khiếu nại vi phạm đang chờ trên nền tảng</p>
+        </div>
         <button
           onClick={refetch}
-          className="px-4 py-2 border border-slate-800 hover:bg-slate-900 text-slate-300 font-bold text-xs rounded-radius-lg transition-colors cursor-pointer"
+          className="px-4 py-2 border border-slate-800 hover:bg-slate-900 text-slate-300 font-bold text-xs rounded-radius-lg transition-colors cursor-pointer inline-flex items-center gap-1.5"
         >
-          🔄 Làm mới
+          <RefreshCw size={14} /> Làm mới
         </button>
       </div>
 
-      <div className="space-y-4">
-        {list.length === 0 ? (
-          <div className="text-center py-16 bg-slate-950 rounded-radius-xl border border-slate-800 text-slate-400 text-xs font-bold shadow-md">
-            🎉 Tuyệt vời! Không còn báo cáo vi phạm nào chưa xử lý trên hệ thống.
+      {/* ─── Dải tổng quan: số báo cáo đang chờ xử lý ───────────────────────── */}
+      {list.length > 0 && (
+        <div className="flex items-center gap-3 bg-red-950/15 border border-red-900/30 rounded-radius-xl p-4">
+          <div className="p-2.5 rounded-radius-lg bg-red-500/10 text-red-400 shrink-0">
+            <ShieldAlert size={22} />
           </div>
-        ) : (
-          list.map((rep) => (
-            <div key={rep.id} className="bg-slate-950 border border-slate-800 rounded-radius-xl p-5 space-y-4 shadow-sm">
-              <div className="flex justify-between items-start border-b border-slate-850 pb-3">
-                <div>
-                  <h3 className="font-bold text-xs sm:text-sm text-slate-100">Người báo cáo: {rep.sender}</h3>
-                  <span className="text-[10px] text-slate-500 block mt-1">Đối tượng bị báo cáo: <b className="text-red-400 font-bold">{rep.target}</b></span>
+          <div>
+            <span className="text-sm font-bold text-slate-100 block">Đang có {list.length} báo cáo chờ xử lý</span>
+            <span className="text-[11px] text-slate-400">Ưu tiên xác minh sớm để bảo vệ trải nghiệm người dùng</span>
+          </div>
+        </div>
+      )}
+
+      {list.length === 0 ? (
+        <div className="text-center py-16 bg-slate-950 rounded-radius-xl border border-slate-800 text-slate-400 text-xs font-bold shadow-md flex flex-col items-center gap-3">
+          {/* icon CheckCircle xanh thay emoji 🎉 cho trạng thái sạch báo cáo */}
+          <CheckCircle2 size={40} className="text-emerald-500" strokeWidth={1.5} />
+          Tuyệt vời! Không còn báo cáo vi phạm nào chưa xử lý trên hệ thống.
+        </div>
+      ) : (
+        // Lưới 2 cột ở màn rộng để tận dụng không gian (trước đây 1 cột bị trống bên phải)
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          {list.map((rep) => (
+            <div key={rep.id} className="bg-slate-950 border border-slate-800 rounded-radius-xl p-5 space-y-4 shadow-sm hover:border-slate-700 transition-colors flex flex-col">
+              {/* Header: avatar chữ cái người báo cáo + đối tượng bị báo cáo + thời gian */}
+              <div className="flex justify-between items-start border-b border-slate-850 pb-3 gap-3">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-10 h-10 rounded-full bg-purple-950/40 border border-purple-900/40 flex items-center justify-center text-purple-300 font-extrabold text-sm shrink-0">
+                    {(rep.sender || '?').charAt(0).toUpperCase()}
+                  </div>
+                  <div className="min-w-0">
+                    <h3 className="font-bold text-xs sm:text-sm text-slate-100 truncate flex items-center gap-1.5">
+                      <User size={12} className="text-slate-500 shrink-0" /> {rep.sender}
+                    </h3>
+                    <span className="text-[10px] text-slate-500 mt-1 inline-flex items-center gap-1">
+                      <Flag size={11} className="text-red-400 shrink-0" />
+                      Đối tượng: <b className="text-red-400 font-bold">{rep.target}</b>
+                    </span>
+                  </div>
                 </div>
-                <span className="text-[10px] text-slate-400 font-bold">{rep.date}</span>
+                <span className="text-[10px] text-slate-400 font-bold shrink-0">{rep.date}</span>
               </div>
 
-              <p className="text-xs text-slate-300 leading-relaxed bg-slate-900 border border-slate-850 p-3.5 rounded-radius-lg font-medium">
-                "{rep.content}"
-              </p>
+              {/* Nội dung tố cáo: bọc trong khối trích dẫn có icon */}
+              <div className="relative bg-slate-900 border border-slate-850 p-3.5 pl-9 rounded-radius-lg flex-1">
+                <Quote size={14} className="absolute left-3 top-3.5 text-slate-600" />
+                <p className="text-xs text-slate-300 leading-relaxed font-medium italic">
+                  {rep.content}
+                </p>
+              </div>
 
-              <div className="flex justify-end gap-2 pt-2">
+              <div className="flex justify-end gap-2 pt-1">
                 <button
                   onClick={() => handleResolve(rep.id, rep.target)}
                   className="px-4.5 py-2 bg-purple-650 hover:bg-purple-750 text-white font-bold text-xs rounded-radius-full shadow-md flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer"
@@ -109,9 +143,9 @@ export default function AdminReports() {
                 </button>
               </div>
             </div>
-          ))
-        )}
-      </div>
+          ))}
+        </div>
+      )}
 
     </div>
   );

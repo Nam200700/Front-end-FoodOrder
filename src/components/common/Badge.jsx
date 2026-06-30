@@ -22,6 +22,8 @@ export default function Badge({
   if (variant === 'role') {
     const roles = {
       CUSTOMER: 'bg-md-primary/10 text-md-primary border-md-primary/15',
+      // OWNER (chủ quán, tên role ở backend) dùng chung màu xanh dương với MERCHANT
+      OWNER: 'bg-md-secondary/10 text-md-secondary border-md-secondary/15',
       MERCHANT: 'bg-md-secondary/10 text-md-secondary border-md-secondary/15',
       SHIPPER: 'bg-md-tertiary/10 text-md-tertiary border-md-tertiary/15',
       ADMIN: 'bg-purple-100 text-purple-700 border-purple-200',

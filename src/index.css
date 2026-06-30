@@ -43,6 +43,15 @@
   --color-role-shipper: #34A853;
   --color-role-admin: #9334E6;
 
+  /* ─── Sắc tím Admin bổ sung (purple-550/650/750) ──────────────────────
+     Layout/Reports/FilterTabs admin dùng các class bg-purple-650, bg-purple-750,
+     border-purple-550 nhưng Tailwind không có sẵn các nấc này → trước đây class
+     rỗng (không ra nền). Định nghĩa theo brand admin #9334E6 để nền/viền hiện đúng,
+     tránh icon trắng nằm trên nền rỗng -> vô hình. */
+  --color-purple-550: #A855F7;
+  --color-purple-650: #9334E6;
+  --color-purple-750: #7E22CE;
+
   /* ─── Font Family ────────────────────────────────── */
   --font-google-sans: 'Google Sans', sans-serif;
   --font-google-sans-display: 'Google Sans Display', sans-serif;
@@ -349,6 +358,28 @@
   background-color: rgba(147, 52, 230, 0.06) !important;
   border-color: rgba(147, 52, 230, 0.15) !important;
   color: #9334E6 !important;
+}
+/* Bổ sung tint chế độ sáng cho amber/red/cyan/rose — trước đây thiếu nên các
+   KPI card dùng màu này bị trắng trơn, lệch với card xanh/tím (Orders, Dashboard, Stats) */
+.theme-light .bg-amber-950\/10 {
+  background-color: rgba(245, 158, 11, 0.08) !important;
+  border-color: rgba(245, 158, 11, 0.18) !important;
+  color: #B45309 !important;
+}
+.theme-light .bg-red-950\/10 {
+  background-color: rgba(239, 68, 68, 0.07) !important;
+  border-color: rgba(239, 68, 68, 0.18) !important;
+  color: #DC2626 !important;
+}
+.theme-light .bg-cyan-950\/10 {
+  background-color: rgba(6, 182, 212, 0.07) !important;
+  border-color: rgba(6, 182, 212, 0.18) !important;
+  color: #0891B2 !important;
+}
+.theme-light .bg-rose-950\/10 {
+  background-color: rgba(244, 63, 94, 0.07) !important;
+  border-color: rgba(244, 63, 94, 0.18) !important;
+  color: #E11D48 !important;
 }
 
 .theme-light .bg-slate-900\/30 {

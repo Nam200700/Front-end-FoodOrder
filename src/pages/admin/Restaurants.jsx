@@ -5,6 +5,7 @@ import Spinner from '../../components/common/Spinner';
 import RegistrationRequestCard from '../../components/common/RegistrationRequestCard';
 import FilterTabs from '../../components/common/FilterTabs';
 import { toast } from 'react-toastify';
+import { Store, CheckCircle2 } from 'lucide-react';
 import ErrorState from '../../components/common/ErrorState';
 import ConfirmDialog from '../../components/common/ConfirmDialog';
 
@@ -94,12 +95,13 @@ export default function AdminRestaurants() {
     <div className="flex-1 p-4 md:p-8 max-w-4xl mx-auto w-full font-google-sans text-slate-100 pb-24 space-y-6">
       
       <div className="flex items-center gap-3">
-        <h1 className="text-xl md:text-2xl font-black text-slate-800 flex items-center gap-2 tracking-tight">
-          🏪 Duyệt Đăng Ký Quán Ăn (Hồ sơ Đối tác)
+        <h1 className="text-xl md:text-2xl font-black text-slate-100 flex items-center gap-2 tracking-tight">
+          {/* icon Store tím thay emoji 🏪 */}
+          <Store className="text-purple-400" size={26} /> Duyệt Đăng Ký Quán Ăn (Hồ sơ Đối tác)
         </h1>
       </div>
 
-      {/* Filter tab bar */}
+      {/* Filter tab bar — đồng bộ dark + tab active tím (tránh rò màu cam) */}
       <FilterTabs
         tabs={[
           { id: 'pending', label: 'Chờ duyệt' },
@@ -108,14 +110,17 @@ export default function AdminRestaurants() {
         ]}
         activeTab={activeFilter}
         onTabChange={setActiveFilter}
-        className="bg-white p-1.5 rounded-2xl border border-slate-200/80 w-max shadow-sm"
+        className="bg-slate-900 p-1.5 rounded-2xl border border-slate-800 w-max shadow-sm"
+        activeClassName="bg-purple-650 text-white shadow-sm shadow-purple-650/25"
       />
 
       {/* Request lists */}
       <div className="space-y-4">
         {list.length === 0 ? (
-          <div className="text-center py-12 bg-white rounded-3xl border border-slate-200/60 text-slate-400 text-xs font-semibold shadow-sm">
-            🎉 Không có yêu cầu đăng ký nào trong mục này.
+          <div className="text-center py-12 bg-slate-950 rounded-3xl border border-slate-800 text-slate-400 text-xs font-semibold shadow-md flex flex-col items-center gap-3">
+            {/* icon CheckCircle thay emoji 🎉 cho trạng thái rỗng */}
+            <CheckCircle2 size={38} className="text-emerald-500" strokeWidth={1.5} />
+            Không có yêu cầu đăng ký nào trong mục này.
           </div>
         ) : (
           list.map((req) => {

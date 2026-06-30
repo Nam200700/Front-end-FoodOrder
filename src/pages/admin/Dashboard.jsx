@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Users, Store, Bike, Package, AlertTriangle, TrendingUp } from 'lucide-react';
+import { Users, Store, Bike, Package, AlertTriangle, TrendingUp, Shield, RefreshCw, XCircle, Activity, Siren } from 'lucide-react';
 import RevenueAreaChart from '../../components/common/RevenueAreaChart';
 import { formatCurrency } from '../../utils/format';
 import Spinner from '../../components/common/Spinner';
@@ -81,7 +81,10 @@ export default function AdminDashboard() {
     return (
       <div className="flex-1 p-4 md:p-8 max-w-7xl mx-auto w-full">
         <div className="bg-red-950/20 border border-red-500/30 rounded-radius-xl p-6 text-center space-y-4">
-          <div className="text-red-400 text-lg font-bold">❌ Lỗi tải dữ liệu</div>
+          {/* Tiêu đề lỗi: icon XCircle thay emoji ❌ */}
+          <div className="text-red-400 text-lg font-bold flex items-center justify-center gap-2">
+            <XCircle size={22} /> Lỗi tải dữ liệu
+          </div>
           <div className="text-slate-300 text-sm space-y-1">
             {overviewError && <div>• Không thể tải thống kê tổng quan</div>}
             {usersError && <div>• Không thể tải dữ liệu người dùng</div>}
@@ -90,9 +93,9 @@ export default function AdminDashboard() {
           </div>
           <button
             onClick={handleRetry}
-            className="mt-4 px-6 py-2.5 bg-red-600 hover:bg-red-700 text-white font-bold rounded-radius-lg transition-colors"
+            className="mt-4 px-6 py-2.5 bg-red-600 hover:bg-red-700 text-white font-bold rounded-radius-lg transition-colors inline-flex items-center gap-2"
           >
-            🔄 Thử lại
+            <RefreshCw size={16} /> Thử lại
           </button>
         </div>
       </div>
@@ -112,7 +115,8 @@ export default function AdminDashboard() {
       {/* Header */}
       <div>
         <h1 className="font-display-small text-xl md:text-2xl font-bold text-slate-100 flex items-center gap-2">
-          🛡️ Admin Control Panel
+          {/* Tiêu đề: icon khiên tím thay emoji 🛡️ */}
+          <Shield className="text-purple-400" size={24} /> Admin Control Panel
         </h1>
         <p className="text-xs text-slate-400 mt-1">Hệ thống quản trị tối cao • Dữ liệu đồng bộ database thật</p>
       </div>
@@ -120,10 +124,10 @@ export default function AdminDashboard() {
       {/* TỔNG QUAN */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[
-          { title: 'Tổng người dùng', value: `${totalUsers} thành viên`, desc: '👥 Đăng ký thực tế', icon: Users, color: 'border-blue-500/25 bg-blue-950/10 text-blue-400' },
-          { title: 'Quán ăn đối tác', value: `${totalRestaurants} quán`, desc: `🏪 ${pendingAccountsCount.owners} quán đang chờ duyệt`, icon: Store, color: 'border-emerald-500/25 bg-emerald-950/10 text-emerald-400' },
-          { title: 'Tài xế shipper', value: 'Đang hoạt động', desc: `🚴 ${pendingAccountsCount.shippers} xế đang chờ duyệt`, icon: Bike, color: 'border-orange-500/25 bg-orange-950/10 text-orange-400' },
-          { title: 'Tổng đơn hàng', value: `${totalOrders} đơn`, desc: `📦 Thành công: ${completedOrders} đơn`, icon: Package, color: 'border-purple-500/25 bg-purple-950/10 text-purple-400' },
+          { title: 'Tổng người dùng', value: `${totalUsers} thành viên`, desc: 'Đăng ký thực tế', icon: Users, color: 'border-blue-500/25 bg-blue-950/10 text-blue-400' },
+          { title: 'Quán ăn đối tác', value: `${totalRestaurants} quán`, desc: `${pendingAccountsCount.owners} quán đang chờ duyệt`, icon: Store, color: 'border-emerald-500/25 bg-emerald-950/10 text-emerald-400' },
+          { title: 'Tài xế shipper', value: 'Đang hoạt động', desc: `${pendingAccountsCount.shippers} xế đang chờ duyệt`, icon: Bike, color: 'border-cyan-500/25 bg-cyan-950/10 text-cyan-400' },
+          { title: 'Tổng đơn hàng', value: `${totalOrders} đơn`, desc: `Thành công: ${completedOrders} đơn`, icon: Package, color: 'border-purple-500/25 bg-purple-950/10 text-purple-400' },
         ].map((item, idx) => {
           const Icon = item.icon;
           return (
@@ -149,9 +153,10 @@ export default function AdminDashboard() {
         </h3>
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+          {/* Mỗi dòng thông báo: icon lucide thay emoji (🏪→Store, 🚴→Bike, 🚨→Siren) */}
           <div className="bg-slate-900 border border-slate-850 p-3 rounded-radius-lg flex justify-between items-center">
-            <span>🏪 {pendingAccountsCount.owners} quán mới đăng ký</span>
-            <button 
+            <span className="flex items-center gap-2"><Store size={15} className="text-emerald-400 shrink-0" /> {pendingAccountsCount.owners} quán mới đăng ký</span>
+            <button
               onClick={() => navigate('/admin/restaurants')}
               className="text-xs font-bold text-purple-400 hover:underline"
             >
@@ -160,8 +165,8 @@ export default function AdminDashboard() {
           </div>
 
           <div className="bg-slate-900 border border-slate-850 p-3 rounded-radius-lg flex justify-between items-center">
-            <span>🚴 {pendingAccountsCount.shippers} shipper mới đăng ký</span>
-            <button 
+            <span className="flex items-center gap-2"><Bike size={15} className="text-cyan-400 shrink-0" /> {pendingAccountsCount.shippers} shipper mới đăng ký</span>
+            <button
               onClick={() => navigate('/admin/shippers')}
               className="text-xs font-bold text-purple-400 hover:underline"
             >
@@ -170,8 +175,8 @@ export default function AdminDashboard() {
           </div>
 
           <div className="bg-slate-900 border border-slate-850 p-3 rounded-radius-lg flex justify-between items-center">
-            <span>🚨 {reportsCount} báo cáo vi phạm mới</span>
-            <button 
+            <span className="flex items-center gap-2"><Siren size={15} className="text-red-400 shrink-0" /> {reportsCount} báo cáo vi phạm mới</span>
+            <button
               onClick={() => navigate('/admin/reports')}
               className="text-xs font-bold text-red-400 hover:underline"
             >
@@ -211,7 +216,8 @@ export default function AdminDashboard() {
         <div className="bg-slate-950 border border-slate-800 rounded-radius-xl p-5 flex flex-col justify-between space-y-4">
           <div>
             <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4 flex items-center gap-1.5">
-              👑 Trạng thái Vận hành
+              {/* icon Activity thay emoji 👑 */}
+              <Activity className="text-purple-400" size={16} /> Trạng thái Vận hành
             </h3>
             
             <div className="space-y-4 text-xs font-semibold">

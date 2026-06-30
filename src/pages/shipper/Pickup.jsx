@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Map, MapPin, Navigation, Bike, DollarSign, Check, Phone, MessageSquare, Eye, X } from 'lucide-react';
+import { Map, MapPin, Navigation, Bike, DollarSign, Check, Phone, MessageSquare, Eye, X, Utensils, Home, AlertTriangle, FileText, Route, PowerOff } from 'lucide-react';
 import { formatCurrency } from '../../utils/format';
 import apiClient from '../../services/api';
 import Spinner from '../../components/common/Spinner';
@@ -270,9 +270,9 @@ export default function ShipperPickup() {
         attribution: '&copy; OpenStreetMap contributors'
       }).addTo(map);
 
-      // Marker Quán ăn
+      // Marker Quán ăn — icon dao/nĩa (SVG) thay emoji 🍜
       const resIcon = L.divIcon({
-        html: `<div class="flex items-center justify-center w-8 h-8 rounded-full bg-orange-500 text-white shadow-md border-2 border-white text-base">🍜</div>`,
+        html: `<div class="flex items-center justify-center w-8 h-8 rounded-full bg-orange-500 text-white shadow-md border-2 border-white"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 2v7c0 1.1.9 2 2 2a2 2 0 0 0 2-2V2"/><path d="M7 2v20"/><path d="M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"/></svg></div>`,
         className: 'custom-div-icon',
         iconSize: [32, 32],
         iconAnchor: [16, 16]
@@ -280,9 +280,9 @@ export default function ShipperPickup() {
       markersRef.current.restaurant = L.marker([rLat, rLng], { icon: resIcon }).addTo(map)
         .bindPopup(`<b>Quán ăn: ${activeJob.restaurant}</b><br/>Địa điểm lấy hàng.`);
 
-      // Marker Khách hàng
+      // Marker Khách hàng — icon nhà (SVG) thay emoji 🏠
       const custIcon = L.divIcon({
-        html: `<div class="flex items-center justify-center w-8 h-8 rounded-full bg-red-500 text-white shadow-md border-2 border-white text-base">🏠</div>`,
+        html: `<div class="flex items-center justify-center w-8 h-8 rounded-full bg-red-500 text-white shadow-md border-2 border-white"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 22V12h6v10"/></svg></div>`,
         className: 'custom-div-icon',
         iconSize: [32, 32],
         iconAnchor: [16, 16]
@@ -359,7 +359,8 @@ export default function ShipperPickup() {
       <div className="flex items-center justify-between bg-white rounded-radius-xl p-5 border border-slate-200/60 shadow-sm transition-all duration-300">
         <div>
           <h1 className="text-lg md:text-xl font-extrabold text-slate-800 flex items-center gap-2">
-            🚴 Shipper Hub
+            {/* icon Bike xanh thay emoji 🚴 */}
+            <Bike className="text-md-tertiary" size={22} /> Shipper Hub
           </h1>
           <p className="text-[10px] md:text-[11px] text-slate-400 font-bold mt-0.5 uppercase tracking-wide">
             Trạng thái hoạt động nhận đơn
@@ -469,7 +470,7 @@ export default function ShipperPickup() {
               className="w-full bg-md-tertiary hover:bg-opacity-95 text-white font-extrabold py-3.5 px-4 rounded-radius-full shadow-shadow-2 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2 text-xs uppercase cursor-pointer tracking-wider"
             >
               <Check size={14} className="stroke-[3.5px]" />
-              {activeJob.step === 'ACCEPTED' ? 'Xác nhận đã lấy hàng ✅' : 'Xác nhận giao thành công 🎉'}
+              {activeJob.step === 'ACCEPTED' ? 'Xác nhận đã lấy hàng' : 'Xác nhận giao thành công'}
             </button>
           </div>
 
@@ -483,8 +484,10 @@ export default function ShipperPickup() {
           </h2>
 
           {!online ? (
-            <div className="bg-white rounded-radius-xl p-10 border border-slate-200/60 shadow-sm text-center text-xs text-slate-400 font-semibold leading-relaxed">
-              📴 Vui lòng chuyển trạng thái sang <span className="text-slate-600 font-extrabold">ONLINE</span> để bắt đầu quét các đơn hàng xung quanh.
+            <div className="bg-white rounded-radius-xl p-10 border border-slate-200/60 shadow-sm text-center text-xs text-slate-400 font-semibold leading-relaxed flex flex-col items-center gap-3">
+              {/* icon PowerOff thay emoji 📴 */}
+              <PowerOff size={36} className="text-slate-300" strokeWidth={1.5} />
+              <span>Vui lòng chuyển trạng thái sang <span className="text-slate-600 font-extrabold">ONLINE</span> để bắt đầu quét các đơn hàng xung quanh.</span>
             </div>
           ) : loading ? (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
@@ -519,11 +522,13 @@ export default function ShipperPickup() {
 
                     <div className="space-y-3 my-4 text-xs font-semibold text-slate-700">
                       <div className="flex items-center gap-2">
-                        <span className="text-md-tertiary">🍜</span>
+                        {/* icon Utensils thay emoji 🍜 */}
+                        <Utensils size={14} className="text-md-tertiary shrink-0" />
                         <span className="truncate"><b>Quán:</b> {order.resAddress}</span>
                       </div>
                       <div className="flex items-center gap-2">
-                        <span className="text-md-primary">📍</span>
+                        {/* icon MapPin thay emoji 📍 */}
+                        <MapPin size={14} className="text-md-primary shrink-0" />
                         <span className="truncate"><b>Khách:</b> {order.custAddress}</span>
                       </div>
                     </div>
@@ -588,12 +593,14 @@ export default function ShipperPickup() {
               
               {/* Quán & Khách */}
               <div className="space-y-3">
-                <span className="text-[10px] text-slate-400 font-extrabold block uppercase tracking-wider">
-                  📍 Tuyến Đường Giao Hàng
+                <span className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider flex items-center gap-1.5">
+                  {/* icon Route thay emoji 📍 */}
+                  <Route size={12} /> Tuyến Đường Giao Hàng
                 </span>
                 <div className="bg-slate-50 p-4 rounded-radius-lg border border-slate-100 space-y-3.5 leading-relaxed font-bold">
                   <div className="flex items-start gap-2">
-                    <span className="text-md-tertiary shrink-0 mt-0.5">🍜</span>
+                    {/* icon Utensils thay emoji 🍜 */}
+                    <Utensils size={14} className="text-md-tertiary shrink-0 mt-0.5" />
                     <div>
                       <p className="text-slate-850"><b>Cửa hàng:</b> {selectedDetailOrder.restaurant}</p>
                       <p className="text-slate-450 text-[10px] font-semibold mt-0.5">{selectedDetailOrder.resAddress}</p>
@@ -601,7 +608,8 @@ export default function ShipperPickup() {
                   </div>
                   <div className="border-t border-slate-200/50 my-2" />
                   <div className="flex items-start gap-2">
-                    <span className="text-md-primary shrink-0 mt-0.5">🏠</span>
+                    {/* icon Home thay emoji 🏠 */}
+                    <Home size={14} className="text-md-primary shrink-0 mt-0.5" />
                     <div>
                       <p className="text-slate-850"><b>Khách hàng:</b> {selectedDetailOrder.customer}</p>
                       <p className="text-slate-450 text-[10px] font-semibold mt-0.5">{selectedDetailOrder.custAddress}</p>
@@ -612,8 +620,9 @@ export default function ShipperPickup() {
 
               {/* Danh sách món ăn */}
               <div className="space-y-3">
-                <span className="text-[10px] text-slate-400 font-extrabold block uppercase tracking-wider">
-                  🍜 Danh Sách Món Ăn ({selectedDetailOrder.itemsCount} phần)
+                <span className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider flex items-center gap-1.5">
+                  {/* icon Utensils thay emoji 🍜 */}
+                  <Utensils size={12} /> Danh Sách Món Ăn ({selectedDetailOrder.itemsCount} phần)
                 </span>
                 <div className="border border-slate-150 rounded-radius-lg overflow-hidden bg-white shadow-sm">
                   {selectedDetailOrder.items && selectedDetailOrder.items.length > 0 ? (
@@ -625,7 +634,8 @@ export default function ShipperPickup() {
                           </div>
                           {item.note && (
                             <div className="text-[9px] text-red-500 bg-red-50 px-2 py-0.5 rounded italic mt-1.5 font-extrabold border border-red-100/30 flex items-center gap-1 max-w-max">
-                              ⚠️ "{item.note}"
+                              {/* icon AlertTriangle thay emoji ⚠️ */}
+                              <AlertTriangle size={10} className="shrink-0" /> "{item.note}"
                             </div>
                           )}
                         </div>
@@ -643,8 +653,9 @@ export default function ShipperPickup() {
               {/* Ghi chú đơn hàng */}
               {selectedDetailOrder.note && (
                 <div className="space-y-2">
-                  <span className="text-[10px] text-slate-400 font-extrabold block uppercase tracking-wider">
-                    📝 Ghi Chú Đơn Hàng
+                  <span className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider flex items-center gap-1.5">
+                    {/* icon FileText thay emoji 📝 */}
+                    <FileText size={12} /> Ghi Chú Đơn Hàng
                   </span>
                   <div className="bg-amber-50/50 border border-amber-100 p-3 rounded-radius-md text-amber-800 italic font-bold">
                     "{selectedDetailOrder.note}"

@@ -26,6 +26,13 @@ export default function RegistrationRequestCard({
     return 'bg-[#34A853]/10 text-[#34A853] border-[#34A853]/20';
   };
 
+  // Màu nút "Phê Duyệt" theo đúng màu vai trò để Admin nhìn là biết duyệt loại nào:
+  // OWNER (quán) -> xanh dương merchant #1A73E8, SHIPPER (tài xế) -> xanh lá #34A853.
+  const getApproveBtnColor = () => {
+    if (role === 'OWNER') return 'bg-[#1A73E8] hover:bg-[#1560C4] border-[#1A73E8]';
+    return 'bg-[#34A853] hover:bg-[#2C8C46] border-[#34A853]';
+  };
+
   const getStatusBadgeColor = (status) => {
     switch (status) {
       case 'APPROVED': return 'bg-emerald-50 text-emerald-700 border-emerald-200';
@@ -50,12 +57,13 @@ export default function RegistrationRequestCard({
     : 'Chưa cập nhật';
 
   return (
-    <div className="bg-white rounded-radius-xl border border-slate-100 shadow-sm overflow-hidden p-6 transition-all duration-300 hover:shadow-md hover:border-slate-200/60">
-      
+    // Card duyệt hồ sơ đối tác — dùng riêng cho Admin nên đồng bộ tông dark + tím
+    <div className="bg-slate-950 rounded-radius-xl border border-slate-800 shadow-md overflow-hidden p-6 transition-all duration-300 hover:shadow-lg hover:border-slate-700">
+
       {/* Header Info */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-slate-100 pb-4 mb-4">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-slate-800 pb-4 mb-4">
         <div className="flex items-center gap-3">
-          <div className="w-12 h-12 rounded-radius-lg bg-slate-50 border border-slate-100 overflow-hidden flex items-center justify-center font-extrabold text-slate-500 shrink-0">
+          <div className="w-12 h-12 rounded-radius-lg bg-slate-900 border border-slate-800 overflow-hidden flex items-center justify-center font-extrabold text-slate-400 shrink-0">
             {request.avatar || request.restaurantImageUrl ? (
               <img 
                 src={request.avatar || request.restaurantImageUrl} 
@@ -67,7 +75,7 @@ export default function RegistrationRequestCard({
             )}
           </div>
           <div>
-            <h4 className="text-sm font-black text-slate-800 leading-snug">
+            <h4 className="text-sm font-black text-slate-100 leading-snug">
               {request.restaurantName || request.fullName}
             </h4>
             <div className="flex items-center gap-2 mt-1 flex-wrap">
@@ -93,7 +101,7 @@ export default function RegistrationRequestCard({
             <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider mb-1">
               {field.label}
             </span>
-            <span className="text-xs font-semibold text-slate-700 leading-relaxed break-all">
+            <span className="text-xs font-semibold text-slate-300 leading-relaxed break-all">
               {field.value || 'Chưa cung cấp'}
             </span>
           </div>
@@ -102,11 +110,11 @@ export default function RegistrationRequestCard({
 
       {/* Rejection Reason (If status is rejected) */}
       {(request.rejectedReason || request.rejectedReason === '') && (request.status === 'REJECTED' || request.registerStatus === 'REJECTED') && (
-        <div className="mb-4 bg-red-50/50 border border-red-100 rounded-radius-lg p-3 flex items-start gap-2.5">
-          <BadgeAlert size={16} className="text-red-500 shrink-0 mt-0.5" />
+        <div className="mb-4 bg-red-950/20 border border-red-900/30 rounded-radius-lg p-3 flex items-start gap-2.5">
+          <BadgeAlert size={16} className="text-red-400 shrink-0 mt-0.5" />
           <div>
-            <span className="text-[9px] font-extrabold text-red-500 uppercase tracking-widest block mb-0.5">Lý do từ chối</span>
-            <p className="text-xs font-bold text-red-700 leading-relaxed">
+            <span className="text-[9px] font-extrabold text-red-400 uppercase tracking-widest block mb-0.5">Lý do từ chối</span>
+            <p className="text-xs font-bold text-red-300 leading-relaxed">
               {request.rejectedReason || 'Không có lý do cụ thể.'}
             </p>
           </div>
@@ -115,24 +123,25 @@ export default function RegistrationRequestCard({
 
       {/* Actions */}
       {(request.status === 'PENDING' || request.registerStatus === 'PENDING') && (
-        <div className="border-t border-slate-50 pt-4 flex flex-col gap-3">
+        <div className="border-t border-slate-800 pt-4 flex flex-col gap-3">
           {!showRejectInput ? (
             <div className="flex gap-3 justify-end">
-              <Button 
-                variant="outline" 
-                size="sm" 
+              <Button
+                variant="outline"
+                size="sm"
                 onClick={() => setShowRejectInput(true)}
                 disabled={loading}
-                className="hover:bg-red-50 hover:text-red-600 hover:border-red-200 border-slate-200 text-slate-500 font-extrabold"
+                className="bg-transparent hover:bg-red-950/30 hover:text-red-400 hover:border-red-900/40 border-slate-700 text-slate-400 font-extrabold"
               >
                 <X size={14} className="mr-1.5" /> Từ Chối
               </Button>
-              <Button 
-                variant="primary" 
-                size="sm" 
+              {/* Nút phê duyệt: override màu cam md-primary mặc định → màu theo vai trò */}
+              <Button
+                variant="primary"
+                size="sm"
                 onClick={() => onApprove(request.id || request.userId)}
                 disabled={loading}
-                className="font-extrabold shadow-sm"
+                className={`font-extrabold shadow-sm text-white ${getApproveBtnColor()}`}
               >
                 <Check size={14} className="mr-1.5" /> Phê Duyệt
               </Button>
@@ -148,7 +157,7 @@ export default function RegistrationRequestCard({
                   placeholder="Nhập lý do từ chối (ví dụ: Biển số xe không rõ ràng, Hình ảnh CCCD mờ...)"
                   value={rejectReason}
                   onChange={(e) => setRejectReason(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-radius-lg p-3 text-xs font-semibold focus:outline-none focus:border-red-500 focus:bg-white transition-all text-slate-700 min-h-[70px]"
+                  className="w-full bg-slate-900 border border-slate-800 rounded-radius-lg p-3 text-xs font-semibold focus:outline-none focus:border-red-500 transition-all text-slate-200 min-h-[70px]"
                 />
               </div>
               <div className="flex justify-end gap-2.5">
@@ -157,7 +166,7 @@ export default function RegistrationRequestCard({
                   variant="outline" 
                   size="sm" 
                   onClick={() => setShowRejectInput(false)}
-                  className="border-slate-200 text-slate-500 font-extrabold text-xs"
+                  className="bg-transparent border-slate-700 text-slate-400 font-extrabold text-xs"
                 >
                   Hủy
                 </Button>

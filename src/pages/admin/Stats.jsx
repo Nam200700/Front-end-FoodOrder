@@ -5,9 +5,9 @@ import apiClient from '../../services/api';
 import Spinner from '../../components/common/Spinner';
 import KPICard from '../../components/common/KPICard';
 import DonutChart from '../../components/common/DonutChart';
-import { 
-  TrendingUp, Award, Users, Store, Package, DollarSign, 
-  Percent, Calendar, CreditCard 
+import {
+  TrendingUp, Award, Users, Store, Package, DollarSign,
+  Percent, Calendar, CreditCard, Shield, BarChart3, AreaChart, Flame
 } from 'lucide-react';
 import { filterByDateRange } from '../../utils/filterUtils';
 import FilterTabs from '../../components/common/FilterTabs';
@@ -236,7 +236,8 @@ export default function AdminStats() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800 pb-5">
         <div>
           <h1 className="text-xl md:text-2xl font-bold text-slate-100 flex items-center gap-2">
-            🛡️ Trung Tâm Phân Tích Doanh Thu Tối Cao
+            {/* icon khiên tím thay emoji 🛡️ */}
+            <Shield className="text-purple-400" size={24} /> Trung Tâm Phân Tích Doanh Thu Tối Cao
           </h1>
           <p className="text-xs text-slate-400 mt-1">Phân bổ dòng tiền hệ thống • Tách bạch Hoa hồng sàn, Thu nhập của Quán & Shipper</p>
         </div>
@@ -252,6 +253,7 @@ export default function AdminStats() {
           activeTab={filterRange}
           onTabChange={setFilterRange}
           className="self-start sm:self-center bg-slate-900 p-1 rounded-radius-lg border border-slate-800"
+          activeClassName="bg-purple-650 text-white shadow-sm shadow-purple-650/25"
         />
       </div>
 
@@ -263,7 +265,8 @@ export default function AdminStats() {
           description="Dòng tiền lưu chuyển thực tế"
           icon={DollarSign}
           color="border-purple-500/20 bg-purple-950/10 text-purple-400 bg-slate-950"
-          badge="👑 Gross GTV"
+          valueClassName="text-slate-100"
+          badge="Gross GTV"
         />
         <KPICard
           title="Chiết Khấu Sàn Thu Được"
@@ -271,7 +274,8 @@ export default function AdminStats() {
           description={`${overviewStats ? Math.round(overviewStats.commissionRate * 100) : 10}% trích trên tiền món ăn của Quán`}
           icon={Percent}
           color="border-emerald-500/20 bg-emerald-950/10 text-emerald-400 bg-slate-950"
-          badge="📈 Platform Commission"
+          valueClassName="text-slate-100"
+          badge="Platform Commission"
         />
         <KPICard
           title="Doanh Thu Quán Đối Tác"
@@ -279,7 +283,8 @@ export default function AdminStats() {
           description={`${overviewStats ? Math.round((1 - overviewStats.commissionRate) * 100) : 90}% tiền món ăn chuyển về Quán`}
           icon={Store}
           color="border-blue-500/20 bg-blue-950/10 text-blue-400 bg-slate-950"
-          badge="🏪 Merchant Net Share"
+          valueClassName="text-slate-100"
+          badge="Merchant Net Share"
         />
         <KPICard
           title="Cước Giao Hàng Shipper"
@@ -287,7 +292,8 @@ export default function AdminStats() {
           description="Phí vận chuyển thực tế thuộc về Shipper"
           icon={Users}
           color="border-rose-500/20 bg-rose-950/10 text-rose-400 bg-slate-950"
-          badge="🚴 Shipper Share"
+          valueClassName="text-slate-100"
+          badge="Shipper Share"
         />
       </div>
 
@@ -333,7 +339,10 @@ export default function AdminStats() {
                 className="px-2 py-1.5 rounded bg-slate-900 border border-slate-800 text-slate-400 hover:text-purple-400 cursor-pointer text-[10px] font-bold transition-all flex items-center gap-1"
                 title="Click để chuyển đổi giữa biểu đồ miền và biểu đồ cột"
               >
-                {chartType === 'area' ? '📊 Dạng Cột' : '📈 Dạng Miền'}
+                {/* icon thay emoji 📊/📈 tùy chế độ biểu đồ */}
+                {chartType === 'area'
+                  ? <><BarChart3 size={13} /> Dạng Cột</>
+                  : <><AreaChart size={13} /> Dạng Miền</>}
               </button>
               <span className="text-[9px] text-purple-400 bg-purple-950/40 border border-purple-900/40 px-2.5 py-1 rounded-full font-bold">
                 Live Database Data
@@ -421,8 +430,9 @@ export default function AdminStats() {
               <Store className="text-yellow-500" size={16} />
               Bảng Xếp Hạng 5 Quán Ăn Dẫn Đầu Doanh Thu (Chiết Khấu Sâu)
             </h3>
-            <span className="text-[9px] text-purple-400 bg-purple-950/40 px-2 py-0.5 rounded-full font-extrabold">
-              🔥 GTV Rank
+            <span className="text-[9px] text-purple-400 bg-purple-950/40 px-2 py-0.5 rounded-full font-extrabold inline-flex items-center gap-1">
+              {/* icon Flame thay emoji 🔥 */}
+              <Flame size={11} /> GTV Rank
             </span>
           </div>
 

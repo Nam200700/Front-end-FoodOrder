@@ -43,6 +43,15 @@
   --color-role-shipper: #34A853;
   --color-role-admin: #9334E6;
 
+  /* ─── Sắc tím Admin bổ sung (purple-550/650/750) ──────────────────────
+     Layout/Reports/FilterTabs admin dùng các class bg-purple-650, bg-purple-750,
+     border-purple-550 nhưng Tailwind không có sẵn các nấc này → trước đây class
+     rỗng (không ra nền). Định nghĩa theo brand admin #9334E6 để nền/viền hiện đúng,
+     tránh icon trắng nằm trên nền rỗng -> vô hình. */
+  --color-purple-550: #A855F7;
+  --color-purple-650: #9334E6;
+  --color-purple-750: #7E22CE;
+
   /* ─── Font Family ────────────────────────────────── */
   --font-google-sans: 'Google Sans', sans-serif;
   --font-google-sans-display: 'Google Sans Display', sans-serif;

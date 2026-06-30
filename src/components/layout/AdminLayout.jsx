@@ -18,7 +18,8 @@ import {
   LogOut,
   Settings,
   Menu,
-  X
+  X,
+  Shield
 } from 'lucide-react';
 
 import { useAvatarUpload } from '../../hooks/useAvatarUpload';
@@ -124,8 +125,9 @@ export default function AdminLayout() {
 
         {/* Logo / Brand */}
         <div className="p-5 flex items-center gap-3 border-b border-slate-850">
-          <div className="w-10 h-10 bg-purple-650 rounded-radius-md flex items-center justify-center text-white text-lg font-bold shadow-shadow-2">
-            🛡️
+          {/* Logo admin: icon khiên thay cho emoji 🛡️, đồng bộ bản sắc tím */}
+          <div className="w-10 h-10 bg-purple-650 rounded-radius-md flex items-center justify-center text-white shadow-shadow-2">
+            <Shield size={20} strokeWidth={2.5} />
           </div>
           {!sidebarCollapsed && (
             <div className="flex flex-col">
@@ -224,8 +226,9 @@ export default function AdminLayout() {
         theme === 'light' ? 'border-slate-200 bg-white' : 'border-slate-800 bg-slate-950'
       }`}>
         <div className="flex items-center gap-2">
-          <div className="w-8 h-8 bg-purple-650 rounded-lg flex items-center justify-center text-white font-bold text-sm shadow-sm">
-            🛡️
+          {/* Logo admin trên header mobile: icon khiên thay emoji 🛡️ */}
+          <div className="w-8 h-8 bg-purple-650 rounded-lg flex items-center justify-center text-white shadow-sm">
+            <Shield size={16} strokeWidth={2.5} />
           </div>
           <span className={`font-bold text-sm ${theme === 'light' ? 'text-purple-650' : 'text-purple-400'}`}>Admin Panel</span>
         </div>

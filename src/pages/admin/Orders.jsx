@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Package } from 'lucide-react';
+import { Package, RefreshCw } from 'lucide-react';
 import { formatCurrency } from '../../utils/format';
 import apiClient from '../../services/api';
 import Spinner from '../../components/common/Spinner';
@@ -81,16 +81,18 @@ export default function AdminOrders() {
         </h1>
         <button
           onClick={fetchOrders}
-          className="px-4 py-2 border border-slate-800 hover:bg-slate-900 text-slate-300 font-bold text-xs rounded-radius-lg transition-colors cursor-pointer"
+          className="px-4 py-2 border border-slate-800 hover:bg-slate-900 text-slate-300 font-bold text-xs rounded-radius-lg transition-colors cursor-pointer inline-flex items-center gap-1.5"
         >
-          🔄 Làm mới
+          <RefreshCw size={14} /> Làm mới
         </button>
       </div>
 
       <div className="bg-slate-950 rounded-radius-xl border border-slate-800 overflow-hidden shadow-md">
         {orders.length === 0 ? (
-          <div className="text-center py-16 text-slate-400 text-xs font-bold">
-            📦 Chưa có đơn hàng nào tồn tại trên hệ thống.
+          <div className="text-center py-16 text-slate-400 text-xs font-bold flex flex-col items-center gap-3">
+            {/* icon Package thay emoji 📦 cho trạng thái rỗng */}
+            <Package size={40} className="text-slate-600" strokeWidth={1.5} />
+            Chưa có đơn hàng nào tồn tại trên hệ thống.
           </div>
         ) : (
           <div className="overflow-x-auto no-scrollbar">

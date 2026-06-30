@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Users } from 'lucide-react';
 import { useFetchData } from '../../hooks/useFetchData';
 import apiClient from '../../services/api';
 import Spinner from '../../components/common/Spinner';
@@ -99,7 +100,8 @@ export default function AdminUsers() {
   return (
     <div className="flex-1 p-4 md:p-8 max-w-4xl mx-auto w-full font-google-sans text-slate-100 pb-24 space-y-6">
       <h1 className="text-xl font-bold text-slate-100 flex items-center gap-2">
-        👥 Quản lý tài khoản người dùng
+        {/* icon Users tím thay emoji 👥 */}
+        <Users className="text-purple-400" size={24} /> Quản lý tài khoản người dùng
       </h1>
 
       <div className="bg-slate-950 rounded-radius-xl border border-slate-800 overflow-hidden shadow-md">
@@ -183,7 +185,7 @@ export default function AdminUsers() {
             <textarea
               value={lockReason}
               onChange={(e) => setLockReason(e.target.value)}
-              className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-md-primary text-slate-800"
+              className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-purple-500 text-slate-800"
               rows={3}
               placeholder="Nhập lý do khóa tài khoản..."
             />

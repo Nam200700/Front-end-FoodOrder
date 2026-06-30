@@ -1,5 +1,5 @@
 import React from 'react';
-import { AlertTriangle, ShieldCheck } from 'lucide-react';
+import { AlertTriangle, ShieldCheck, RefreshCw, CheckCircle2 } from 'lucide-react';
 import { useFetchData } from '../../hooks/useFetchData';
 import apiClient from '../../services/api';
 import Spinner from '../../components/common/Spinner';
@@ -73,16 +73,18 @@ export default function AdminReports() {
         </h1>
         <button
           onClick={refetch}
-          className="px-4 py-2 border border-slate-800 hover:bg-slate-900 text-slate-300 font-bold text-xs rounded-radius-lg transition-colors cursor-pointer"
+          className="px-4 py-2 border border-slate-800 hover:bg-slate-900 text-slate-300 font-bold text-xs rounded-radius-lg transition-colors cursor-pointer inline-flex items-center gap-1.5"
         >
-          🔄 Làm mới
+          <RefreshCw size={14} /> Làm mới
         </button>
       </div>
 
       <div className="space-y-4">
         {list.length === 0 ? (
-          <div className="text-center py-16 bg-slate-950 rounded-radius-xl border border-slate-800 text-slate-400 text-xs font-bold shadow-md">
-            🎉 Tuyệt vời! Không còn báo cáo vi phạm nào chưa xử lý trên hệ thống.
+          <div className="text-center py-16 bg-slate-950 rounded-radius-xl border border-slate-800 text-slate-400 text-xs font-bold shadow-md flex flex-col items-center gap-3">
+            {/* icon CheckCircle xanh thay emoji 🎉 cho trạng thái sạch báo cáo */}
+            <CheckCircle2 size={40} className="text-emerald-500" strokeWidth={1.5} />
+            Tuyệt vời! Không còn báo cáo vi phạm nào chưa xử lý trên hệ thống.
           </div>
         ) : (
           list.map((rep) => (

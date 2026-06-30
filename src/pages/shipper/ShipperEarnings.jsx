@@ -1,6 +1,6 @@
 import React from 'react';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
-import { DollarSign } from 'lucide-react';
+import { DollarSign, TrendingUp, Star } from 'lucide-react';
 import { formatCurrency } from '../../utils/format';
 import { useFetchData } from '../../hooks/useFetchData';
 import ErrorState from '../../components/common/ErrorState';
@@ -115,7 +115,8 @@ export default function ShipperEarnings() {
             {formatCurrency(earningsStats.totalEarnings)}
           </h2>
           <p className="text-[10px] text-emerald-600 font-semibold mt-1 flex items-center gap-1">
-            <span>📈 Dữ liệu thực từ database của bạn</span>
+            {/* icon TrendingUp thay emoji 📈 */}
+            <TrendingUp size={12} /> Dữ liệu thực từ database của bạn
           </p>
         </div>
         <div className="text-right">
@@ -123,17 +124,21 @@ export default function ShipperEarnings() {
           <h2 className="text-lg font-bold text-slate-700 mt-1">
             {earningsStats.completedCount} đơn
           </h2>
-          <span className="text-[10px] text-slate-400 font-semibold block mt-1">
-            ⭐ {earningsStats.rating} rating TB
+          <span className="text-[10px] text-slate-400 font-semibold mt-1 flex items-center justify-end gap-1">
+            {/* icon Star vàng thay emoji ⭐ */}
+            <Star size={11} className="text-amber-400 fill-amber-400" /> {earningsStats.rating} rating TB
           </span>
         </div>
       </div>
 
       {/* Bar Chart Earnings */}
       <div className="bg-white rounded-radius-xl p-5 border border-slate-200/60 shadow-sm">
-        <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider mb-4 font-extrabold">
-          Biểu đồ cột: Thu nhập theo ngày tuần này
+        {/* Nhãn đúng bản chất dữ liệu: gom TẤT CẢ đơn đã hoàn thành theo thứ trong tuần
+            (không lọc riêng tuần hiện tại) — sửa nhãn cũ "tuần này" gây hiểu nhầm */}
+        <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider mb-1 font-extrabold">
+          Thu nhập theo thứ trong tuần
         </h3>
+        <p className="text-[10px] text-slate-400 font-semibold mb-4">Tổng hợp toàn bộ đơn đã hoàn thành theo từng thứ</p>
         
         <div className="h-56 w-full text-xs font-semibold">
           <ResponsiveContainer width="100%" height="100%">

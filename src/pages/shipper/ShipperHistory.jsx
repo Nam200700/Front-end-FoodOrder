@@ -1,5 +1,5 @@
 import React from 'react';
-import { History, ClipboardList, Clipboard } from 'lucide-react';
+import { History, ClipboardList, Clipboard, Check, X } from 'lucide-react';
 import { formatCurrency } from '../../utils/format';
 import { useFetchData } from '../../hooks/useFetchData';
 import { SkeletonOrderCard } from '../../components/common/SkeletonCard';
@@ -22,8 +22,7 @@ export default function ShipperHistory() {
         restaurant: ord.restaurantName || 'Nhà hàng AntiGravity',
         customer: ord.customerName || 'Khách hàng',
         date: formattedDate,
-        fee: Number(ord.shippingFee),
-        distance: '3.2km', // Phí giao hàng thật từ DB
+        fee: Number(ord.shippingFee), // phí ship thật từ DB
         status: ord.orderStatus
       };
     });
@@ -81,12 +80,13 @@ export default function ShipperHistory() {
               className="bg-white rounded-radius-xl p-4 border border-slate-200/60 shadow-sm flex items-center justify-between gap-4"
             >
               <div className="flex items-center gap-3.5 min-w-0">
-                <div className={`w-10 h-10 rounded-radius-lg flex items-center justify-center font-bold shrink-0 shadow-sm border ${
-                  item.status === 'COMPLETED' 
-                    ? 'bg-[#E8F5E9] text-md-tertiary border-[#C8E6C9]' 
+                {/* icon trạng thái: Check (thành công) / X (huỷ) thay emoji ✓/✗ */}
+                <div className={`w-10 h-10 rounded-radius-lg flex items-center justify-center shrink-0 shadow-sm border ${
+                  item.status === 'COMPLETED'
+                    ? 'bg-[#E8F5E9] text-md-tertiary border-[#C8E6C9]'
                     : 'bg-red-50 text-red-500 border-red-100'
                 }`}>
-                  {item.status === 'COMPLETED' ? '✓' : '✗'}
+                  {item.status === 'COMPLETED' ? <Check size={18} strokeWidth={3} /> : <X size={18} strokeWidth={3} />}
                 </div>
                 
                 <div className="min-w-0">
@@ -115,7 +115,6 @@ export default function ShipperHistory() {
               <div className="text-right shrink-0">
                 <span className="text-[9px] text-slate-400 block font-bold uppercase">PHÍ SHIP NHẬN</span>
                 <span className="text-sm font-bold text-md-tertiary mt-1 block">{formatCurrency(item.fee)}</span>
-                <span className="text-[10px] text-slate-400 block mt-0.5">{item.distance}</span>
               </div>
             </div>
           ))}

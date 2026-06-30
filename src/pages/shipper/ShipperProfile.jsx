@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../stores/authStore';
-import { User, Bike, Phone, LogOut, Camera, Mail, ShieldCheck, Clipboard } from 'lucide-react';
+import { User, Bike, Phone, LogOut, Camera, Mail, ShieldCheck, Clipboard, Trophy } from 'lucide-react';
 import apiClient from '../../services/api';
 import Spinner from '../../components/common/Spinner';
 import { getAvatarUrl } from '../../utils/avatarHelper';
@@ -95,7 +95,7 @@ export default function ShipperProfile() {
         licensePlate: licensePlate.trim()
       });
       
-      toast.success('Đã cập nhật hồ sơ cá nhân và thông tin phương tiện thành công! 🚴');
+      toast.success('Đã cập nhật hồ sơ cá nhân và thông tin phương tiện thành công!');
     } catch (err) {
       console.error('Lỗi khi cập nhật hồ sơ shipper:', err);
       toast.error(err.response?.data?.message || 'Có lỗi xảy ra khi cập nhật hồ sơ.');
@@ -141,8 +141,9 @@ export default function ShipperProfile() {
               </button>
             </div>
             <h2 className="font-bold text-base text-slate-800 mt-4">{name}</h2>
-            <span className="text-[10px] text-md-tertiary bg-[#E8F5E9] font-bold px-3 py-1 rounded-full uppercase mt-1.5 tracking-wider border border-[#C8E6C9]">
-              TÀI XẾ {Number(avgRating).toFixed(1)} SAO 🏆
+            <span className="text-[10px] text-md-tertiary bg-[#E8F5E9] font-bold px-3 py-1 rounded-full uppercase mt-1.5 tracking-wider border border-[#C8E6C9] inline-flex items-center gap-1">
+              {/* icon Trophy thay emoji 🏆 */}
+              <Trophy size={11} /> TÀI XẾ {Number(avgRating).toFixed(1)} SAO
             </span>
 
             {/* Stats block */}

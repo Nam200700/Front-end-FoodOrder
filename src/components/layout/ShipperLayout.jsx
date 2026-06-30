@@ -15,7 +15,8 @@ import {
   Power,
   MessageSquare,
   Menu,
-  X
+  X,
+  Bike
 } from 'lucide-react';
 
 import { useAvatarUpload } from '../../hooks/useAvatarUpload';
@@ -79,8 +80,9 @@ export default function ShipperLayout() {
       {/* ─── DESKTOP HEADER (Hidden on mobile) ─────────────────────────────────── */}
       <header className="hidden md:flex fixed top-0 left-0 right-0 h-16 border-b border-md-outline-variant bg-white items-center justify-between px-8 z-40 shadow-shadow-1">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-md-tertiary rounded-radius-md flex items-center justify-center text-white text-lg font-bold">
-            🚴
+          {/* Logo shipper: icon Bike thay emoji 🚴 */}
+          <div className="w-10 h-10 bg-md-tertiary rounded-radius-md flex items-center justify-center text-white">
+            <Bike size={20} strokeWidth={2.5} />
           </div>
           <div>
             <span className="font-bold text-md-tertiary text-base leading-none block">Shipper Center</span>
@@ -153,8 +155,9 @@ export default function ShipperLayout() {
     {/* ─── MOBILE CONTAINER HEADER (Only visible on mobile) ───────────────────────── */}
     <header className="md:hidden fixed top-0 left-0 right-0 h-14 bg-white border-b border-md-outline-variant flex items-center justify-between px-4 z-40 shadow-sm">
       <div className="flex items-center gap-2">
-        <div className="w-8 h-8 bg-md-tertiary rounded-lg flex items-center justify-center text-white font-bold text-sm shadow-sm">
-          🚴
+        {/* Logo shipper mobile: icon Bike thay emoji 🚴 */}
+        <div className="w-8 h-8 bg-md-tertiary rounded-lg flex items-center justify-center text-white shadow-sm">
+          <Bike size={16} strokeWidth={2.5} />
         </div>
         <span className="font-bold text-md-tertiary text-sm">Shipper Center</span>
       </div>

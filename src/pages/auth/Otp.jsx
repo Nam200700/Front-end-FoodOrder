@@ -10,12 +10,24 @@ export default function Otp() {
   const location = useLocation();
   const login = useAuthStore((state) => state.login);
   
-  const { email, role, name, phone } = location.state || { 
-    email: 'khachhang@gmail.com', 
-    role: 'CUSTOMER', 
-    name: 'Nguyễn Văn A', 
-    phone: '0901234567' 
+  const { email, role, name, phone, fromLogin } = location.state || {
+    email: 'khachhang@gmail.com',
+    role: 'CUSTOMER',
+    name: 'Nguyễn Văn A',
+    phone: '0901234567'
   };
+
+  // Khi đến từ màn Login (tài khoản chưa xác thực), mã đăng ký cũ có thể đã hết hạn
+  // (5 phút) -> tự gửi lại 1 mã mới đúng 1 lần khi vào trang.
+  const didAutoResend = useRef(false);
+  useEffect(() => {
+    if (fromLogin && email && !didAutoResend.current) {
+      didAutoResend.current = true;
+      apiClient.post('/auth/resend-otp', { email })
+        .then(() => toast.info('Mã OTP mới đã được gửi tới email của bạn.'))
+        .catch(() => {}); // im lặng nếu bị guard chống spam 60s hoặc lỗi nhẹ
+    }
+  }, [fromLogin, email]);
 
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
   const [timer, setTimer] = useState(59);

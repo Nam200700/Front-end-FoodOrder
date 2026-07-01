@@ -56,6 +56,11 @@ export default function Login() {
         else if (currentRole === 'ADMIN') navigate('/admin');
         else navigate('/');
       }, 800);
+    } else if (res.needVerify) {
+      // Tài khoản chưa xác thực OTP -> chuyển sang trang nhập OTP (kèm email từ backend),
+      // đánh dấu fromLogin để trang OTP tự gửi lại mã mới.
+      toast.info('Tài khoản chưa xác thực OTP. Đang chuyển tới trang xác thực...', { autoClose: 1500 });
+      navigate('/register/otp', { state: { email: res.email, phone, fromLogin: true } });
     } else {
       setErrorMsg(res.error || 'Đăng nhập thất bại. Vui lòng kiểm tra lại!');
       toast.error(res.error || 'Đăng nhập thất bại. Vui lòng kiểm tra lại!');

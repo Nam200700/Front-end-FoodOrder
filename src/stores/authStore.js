@@ -58,7 +58,13 @@ export const useAuthStore = create(
           return { success: true };
         } catch (error) {
           console.error('[Auth Store]: Login error', error.response?.data || error);
-          // BUG-SEC-05: Trả về generic error message để tránh User Enumeration
+          const resData = error.response?.data;
+          // Tài khoản đúng mật khẩu nhưng chưa xác thực OTP: backend chỉ trả mã này khi
+          // password đã đúng (chính chủ) -> báo FE tự chuyển sang trang nhập OTP kèm email.
+          if (resData?.errorCode === 'EMAIL_NOT_VERIFIED') {
+            return { success: false, needVerify: true, email: resData?.data?.email };
+          }
+          // BUG-SEC-05: mọi lỗi khác trả về generic message để tránh User Enumeration
           const errMsg = 'Thông tin đăng nhập không đúng. Vui lòng thử lại!';
           return { success: false, error: errMsg };
         }

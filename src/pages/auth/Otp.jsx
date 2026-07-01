@@ -17,20 +17,13 @@ export default function Otp() {
     phone: '0901234567'
   };
 
-  // Khi đến từ màn Login (tài khoản chưa xác thực), mã đăng ký cũ có thể đã hết hạn
-  // (5 phút) -> tự gửi lại 1 mã mới đúng 1 lần khi vào trang.
-  const didAutoResend = useRef(false);
-  useEffect(() => {
-    if (fromLogin && email && !didAutoResend.current) {
-      didAutoResend.current = true;
-      apiClient.post('/auth/resend-otp', { email })
-        .then(() => toast.info('Mã OTP mới đã được gửi tới email của bạn.'))
-        .catch(() => {}); // im lặng nếu bị guard chống spam 60s hoặc lỗi nhẹ
-    }
-  }, [fromLogin, email]);
-
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
-  const [timer, setTimer] = useState(59);
+  /* Đến từ Login (tài khoản đăng ký trước đó chưa verify): KHÔNG tự gửi OTP để tránh
+   bị lợi dụng login lặp không để dội bom email. Thay vào đó cho nút "Gửi lại" bấm được ngay
+   (timer=0) để user chủ động lấy mã mới (mã lúc đăng ký thường đã hết hạn 5 phút).
+   Đăng ký mới thì register() đã tự gửi OTP khi giữ đếm ngược 59s như cũ.
+  */
+  const [timer, setTimer] = useState(fromLogin ? 0 : 59);
   const [loading, setLoading] = useState(false);
   const inputRefs = useRef([]);
 
@@ -156,6 +149,14 @@ export default function Otp() {
             Mã OTP gồm 6 chữ số đã được gửi đến email: <br/>
             <span className="font-bold text-md-on-surface">{email}</span>
           </p>
+          {/* Nếu User chưa xác thực mà đăng nhập sẽ qua trang OTP nhưng ko đc tự động resend tránh bị lợi dụng
+          kẽ hở spawn mã OTP thay vào đó thì user thủ công bấm gửi mã
+          */}
+          {fromLogin && (
+            <p className="text-xs text-md-primary bg-md-primary/5 border border-md-primary/15 rounded-radius-md px-3 py-2 mt-3 text-center font-semibold leading-relaxed">
+              Tài khoản chưa xác thực. Mã trước đó có thể đã hết hạn — hãy bấm <span className="font-bold">"Gửi lại ngay"</span> bên dưới để nhận mã mới.
+            </p>
+          )}
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">

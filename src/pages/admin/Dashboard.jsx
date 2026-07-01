@@ -118,7 +118,7 @@ export default function AdminDashboard() {
           {/* Tiêu đề: icon khiên tím thay emoji 🛡️ */}
           <Shield className="text-purple-400" size={24} /> Admin Control Panel
         </h1>
-        <p className="text-xs text-slate-400 mt-1">Hệ thống quản trị tối cao • Dữ liệu đồng bộ database thật</p>
+        <p className="text-xs text-slate-400 mt-1">Hệ thống quản trị Admin</p>
       </div>
 
       {/* TỔNG QUAN */}

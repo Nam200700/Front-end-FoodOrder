@@ -280,7 +280,6 @@ export default function MerchantStats() {
             </span>
             Báo Cáo Tài Chính Nhà Hàng
           </h1>
-          <p className="text-xs text-slate-400 mt-1">Hệ thống phân chia doanh thu & chiết khấu hoa hồng tự động chuẩn 100%</p>
         </div>
 
         {/* Filter Tabs */}
@@ -310,7 +309,6 @@ export default function MerchantStats() {
               description={`Sau khi trừ ${stats ? Math.round(stats.commissionRate * 100) : 10}% hoa hồng sàn`}
               icon={DollarSign}
               color="border-md-secondary/15 bg-md-secondary-container/5 text-md-secondary bg-white"
-              badge="Net Revenue"
             />
 
             <KPICard
@@ -319,7 +317,6 @@ export default function MerchantStats() {
               description="Khớp 100% với tổng doanh thu món"
               icon={ShoppingBag}
               color="border-blue-500/15 bg-blue-500/5 text-blue-600 bg-white"
-              badge="Subtotal"
             />
 
             <KPICard
@@ -328,7 +325,6 @@ export default function MerchantStats() {
               description="Khấu trừ duy trì hệ thống"
               icon={Percent}
               color="border-orange-500/15 bg-orange-500/5 text-orange-600 bg-white"
-              badge="Commission"
             />
 
             <KPICard
@@ -337,7 +333,6 @@ export default function MerchantStats() {
               description="Phí giao hàng trả cho Shipper"
               icon={Users}
               color="border-purple-500/15 bg-purple-500/5 text-purple-600 bg-white"
-              badge="Shipping Fees"
             />
           </div>
 

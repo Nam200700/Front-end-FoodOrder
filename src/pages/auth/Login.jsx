@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../stores/authStore';
-import { Lock, Phone, ChevronRight, User, Store, Bike, Shield, KeyRound, Mail, MessageSquare } from 'lucide-react';
+import { Lock, Phone, ChevronRight, User, Store, Bike, Shield, KeyRound, Mail, MessageSquare, AlertTriangle, CheckCircle2, Eye, EyeOff } from 'lucide-react';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import apiClient from '../../services/api';
+import { validatePassword } from '../../utils/validation';
 
 export default function Login() {
   const navigate = useNavigate();
@@ -13,6 +14,7 @@ export default function Login() {
   // Login State
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false); // toggle xem mật khẩu ở ô đăng nhập
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
@@ -99,6 +101,11 @@ export default function Login() {
       toast.warn('Vui lòng nhập đầy đủ mã OTP và mật khẩu mới!');
       return;
     }
+    // Kiểm tra độ mạnh mật khẩu cho nhất quán với luồng Đăng ký (tối thiểu 8 ký tự).
+    if (!validatePassword(newPassword)) {
+      toast.warn('Mật khẩu mới phải chứa ít nhất 8 ký tự.');
+      return;
+    }
     if (newPassword !== confirmPassword) {
       toast.error('Mật khẩu xác nhận không trùng khớp!');
       return;
@@ -178,7 +185,7 @@ export default function Login() {
           {/* Error message banner */}
           {errorMsg && (
             <div className="p-3.5 bg-red-50 border border-red-200 text-red-650 rounded-radius-md text-[11px] font-bold mb-4 flex items-start gap-2 leading-relaxed shrink-0">
-              <span className="shrink-0 text-sm">⚠️</span>
+              <AlertTriangle size={14} className="shrink-0 mt-0.5" />
               <div className="flex-1">
                 <span className="font-extrabold block mb-0.5 text-red-700">Lỗi xử lý:</span>
                 {errorMsg}
@@ -216,13 +223,22 @@ export default function Login() {
                 <div className="relative">
                   <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
                   <input
-                    type="password"
+                    type={showPassword ? 'text' : 'password'}
                     required
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="••••••••"
-                    className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-radius-lg text-xs font-semibold focus:outline-none focus:border-[#FF6B35] focus:bg-white transition-all shadow-sm text-slate-700 placeholder-slate-350"
+                    className="w-full pl-11 pr-11 py-3 bg-slate-50 border border-slate-200 rounded-radius-lg text-xs font-semibold focus:outline-none focus:border-[#FF6B35] focus:bg-white transition-all shadow-sm text-slate-700 placeholder-slate-350"
                   />
+                  {/* Nút xem/ẩn mật khẩu */}
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((v) => !v)}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-[#FF6B35] transition-colors cursor-pointer"
+                    title={showPassword ? 'Ẩn mật khẩu' : 'Xem mật khẩu'}
+                  >
+                    {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </button>
                 </div>
               </div>
  
@@ -334,7 +350,7 @@ export default function Login() {
                 <form onSubmit={handleResetPassword} className="space-y-4 pt-4 border-t border-slate-100 animate-fade-in">
                   
                   <div className="p-3 bg-emerald-50 border border-emerald-250 text-emerald-700 rounded-radius-lg text-[11px] font-bold leading-normal flex items-start gap-2">
-                    <span>✅</span>
+                    <CheckCircle2 size={14} className="shrink-0 mt-0.5" />
                     <div>
                       Mã OTP đã được gửi đến {phoneOrEmail} qua {otpMethod === 'SMS' ? 'tin nhắn SMS' : 'Email'}. 
                       Vui lòng kiểm tra mã xác thực.

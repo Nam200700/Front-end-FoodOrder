@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../stores/authStore';
-import { Mail, Lock, User, Phone, ChevronRight, Store, Bike, FileText, MapPin } from 'lucide-react';
-import { validatePhone, validatePassword } from '../../utils/validation';
+import { Mail, Lock, User, Phone, ChevronRight, Store, Bike, FileText, MapPin, Lightbulb } from 'lucide-react';
+import { validatePhone, validatePassword, validateName, validateEmail, validateIdCard } from '../../utils/validation';
 import Button from '../../components/common/Button';
 import Input from '../../components/common/Input';
 import Card from '../../components/common/Card';
@@ -52,6 +52,22 @@ export default function Register() {
     }
   };
 
+  const handleNameBlur = () => {
+    if (!validateName(name)) {
+      setErrors(prev => ({ ...prev, fullName: 'Vui lòng nhập họ tên (tối thiểu 2 ký tự).' }));
+    } else {
+      setErrors(prev => { const copy = { ...prev }; delete copy.fullName; return copy; });
+    }
+  };
+
+  const handleEmailBlur = () => {
+    if (!validateEmail(email)) {
+      setErrors(prev => ({ ...prev, email: 'Email không hợp lệ (ví dụ: ten@example.com).' }));
+    } else {
+      setErrors(prev => { const copy = { ...prev }; delete copy.email; return copy; });
+    }
+  };
+
   const handlePasswordBlur = () => {
     if (!validatePassword(password)) {
       setErrors(prev => ({ ...prev, password: 'Mật khẩu phải chứa ít nhất 8 ký tự.' }));
@@ -64,6 +80,20 @@ export default function Register() {
     }
   };
 
+  // Gỡ 1 lỗi field khỏi state khi giá trị đã hợp lệ (dùng chung cho các field đối tác)
+  const clearError = (key) => setErrors(prev => { const copy = { ...prev }; delete copy[key]; return copy; });
+  const setError = (key, msg) => setErrors(prev => ({ ...prev, [key]: msg }));
+
+  // ── onBlur cho field đối tác: báo lỗi ngay khi rời ô cho nhất quán với Họ tên/Email/SĐT ──
+  const handleRestaurantNameBlur = () =>
+    restaurantName.trim() ? clearError('restaurantName') : setError('restaurantName', 'Vui lòng nhập tên quán ăn.');
+  const handleRestaurantPhoneBlur = () =>
+    validatePhone(restaurantPhone) ? clearError('restaurantPhone') : setError('restaurantPhone', 'Số điện thoại quán không hợp lệ (bắt đầu bằng 0, gồm 10 chữ số).');
+  const handleIdCardBlur = () =>
+    validateIdCard(idCard) ? clearError('idCard') : setError('idCard', 'CCCD/CMND phải gồm 9 hoặc 12 chữ số.');
+  const handleLicensePlateBlur = () =>
+    licensePlate.trim() ? clearError('licensePlate') : setError('licensePlate', 'Vui lòng nhập biển số xe.');
+
   const register = useAuthStore((state) => state.register);
 
   const handleSubmit = async (e) => {
@@ -72,11 +102,26 @@ export default function Register() {
     setErrors({});
 
     const localErrors = {};
+    if (!validateName(name)) {
+      localErrors.fullName = 'Vui lòng nhập họ tên (tối thiểu 2 ký tự).';
+    }
+    if (!validateEmail(email)) {
+      localErrors.email = 'Email không hợp lệ (ví dụ: ten@example.com).';
+    }
     if (!validatePhone(phone)) {
       localErrors.phone = 'Số điện thoại không hợp lệ (phải bắt đầu bằng số 0 và gồm 10 chữ số).';
     }
     if (!validatePassword(password)) {
       localErrors.password = 'Mật khẩu phải chứa ít nhất 8 ký tự.';
+    }
+    // Field bắt buộc riêng cho đối tác (Owner/Shipper) để không gửi hồ sơ thiếu thông tin lên Admin
+    if (role === 'OWNER') {
+      if (!restaurantName.trim()) localErrors.restaurantName = 'Vui lòng nhập tên quán ăn.';
+      if (!validatePhone(restaurantPhone)) localErrors.restaurantPhone = 'Số điện thoại quán không hợp lệ (bắt đầu bằng 0, gồm 10 chữ số).';
+      if (!restaurantAddress.trim()) localErrors.restaurantAddress = 'Vui lòng chọn địa chỉ quán trên bản đồ.';
+    } else if (role === 'SHIPPER') {
+      if (!validateIdCard(idCard)) localErrors.idCard = 'CCCD/CMND phải gồm 9 hoặc 12 chữ số.';
+      if (!licensePlate.trim()) localErrors.licensePlate = 'Vui lòng nhập biển số xe.';
     }
 
     if (Object.keys(localErrors).length > 0) {
@@ -210,8 +255,8 @@ export default function Register() {
             </div>
             
             {role !== 'CUSTOMER' && (
-              <p className="text-[10px] sm:text-xs text-amber-600 font-bold mt-4 text-center bg-amber-50/70 border border-amber-100/60 p-3 rounded-radius-lg leading-relaxed shadow-sm">
-                💡 <span className="font-extrabold">Lưu ý:</span> Hồ sơ đăng ký làm đối tác sẽ được gửi trực tiếp đến Admin phê duyệt. Vui lòng cung cấp chính xác thông tin để được duyệt sớm nhất!
+              <p className="text-[10px] sm:text-xs text-amber-600 font-bold mt-4 text-center bg-amber-50/70 border border-amber-100/60 p-3 rounded-radius-lg leading-relaxed shadow-sm inline-flex items-start gap-1.5">
+                <Lightbulb size={13} className="shrink-0 mt-0.5" /> <span><span className="font-extrabold">Lưu ý:</span> Hồ sơ đăng ký làm đối tác sẽ được gửi trực tiếp đến Admin phê duyệt. Vui lòng cung cấp chính xác thông tin để được duyệt sớm nhất!</span>
               </p>
             )}
           </div>
@@ -224,6 +269,7 @@ export default function Register() {
               required
               value={name}
               onChange={(e) => setName(e.target.value)}
+              onBlur={handleNameBlur}
               placeholder="Nguyễn Văn A..."
               icon={User}
               error={errors.fullName}
@@ -236,6 +282,7 @@ export default function Register() {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
+                onBlur={handleEmailBlur}
                 placeholder="ten@example.com..."
                 icon={Mail}
                 error={errors.email}
@@ -270,7 +317,7 @@ export default function Register() {
             {role === 'OWNER' && (
               <div className="space-y-5 border-t border-slate-100 pt-5 mt-5 animate-fade-in">
                 <h3 className="text-[10px] font-extrabold text-[#1A73E8] uppercase tracking-widest flex items-center gap-1.5">
-                  🏪 THÔNG TIN HỒ SƠ QUÁN ĂN (ĐỐI TÁC)
+                  <Store size={12} /> THÔNG TIN HỒ SƠ QUÁN ĂN (ĐỐI TÁC)
                 </h3>
                 
                 <Input
@@ -279,6 +326,7 @@ export default function Register() {
                   required
                   value={restaurantName}
                   onChange={(e) => setRestaurantName(e.target.value)}
+                  onBlur={handleRestaurantNameBlur}
                   placeholder="Ví dụ: Cơm Tấm Sài Gòn..."
                   icon={Store}
                   error={errors.restaurantName}
@@ -291,6 +339,7 @@ export default function Register() {
                     required
                     value={restaurantPhone}
                     onChange={(e) => setRestaurantPhone(e.target.value)}
+                    onBlur={handleRestaurantPhoneBlur}
                     placeholder="Để khách liên hệ..."
                     icon={Phone}
                     error={errors.restaurantPhone}
@@ -327,7 +376,7 @@ export default function Register() {
             {role === 'SHIPPER' && (
               <div className="space-y-5 border-t border-slate-100 pt-5 mt-5 animate-fade-in">
                 <h3 className="text-[10px] font-extrabold text-[#34A853] uppercase tracking-widest flex items-center gap-1.5">
-                  🚴 THÔNG TIN HỒ SƠ TÀI XẾ (SHIPPER)
+                  <Bike size={12} /> THÔNG TIN HỒ SƠ TÀI XẾ (SHIPPER)
                 </h3>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
@@ -337,6 +386,7 @@ export default function Register() {
                     required
                     value={idCard}
                     onChange={(e) => setIdCard(e.target.value)}
+                    onBlur={handleIdCardBlur}
                     placeholder="Số CCCD 12 số..."
                     icon={FileText}
                     error={errors.idCard}
@@ -348,6 +398,7 @@ export default function Register() {
                     required
                     value={licensePlate}
                     onChange={(e) => setLicensePlate(e.target.value)}
+                    onBlur={handleLicensePlateBlur}
                     placeholder="Ví dụ: 29A1-12345..."
                     icon={Bike}
                     error={errors.licensePlate}
@@ -365,7 +416,6 @@ export default function Register() {
                       className="w-full bg-slate-50 border border-slate-200 rounded-radius-lg p-3 text-xs sm:text-sm font-semibold focus:outline-none focus:border-[#FF6B35] focus:bg-white transition-all shadow-sm text-slate-700"
                     >
                       <option value="MOTORBIKE">Xe Máy (Motorbike)</option>
-                      <option value="BICYCLE">Xe Đạp (Bicycle)</option>
                       <option value="CAR">Ô Tô (Car)</option>
                     </select>
                   </div>

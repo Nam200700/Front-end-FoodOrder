@@ -423,7 +423,7 @@ export default function MerchantOrders() {
                             size="sm"
                             icon={Check}
                             onClick={(e) => handleConfirm(e, order.id)}
-                            className="w-full sm:w-auto !py-2.5 rounded-lg text-xs bg-emerald-600"
+                            className="w-full sm:w-auto !py-2.5 rounded-lg text-xs !bg-emerald-600"
                           >
                             Nhận đơn
                           </Button>
@@ -435,7 +435,7 @@ export default function MerchantOrders() {
                           variant="primary"
                           size="sm"
                           onClick={(e) => handlePreparing(e, order.id)}
-                          className="w-full sm:w-auto !py-2.5 rounded-lg text-xs bg-blue-600"
+                          className="w-full sm:w-auto !py-2.5 rounded-lg text-xs !bg-blue-600"
                         >
                           Chuẩn bị món
                         </Button>
@@ -446,7 +446,7 @@ export default function MerchantOrders() {
                           variant="secondary"
                           size="sm"
                           onClick={(e) => handleReady(e, order.id)}
-                          className="w-full sm:w-auto !py-2.5 rounded-lg text-xs bg-orange-500 hover:bg-orange-600"
+                          className="w-full sm:w-auto !py-2.5 rounded-lg text-xs !bg-[#34A853] hover:!bg-[#2E8B49]"
                         >
                           Sẵn sàng giao
                         </Button>
@@ -674,9 +674,9 @@ export default function MerchantOrders() {
                 <Button 
                     variant="primary" 
                     size="sm" 
-                    icon={Check} 
+                    icon={Check}
                     onClick={(e) => handleConfirm(e, detailModal.data.orderId)}
-                    className="rounded-lg text-xs !py-1.5 bg-emerald-600"
+                    className="rounded-lg text-xs !py-1.5 !bg-emerald-600"
                   >
                     Nhận đơn
                 </Button>
@@ -687,7 +687,7 @@ export default function MerchantOrders() {
                   variant="primary" 
                   size="sm" 
                   onClick={(e) => handlePreparing(e, detailModal.data.orderId)}
-                  className="rounded-lg text-xs !py-1.5 bg-blue-600"
+                  className="rounded-lg text-xs !py-1.5 !bg-blue-600"
                 >
                   Chuẩn bị món
                 </Button>
@@ -698,7 +698,7 @@ export default function MerchantOrders() {
                   variant="secondary" 
                   size="sm" 
                   onClick={(e) => handleReady(e, detailModal.data.orderId)}
-                  className="rounded-lg text-xs !py-1.5 bg-orange-500 hover:bg-orange-600"
+                  className="rounded-lg text-xs !py-1.5 !bg-[#34A853] hover:!bg-[#2E8B49]"
                 >
                   Sẵn sàng giao
                 </Button>

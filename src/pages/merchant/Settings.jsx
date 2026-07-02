@@ -1,10 +1,11 @@
 import { useState, useEffect, useRef } from 'react';
-import { Store, Camera, Save, Map, Clock, MapPin, Phone, Eye } from 'lucide-react';
+import { Store, Camera, Save, Map, Clock, MapPin, Phone, Eye, AlertTriangle } from 'lucide-react';
 import { useFetchData } from '../../hooks/useFetchData';
 import apiClient from '../../services/api';
 import Spinner from '../../components/common/Spinner';
 import MapModal from '../../components/common/MapModal';
 import { getRestaurantBannerUrl } from '../../utils/avatarHelper';
+import { validatePhone } from '../../utils/validation';
 import { toast } from 'react-toastify';
 
 export default function MerchantSettings() {
@@ -26,6 +27,7 @@ export default function MerchantSettings() {
   const [hasRestaurant, setHasRestaurant] = useState(false);
   const [restaurantId, setRestaurantId] = useState(null);
   const [isMapOpen, setIsMapOpen] = useState(false);
+  const [phoneError, setPhoneError] = useState(''); // lỗi định dạng SĐT liên hệ quán
 
   const { data: restaurant, loading } = useFetchData('/merchant/restaurant');
 
@@ -104,6 +106,13 @@ export default function MerchantSettings() {
       toast.warning('Vui lòng nhập đầy đủ thông tin bắt buộc!');
       return;
     }
+    // Chặn SĐT sai định dạng (bắt đầu bằng 0, gồm 10 chữ số) — không lưu số rác lên hệ thống.
+    if (!validatePhone(phone)) {
+      setPhoneError('Số điện thoại không hợp lệ (bắt đầu bằng số 0 và gồm 10 chữ số).');
+      toast.warning('Số điện thoại liên hệ không hợp lệ. Vui lòng kiểm tra lại!');
+      return;
+    }
+    setPhoneError('');
 
     setSaving(true);
     try {
@@ -281,9 +290,17 @@ export default function MerchantSettings() {
             required
             placeholder="090xxxxxxx"
             value={phone}
-            onChange={(e) => setPhone(e.target.value)}
-            className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-radius-lg text-xs focus:outline-none focus:border-md-secondary focus:bg-white transition-all font-semibold"
+            onChange={(e) => { setPhone(e.target.value); if (phoneError) setPhoneError(''); }}
+            onBlur={() => setPhoneError(validatePhone(phone) ? '' : 'Số điện thoại không hợp lệ (bắt đầu bằng số 0 và gồm 10 chữ số).')}
+            className={`w-full px-4 py-2.5 bg-slate-50 border rounded-radius-lg text-xs focus:outline-none focus:bg-white transition-all font-semibold ${
+              phoneError ? 'border-red-500 focus:border-red-500' : 'border-slate-200 focus:border-md-secondary'
+            }`}
           />
+          {phoneError && (
+            <span className="text-[11px] text-red-500 font-bold mt-1.5 ml-1 flex items-start gap-1">
+              <AlertTriangle size={12} className="shrink-0 mt-0.5" /> <span>{phoneError}</span>
+            </span>
+          )}
         </div>
 
         {/* Địa chỉ chi tiết quán có nút chọn bản đồ */}

@@ -6,16 +6,31 @@ import Spinner from '../../components/common/Spinner';
 import { toast } from 'react-toastify';
 
 export default function AdminReports() {
+  // Ghép nhãn đối tượng bị báo cáo theo targetType (BE ReportResponse chỉ trả targetType + targetId,
+  // không có tên/phone nên trước đây cột luôn hiện "Đối tượng #—").
+  const targetLabel = (type, id) => {
+    const idStr = id ?? '—';
+    switch (type) {
+      case 'RESTAURANT': return `Quán #${idStr}`;
+      case 'SHIPPER':    return `Tài xế #${idStr}`;
+      case 'USER':       return `Người dùng #${idStr}`;
+      case 'ORDER':      return `Đơn #${idStr}`;
+      case 'REVIEW':     return `Đánh giá #${idStr}`;
+      default:           return `Đối tượng #${idStr}`;
+    }
+  };
+
   const mapReports = (data) => {
     const realData = data?.content || data || [];
     return realData.map(rep => {
       const dateObj = rep.createdAt ? new Date(rep.createdAt) : new Date();
       const dateStr = `${String(dateObj.getDate()).padStart(2, '0')}/${String(dateObj.getMonth() + 1).padStart(2, '0')} ${String(dateObj.getHours()).padStart(2, '0')}:${String(dateObj.getMinutes()).padStart(2, '0')}`;
-      
+
       return {
         id: rep.reportId || rep.id,
-        sender: rep.reporterName || rep.reporterPhone || `User #${rep.reporterId || '—'}`,
-        target: rep.reportedUserName || rep.reportedUserPhone || `Đối tượng #${rep.reportedUserId || '—'}`,
+        // Ưu tiên tên thật do backend trả (reporterName/targetName); thiếu thì fallback về nhãn kèm #id.
+        sender: rep.reporterName || `Người dùng #${rep.reporterId || '—'}`,
+        target: rep.targetName || targetLabel(rep.targetType, rep.targetId),
         content: rep.reason || 'Không có nội dung mô tả.',
         date: dateStr
       };
@@ -27,33 +42,17 @@ export default function AdminReports() {
   });
 
   const handleResolve = async (id, target) => {
-    const note = window.prompt(
-      `Nhập ghi chú xử lý báo cáo vi phạm đối với "${target}":`, 
-      'Đã xác minh hành vi và nhắc nhở cảnh cáo đối tượng vi phạm.'
-    );
-    if (note === null) return; // Nhấn hủy prompt
+    // BE dùng PATCH /admin/reports/{id}/resolve và ResolveReportRequest chỉ nhận { status }
+    // (không có adminNote). Chỉ cần xác nhận trước khi đánh dấu đã xử lý.
+    if (!window.confirm(`Xác nhận đã xác minh & xử lý báo cáo đối với "${target}"?`)) return;
 
     try {
-      await apiClient.put(`/admin/reports/${id}/resolve`, {
-        adminNote: note.trim() || 'Đã giải quyết xong',
-        status: 'RESOLVED'
-      });
+      await apiClient.patch(`/admin/reports/${id}/resolve`, { status: 'RESOLVED' });
       toast.success('Đã giải quyết báo cáo vi phạm thành công!');
       refetch();
     } catch (err) {
-      console.warn('Lỗi gọi API resolve chuyên dụng, thử cập nhật PUT trực tiếp:', err);
-      try {
-        // Fallback PUT trực tiếp lên resource report
-        await apiClient.put(`/admin/reports/${id}`, {
-          status: 'RESOLVED',
-          adminNote: note.trim() || 'Đã giải quyết xong'
-        });
-        toast.success('Đã giải quyết báo cáo vi phạm thành công!');
-        refetch();
-      } catch (fallbackErr) {
-        console.error('Lỗi giải quyết báo cáo:', fallbackErr);
-        toast.error('Không thể xử lý báo cáo vi phạm lúc này. Vui lòng thử lại sau!');
-      }
+      console.error('Lỗi giải quyết báo cáo:', err);
+      toast.error('Không thể xử lý báo cáo vi phạm lúc này. Vui lòng thử lại sau!');
     }
   };
 

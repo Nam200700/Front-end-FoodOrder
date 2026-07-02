@@ -878,7 +878,7 @@ export default function MerchantMenu() {
               Hủy
             </Button>
             <Button
-              variant="primary"
+              variant="secondary"
               onClick={handleAddCategoryConfirm}
               loading={submitting}
               disabled={!newCatName.trim()}
@@ -918,7 +918,7 @@ export default function MerchantMenu() {
               Hủy
             </Button>
             <Button
-              variant="primary"
+              variant="secondary"
               onClick={handleEditCategoryConfirm}
               loading={submitting}
               disabled={!editCatName.trim()}

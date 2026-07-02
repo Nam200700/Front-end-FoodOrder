@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Eye, EyeOff } from 'lucide-react';
+import { Eye, EyeOff, AlertTriangle } from 'lucide-react';
 
 export default function Input({
   label,
@@ -87,7 +87,9 @@ export default function Input({
 
       {/* Error & Helper text */}
       {error ? (
-        <span className="text-[11px] text-red-500 font-bold mt-1.5 ml-2">⚠️ {error}</span>
+        <span className="text-[11px] text-red-500 font-bold mt-1.5 ml-2 flex items-start gap-1">
+          <AlertTriangle size={12} className="shrink-0 mt-0.5" /> <span>{error}</span>
+        </span>
       ) : helperText ? (
         <span className="text-[11px] text-md-outline font-semibold mt-1.5 ml-2">{helperText}</span>
       ) : null}

@@ -1,22 +1,24 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../stores/authStore';
-import { 
-  LogOut, 
-  Clock, 
-  AlertTriangle, 
-  CheckCircle, 
-  Store, 
-  Bike, 
-  FileText, 
-  MapPin, 
-  Phone, 
-  ChevronRight, 
-  Loader2 
+import {
+  LogOut,
+  Clock,
+  AlertTriangle,
+  CheckCircle,
+  Check,
+  Store,
+  Bike,
+  FileText,
+  MapPin,
+  Phone,
+  ChevronRight,
+  Loader2
 } from 'lucide-react';
 import Input from '../../components/common/Input';
 import MapModal from '../../components/common/MapModal';
 import { toast } from 'react-toastify';
+import { validatePhone, validateIdCard } from '../../utils/validation';
 
 export default function PartnerApproval() {
   const navigate = useNavigate();
@@ -61,12 +63,13 @@ export default function PartnerApproval() {
 
     let res;
     if (role === 'OWNER' || role === 'MERCHANT') {
-      if (!restaurantName.trim() || !restaurantAddress.trim() || !restaurantPhone.trim()) {
-        setErrors({
-          restaurantName: !restaurantName.trim() ? 'Tên quán không được để trống' : '',
-          restaurantAddress: !restaurantAddress.trim() ? 'Địa chỉ quán không được để trống' : '',
-          restaurantPhone: !restaurantPhone.trim() ? 'Số điện thoại quán không được để trống' : '',
-        });
+      // Kiểm tra đầy đủ: tên/địa chỉ bắt buộc, SĐT quán đúng định dạng (0 + 10 số) như trang đăng ký
+      const ownerErr = {};
+      if (!restaurantName.trim()) ownerErr.restaurantName = 'Tên quán không được để trống';
+      if (!restaurantAddress.trim()) ownerErr.restaurantAddress = 'Địa chỉ quán không được để trống';
+      if (!validatePhone(restaurantPhone)) ownerErr.restaurantPhone = 'Số điện thoại quán không hợp lệ (bắt đầu bằng 0, gồm 10 chữ số)';
+      if (Object.keys(ownerErr).length > 0) {
+        setErrors(ownerErr);
         setLoading(false);
         return;
       }
@@ -80,11 +83,12 @@ export default function PartnerApproval() {
         restaurantImageUrl
       );
     } else if (role === 'SHIPPER') {
-      if (!idCard.trim() || !licensePlate.trim()) {
-        setErrors({
-          idCard: !idCard.trim() ? 'Số CMTND/CCCD không được để trống' : '',
-          licensePlate: !licensePlate.trim() ? 'Biển số xe không được để trống' : '',
-        });
+      // CCCD/CMND phải đúng 9 hoặc 12 chữ số; biển số bắt buộc
+      const shipperErr = {};
+      if (!validateIdCard(idCard)) shipperErr.idCard = 'CCCD/CMND phải gồm 9 hoặc 12 chữ số';
+      if (!licensePlate.trim()) shipperErr.licensePlate = 'Biển số xe không được để trống';
+      if (Object.keys(shipperErr).length > 0) {
+        setErrors(shipperErr);
         setLoading(false);
         return;
       }
@@ -127,8 +131,8 @@ export default function PartnerApproval() {
           {/* Header */}
           <div className="flex items-center justify-between border-b border-slate-100 pb-5 mb-6">
             <div className="flex items-center gap-3">
-              <div className={`w-10 h-10 bg-gradient-to-tr ${role === 'SHIPPER' ? 'from-[#34A853] to-[#2E8B49]' : 'from-[#1A73E8] to-[#1557B0]'} rounded-xl flex items-center justify-center text-white text-base font-extrabold shadow-md`}>
-                {role === 'SHIPPER' ? '🚴' : '🏪'}
+              <div className={`w-10 h-10 bg-gradient-to-tr ${role === 'SHIPPER' ? 'from-[#34A853] to-[#2E8B49]' : 'from-[#1A73E8] to-[#1557B0]'} rounded-xl flex items-center justify-center text-white shadow-md`}>
+                {role === 'SHIPPER' ? <Bike size={20} /> : <Store size={20} />}
               </div>
               <div>
                 <span className="text-[9px] bg-slate-100 text-slate-500 font-extrabold px-2 py-0.5 rounded-full uppercase tracking-wider">
@@ -178,8 +182,8 @@ export default function PartnerApproval() {
 
                   {/* Step 1: Register */}
                   <div className="flex flex-col items-center z-10 relative">
-                    <div className="w-8 h-8 rounded-full bg-emerald-500 text-white flex items-center justify-center shadow-md font-bold text-xs">
-                      ✓
+                    <div className="w-8 h-8 rounded-full bg-emerald-500 text-white flex items-center justify-center shadow-md">
+                      <Check size={16} strokeWidth={3} />
                     </div>
                     <span className="text-[10px] font-bold text-slate-500 mt-2">Nộp hồ sơ</span>
                   </div>
@@ -227,8 +231,8 @@ export default function PartnerApproval() {
               </div>
 
               {errorMsg && (
-                <div className="bg-amber-50 border border-amber-200 text-amber-800 rounded-radius-lg p-3 text-xs font-bold">
-                  ⚠️ {errorMsg}
+                <div className="bg-amber-50 border border-amber-200 text-amber-800 rounded-radius-lg p-3 text-xs font-bold flex items-start gap-1.5">
+                  <AlertTriangle size={14} className="shrink-0 mt-0.5" /> <span>{errorMsg}</span>
                 </div>
               )}
 
@@ -341,7 +345,6 @@ export default function PartnerApproval() {
                         className="w-full bg-slate-50 border border-slate-200 rounded-radius-lg p-3 text-xs sm:text-sm font-semibold focus:outline-none focus:border-[#FF6B35] focus:bg-white transition-all shadow-sm text-slate-700"
                       >
                         <option value="MOTORBIKE">Xe Máy (Motorbike)</option>
-                        <option value="BICYCLE">Xe Đạp (Bicycle)</option>
                         <option value="CAR">Ô Tô (Car)</option>
                       </select>
                     </div>

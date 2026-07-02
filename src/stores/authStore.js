@@ -64,6 +64,12 @@ export const useAuthStore = create(
           if (resData?.errorCode === 'EMAIL_NOT_VERIFIED') {
             return { success: false, needVerify: true, email: resData?.data?.email };
           }
+          // Tài khoản bị khóa: BE trả FORBIDDEN kèm lý do và chỉ sau khi mật khẩu ĐÚNG (chính chủ)
+          // -> hiện thông báo riêng để user không tưởng nhầm là sai mật khẩu. Không lộ enumeration
+          // vì người lạ (sai mật khẩu) chỉ nhận BAD_CREDENTIALS generic ở nhánh dưới.
+          if (resData?.errorCode === 'FORBIDDEN') {
+            return { success: false, locked: true, error: resData?.message || 'Tài khoản của bạn đã bị khóa. Vui lòng liên hệ hỗ trợ.' };
+          }
           // BUG-SEC-05: mọi lỗi khác trả về generic message để tránh User Enumeration
           const errMsg = 'Thông tin đăng nhập không đúng. Vui lòng thử lại!';
           return { success: false, error: errMsg };
@@ -93,7 +99,13 @@ export const useAuthStore = create(
           if (resData?.errorCode === 'VALIDATION_FAILED' && resData?.data) {
             return { success: false, validationErrors: resData.data, error: resData.message };
           }
-          return { success: false, error: 'Đăng ký thất bại. Vui lòng kiểm tra lại thông tin!' };
+          // Trả kèm errorCode + message thật của backend (PHONE_EXISTS/EMAIL_EXISTS...) để Register.jsx
+          // tô đỏ đúng field và hiện lý do rõ ràng; nếu không có message mới dùng câu generic.
+          return {
+            success: false,
+            errorCode: resData?.errorCode,
+            error: resData?.message || 'Đăng ký thất bại. Vui lòng kiểm tra lại thông tin!'
+          };
         }
       },
 

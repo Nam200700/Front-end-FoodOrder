@@ -1,3 +1,5 @@
+import { getAvatarUrl } from './avatarHelper';
+
 /**
  * Map dữ liệu thô từ API của Order về định dạng chuẩn dùng trên UI của Customer, Merchant và Shipper.
  *
@@ -62,8 +64,10 @@ export const mapOrder = (ord) => {
     cancelReason: ord.cancelReason || '',
     shipper: ord.shipperId ? {
       id: ord.shipperId,
-      name: ord.shipperName || 'Tài Xế AntiGravity',
-      avatar: ord.shipperAvatar || 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=150&q=80',
+      name: ord.shipperName || 'Tài xế',
+      // Avatar thật của tài xế nếu có; rỗng thì dùng ảnh mặc định SVG (giống fallback của customer),
+      // không hardcode ảnh người lạ nữa.
+      avatar: getAvatarUrl(ord.shipperAvatar),
       rating: 4.9,
       bike: ord.shipperVehicleType === 'MOTORBIKE' ? 'Xe máy (Motorbike)' :
             ord.shipperVehicleType === 'BICYCLE' ? 'Xe đạp (Bicycle)' :

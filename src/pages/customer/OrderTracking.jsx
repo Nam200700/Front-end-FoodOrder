@@ -14,6 +14,7 @@ import apiClient from '../../services/api';
 import { toast } from 'react-toastify';
 import { STATUS_META, parseOrderEvent, notifyStatusChange } from '../../utils/orderStatusHelper';
 import { mapOrder } from '../../utils/mappers';
+import { DEFAULT_AVATAR } from '../../utils/avatarHelper';
 import { useModalState } from '../../hooks/useModalState';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -468,9 +469,10 @@ export default function OrderTracking() {
       {/* Shipper Info Box */}
       {displayOrder.shipper && (
         <Card variant="flat" className="p-6.5 flex gap-5 items-center bg-white border border-md-outline-variant/20 shadow-sm animate-slide-up">
-          <img 
-            src={displayOrder.shipper.avatar} 
-            alt="Shipper" 
+          <img
+            src={displayOrder.shipper.avatar}
+            alt="Shipper"
+            onError={(e) => { e.currentTarget.src = DEFAULT_AVATAR; }}
             className="w-16 h-16 rounded-radius-full object-cover border-2 border-md-outline-variant shadow-sm shrink-0"
           />
           <div className="flex-1 min-w-0">

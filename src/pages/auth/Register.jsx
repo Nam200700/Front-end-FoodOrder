@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../stores/authStore';
 import { Mail, Lock, User, Phone, ChevronRight, Store, Bike, FileText, MapPin, Lightbulb } from 'lucide-react';
-import { validatePhone, validatePassword } from '../../utils/validation';
+import { validatePhone, validatePassword, validateName, validateEmail } from '../../utils/validation';
 import Button from '../../components/common/Button';
 import Input from '../../components/common/Input';
 import Card from '../../components/common/Card';
@@ -52,6 +52,22 @@ export default function Register() {
     }
   };
 
+  const handleNameBlur = () => {
+    if (!validateName(name)) {
+      setErrors(prev => ({ ...prev, fullName: 'Vui lòng nhập họ tên (tối thiểu 2 ký tự).' }));
+    } else {
+      setErrors(prev => { const copy = { ...prev }; delete copy.fullName; return copy; });
+    }
+  };
+
+  const handleEmailBlur = () => {
+    if (!validateEmail(email)) {
+      setErrors(prev => ({ ...prev, email: 'Email không hợp lệ (ví dụ: ten@example.com).' }));
+    } else {
+      setErrors(prev => { const copy = { ...prev }; delete copy.email; return copy; });
+    }
+  };
+
   const handlePasswordBlur = () => {
     if (!validatePassword(password)) {
       setErrors(prev => ({ ...prev, password: 'Mật khẩu phải chứa ít nhất 8 ký tự.' }));
@@ -72,11 +88,26 @@ export default function Register() {
     setErrors({});
 
     const localErrors = {};
+    if (!validateName(name)) {
+      localErrors.fullName = 'Vui lòng nhập họ tên (tối thiểu 2 ký tự).';
+    }
+    if (!validateEmail(email)) {
+      localErrors.email = 'Email không hợp lệ (ví dụ: ten@example.com).';
+    }
     if (!validatePhone(phone)) {
       localErrors.phone = 'Số điện thoại không hợp lệ (phải bắt đầu bằng số 0 và gồm 10 chữ số).';
     }
     if (!validatePassword(password)) {
       localErrors.password = 'Mật khẩu phải chứa ít nhất 8 ký tự.';
+    }
+    // Field bắt buộc riêng cho đối tác (Owner/Shipper) để không gửi hồ sơ thiếu thông tin lên Admin
+    if (role === 'OWNER') {
+      if (!restaurantName.trim()) localErrors.restaurantName = 'Vui lòng nhập tên quán ăn.';
+      if (!validatePhone(restaurantPhone)) localErrors.restaurantPhone = 'Số điện thoại quán không hợp lệ (bắt đầu bằng 0, gồm 10 chữ số).';
+      if (!restaurantAddress.trim()) localErrors.restaurantAddress = 'Vui lòng chọn địa chỉ quán trên bản đồ.';
+    } else if (role === 'SHIPPER') {
+      if (!idCard.trim()) localErrors.idCard = 'Vui lòng nhập số CCCD/CMND.';
+      if (!licensePlate.trim()) localErrors.licensePlate = 'Vui lòng nhập biển số xe.';
     }
 
     if (Object.keys(localErrors).length > 0) {
@@ -224,6 +255,7 @@ export default function Register() {
               required
               value={name}
               onChange={(e) => setName(e.target.value)}
+              onBlur={handleNameBlur}
               placeholder="Nguyễn Văn A..."
               icon={User}
               error={errors.fullName}
@@ -236,6 +268,7 @@ export default function Register() {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
+                onBlur={handleEmailBlur}
                 placeholder="ten@example.com..."
                 icon={Mail}
                 error={errors.email}
@@ -365,7 +398,6 @@ export default function Register() {
                       className="w-full bg-slate-50 border border-slate-200 rounded-radius-lg p-3 text-xs sm:text-sm font-semibold focus:outline-none focus:border-[#FF6B35] focus:bg-white transition-all shadow-sm text-slate-700"
                     >
                       <option value="MOTORBIKE">Xe Máy (Motorbike)</option>
-                      <option value="BICYCLE">Xe Đạp (Bicycle)</option>
                       <option value="CAR">Ô Tô (Car)</option>
                     </select>
                   </div>

@@ -28,8 +28,9 @@ export default function AdminReports() {
 
       return {
         id: rep.reportId || rep.id,
-        sender: `Người dùng #${rep.reporterId || '—'}`,
-        target: targetLabel(rep.targetType, rep.targetId),
+        // Ưu tiên tên thật do backend trả (reporterName/targetName); thiếu thì fallback về nhãn kèm #id.
+        sender: rep.reporterName || `Người dùng #${rep.reporterId || '—'}`,
+        target: rep.targetName || targetLabel(rep.targetType, rep.targetId),
         content: rep.reason || 'Không có nội dung mô tả.',
         date: dateStr
       };

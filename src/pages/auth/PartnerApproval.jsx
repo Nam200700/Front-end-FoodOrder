@@ -342,7 +342,6 @@ export default function PartnerApproval() {
                         className="w-full bg-slate-50 border border-slate-200 rounded-radius-lg p-3 text-xs sm:text-sm font-semibold focus:outline-none focus:border-[#FF6B35] focus:bg-white transition-all shadow-sm text-slate-700"
                       >
                         <option value="MOTORBIKE">Xe Máy (Motorbike)</option>
-                        <option value="BICYCLE">Xe Đạp (Bicycle)</option>
                         <option value="CAR">Ô Tô (Car)</option>
                       </select>
                     </div>

@@ -197,7 +197,7 @@ export default function OrderTracking() {
       if (reportTarget === 'RESTAURANT') {
         const resDetailResponse = await apiClient.get(`/restaurants/${order.restaurantId}`);
         const realRes = resDetailResponse.data?.data;
-        reportedUserId = realRes?.ownerId || realRes?.userId;
+        reportedUserId = realRes?.id;
       } else {
         reportedUserId = order.shipper?.id;
       }
@@ -209,10 +209,8 @@ export default function OrderTracking() {
       }
 
       await apiClient.post('/reports', {
-        reportedUserId: reportedUserId,
-        reported_user_id: reportedUserId,
-        orderId: order.id,
-        order_id: order.id,
+        targetType: reportTarget,
+        targetId: reportedUserId,
         reason: reportReason.trim()
       });
       toast.success('Báo cáo vi phạm đơn hàng đã được gửi thành công. Cảm ơn phản hồi của bạn!');

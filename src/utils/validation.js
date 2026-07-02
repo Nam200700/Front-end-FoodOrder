@@ -8,4 +8,6 @@ export const validatePassword = (pwd) => pwd?.length >= PASSWORD_MIN_LENGTH;
 export const validateName = (name) => (name?.trim().length ?? 0) >= 2;
 // Email: kiểm tra định dạng cơ bản có phần trước @, tên miền và đuôi
 export const validateEmail = (email) => EMAIL_REGEX.test(email?.trim());
+// CCCD/CMND Việt Nam: CMND 9 số hoặc CCCD 12 số
+export const validateIdCard = (idCard) => /^(\d{9}|\d{12})$/.test(idCard?.trim());
 export const sanitizeText = (str) => str?.trim().slice(0, 500) ?? '';

@@ -18,6 +18,7 @@ import {
 import Input from '../../components/common/Input';
 import MapModal from '../../components/common/MapModal';
 import { toast } from 'react-toastify';
+import { validatePhone, validateIdCard } from '../../utils/validation';
 
 export default function PartnerApproval() {
   const navigate = useNavigate();
@@ -62,12 +63,13 @@ export default function PartnerApproval() {
 
     let res;
     if (role === 'OWNER' || role === 'MERCHANT') {
-      if (!restaurantName.trim() || !restaurantAddress.trim() || !restaurantPhone.trim()) {
-        setErrors({
-          restaurantName: !restaurantName.trim() ? 'Tên quán không được để trống' : '',
-          restaurantAddress: !restaurantAddress.trim() ? 'Địa chỉ quán không được để trống' : '',
-          restaurantPhone: !restaurantPhone.trim() ? 'Số điện thoại quán không được để trống' : '',
-        });
+      // Kiểm tra đầy đủ: tên/địa chỉ bắt buộc, SĐT quán đúng định dạng (0 + 10 số) như trang đăng ký
+      const ownerErr = {};
+      if (!restaurantName.trim()) ownerErr.restaurantName = 'Tên quán không được để trống';
+      if (!restaurantAddress.trim()) ownerErr.restaurantAddress = 'Địa chỉ quán không được để trống';
+      if (!validatePhone(restaurantPhone)) ownerErr.restaurantPhone = 'Số điện thoại quán không hợp lệ (bắt đầu bằng 0, gồm 10 chữ số)';
+      if (Object.keys(ownerErr).length > 0) {
+        setErrors(ownerErr);
         setLoading(false);
         return;
       }
@@ -81,11 +83,12 @@ export default function PartnerApproval() {
         restaurantImageUrl
       );
     } else if (role === 'SHIPPER') {
-      if (!idCard.trim() || !licensePlate.trim()) {
-        setErrors({
-          idCard: !idCard.trim() ? 'Số CMTND/CCCD không được để trống' : '',
-          licensePlate: !licensePlate.trim() ? 'Biển số xe không được để trống' : '',
-        });
+      // CCCD/CMND phải đúng 9 hoặc 12 chữ số; biển số bắt buộc
+      const shipperErr = {};
+      if (!validateIdCard(idCard)) shipperErr.idCard = 'CCCD/CMND phải gồm 9 hoặc 12 chữ số';
+      if (!licensePlate.trim()) shipperErr.licensePlate = 'Biển số xe không được để trống';
+      if (Object.keys(shipperErr).length > 0) {
+        setErrors(shipperErr);
         setLoading(false);
         return;
       }

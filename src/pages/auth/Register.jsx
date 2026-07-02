@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../stores/authStore';
 import { Mail, Lock, User, Phone, ChevronRight, Store, Bike, FileText, MapPin, Lightbulb } from 'lucide-react';
-import { validatePhone, validatePassword, validateName, validateEmail } from '../../utils/validation';
+import { validatePhone, validatePassword, validateName, validateEmail, validateIdCard } from '../../utils/validation';
 import Button from '../../components/common/Button';
 import Input from '../../components/common/Input';
 import Card from '../../components/common/Card';
@@ -80,6 +80,20 @@ export default function Register() {
     }
   };
 
+  // Gỡ 1 lỗi field khỏi state khi giá trị đã hợp lệ (dùng chung cho các field đối tác)
+  const clearError = (key) => setErrors(prev => { const copy = { ...prev }; delete copy[key]; return copy; });
+  const setError = (key, msg) => setErrors(prev => ({ ...prev, [key]: msg }));
+
+  // ── onBlur cho field đối tác: báo lỗi ngay khi rời ô cho nhất quán với Họ tên/Email/SĐT ──
+  const handleRestaurantNameBlur = () =>
+    restaurantName.trim() ? clearError('restaurantName') : setError('restaurantName', 'Vui lòng nhập tên quán ăn.');
+  const handleRestaurantPhoneBlur = () =>
+    validatePhone(restaurantPhone) ? clearError('restaurantPhone') : setError('restaurantPhone', 'Số điện thoại quán không hợp lệ (bắt đầu bằng 0, gồm 10 chữ số).');
+  const handleIdCardBlur = () =>
+    validateIdCard(idCard) ? clearError('idCard') : setError('idCard', 'CCCD/CMND phải gồm 9 hoặc 12 chữ số.');
+  const handleLicensePlateBlur = () =>
+    licensePlate.trim() ? clearError('licensePlate') : setError('licensePlate', 'Vui lòng nhập biển số xe.');
+
   const register = useAuthStore((state) => state.register);
 
   const handleSubmit = async (e) => {
@@ -106,7 +120,7 @@ export default function Register() {
       if (!validatePhone(restaurantPhone)) localErrors.restaurantPhone = 'Số điện thoại quán không hợp lệ (bắt đầu bằng 0, gồm 10 chữ số).';
       if (!restaurantAddress.trim()) localErrors.restaurantAddress = 'Vui lòng chọn địa chỉ quán trên bản đồ.';
     } else if (role === 'SHIPPER') {
-      if (!idCard.trim()) localErrors.idCard = 'Vui lòng nhập số CCCD/CMND.';
+      if (!validateIdCard(idCard)) localErrors.idCard = 'CCCD/CMND phải gồm 9 hoặc 12 chữ số.';
       if (!licensePlate.trim()) localErrors.licensePlate = 'Vui lòng nhập biển số xe.';
     }
 
@@ -312,6 +326,7 @@ export default function Register() {
                   required
                   value={restaurantName}
                   onChange={(e) => setRestaurantName(e.target.value)}
+                  onBlur={handleRestaurantNameBlur}
                   placeholder="Ví dụ: Cơm Tấm Sài Gòn..."
                   icon={Store}
                   error={errors.restaurantName}
@@ -324,6 +339,7 @@ export default function Register() {
                     required
                     value={restaurantPhone}
                     onChange={(e) => setRestaurantPhone(e.target.value)}
+                    onBlur={handleRestaurantPhoneBlur}
                     placeholder="Để khách liên hệ..."
                     icon={Phone}
                     error={errors.restaurantPhone}
@@ -370,6 +386,7 @@ export default function Register() {
                     required
                     value={idCard}
                     onChange={(e) => setIdCard(e.target.value)}
+                    onBlur={handleIdCardBlur}
                     placeholder="Số CCCD 12 số..."
                     icon={FileText}
                     error={errors.idCard}
@@ -381,6 +398,7 @@ export default function Register() {
                     required
                     value={licensePlate}
                     onChange={(e) => setLicensePlate(e.target.value)}
+                    onBlur={handleLicensePlateBlur}
                     placeholder="Ví dụ: 29A1-12345..."
                     icon={Bike}
                     error={errors.licensePlate}

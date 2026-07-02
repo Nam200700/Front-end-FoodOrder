@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../stores/authStore';
-import { Mail, Lock, User, Phone, ChevronRight, Store, Bike, FileText, MapPin } from 'lucide-react';
+import { Mail, Lock, User, Phone, ChevronRight, Store, Bike, FileText, MapPin, Lightbulb } from 'lucide-react';
 import { validatePhone, validatePassword } from '../../utils/validation';
 import Button from '../../components/common/Button';
 import Input from '../../components/common/Input';
@@ -210,8 +210,8 @@ export default function Register() {
             </div>
             
             {role !== 'CUSTOMER' && (
-              <p className="text-[10px] sm:text-xs text-amber-600 font-bold mt-4 text-center bg-amber-50/70 border border-amber-100/60 p-3 rounded-radius-lg leading-relaxed shadow-sm">
-                💡 <span className="font-extrabold">Lưu ý:</span> Hồ sơ đăng ký làm đối tác sẽ được gửi trực tiếp đến Admin phê duyệt. Vui lòng cung cấp chính xác thông tin để được duyệt sớm nhất!
+              <p className="text-[10px] sm:text-xs text-amber-600 font-bold mt-4 text-center bg-amber-50/70 border border-amber-100/60 p-3 rounded-radius-lg leading-relaxed shadow-sm inline-flex items-start gap-1.5">
+                <Lightbulb size={13} className="shrink-0 mt-0.5" /> <span><span className="font-extrabold">Lưu ý:</span> Hồ sơ đăng ký làm đối tác sẽ được gửi trực tiếp đến Admin phê duyệt. Vui lòng cung cấp chính xác thông tin để được duyệt sớm nhất!</span>
               </p>
             )}
           </div>
@@ -270,7 +270,7 @@ export default function Register() {
             {role === 'OWNER' && (
               <div className="space-y-5 border-t border-slate-100 pt-5 mt-5 animate-fade-in">
                 <h3 className="text-[10px] font-extrabold text-[#1A73E8] uppercase tracking-widest flex items-center gap-1.5">
-                  🏪 THÔNG TIN HỒ SƠ QUÁN ĂN (ĐỐI TÁC)
+                  <Store size={12} /> THÔNG TIN HỒ SƠ QUÁN ĂN (ĐỐI TÁC)
                 </h3>
                 
                 <Input
@@ -327,7 +327,7 @@ export default function Register() {
             {role === 'SHIPPER' && (
               <div className="space-y-5 border-t border-slate-100 pt-5 mt-5 animate-fade-in">
                 <h3 className="text-[10px] font-extrabold text-[#34A853] uppercase tracking-widest flex items-center gap-1.5">
-                  🚴 THÔNG TIN HỒ SƠ TÀI XẾ (SHIPPER)
+                  <Bike size={12} /> THÔNG TIN HỒ SƠ TÀI XẾ (SHIPPER)
                 </h3>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">

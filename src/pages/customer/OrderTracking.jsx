@@ -193,26 +193,26 @@ export default function OrderTracking() {
     
     setSubmittingReport(true);
     try {
-      let reportedUserId = null;
+      // Backend CreateReportRequest yêu cầu targetType (enum) + targetId + reason.
+      // Báo cáo quán -> RESTAURANT + id quán; báo cáo tài xế -> SHIPPER + userId tài xế.
+      let targetType, targetId;
       if (reportTarget === 'RESTAURANT') {
-        const resDetailResponse = await apiClient.get(`/restaurants/${order.restaurantId}`);
-        const realRes = resDetailResponse.data?.data;
-        reportedUserId = realRes?.ownerId || realRes?.userId;
+        targetType = 'RESTAURANT';
+        targetId = order.restaurantId;
       } else {
-        reportedUserId = order.shipper?.id;
+        targetType = 'SHIPPER';
+        targetId = order.shipper?.id;
       }
 
-      if (!reportedUserId) {
+      if (!targetId) {
         toast.error('Không tìm thấy thông tin đối tượng cần báo cáo!');
         setSubmittingReport(false);
         return;
       }
 
       await apiClient.post('/reports', {
-        reportedUserId: reportedUserId,
-        reported_user_id: reportedUserId,
-        orderId: order.id,
-        order_id: order.id,
+        targetType,
+        targetId,
         reason: reportReason.trim()
       });
       toast.success('Báo cáo vi phạm đơn hàng đã được gửi thành công. Cảm ơn phản hồi của bạn!');

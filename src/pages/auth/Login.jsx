@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../stores/authStore';
-import { Lock, Phone, ChevronRight, User, Store, Bike, Shield, KeyRound, Mail, MessageSquare } from 'lucide-react';
+import { Lock, Phone, ChevronRight, User, Store, Bike, Shield, KeyRound, Mail, MessageSquare, AlertTriangle, CheckCircle2 } from 'lucide-react';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import apiClient from '../../services/api';
+import { validatePassword } from '../../utils/validation';
 
 export default function Login() {
   const navigate = useNavigate();
@@ -99,6 +100,11 @@ export default function Login() {
       toast.warn('Vui lòng nhập đầy đủ mã OTP và mật khẩu mới!');
       return;
     }
+    // Kiểm tra độ mạnh mật khẩu cho nhất quán với luồng Đăng ký (tối thiểu 8 ký tự).
+    if (!validatePassword(newPassword)) {
+      toast.warn('Mật khẩu mới phải chứa ít nhất 8 ký tự.');
+      return;
+    }
     if (newPassword !== confirmPassword) {
       toast.error('Mật khẩu xác nhận không trùng khớp!');
       return;
@@ -178,7 +184,7 @@ export default function Login() {
           {/* Error message banner */}
           {errorMsg && (
             <div className="p-3.5 bg-red-50 border border-red-200 text-red-650 rounded-radius-md text-[11px] font-bold mb-4 flex items-start gap-2 leading-relaxed shrink-0">
-              <span className="shrink-0 text-sm">⚠️</span>
+              <AlertTriangle size={14} className="shrink-0 mt-0.5" />
               <div className="flex-1">
                 <span className="font-extrabold block mb-0.5 text-red-700">Lỗi xử lý:</span>
                 {errorMsg}
@@ -334,7 +340,7 @@ export default function Login() {
                 <form onSubmit={handleResetPassword} className="space-y-4 pt-4 border-t border-slate-100 animate-fade-in">
                   
                   <div className="p-3 bg-emerald-50 border border-emerald-250 text-emerald-700 rounded-radius-lg text-[11px] font-bold leading-normal flex items-start gap-2">
-                    <span>✅</span>
+                    <CheckCircle2 size={14} className="shrink-0 mt-0.5" />
                     <div>
                       Mã OTP đã được gửi đến {phoneOrEmail} qua {otpMethod === 'SMS' ? 'tin nhắn SMS' : 'Email'}. 
                       Vui lòng kiểm tra mã xác thực.

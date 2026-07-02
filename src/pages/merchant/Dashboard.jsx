@@ -207,7 +207,8 @@ export default function MerchantDashboard() {
     }
     try {
       setSubmitting(true);
-      await apiClient.patch(`/merchant/orders/${orderId}/reject`, { cancelReason: rejectReason.trim() });
+      // BE RejectOrderRequest yêu cầu field 'rejectReason' (@NotBlank), không phải 'cancelReason' -> tránh lỗi 400.
+      await apiClient.patch(`/merchant/orders/${orderId}/reject`, { rejectReason: rejectReason.trim() });
       toast.success(`Đã từ chối đơn hàng #${orderId} với lý do: "${rejectReason.trim()}"`);
       rejectModal.close();
       refetchPending();

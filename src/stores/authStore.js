@@ -93,7 +93,13 @@ export const useAuthStore = create(
           if (resData?.errorCode === 'VALIDATION_FAILED' && resData?.data) {
             return { success: false, validationErrors: resData.data, error: resData.message };
           }
-          return { success: false, error: 'Đăng ký thất bại. Vui lòng kiểm tra lại thông tin!' };
+          // Trả kèm errorCode + message thật của backend (PHONE_EXISTS/EMAIL_EXISTS...) để Register.jsx
+          // tô đỏ đúng field và hiện lý do rõ ràng; nếu không có message mới dùng câu generic.
+          return {
+            success: false,
+            errorCode: resData?.errorCode,
+            error: resData?.message || 'Đăng ký thất bại. Vui lòng kiểm tra lại thông tin!'
+          };
         }
       },
 

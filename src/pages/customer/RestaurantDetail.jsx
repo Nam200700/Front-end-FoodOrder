@@ -222,9 +222,10 @@ export default function RestaurantDetail() {
     
     setSubmittingReport(true);
     try {
+      // Backend yêu cầu targetType (enum) + targetId; báo cáo quán -> RESTAURANT + id quán.
       await apiClient.post('/reports', {
-        reportedUserId: restaurant.ownerId,
-        reported_user_id: restaurant.ownerId,
+        targetType: 'RESTAURANT',
+        targetId: Number(id),
         reason: reportReason.trim()
       });
       toast.success('Báo cáo vi phạm đã được gửi lên hệ thống. Cảm ơn phản hồi của bạn!');

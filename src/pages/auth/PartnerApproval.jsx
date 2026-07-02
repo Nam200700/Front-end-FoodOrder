@@ -1,18 +1,19 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../stores/authStore';
-import { 
-  LogOut, 
-  Clock, 
-  AlertTriangle, 
-  CheckCircle, 
-  Store, 
-  Bike, 
-  FileText, 
-  MapPin, 
-  Phone, 
-  ChevronRight, 
-  Loader2 
+import {
+  LogOut,
+  Clock,
+  AlertTriangle,
+  CheckCircle,
+  Check,
+  Store,
+  Bike,
+  FileText,
+  MapPin,
+  Phone,
+  ChevronRight,
+  Loader2
 } from 'lucide-react';
 import Input from '../../components/common/Input';
 import MapModal from '../../components/common/MapModal';
@@ -127,8 +128,8 @@ export default function PartnerApproval() {
           {/* Header */}
           <div className="flex items-center justify-between border-b border-slate-100 pb-5 mb-6">
             <div className="flex items-center gap-3">
-              <div className={`w-10 h-10 bg-gradient-to-tr ${role === 'SHIPPER' ? 'from-[#34A853] to-[#2E8B49]' : 'from-[#1A73E8] to-[#1557B0]'} rounded-xl flex items-center justify-center text-white text-base font-extrabold shadow-md`}>
-                {role === 'SHIPPER' ? '🚴' : '🏪'}
+              <div className={`w-10 h-10 bg-gradient-to-tr ${role === 'SHIPPER' ? 'from-[#34A853] to-[#2E8B49]' : 'from-[#1A73E8] to-[#1557B0]'} rounded-xl flex items-center justify-center text-white shadow-md`}>
+                {role === 'SHIPPER' ? <Bike size={20} /> : <Store size={20} />}
               </div>
               <div>
                 <span className="text-[9px] bg-slate-100 text-slate-500 font-extrabold px-2 py-0.5 rounded-full uppercase tracking-wider">
@@ -178,8 +179,8 @@ export default function PartnerApproval() {
 
                   {/* Step 1: Register */}
                   <div className="flex flex-col items-center z-10 relative">
-                    <div className="w-8 h-8 rounded-full bg-emerald-500 text-white flex items-center justify-center shadow-md font-bold text-xs">
-                      ✓
+                    <div className="w-8 h-8 rounded-full bg-emerald-500 text-white flex items-center justify-center shadow-md">
+                      <Check size={16} strokeWidth={3} />
                     </div>
                     <span className="text-[10px] font-bold text-slate-500 mt-2">Nộp hồ sơ</span>
                   </div>
@@ -227,8 +228,8 @@ export default function PartnerApproval() {
               </div>
 
               {errorMsg && (
-                <div className="bg-amber-50 border border-amber-200 text-amber-800 rounded-radius-lg p-3 text-xs font-bold">
-                  ⚠️ {errorMsg}
+                <div className="bg-amber-50 border border-amber-200 text-amber-800 rounded-radius-lg p-3 text-xs font-bold flex items-start gap-1.5">
+                  <AlertTriangle size={14} className="shrink-0 mt-0.5" /> <span>{errorMsg}</span>
                 </div>
               )}
 

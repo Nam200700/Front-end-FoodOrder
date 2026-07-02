@@ -237,7 +237,7 @@ export default function AdminStats() {
         <div>
           <h1 className="text-xl md:text-2xl font-bold text-slate-100 flex items-center gap-2">
             {/* icon khiên tím thay emoji 🛡️ */}
-            <Shield className="text-purple-400" size={24} /> Trung Tâm Phân Tích Doanh Thu Tối Cao
+            <Shield className="text-purple-400" size={24} /> Trung Tâm Phân Tích Doanh Thu
           </h1>
           <p className="text-xs text-slate-400 mt-1">Phân bổ dòng tiền hệ thống • Tách bạch Hoa hồng sàn, Thu nhập của Quán & Shipper</p>
         </div>
@@ -266,7 +266,7 @@ export default function AdminStats() {
           icon={DollarSign}
           color="border-purple-500/20 bg-purple-950/10 text-purple-400 bg-slate-950"
           valueClassName="text-slate-100"
-          badge="Gross GTV"
+       
         />
         <KPICard
           title="Chiết Khấu Sàn Thu Được"
@@ -275,7 +275,7 @@ export default function AdminStats() {
           icon={Percent}
           color="border-emerald-500/20 bg-emerald-950/10 text-emerald-400 bg-slate-950"
           valueClassName="text-slate-100"
-          badge="Platform Commission"
+        
         />
         <KPICard
           title="Doanh Thu Quán Đối Tác"
@@ -284,7 +284,7 @@ export default function AdminStats() {
           icon={Store}
           color="border-blue-500/20 bg-blue-950/10 text-blue-400 bg-slate-950"
           valueClassName="text-slate-100"
-          badge="Merchant Net Share"
+       
         />
         <KPICard
           title="Cước Giao Hàng Shipper"
@@ -293,7 +293,7 @@ export default function AdminStats() {
           icon={Users}
           color="border-rose-500/20 bg-rose-950/10 text-rose-400 bg-slate-950"
           valueClassName="text-slate-100"
-          badge="Shipper Share"
+      
         />
       </div>
 
@@ -428,7 +428,7 @@ export default function AdminStats() {
           <div className="flex items-center justify-between">
             <h3 className="text-xs font-bold text-slate-100 uppercase tracking-wider flex items-center gap-1.5 font-extrabold">
               <Store className="text-yellow-500" size={16} />
-              Bảng Xếp Hạng 5 Quán Ăn Dẫn Đầu Doanh Thu (Chiết Khấu Sâu)
+              Bảng Xếp Hạng 5 Quán Ăn Dẫn Đầu Doanh Thu (Chiết Khấu)
             </h3>
             <span className="text-[9px] text-purple-400 bg-purple-950/40 px-2 py-0.5 rounded-full font-extrabold inline-flex items-center gap-1">
               {/* icon Flame thay emoji 🔥 */}

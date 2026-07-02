@@ -290,7 +290,6 @@ export default function MerchantDashboard() {
           <h1 className="text-xl md:text-2xl font-bold text-slate-800 flex items-center gap-2">
             Xin chào, {restaurant.restaurantName}
           </h1>
-          <p className="text-xs text-slate-500 mt-1">Cửa hàng của bạn hoạt động trên cổng API động</p>
         </div>
         
         <button

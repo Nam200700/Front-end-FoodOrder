@@ -92,6 +92,8 @@ export default function ShipperPickup() {
           fee: mappedOrder.shippingFee,
           total: mappedOrder.total,
           phone: mappedOrder.customerPhone || '0901234567',
+          // status: trạng thái THẬT của đơn (dùng để gọi đúng chuỗi lệnh, tránh kẹt)
+          status: mappedOrder.status,
           step: (mappedOrder.status === 'PICKED_UP' || mappedOrder.status === 'DELIVERING') ? 'PICKED_UP' : 'ACCEPTED'
         });
       } else {
@@ -328,16 +330,29 @@ export default function ShipperPickup() {
     if (!activeJob) return;
     try {
       setLoading(true);
-      if (activeJob.step === 'ACCEPTED') {
-        // Cập nhật đã lấy hàng từ quán
-        await apiClient.patch(`/shipper/orders/${activeJob.id}/picked-up`);
-        // Đồng thời cập nhật trạng thái đang giao hàng
-        await apiClient.patch(`/shipper/orders/${activeJob.id}/delivering`);
+      // Máy trạng thái backend tuần tự nghiêm ngặt:
+      // READY_FOR_PICKUP -> PICKED_UP -> DELIVERING -> COMPLETED.
+      // Rẽ nhánh theo trạng thái THẬT của đơn để gọi đúng chuỗi lệnh, tránh gọi thẳng
+      // /complete khi đơn còn ở PICKED_UP (gây 422 "không thể chuyển trạng thái" -> kẹt).
+      const status = activeJob.status;
+      const id = activeJob.id;
+
+      if (status === 'READY_FOR_PICKUP') {
+        // Bước 1: lấy hàng ở quán rồi chuyển sang đang giao
+        await apiClient.patch(`/shipper/orders/${id}/picked-up`);
+        await apiClient.patch(`/shipper/orders/${id}/delivering`);
         toast.success('Đã xác nhận lấy hàng thành công! Đang giao hàng đến khách hàng.');
         await fetchActiveJob();
-      } else if (activeJob.step === 'PICKED_UP') {
-        // Cập nhật hoàn thành giao hàng
-        await apiClient.patch(`/shipper/orders/${activeJob.id}/complete`);
+      } else if (status === 'PICKED_UP') {
+        // Đơn kẹt ở PICKED_UP (chưa qua DELIVERING) -> đẩy tiếp rồi hoàn tất (tự cứu)
+        await apiClient.patch(`/shipper/orders/${id}/delivering`);
+        await apiClient.patch(`/shipper/orders/${id}/complete`);
+        toast.success('Chúc mừng! Đơn hàng đã giao thành công và tiền ship đã được ghi nhận.');
+        setActiveJob(null);
+        await fetchAvailableOrders();
+      } else if (status === 'DELIVERING') {
+        // Bước 2: hoàn tất giao hàng
+        await apiClient.patch(`/shipper/orders/${id}/complete`);
         toast.success('Chúc mừng! Đơn hàng đã giao thành công và tiền ship đã được ghi nhận.');
         setActiveJob(null);
         await fetchAvailableOrders();

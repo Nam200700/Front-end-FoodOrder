@@ -132,7 +132,7 @@ export default function AdminLayout() {
           {!sidebarCollapsed && (
             <div className="flex flex-col">
               <span className="font-bold text-purple-400 text-base leading-none">Admin Panel</span>
-              <span className="text-[10px] text-slate-500 font-semibold uppercase mt-1">Hệ thống tối cao</span>
+              <span className="text-[10px] text-slate-500 font-semibold uppercase mt-1">Hệ thống Admin</span>
             </div>
           )}
         </div>

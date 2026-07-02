@@ -41,7 +41,7 @@ export default function Spinner({
         <span className={`text-sm font-google-sans font-bold tracking-wider animate-pulse ${
           isDarkMode ? 'text-purple-300' : 'text-md-outline'
         }`}>
-          AntiGravity Food App
+          Fresh Delivery
         </span>
       </div>
     );

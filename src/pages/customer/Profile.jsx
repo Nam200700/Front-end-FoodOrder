@@ -1,12 +1,13 @@
 import React, { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../stores/authStore';
-import { User, Phone, Mail, MapPin, LogOut, Camera, Map, Utensils, Sparkles, ShoppingBag, Heart, Bell, MessageCircle, ChevronRight, ShieldCheck } from 'lucide-react';
+import { User, Phone, Mail, MapPin, LogOut, Camera, Map, Utensils, Sparkles, ShoppingBag, Heart, Bell, MessageCircle, ChevronRight, ShieldCheck, AlertTriangle } from 'lucide-react';
 import MapModal from '../../components/common/MapModal';
 import apiClient from '../../services/api';
 import { getAvatarUrl } from '../../utils/avatarHelper';
 import { toast } from 'react-toastify';
 import { useAvatarUpload } from '../../hooks/useAvatarUpload';
+import { validatePhone } from '../../utils/validation';
 
 export default function Profile() {
   const navigate = useNavigate();
@@ -22,6 +23,7 @@ export default function Profile() {
 
   const [isMapOpen, setIsMapOpen] = useState(false);
   const [updating, setUpdating] = useState(false);
+  const [phoneError, setPhoneError] = useState(''); // lỗi định dạng SĐT khi sửa hồ sơ
   const fileInputRef = useRef(null);
   const { uploading: uploadingAvatar, handleAvatarChange: uploadAvatar } = useAvatarUpload();
 
@@ -47,6 +49,13 @@ export default function Profile() {
 
   const handleSave = async (e) => {
     e.preventDefault();
+    // Chặn lưu SĐT sai định dạng (bắt đầu bằng 0, gồm 10 chữ số) để không lưu số rác lên DB.
+    if (!validatePhone(phone)) {
+      setPhoneError('Số điện thoại không hợp lệ (bắt đầu bằng số 0 và gồm 10 chữ số).');
+      toast.warn('Số điện thoại không hợp lệ. Vui lòng kiểm tra lại!');
+      return;
+    }
+    setPhoneError('');
     setUpdating(true);
     try {
       // Cập nhật thông tin profile thật gồm cả toạ độ mặc định lên cơ sở dữ liệu backend
@@ -219,10 +228,18 @@ export default function Profile() {
               type="tel"
               required
               value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-md-outline-variant rounded-radius-lg text-xs focus:outline-none focus:border-md-primary focus:bg-white transition-all font-semibold"
+              onChange={(e) => { setPhone(e.target.value); if (phoneError) setPhoneError(''); }}
+              onBlur={() => setPhoneError(validatePhone(phone) ? '' : 'Số điện thoại không hợp lệ (bắt đầu bằng số 0 và gồm 10 chữ số).')}
+              className={`w-full pl-10 pr-4 py-2.5 bg-slate-50 border rounded-radius-lg text-xs focus:outline-none focus:bg-white transition-all font-semibold ${
+                phoneError ? 'border-red-500 focus:border-red-500' : 'border-md-outline-variant focus:border-md-primary'
+              }`}
             />
           </div>
+          {phoneError && (
+            <span className="text-[11px] text-red-500 font-bold mt-1.5 ml-1 flex items-start gap-1">
+              <AlertTriangle size={12} className="shrink-0 mt-0.5" /> <span>{phoneError}</span>
+            </span>
+          )}
         </div>
 
         {/* Địa chỉ mặc định thật có chọn bản đồ */}

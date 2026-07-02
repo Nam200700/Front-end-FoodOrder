@@ -6,6 +6,7 @@ import apiClient from '../../services/api';
 import Spinner from '../../components/common/Spinner';
 import { getAvatarUrl } from '../../utils/avatarHelper';
 import { useAvatarUpload } from '../../hooks/useAvatarUpload';
+import { validatePhone } from '../../utils/validation';
 import { toast } from 'react-toastify';
 
 export default function ShipperProfile() {
@@ -73,8 +74,13 @@ export default function ShipperProfile() {
       toast.warning('Vui lòng nhập Họ và tên!');
       return;
     }
-    if (!phone.trim() || phone.trim().length < 10 || phone.trim().length > 11) {
-      toast.warning('Số điện thoại không hợp lệ (yêu cầu từ 10 - 11 chữ số)!');
+    // Dùng validatePhone (0 + 10 số) thay vì chỉ đếm độ dài -> chặn cả chữ và số 11 ký tự.
+    if (!validatePhone(phone)) {
+      toast.warning('Số điện thoại không hợp lệ (bắt đầu bằng số 0 và gồm 10 chữ số)!');
+      return;
+    }
+    if (!licensePlate.trim()) {
+      toast.warning('Vui lòng nhập biển số xe!');
       return;
     }
 

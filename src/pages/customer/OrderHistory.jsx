@@ -1,13 +1,15 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCartStore } from '../../stores/cartStore';
-import { ShoppingBag, RefreshCw, Ban, AlertCircle, X, MessageSquare } from 'lucide-react'; 
+import { ShoppingBag, RefreshCw, Ban, AlertCircle, X, MessageSquare, Eye } from 'lucide-react'; 
 import { formatCurrency } from '../../utils/format';
 import { SkeletonOrderCard } from '../../components/common/SkeletonCard';
 import EmptyState from '../../components/common/EmptyState';
 import ErrorState from '../../components/common/ErrorState';
 import apiClient from '../../services/api';
 import { toast } from 'react-toastify';
+import FilterTabs from '../../components/common/FilterTabs';
+import Button from '../../components/common/Button';
 
 // Tabs trạng thái đơn hàng
 const ORDER_STATUS_TABS = [
@@ -177,25 +179,13 @@ export default function OrderHistory() {
 
         {/* Thanh điều hướng Tabs Trạng thái */}
         <div className="mb-6 overflow-x-auto scrollbar-none touch-pan-x border-b border-slate-200">
-          <div className="flex gap-2.5 min-w-max pb-3">
-            {ORDER_STATUS_TABS.map((tab) => {
-              const isActive = activeTab === tab.id;
-              return (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  className={`text-center py-2 px-4 text-xs md:text-sm font-bold rounded-lg transition-all border whitespace-nowrap cursor-pointer
-                    ${
-                      isActive
-                        ? 'bg-orange-500 text-white border-orange-500 shadow-sm'
-                        : 'bg-white text-slate-600 border-slate-200/80 hover:bg-slate-50 hover:text-slate-800'
-                    }`}
-                >
-                  {tab.label}
-                </button>
-              );
-            })}
-          </div>
+          <FilterTabs
+            tabs={ORDER_STATUS_TABS}
+            activeTab={activeTab}
+            onTabChange={setActiveTab}
+            className="min-w-max pb-3 gap-2.5 !flex-nowrap [&_button]:text-center [&_button]:!py-2 [&_button]:!px-4 [&_button]:text-xs [&_button]:md:text-sm [&_button]:font-bold [&_button]:!rounded-lg [&_button]:whitespace-nowrap [&_button]:!border-transparent [&_button]:cursor-pointer"
+            activeClassName="!bg-orange-500 !text-white !border-orange-500 shadow-sm"
+          />
         </div>
 
         <div className="min-h-[600px] w-full">
@@ -286,40 +276,56 @@ export default function OrderHistory() {
                       </span>
                     </div>
 
-                    <div className="flex items-center gap-2 w-full sm:w-auto" onClick={(e) => e.stopPropagation()}>
+                    <div className="grid grid-cols-3 sm:flex items-center gap-1.5 sm:gap-2 w-full sm:w-auto" onClick={(e) => e.stopPropagation()}>
                       {order.status === 'PENDING' ? (
-                        <button
+                        <Button
                           type="button"
                           onClick={(e) => handleOpenCancelModal(e, order.id)}
-                          className="flex items-center justify-center gap-1.5 px-5 py-2.5 bg-red-500 hover:bg-red-600 text-white rounded-lg text-xs font-bold transition-all shadow-sm active:scale-[0.98] w-full sm:w-auto cursor-pointer"
+                          icon={Ban}
+                          className="!px-3 !py-2.5 !bg-red-500 hover:!bg-red-600 text-white !rounded-lg !text-xs !font-bold !shadow-sm col-span-3 sm:w-auto"
                         >
-                          <Ban size={13} />
                           Hủy đơn hàng
-                        </button>
+                        </Button>
                       ) : (
                         <>
                           {order.status === 'COMPLETED' && (
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation(); 
-                                navigate(`/reviews/${order.id}`);
-                              }}
-                              className="flex items-center justify-center gap-1.5 px-5 py-2.5 border border-orange-500 text-orange-500 hover:bg-orange-50 rounded-lg text-xs font-bold transition-all shadow-sm active:scale-[0.98] w-full sm:w-auto cursor-pointer"
-                            >
-                              <MessageSquare size={13} />
-                              Viết đánh giá
-                            </button>
+                            <>
+                              <Button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation(); 
+                                  navigate(`/reviews/${order.id}`);
+                                }}
+                                icon={MessageSquare}
+                                className="!px-3 !py-2.5 !bg-white !border !border-blue-500 !text-blue-600 hover:!bg-blue-50 !rounded-lg !text-xs !font-bold !shadow-sm whitespace-nowrap sm:w-auto"
+                              >
+                                Đánh giá
+                              </Button>
+
+                              <Button
+                                type="button"
+                                onClick={(e) => handleReorder(e, order)}
+                                icon={RefreshCw}
+                                className="!px-3 !py-2.5 !bg-orange-500 hover:!bg-orange-600 text-white !rounded-lg !text-xs !font-bold !shadow-sm whitespace-nowrap sm:w-auto"
+                              >
+                                Mua lại
+                              </Button>
+                            </>
                           )}
-                          
-                          <button
+
+                          <Button
                             type="button"
-                            onClick={(e) => handleReorder(e, order)}
-                            className="flex items-center justify-center gap-1.5 px-5 py-2.5 bg-orange-500 hover:bg-orange-600 text-white rounded-lg text-xs font-bold transition-all shadow-sm active:scale-[0.98] w-full sm:w-auto cursor-pointer"
+                            onClick={(e) => {
+                              e.stopPropagation(); 
+                              navigate(`/orders/${order.id}`);
+                            }}
+                            icon={Eye}
+                            className={`!px-3 !py-2.5 !bg-white !border !border-slate-300 !text-slate-600 hover:!bg-slate-50 hover:!border-slate-400 !rounded-lg !text-xs !font-bold whitespace-nowrap sm:w-auto ${
+                              order.status !== 'COMPLETED' ? 'col-span-3' : ''
+                            }`}
                           >
-                            <RefreshCw size={13} />
-                            Mua lại
-                          </button>
+                            Theo dõi
+                          </Button>
                         </>
                       )}
                     </div>
@@ -396,22 +402,23 @@ export default function OrderHistory() {
 
               {/* Modal Actions Footer */}
               <div className="flex justify-end gap-3 pt-3 border-t border-slate-100">
-                <button 
+                <Button 
                   type="button" 
                   disabled={submittingCancel}
                   onClick={handleCloseCancelModal}
-                  className="px-4 py-2 text-xs font-bold border border-slate-200 text-slate-500 rounded-lg hover:bg-slate-50 transition-colors cursor-pointer disabled:opacity-50"
+                  className="!px-4 !py-2 !text-xs !font-bold !border !border-slate-200 !bg-white !text-slate-500 !rounded-lg hover:!bg-slate-50"
                 >
                   Đóng
-                </button>
-                <button 
+                </Button>
+                
+                <Button 
                   type="button" 
                   onClick={handleCancelOrder}
                   disabled={submittingCancel || !cancelReasonInput.trim()}
-                  className="px-5 py-2 text-xs font-bold bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors disabled:bg-slate-300 disabled:cursor-not-allowed cursor-pointer flex items-center gap-1.5 shadow-sm"
+                  className="!px-5 !py-2 !text-xs !font-bold !bg-orange-500 !text-white !rounded-lg hover:!bg-orange-600 disabled:!bg-slate-300 !shadow-sm"
                 >
                   {submittingCancel ? 'Đang xử lý...' : 'Xác nhận hủy'}
-                </button>
+                </Button>
               </div>
             </div>
 

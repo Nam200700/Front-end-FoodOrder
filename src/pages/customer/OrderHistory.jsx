@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCartStore } from '../../stores/cartStore';
-import { ShoppingBag, RefreshCw, Ban, AlertCircle, X, MessageSquare, Eye } from 'lucide-react'; 
+import { ShoppingBag, RefreshCw, Ban, AlertCircle, X, MessageSquare, Eye, Star } from 'lucide-react'; 
 import { formatCurrency } from '../../utils/format';
 import { SkeletonOrderCard } from '../../components/common/SkeletonCard';
 import EmptyState from '../../components/common/EmptyState';
@@ -66,6 +66,8 @@ export default function OrderHistory() {
         total: Number(order.totalAmount),
         status: order.orderStatus,
         createdAt: formattedDate,
+        reviewed: order.reviewed || false, // Đã sửa từ ord -> order
+        rating: order.restaurantRating || 5 // Đã sửa từ ord -> order
       };
     });
   };
@@ -308,33 +310,49 @@ export default function OrderHistory() {
                                 Mua lại
                               </Button>
 
-                              <Button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation(); 
-                                  navigate(`/reviews/${order.id}`);
-                                }}
-                                icon={MessageSquare}
-                                className="!px-3 !py-2.5 !bg-indigo-600 hover:!bg-indigo-700 !text-white !border-none !rounded-lg !text-xs !font-bold !shadow-none whitespace-nowrap sm:w-auto"
-                              >
-                                Đánh giá
-                              </Button>
+                              {order.reviewed ? (
+                                <Button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation(); 
+                                    navigate(`/reviews/${order.id}`);
+                                  }}
+                                  icon={Star}
+                                  className="!px-3 !py-2.5 !bg-slate-100 !text-slate-500 !border-none !rounded-lg !text-xs !font-bold !shadow-none whitespace-nowrap sm:w-auto cursor-not-allowed flex items-center gap-1"
+                                >
+                                  Đã đánh giá ({order.rating}★)
+                                </Button>
+                              ) : (
+                                <Button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation(); 
+                                    navigate(`/reviews/${order.id}`);
+                                  }}
+                                  icon={MessageSquare}
+                                  className="!px-3 !py-2.5 !bg-indigo-600 hover:!bg-indigo-700 !text-white !border-none !rounded-lg !text-xs !font-bold !shadow-none whitespace-nowrap sm:w-auto"
+                                >
+                                  Đánh giá
+                                </Button>
+                              )}
                             </>
                           )}
 
-                          <Button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation(); 
-                              navigate(`/orders/${order.id}`);
-                            }}
-                            icon={Eye}
-                            className={`!px-3 !py-2.5 !bg-blue-500 hover:!bg-blue-600 !text-white !border-none !rounded-lg !text-xs !font-bold !shadow-none whitespace-nowrap sm:w-auto ${
-                              order.status !== 'COMPLETED' ? 'col-span-3' : ''
-                            }`}
-                          >
-                            Theo dõi
-                          </Button>
+                          {order.status !== 'COMPLETED' && (
+                            <Button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation(); 
+                                navigate(`/orders/${order.id}`);
+                              }}
+                              icon={Eye}
+                              className={`!px-3 !py-2.5 !bg-blue-500 hover:!bg-blue-600 !text-white !border-none !rounded-lg !text-xs !font-bold !shadow-none whitespace-nowrap sm:w-auto ${
+                                order.status !== 'COMPLETED' ? 'col-span-3' : ''
+                              }`}
+                            >
+                              Theo dõi
+                            </Button>
+                          )}
                         </>
                       )}
                     </div>

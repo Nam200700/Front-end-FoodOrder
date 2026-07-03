@@ -11,6 +11,7 @@ import { toast } from 'react-toastify';
 import FilterTabs from '../../components/common/FilterTabs';
 import Button from '../../components/common/Button';
 import Modal from '../../components/common/Modal';
+import Card from '../../components/common/Card';
 
 // Tabs trạng thái đơn hàng
 const ORDER_STATUS_TABS = [
@@ -219,13 +220,13 @@ export default function OrderHistory() {
               />
             </div>
           ) : (
-            // Lưới 2 cột trên màn rộng (xl+) để tận dụng không gian; 1 cột ở màn nhỏ
             <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
               {list.map((order) => (
-                <div 
+                <Card 
                   key={order.id}
+                  variant="flat" 
                   onClick={() => navigate(`/orders/${order.id}`)}
-                  className="bg-white rounded-xl border border-slate-100 shadow-sm p-4 md:p-5 flex flex-col gap-4 cursor-pointer group transition-colors hover:border-slate-200"
+                  className="!border-slate-100 shadow-sm p-4 md:p-5 flex flex-col gap-4 group transition-colors hover:border-slate-200 !rounded-2xl"
                 >
                   {/* Card Header */}
                   <div className="flex flex-row justify-between items-center gap-2 border-b border-slate-100 pb-3 flex-wrap sm:flex-nowrap">
@@ -338,7 +339,7 @@ export default function OrderHistory() {
                       )}
                     </div>
                   </div>
-                </div>
+                </Card>
               ))}
             </div>
           )}

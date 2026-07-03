@@ -1,13 +1,17 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCartStore } from '../../stores/cartStore';
-import { ShoppingBag, RefreshCw, Ban, AlertCircle, X, MessageSquare } from 'lucide-react'; 
+import { ShoppingBag, RefreshCw, Ban, AlertCircle, X, MessageSquare, Eye, Star } from 'lucide-react'; 
 import { formatCurrency } from '../../utils/format';
 import { SkeletonOrderCard } from '../../components/common/SkeletonCard';
 import EmptyState from '../../components/common/EmptyState';
 import ErrorState from '../../components/common/ErrorState';
 import apiClient from '../../services/api';
 import { toast } from 'react-toastify';
+import FilterTabs from '../../components/common/FilterTabs';
+import Button from '../../components/common/Button';
+import Modal from '../../components/common/Modal';
+import Card from '../../components/common/Card';
 
 // Tabs trạng thái đơn hàng
 const ORDER_STATUS_TABS = [
@@ -62,6 +66,8 @@ export default function OrderHistory() {
         total: Number(order.totalAmount),
         status: order.orderStatus,
         createdAt: formattedDate,
+        reviewed: order.reviewed || false, 
+        rating: order.restaurantRating || 5 
       };
     });
   };
@@ -149,7 +155,8 @@ export default function OrderHistory() {
       case 'CONFIRMED': return 'Đã xác nhận';
       case 'PREPARING': return 'Đang chuẩn bị';
       case 'READY_FOR_PICKUP': return 'Chờ tài xế';
-      default: return 'Đang giao hàng';
+      case 'DELIVERING': return 'Đang giao hàng';
+      default: return 'Không hợp lệ';
     }
   };
 
@@ -158,13 +165,19 @@ export default function OrderHistory() {
       case 'COMPLETED': 
         return 'bg-emerald-50 text-emerald-700';
       case 'CANCELLED': 
-        return 'bg-rose-50 text-rose-700';
+        return 'bg-rose-50 text-rose-700'; 
       case 'PENDING': 
-        return 'bg-amber-50 text-amber-700';
+        return 'bg-amber-50 text-amber-700'; 
       case 'CONFIRMED': 
-        return 'bg-blue-50 text-blue-700';
+        return 'bg-blue-50 text-blue-700'; 
+      case 'PREPARING': 
+        return 'bg-purple-50 text-purple-700'; 
+      case 'READY_FOR_PICKUP': 
+        return 'bg-indigo-50 text-indigo-700'; 
+      case 'DELIVERING':
+        return 'bg-orange-50 text-orange-700'; 
       default: 
-        return 'bg-orange-50 text-orange-700';
+        return 'bg-slate-50 text-slate-700'; 
     }
   };
 
@@ -177,25 +190,13 @@ export default function OrderHistory() {
 
         {/* Thanh điều hướng Tabs Trạng thái */}
         <div className="mb-6 overflow-x-auto scrollbar-none touch-pan-x border-b border-slate-200">
-          <div className="flex gap-2.5 min-w-max pb-3">
-            {ORDER_STATUS_TABS.map((tab) => {
-              const isActive = activeTab === tab.id;
-              return (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  className={`text-center py-2 px-4 text-xs md:text-sm font-bold rounded-lg transition-all border whitespace-nowrap cursor-pointer
-                    ${
-                      isActive
-                        ? 'bg-orange-500 text-white border-orange-500 shadow-sm'
-                        : 'bg-white text-slate-600 border-slate-200/80 hover:bg-slate-50 hover:text-slate-800'
-                    }`}
-                >
-                  {tab.label}
-                </button>
-              );
-            })}
-          </div>
+          <FilterTabs
+            tabs={ORDER_STATUS_TABS}
+            activeTab={activeTab}
+            onTabChange={setActiveTab}
+            className="min-w-max pb-3 gap-2.5 !flex-nowrap [&_button]:text-center [&_button]:!py-2 [&_button]:!px-4 [&_button]:text-xs [&_button]:md:text-sm [&_button]:font-bold [&_button]:!rounded-lg [&_button]:whitespace-nowrap [&_button]:!border-transparent [&_button]:cursor-pointer"
+            activeClassName="!bg-orange-500 !text-white !border-orange-500 shadow-sm"
+          />
         </div>
 
         <div className="min-h-[600px] w-full">
@@ -221,13 +222,13 @@ export default function OrderHistory() {
               />
             </div>
           ) : (
-            // Lưới 2 cột trên màn rộng (xl+) để tận dụng không gian; 1 cột ở màn nhỏ
             <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
               {list.map((order) => (
-                <div 
+                <Card 
                   key={order.id}
+                  variant="flat" 
                   onClick={() => navigate(`/orders/${order.id}`)}
-                  className="bg-white rounded-xl border border-slate-100 shadow-sm p-4 md:p-5 flex flex-col gap-4 cursor-pointer group transition-colors hover:border-slate-200"
+                  className="!border-slate-100 shadow-sm p-4 md:p-5 flex flex-col gap-4 group transition-colors hover:border-slate-200 !rounded-2xl"
                 >
                   {/* Card Header */}
                   <div className="flex flex-row justify-between items-center gap-2 border-b border-slate-100 pb-3 flex-wrap sm:flex-nowrap">
@@ -280,51 +281,83 @@ export default function OrderHistory() {
                   {/* Card Footer */}
                   <div className="flex flex-col sm:flex-row justify-between sm:items-center border-t border-slate-100 pt-4 mt-1 gap-3">
                     <div className="text-sm text-slate-500 font-medium">
-                      Tổng tiền thanh toán:{' '}
+                      Tổng tiền:{' '}
                       <span className="text-base font-extrabold text-orange-500 ml-1">
                         {formatCurrency(order.total)}
                       </span>
                     </div>
 
-                    <div className="flex items-center gap-2 w-full sm:w-auto" onClick={(e) => e.stopPropagation()}>
+                    <div className="grid grid-cols-3 sm:flex items-center gap-1.5 sm:gap-2 w-full sm:w-auto" onClick={(e) => e.stopPropagation()}>
                       {order.status === 'PENDING' ? (
-                        <button
+                        <Button
                           type="button"
                           onClick={(e) => handleOpenCancelModal(e, order.id)}
-                          className="flex items-center justify-center gap-1.5 px-5 py-2.5 bg-red-500 hover:bg-red-600 text-white rounded-lg text-xs font-bold transition-all shadow-sm active:scale-[0.98] w-full sm:w-auto cursor-pointer"
+                          icon={Ban}
+                          className="!px-3 !py-2.5 !bg-red-500 hover:!bg-red-600 text-white !rounded-lg !text-xs !font-bold !shadow-sm col-span-3 sm:w-auto"
                         >
-                          <Ban size={13} />
                           Hủy đơn hàng
-                        </button>
+                        </Button>
                       ) : (
                         <>
                           {order.status === 'COMPLETED' && (
-                            <button
+                            <>
+                              <Button
+                                type="button"
+                                onClick={(e) => handleReorder(e, order)}
+                                icon={RefreshCw}
+                                className="!px-3 !py-2.5 !bg-orange-500 hover:!bg-orange-600 text-white !rounded-lg !text-xs !font-bold !shadow-sm whitespace-nowrap sm:w-auto"
+                              >
+                                Mua lại
+                              </Button>
+
+                              {order.reviewed ? (
+                                <Button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation(); 
+                                    navigate(`/reviews/${order.id}`);
+                                  }}
+                                  icon={Star}
+                                  className="!px-3 !py-2.5 !bg-slate-100 !text-slate-500 !border-none !rounded-lg !text-xs !font-bold !shadow-none whitespace-nowrap sm:w-auto cursor-not-allowed flex items-center gap-1"
+                                >
+                                  Đã đánh giá ({order.rating}★)
+                                </Button>
+                              ) : (
+                                <Button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation(); 
+                                    navigate(`/reviews/${order.id}`);
+                                  }}
+                                  icon={MessageSquare}
+                                  className="!px-3 !py-2.5 !bg-indigo-600 hover:!bg-indigo-700 !text-white !border-none !rounded-lg !text-xs !font-bold !shadow-none whitespace-nowrap sm:w-auto"
+                                >
+                                  Đánh giá
+                                </Button>
+                              )}
+                            </>
+                          )}
+
+                          {order.status !== 'COMPLETED' && (
+                            <Button
                               type="button"
                               onClick={(e) => {
                                 e.stopPropagation(); 
-                                navigate(`/reviews/${order.id}`);
+                                navigate(`/orders/${order.id}`);
                               }}
-                              className="flex items-center justify-center gap-1.5 px-5 py-2.5 border border-orange-500 text-orange-500 hover:bg-orange-50 rounded-lg text-xs font-bold transition-all shadow-sm active:scale-[0.98] w-full sm:w-auto cursor-pointer"
+                              icon={Eye}
+                              className={`!px-3 !py-2.5 !bg-blue-500 hover:!bg-blue-600 !text-white !border-none !rounded-lg !text-xs !font-bold !shadow-none whitespace-nowrap sm:w-auto ${
+                                order.status !== 'COMPLETED' ? 'col-span-3' : ''
+                              }`}
                             >
-                              <MessageSquare size={13} />
-                              Viết đánh giá
-                            </button>
+                              Theo dõi
+                            </Button>
                           )}
-                          
-                          <button
-                            type="button"
-                            onClick={(e) => handleReorder(e, order)}
-                            className="flex items-center justify-center gap-1.5 px-5 py-2.5 bg-orange-500 hover:bg-orange-600 text-white rounded-lg text-xs font-bold transition-all shadow-sm active:scale-[0.98] w-full sm:w-auto cursor-pointer"
-                          >
-                            <RefreshCw size={13} />
-                            Mua lại
-                          </button>
                         </>
                       )}
                     </div>
                   </div>
-                </div>
+                </Card>
               ))}
             </div>
           )}
@@ -332,92 +365,75 @@ export default function OrderHistory() {
       </div>
 
       {/* MODAL HỦY ĐƠN HÀNG */}
-      {isCancelModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40">
-          <div className="w-full max-w-md bg-white rounded-xl shadow-xl p-5 md:p-6 relative animate-in fade-in zoom-in duration-200 font-google-sans">
+      <Modal
+        isOpen={isCancelModalOpen}
+        onClose={handleCloseCancelModal}
+        title={`Xác Nhận Hủy Đơn Hàng #${selectedOrderId}`}
+        size="sm"
+        className="[&_h2]:!text-slate-900 [&_h2]:!text-base [&_h2]:md:!text-lg [&_h2]:!font-bold [&_button]:disabled:opacity-50"
+      >
+        <div className="space-y-4 text-slate-700">
+          <div className="p-3 bg-amber-50 text-amber-800 rounded-lg text-xs font-medium border border-amber-100 flex items-start gap-2">
+            <AlertCircle className="shrink-0 mt-0.5 text-amber-600" size={15} />
+            <span>Lưu ý: Hành động hủy đơn hàng không thể hoàn tác sau khi hệ thống đã xử lý.</span>
+          </div>
+
+          {/* Lựa chọn lý do nhanh */}
+          <div className="space-y-1.5">
+            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Chọn nhanh lý do gợi ý:</span>
+            <div className="grid grid-cols-1 gap-1.5">
+              {['Đổi ý không đặt nữa', 'Đặt nhầm món / nhầm số lượng', 'Thời gian giao hàng quá lâu', 'Muốn thay đổi địa chỉ nhận hàng'].map((reason, idx) => (
+                <button 
+                  key={idx} 
+                  type="button" 
+                  disabled={submittingCancel}
+                  onClick={() => setCancelReasonInput(reason)} 
+                  className={`text-left px-3.5 py-2 border rounded-lg text-xs font-semibold transition-all cursor-pointer disabled:opacity-50 ${
+                    cancelReasonInput === reason 
+                      ? 'border-orange-500 bg-orange-50/50 text-orange-600' 
+                      : 'border-slate-200 text-slate-600 hover:bg-slate-50 hover:border-orange-300'
+                  }`}
+                >
+                  {reason}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Hoặc nhập lý do cụ thể:</span>
+            <textarea 
+              value={cancelReasonInput} 
+              onChange={(e) => setCancelReasonInput(e.target.value)} 
+              placeholder="Nhập lý do hủy đơn hàng" 
+              rows={3} 
+              disabled={submittingCancel}
+              className="w-full p-3 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-orange-400 bg-slate-50/50 text-slate-800 resize-none disabled:opacity-50" 
+              maxLength={300} 
+            />
+          </div>
+
+          <div className="flex justify-end gap-3 pt-3 border-t border-slate-100">
+            <Button 
+              type="button" 
+              disabled={submittingCancel}
+              onClick={handleCloseCancelModal}
+              className="!px-4 !py-2 !text-xs !font-bold !border !border-slate-200 !bg-white !text-slate-500 !rounded-lg hover:!bg-slate-50"
+            >
+              Đóng
+            </Button>
             
-            {/* Modal Header */}
-            <div className="flex items-center justify-between border-b pb-3 mb-4">
-              <div className="flex items-center gap-2 text-orange-500">
-                {/* <AlertCircle size={22} className="shrink-0" /> */}
-                <h3 className="text-base md:text-lg font-bold text-slate-900">Xác Nhận Hủy Đơn Hàng #{selectedOrderId}</h3>
-              </div>
-              <button 
-                type="button"
-                disabled={submittingCancel}
-                onClick={handleCloseCancelModal} 
-                className="text-slate-400 hover:text-slate-600 transition-colors disabled:opacity-50 cursor-pointer"
-              >
-                <X size={20} />
-              </button>
-            </div>
-
-            {/* Modal Content */}
-            <div className="space-y-4 text-slate-700">
-              <div className="p-3 bg-amber-50 text-amber-800 rounded-lg text-xs font-medium border border-amber-100 flex items-start gap-2">
-                <AlertCircle className="shrink-0 mt-0.5 text-amber-600" size={15} />
-                <span>Lưu ý: Hành động hủy đơn hàng không thể hoàn tác sau khi hệ thống đã xử lý.</span>
-              </div>
-
-              {/* Lựa chọn lý do nhanh */}
-              <div className="space-y-1.5">
-                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Chọn nhanh lý do gợi ý:</span>
-                <div className="grid grid-cols-1 gap-1.5">
-                  {['Đổi ý không đặt nữa', 'Đặt nhầm món / nhầm số lượng', 'Thời gian giao hàng quá lâu', 'Muốn thay đổi địa chỉ nhận hàng'].map((reason, idx) => (
-                    <button 
-                      key={idx} 
-                      type="button" 
-                      disabled={submittingCancel}
-                      onClick={() => setCancelReasonInput(reason)} 
-                      className={`text-left px-3.5 py-2 border rounded-lg text-xs font-semibold transition-all cursor-pointer disabled:opacity-50 ${
-                        cancelReasonInput === reason 
-                          ? 'border-orange-500 bg-orange-50/50 text-orange-600' 
-                          : 'border-slate-200 text-slate-600 hover:bg-slate-50 hover:border-orange-300'
-                      }`}
-                    >
-                      {reason}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div className="space-y-1.5">
-                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Hoặc nhập lý do cụ thể:</span>
-                <textarea 
-                  value={cancelReasonInput} 
-                  onChange={(e) => setCancelReasonInput(e.target.value)} 
-                  placeholder="Nhập lý do hủy đơn hàng" 
-                  rows={3} 
-                  disabled={submittingCancel}
-                  className="w-full p-3 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-orange-400 bg-slate-50/50 text-slate-800 resize-none disabled:opacity-50" 
-                  maxLength={300} 
-                />
-              </div>
-
-              {/* Modal Actions Footer */}
-              <div className="flex justify-end gap-3 pt-3 border-t border-slate-100">
-                <button 
-                  type="button" 
-                  disabled={submittingCancel}
-                  onClick={handleCloseCancelModal}
-                  className="px-4 py-2 text-xs font-bold border border-slate-200 text-slate-500 rounded-lg hover:bg-slate-50 transition-colors cursor-pointer disabled:opacity-50"
-                >
-                  Đóng
-                </button>
-                <button 
-                  type="button" 
-                  onClick={handleCancelOrder}
-                  disabled={submittingCancel || !cancelReasonInput.trim()}
-                  className="px-5 py-2 text-xs font-bold bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors disabled:bg-slate-300 disabled:cursor-not-allowed cursor-pointer flex items-center gap-1.5 shadow-sm"
-                >
-                  {submittingCancel ? 'Đang xử lý...' : 'Xác nhận hủy'}
-                </button>
-              </div>
-            </div>
-
+            <Button 
+              type="button" 
+              onClick={handleCancelOrder}
+              disabled={submittingCancel || !cancelReasonInput.trim()}
+              className="!px-5 !py-2 !text-xs !font-bold !bg-orange-500 !text-white !rounded-lg hover:!bg-orange-600 disabled:!bg-slate-300 !shadow-sm"
+            >
+              {submittingCancel ? 'Đang xử lý...' : 'Xác nhận hủy'}
+            </Button>
           </div>
         </div>
-      )}
+      </Modal>
     </div>
   );
 }

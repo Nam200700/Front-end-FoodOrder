@@ -66,8 +66,8 @@ export default function OrderHistory() {
         total: Number(order.totalAmount),
         status: order.orderStatus,
         createdAt: formattedDate,
-        reviewed: order.reviewed || false, // Đã sửa từ ord -> order
-        rating: order.restaurantRating || 5 // Đã sửa từ ord -> order
+        reviewed: order.reviewed || false, 
+        rating: order.restaurantRating || 5 
       };
     });
   };

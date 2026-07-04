@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCartStore } from '../../stores/cartStore';
 import { useAuthStore } from '../../stores/authStore';
-import { ArrowLeft, Trash2, MapPin, ShoppingCart, Map, Phone, Store, XCircle, X, AlertTriangle, Clock, ShoppingBag, CheckSquare, Square, User } from 'lucide-react'; 
+import { ArrowLeft, MapPin, Map, Phone, Store, XCircle, X, AlertTriangle, Clock, ShoppingBag, CheckSquare, Square, User, Truck } from 'lucide-react'; 
 import { formatCurrency } from '../../utils/format';
 import Button from '../../components/common/Button';
 import apiClient from '../../services/api';
@@ -28,7 +28,6 @@ export default function Cart() {
   const [orderNotes, setOrderNotes] = useState({});
   const [submittingCartId, setSubmittingCartId] = useState(null);
 
-  // State lưu trữ danh sách ID các quán được chọn 
   const [selectedRestaurantIds, setSelectedRestaurantIds] = useState([]);
   const [showConfirmOrderModal, setShowConfirmOrderModal] = useState(false);
   const [bulkOrderPayload, setBulkOrderPayload] = useState(null);
@@ -59,25 +58,14 @@ export default function Cart() {
       return;
     }
 
-    let totalShippingFee = 0;
-    currentSelectedCarts.forEach(cart => {
-      let dist = null;
-      if (cart.latitude && cart.longitude && deliveryLat && deliveryLng) {
-        dist = calculateHaversineDistance(cart.latitude, cart.longitude, deliveryLat, deliveryLng);
-      }
-      const fee = dist !== null ? Math.max(15000, 15000 + Math.ceil(Math.max(0, dist - 2)) * 5000) : 15000;
-      totalShippingFee += fee;
-    });
-
     const firstCartNote = orderNotes[currentSelectedCarts[0].restaurantId] || '';
 
     const payload = {
       deliveryAddress: address,
-      restaurantIds: selectedRestaurantIds.map(id => parseInt(id)),
+      restaurantId: selectedRestaurantIds.map(id => parseInt(id)),
       deliveryLat: Number(deliveryLat),
       deliveryLng: Number(deliveryLng),
       paymentMethod: 'COD',
-      shippingFee: totalShippingFee,
       note: firstCartNote,
     };
 
@@ -136,9 +124,7 @@ export default function Cart() {
     toast.success('Đã xóa giỏ hàng thành công!');
   };
 
-  // ── LOGIC TÍNH TỔNG QUAN: Chỉ tính các quán nằm trong `selectedRestaurantIds` ──
   const selectedCarts = carts.filter(c => selectedRestaurantIds.includes(c.restaurantId));
-  
   const totalItems = selectedCarts.reduce((s, c) => s + c.items.reduce((a, i) => a + i.quantity, 0), 0);
   
   const totalSubtotal = selectedCarts.reduce((s, c) => {
@@ -176,7 +162,7 @@ export default function Cart() {
         <button onClick={() => navigate(-1)} className="p-1.5 rounded-full hover:bg-slate-200 text-slate-600 transition-colors cursor-pointer">
           <ArrowLeft size={18} />
         </button>
-        <h1 className="text-lg font-extrabold text-slate-800">Giỏ Hàng Của Tôi</h1>
+        <h1 className="text-xl md:text-2xl font-bold text-gray-900">Giỏ Hàng Của Tôi</h1>
       </div>
 
       <div className="flex flex-col lg:flex-row gap-5 items-start">
@@ -225,14 +211,11 @@ export default function Cart() {
                   </button>
                 </div>
 
-                {/* Danh sách món ăn */}
                 <div className="divide-y divide-slate-100">
                   {cart.items.map(item => {
                     const lineTotal = item.price * item.quantity;
                     return (
                       <div key={item.cartItemId}>
-                        
-                        {/* Laptop View */}
                         <div className="hidden md:flex p-4 hover:bg-slate-50/30 transition-colors flex-row gap-4 items-center">
                           <div className="w-[72px] h-16 rounded-lg overflow-hidden border border-slate-200 bg-slate-100 shrink-0">
                             <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
@@ -294,7 +277,6 @@ export default function Cart() {
                           </div>
                         </div>
 
-                        {/* Mobile View */}
                         <div className="flex md:hidden p-4 flex-col gap-3 hover:bg-slate-50/30 transition-colors">
                           <div className="flex items-start gap-3 w-full">
                             <div className="w-20 h-20 rounded-lg overflow-hidden border border-slate-200 bg-slate-100 shrink-0">
@@ -347,13 +329,11 @@ export default function Cart() {
                               className="flex-1 px-2.5 py-1 text-[11px] border border-slate-300 rounded-md bg-white focus:outline-none focus:border-orange-500 text-slate-700 placeholder:text-slate-400/80 transition-all"/>
                           </div>
                         </div>
-
                       </div>
                     );
                   })}
                 </div>
 
-                {/* Footer quán */}
                 <div className="border-t border-slate-100 px-4 py-3 bg-slate-50/40 space-y-3">
                   <div className="flex items-center justify-between text-sm text-slate-600">
                     <div className="space-y-0.5">
@@ -384,8 +364,9 @@ export default function Cart() {
         <aside className="w-full lg:w-80 shrink-0 lg:sticky lg:top-5 space-y-4">
           <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-sm space-y-4">
             <div className="flex items-center gap-2 pb-3 border-b border-slate-100">
-              <MapPin size={18} className="text-[#ff6b35]" />
-              <h2 className="text-sm font-black text-slate-800 tracking-tight">Thông Tin Giao Hàng</h2>
+              {/* SỬA TẠI ĐÂY: Thay MapPin thành Truck */}
+              <Truck size={18} className="text-[#ff6b35]" />
+              <h2 className="text-sm font-black text-slate-800 tracking-tight">THÔNG TIN GIAO HÀNG</h2>
             </div>
             
             <div className="space-y-3.5">
@@ -409,6 +390,7 @@ export default function Cart() {
                 <input
                   type="tel"
                   value={phone}
+                  readOnly
                   onChange={(e) => setPhone(e.target.value)}
                   className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl bg-white text-slate-700 font-semibold focus:outline-none focus:border-[#ff6b35] focus:ring-1 focus:ring-orange-100 transition-all duration-200"
                 />
@@ -454,20 +436,20 @@ export default function Cart() {
             <Button
               onClick={handleBulkPlaceOrder}
               disabled={selectedRestaurantIds.length === 0 || submittingCartId === 'BULK_ORDER'}
-              className="w-full mt-4 bg-orange-600 hover:bg-orange-700 text-white font-bold py-3 rounded-lg flex items-center justify-center gap-2"
+
+              className="w-full mt-4 bg-orange-600 hover:bg-orange-700 text-white font-bold py-3 rounded-xl flex items-center justify-center gap-2"
             >
               {submittingCartId === 'BULK_ORDER' ? (
                 <Spinner size="sm" className="text-white" />
               ) : (
                 <ShoppingBag className="h-5 w-5" />
               )}
-              Đặt đơn hàng đã chọn ({selectedRestaurantIds.length})
+              Đặt Hàng
             </Button>
           </div>
         </aside>
       </div>
 
-      {/* ── MODAL XÁC NHẬN ĐƠN HÀNG ── */}
       {showConfirmOrderModal && bulkOrderPayload && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl p-6 max-w-sm w-full text-center shadow-2xl border border-slate-100 space-y-4">
@@ -505,7 +487,6 @@ export default function Cart() {
         </div>
       )}
 
-      {/* ── MODAL XÁC NHẬN XÓA GIỎ HÀNG ── */}
       {confirmClearCartState.open && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl max-w-md w-full shadow-2xl border border-slate-100 overflow-hidden">

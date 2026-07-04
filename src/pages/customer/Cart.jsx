@@ -2,10 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCartStore } from '../../stores/cartStore';
 import { useAuthStore } from '../../stores/authStore';
-import { ArrowLeft, Trash2, MapPin, ShoppingCart, Map, Phone, Store, XCircle, X, AlertTriangle, Clock, ShoppingBag } from 'lucide-react'; 
+import { ArrowLeft, Trash2, MapPin, ShoppingCart, Map, Phone, Store, XCircle, X, AlertTriangle, Clock, ShoppingBag, CheckSquare, Square, User } from 'lucide-react'; 
 import { formatCurrency } from '../../utils/format';
 import Button from '../../components/common/Button';
-import Input from '../../components/common/Input';
 import apiClient from '../../services/api';
 import { calculateHaversineDistance } from '../../utils/haversine';
 import MapModal from '../../components/common/MapModal';
@@ -18,7 +17,8 @@ export default function Cart() {
   const { user, updateProfile } = useAuthStore();
 
   const [address, setAddress] = useState(user?.address || '');
-  const [recipientPhone, setRecipientPhone] = useState(user?.phone || '');
+  const [phone, setPhone] = useState(user?.phone || '');
+  const [fullname, setFullname] = useState(user?.name || '');
   const [isMapOpen, setIsMapOpen] = useState(false);
 
   const [deliveryLat, setDeliveryLat] = useState(user?.lat || null);
@@ -28,75 +28,120 @@ export default function Cart() {
   const [orderNotes, setOrderNotes] = useState({});
   const [submittingCartId, setSubmittingCartId] = useState(null);
 
-  const [activeOrderCart, setActiveOrderCart] = useState(null);
-  const [countdown, setCountdown] = useState(10);
-  const [showCountdownModal, setShowCountdownModal] = useState(false);
+  // State lưu trữ danh sách ID các quán được chọn 
+  const [selectedRestaurantIds, setSelectedRestaurantIds] = useState([]);
+  const [showConfirmOrderModal, setShowConfirmOrderModal] = useState(false);
+  const [bulkOrderPayload, setBulkOrderPayload] = useState(null);
 
-  useEffect(() => { fetchCart(); }, []);
-
-  useEffect(() => {
-    let interval = null;
-    if (showCountdownModal && countdown > 0 && activeOrderCart) {
-      interval = setInterval(() => {
-        setCountdown(prev => {
-          if (prev <= 1) { clearInterval(interval); executePlaceOrder(activeOrderCart); return 0; }
-          return prev - 1;
-        });
-      }, 1000);
-    }
-    return () => { if (interval) clearInterval(interval); };
-  }, [showCountdownModal, countdown, activeOrderCart]);
+  useEffect(() => { 
+    fetchCart(); 
+  }, []);
 
   const handleConfirmLocation = (lat, lng, addressName) => {
-    setDeliveryLat(lat); setDeliveryLng(lng); setAddress(addressName);
+    setDeliveryLat(lat); 
+    setDeliveryLng(lng); 
+    setAddress(addressName);
   };
 
-  const executePlaceOrder = async (cart) => {
-    setShowCountdownModal(false); setActiveOrderCart(null); setSubmittingCartId(cart.restaurantId);
+  const handleBulkPlaceOrder = () => {
+    if (!address.trim() || !deliveryLat || !deliveryLng) { 
+      toast.warning('Vui lòng chọn địa chỉ giao hàng trên bản đồ!'); 
+      return; 
+    }
+    if (!phone.trim()) { 
+      toast.warning('Vui lòng nhập số điện thoại nhận hàng!'); 
+      return; 
+    }
+
+    const currentSelectedCarts = carts.filter(c => selectedRestaurantIds.includes(c.restaurantId));
+    if (currentSelectedCarts.length === 0) {
+      toast.warning('Vui lòng chọn ít nhất một giỏ hàng để đặt!');
+      return;
+    }
+
+    let totalShippingFee = 0;
+    currentSelectedCarts.forEach(cart => {
+      let dist = null;
+      if (cart.latitude && cart.longitude && deliveryLat && deliveryLng) {
+        dist = calculateHaversineDistance(cart.latitude, cart.longitude, deliveryLat, deliveryLng);
+      }
+      const fee = dist !== null ? Math.max(15000, 15000 + Math.ceil(Math.max(0, dist - 2)) * 5000) : 15000;
+      totalShippingFee += fee;
+    });
+
+    const firstCartNote = orderNotes[currentSelectedCarts[0].restaurantId] || '';
+
+    const payload = {
+      deliveryAddress: address,
+      restaurantIds: selectedRestaurantIds.map(id => parseInt(id)),
+      deliveryLat: Number(deliveryLat),
+      deliveryLng: Number(deliveryLng),
+      paymentMethod: 'COD',
+      shippingFee: totalShippingFee,
+      note: firstCartNote,
+    };
+
+    setBulkOrderPayload(payload);
+    setShowConfirmOrderModal(true);
+  };
+
+  const executeBulkPlaceOrder = async () => {
+    if (!bulkOrderPayload) return;
+  
+    setSubmittingCartId('BULK_ORDER'); 
+    setShowConfirmOrderModal(false);
+
     try {
       try {
-        await apiClient.put('/users/profile', { fullName: user?.name || 'Khách hàng', phone: recipientPhone.trim(), address, latitude: Number(deliveryLat), longitude: Number(deliveryLng) });
-        updateProfile({ phone: recipientPhone.trim(), address, lat: deliveryLat, lng: deliveryLng });
-      } catch (err) { console.warn('Lỗi đồng bộ:', err); }
+        await apiClient.put('/users/profile', {
+          fullname: fullname.trim() || user?.name,
+          phone: phone.trim(),
+          address,
+          latitude: Number(deliveryLat), 
+          longitude: Number(deliveryLng)
+        });
+        updateProfile({ phone: phone.trim(), address, lat: deliveryLat, lng: deliveryLng });
+      } catch(err) {
+        console.warn('Lỗi đồng bộ profile:', err);
+      }
 
-      let dist = null;
-      if (cart.latitude && cart.longitude && deliveryLat && deliveryLng)
-        dist = calculateHaversineDistance(cart.latitude, cart.longitude, deliveryLat, deliveryLng);
-      const shippingFee = dist !== null ? Math.max(15000, 15000 + Math.ceil(Math.max(0, dist - 2)) * 5000) : 15000;
+      await apiClient.post("/orders", bulkOrderPayload);
 
-      const orderResponse = await apiClient.post('/orders', {
-        deliveryAddress: address, deliveryLat, deliveryLng, paymentMethod: 'COD',
-        shippingFee, restaurantId: parseInt(cart.restaurantId), note: orderNotes[cart.restaurantId] || ''
-      });
-      const newOrder = orderResponse.data.data;
-      setOrderNotes(prev => { const copy = { ...prev }; delete copy[cart.restaurantId]; return copy; });
+      toast.success('Đặt hàng thành công!');
+      setOrderNotes({});
+      setSelectedRestaurantIds([]);
       await fetchCart();
+      navigate('/orders');
+    } catch(err) {
+      toast.error(err.response?.data?.message || 'Đã xảy ra lỗi khi đặt hàng loạt. Vui lòng thử lại!');
+    } finally {
       setSubmittingCartId(null);
-      navigate(`/orders/${newOrder.orderId || newOrder.id}`);
-    } catch (error) {
-      toast.error(error.response?.data?.message || 'Đã xảy ra lỗi. Vui lòng thử lại!');
-      setSubmittingCartId(null);
+      setBulkOrderPayload(null);
     }
   };
 
-  const handlePlaceOrder = (cart) => {
-    if (!address.trim() || !deliveryLat || !deliveryLng) { toast.warning('Vui lòng chọn địa chỉ giao hàng trên bản đồ!'); return; }
-    if (!recipientPhone.trim()) { toast.warning('Vui lòng nhập số điện thoại nhận hàng!'); return; }
-    if (recipientPhone.trim().length < 10 || recipientPhone.trim().length > 11) { toast.warning('Số điện thoại không hợp lệ (10–11 chữ số)!'); return; }
-    setCountdown(10); setActiveOrderCart(cart); setShowCountdownModal(true);
+  const handleToggleSelectRestaurant = (restaurantId) => {
+    setSelectedRestaurantIds(prev => 
+      prev.includes(restaurantId) ? prev.filter(id => id !== restaurantId) : [...prev, restaurantId]
+    );
   };
 
-  const handleClearCartClick = (restaurantId, restaurantName) =>
+  const handleOpenDeleteCartMoDal = (restaurantId, restaurantName) =>
     setConfirmClearCartState({ open: true, restaurantId, restaurantName });
 
-  const handleClearCartConfirm = () => {
+  const handleDeleteCart = () => {
     clearCartOfRestaurant(confirmClearCartState.restaurantId);
+    setSelectedRestaurantIds(prev => prev.filter(id => id !== confirmClearCartState.restaurantId));
     setConfirmClearCartState({ open: false, restaurantId: null, restaurantName: '' });
     toast.success('Đã xóa giỏ hàng thành công!');
   };
 
-  const totalItems = carts.reduce((s, c) => s + c.items.reduce((a, i) => a + i.quantity, 0), 0);
-  const totalSubtotal = carts.reduce((s, c) => {
+  // ── LOGIC TÍNH TỔNG QUAN: Chỉ tính các quán nằm trong `selectedRestaurantIds` ──
+  const selectedCarts = carts.filter(c => selectedRestaurantIds.includes(c.restaurantId));
+  
+  const totalItems = selectedCarts.reduce((s, c) => s + c.items.reduce((a, i) => a + i.quantity, 0), 0);
+  
+  const totalSubtotal = selectedCarts.reduce((s, c) => {
     let dist = null;
     if (c.latitude && c.longitude && deliveryLat && deliveryLng)
       dist = calculateHaversineDistance(c.latitude, c.longitude, deliveryLat, deliveryLng);
@@ -110,7 +155,7 @@ export default function Cart() {
     return (
       <div className="flex-1 p-4 md:p-6 flex flex-col items-center justify-center font-google-sans min-h-screen bg-slate-50">
         <div className="max-w-md w-full bg-white border border-slate-200 rounded-2xl p-8 shadow-sm flex flex-col items-center text-center">
-          <div className="w-20 h-20 bg-orange-50 text-md-primary rounded-full flex items-center justify-center mb-5 border border-orange-100 shadow-inner animate-bounce">
+          <div className="w-20 h-20 bg-orange-50 rounded-full flex items-center justify-center mb-5 border border-orange-100 shadow-inner animate-bounce">
             <ShoppingBag size={36} className="text-[#ff6b35]" />
           </div>
           <h2 className="text-xl font-extrabold text-slate-800 tracking-tight">Giỏ hàng của bạn đang trống</h2>
@@ -131,7 +176,7 @@ export default function Cart() {
         <button onClick={() => navigate(-1)} className="p-1.5 rounded-full hover:bg-slate-200 text-slate-600 transition-colors cursor-pointer">
           <ArrowLeft size={18} />
         </button>
-        <h1 className="text-lg font-extrabold text-slate-800">Giỏ hàng của tôi</h1>
+        <h1 className="text-lg font-extrabold text-slate-800">Giỏ Hàng Của Tôi</h1>
       </div>
 
       <div className="flex flex-col lg:flex-row gap-5 items-start">
@@ -141,19 +186,28 @@ export default function Cart() {
             if (cart.latitude && cart.longitude && deliveryLat && deliveryLng)
               dist = calculateHaversineDistance(cart.latitude, cart.longitude, deliveryLat, deliveryLng);
             const shippingFee = dist !== null ? Math.max(15000, 15000 + Math.ceil(Math.max(0, dist - 2)) * 5000) : 15000;
-            // Số lượng & tổng tiền RIÊNG của quán này (trước đây footer hiển thị nhầm tổng toàn giỏ)
+            
             const cartItemCount = cart.items.reduce((a, i) => a + i.quantity, 0);
             const cartTotal = cart.subtotal + shippingFee;
-            const isSubmitting = submittingCartId === cart.restaurantId;
+            const isChecked = selectedRestaurantIds.includes(cart.restaurantId);
 
             return (
-              <div key={cart.restaurantId} className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
-                
-                {/* ── Header quán ── */}
+              <div key={cart.restaurantId} className="bg-white border rounded-xl overflow-hidden shadow-sm transition-all duration-200 border-slate-200">                
                 <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100 bg-gradient-to-r from-slate-50 to-white">
-                  <div className="flex items-center gap-2.5 min-w-0">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <button 
+                      onClick={() => handleToggleSelectRestaurant(cart.restaurantId)}
+                      className="text-md-primary hover:scale-105 transition-transform cursor-pointer"
+                    >
+                      {isChecked ? (
+                        <CheckSquare size={20} className="text-[#ff6b35]" fill="#ff6b35" stroke="white" />
+                      ) : (
+                        <Square size={20} className="text-slate-300" />
+                      )}
+                    </button>
+
                     <div className="p-1.5 bg-md-primary/10 text-md-primary rounded-lg shrink-0">
-                      <Store size={16} />
+                      <Store size={16} className="text-[#ff6b35]" />
                     </div>
                     <div className="flex items-center gap-2 min-w-0">
                       <span className="font-extrabold text-sm text-slate-800 truncate" title={cart.restaurantName}>
@@ -163,7 +217,7 @@ export default function Cart() {
                   </div>
                   
                   <button 
-                    onClick={() => handleClearCartClick(cart.restaurantId, cart.restaurantName)} 
+                    onClick={() => handleOpenDeleteCartMoDal(cart.restaurantId, cart.restaurantName)} 
                     className="flex items-center gap-1.5 text-xs font-semibold text-slate-400 hover:text-red-500 hover:bg-red-50/70 px-2.5 py-1.5 rounded-lg transition-all duration-200 transform hover:scale-[1.02] cursor-pointer shrink-0"
                   >
                     <XCircle size={14} />
@@ -178,7 +232,7 @@ export default function Cart() {
                     return (
                       <div key={item.cartItemId}>
                         
-                        {/* ── 1. GIAO DIỆN LAPTOP ── */}
+                        {/* Laptop View */}
                         <div className="hidden md:flex p-4 hover:bg-slate-50/30 transition-colors flex-row gap-4 items-center">
                           <div className="w-[72px] h-16 rounded-lg overflow-hidden border border-slate-200 bg-slate-100 shrink-0">
                             <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
@@ -200,18 +254,17 @@ export default function Cart() {
 
                                 <div className="flex flex-col items-center">
                                   <span className="text-[10px] font-medium text-slate-400 block mb-1">Số lượng</span>
-                                  
-                                  <div className="flex items-center border border-slate-200 rounded-lg bg-slate-50/50 p-0.5 shadow-none">
+                                  <div className="flex items-center border border-slate-200 rounded-lg bg-slate-50/50 p-0.5">
                                     <button 
                                       onClick={() => updateQty(item.foodId, item.quantity, item.quantity - 1)} 
-                                      className="w-6 h-6 flex items-center justify-center rounded-md font-bold text-slate-500 hover:bg-white hover:text-slate-800 transition-all duration-150 text-xs cursor-pointer active:scale-95 shadow-none"
+                                      className="w-6 h-6 flex items-center justify-center rounded-md font-bold text-slate-500 hover:bg-white hover:text-slate-800 transition-all text-xs cursor-pointer active:scale-95"
                                     >
                                       -
                                     </button>
                                     <span className="w-8 text-center font-extrabold text-xs text-slate-800 select-none">{item.quantity}</span>
                                     <button 
                                       onClick={() => updateQty(item.foodId, item.quantity, item.quantity + 1)} 
-                                      className="w-6 h-6 flex items-center justify-center rounded-md font-bold text-slate-500 hover:bg-white hover:text-slate-800 transition-all duration-150 text-xs cursor-pointer active:scale-95 shadow-none"
+                                      className="w-6 h-6 flex items-center justify-center rounded-md font-bold text-slate-500 hover:bg-white hover:text-slate-800 transition-all text-xs cursor-pointer active:scale-95"
                                     >
                                       +
                                     </button>
@@ -232,7 +285,6 @@ export default function Cart() {
                               </div>
                             </div>
 
-                            {/*Ghi chú*/}
                             <div className="w-full flex items-center gap-2">
                               <span className="text-[10px] font-bold text-slate-400 shrink-0 uppercase tracking-wider w-[72px]">Ghi chú:</span>
                               <input type="text" placeholder="Thêm ghi chú cho món ăn này" value={item.note || ''}
@@ -242,40 +294,35 @@ export default function Cart() {
                           </div>
                         </div>
 
-                        {/* ── 2. GIAO DIỆN RESPONSIVE MOBILE ── */}
+                        {/* Mobile View */}
                         <div className="flex md:hidden p-4 flex-col gap-3 hover:bg-slate-50/30 transition-colors">
                           <div className="flex items-start gap-3 w-full">
-                            
-                            {/* Hình ảnh*/}
                             <div className="w-20 h-20 rounded-lg overflow-hidden border border-slate-200 bg-slate-100 shrink-0">
                               <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
                             </div>
 
-                            {/* tên món*/}
                             <div className="flex-1 min-w-0 flex flex-col justify-between h-20 py-0.5">
                               <p className="font-bold text-slate-800 text-sm leading-snug line-clamp-2">
                                 {item.name}
                               </p>
                               
-                              {/*nút số lượng */}
-                              <div className="flex items-center border border-slate-200 rounded-lg bg-slate-50/50 p-0.5 shadow-none w-fit">
+                              <div className="flex items-center border border-slate-200 rounded-lg bg-slate-50/50 p-0.5 w-fit">
                                 <button 
                                   onClick={() => updateQty(item.foodId, item.quantity, item.quantity - 1)} 
-                                  className="w-7 h-7 flex items-center justify-center rounded-md font-bold text-slate-500 hover:bg-white hover:text-slate-800 transition-all duration-150 text-sm cursor-pointer active:scale-95 shadow-none"
+                                  className="w-7 h-7 flex items-center justify-center rounded-md font-bold text-slate-500 hover:bg-white hover:text-slate-800 transition-all text-sm cursor-pointer active:scale-95"
                                 >
                                   -
                                 </button>
                                 <span className="w-9 text-center font-extrabold text-sm text-slate-800 select-none">{item.quantity}</span>
                                 <button 
                                   onClick={() => updateQty(item.foodId, item.quantity, item.quantity + 1)} 
-                                  className="w-7 h-7 flex items-center justify-center rounded-md font-bold text-slate-500 hover:bg-white hover:text-slate-800 transition-all duration-150 text-sm cursor-pointer active:scale-95 shadow-none"
+                                  className="w-7 h-7 flex items-center justify-center rounded-md font-bold text-slate-500 hover:bg-white hover:text-slate-800 transition-all text-sm cursor-pointer active:scale-95"
                                 >
                                   +
                                 </button>
                               </div>
                             </div>
 
-                            {/* Cột phải */}
                             <div className="text-right flex flex-col justify-between h-20 min-w-[90px] relative pr-7">
                               <button onClick={() => removeItem(item.cartItemId)} className="absolute top-0 right-0 p-0.5 text-slate-400 hover:text-red-500 transition-colors">
                                 <X size={16} strokeWidth={2.5} />
@@ -293,7 +340,6 @@ export default function Cart() {
                             </div>
                           </div>
 
-                          {/*Ghi chú*/}
                           <div className="w-full flex items-center gap-2 pt-1 border-t border-dashed border-slate-100">
                             <span className="text-xs font-bold text-slate-500 shrink-0">Ghi chú</span>
                             <input type="text" placeholder="Thêm ghi chú..." value={item.note || ''}
@@ -312,7 +358,7 @@ export default function Cart() {
                   <div className="flex items-center justify-between text-sm text-slate-600">
                     <div className="space-y-0.5">
                       <div className="flex gap-1.5 items-center">
-                        <span className="text-xs text-slate-500">Số lượng sản phẩm:</span>
+                        <span className="text-xs text-slate-500">Số lượng món:</span>
                         <span className="font-extrabold text-sm text-slate-700">{cartItemCount}</span>
                       </div>
                       <div className="flex gap-1.5 items-center">
@@ -328,10 +374,6 @@ export default function Cart() {
                         <span className="font-extrabold text-sm text-amber-600 md:text-[#ff6b35]">{formatCurrency(cartTotal)}</span>
                       </div>
                     </div>
-                    <Button onClick={() => handlePlaceOrder(cart)} loading={isSubmitting} disabled={isSubmitting} size="sm"
-                      className="text-xs font-bold uppercase tracking-wide px-4 py-2.5 cursor-pointer rounded transition-all duration-200 hover:bg-orange-600 hover:shadow-md active:scale-95">
-                      THANH TOÁN NGAY
-                    </Button>
                   </div>
                 </div>
               </div>
@@ -339,90 +381,124 @@ export default function Cart() {
           })}
         </div>
 
-        {/* ── CỘT PHẢI: thông tin giao hàng + tổng quan (sticky trên desktop) ──
-            Dùng state address/recipientPhone/deliveryLat-Lng & handler sẵn có,
-            KHÔNG thêm logic mới. Mỗi quán vẫn thanh toán riêng ở card của quán. */}
         <aside className="w-full lg:w-80 shrink-0 lg:sticky lg:top-5 space-y-4">
-          {/* Địa chỉ giao hàng (bấm "Chọn trên bản đồ" mở MapModal sẵn có) */}
-          <div className="bg-white rounded-xl p-4 border border-slate-200 shadow-sm">
+          <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-sm space-y-4">
+            <div className="flex items-center gap-2 pb-3 border-b border-slate-100">
+              <MapPin size={18} className="text-[#ff6b35]" />
+              <h2 className="text-sm font-black text-slate-800 tracking-tight">Thông Tin Giao Hàng</h2>
+            </div>
+            
+            <div className="space-y-3.5">
+              <div className="space-y-1">
+                <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                  <User size={12} className="text-slate-400" /> Người nhận
+                </label>
+                <input
+                  type="text"
+                  value={fullname}
+                  onChange={(e) => setFullname(e.target.value)}
+                  placeholder="Nhập tên người nhận"
+                  className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl bg-white text-slate-700 font-semibold focus:outline-none focus:border-[#ff6b35] focus:ring-1 focus:ring-orange-100 transition-all duration-200"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                  <Phone size={12} className="text-slate-400" /> Số điện thoại
+                </label>
+                <input
+                  type="tel"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl bg-white text-slate-700 font-semibold focus:outline-none focus:border-[#ff6b35] focus:ring-1 focus:ring-orange-100 transition-all duration-200"
+                />
+              </div>
+
+              <div className="space-y-1.5 pt-1">
+                <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                  <MapPin size={12} className="text-slate-400" /> Địa chỉ nhận hàng
+                </label>
+                <div className="p-3 border border-slate-100 rounded-xl bg-slate-50/30 min-h-[56px] flex flex-col justify-center">
+                  <p className="text-xs text-slate-700 font-medium leading-relaxed">
+                    {address || 'Chưa chọn địa chỉ giao hàng'}
+                  </p>
+                </div>
+                
+                <button
+                  onClick={() => setIsMapOpen(true)}
+                  className="w-full flex items-center justify-center gap-2 text-xs font-bold text-[#ff6b35] bg-orange-50 hover:bg-orange-100/80 border border-orange-100/70 py-2.5 rounded-xl transition-all duration-200 cursor-pointer shadow-sm active:scale-[0.98]"
+                >
+                  <Map size={14} /> Thay đổi vị trí trên bản đồ
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-xl p-4 border border-slate-200 shadow-sm flex flex-col">
             <h3 className="text-xs font-extrabold text-slate-800 uppercase tracking-wider flex items-center gap-1.5 mb-3">
-              <MapPin size={15} className="text-md-primary" /> Giao tới
+              <ShoppingBag size={15} className="text-[#ff6b35]" /> Tổng quan đơn hàng
             </h3>
-            <p className="text-xs text-slate-600 font-semibold leading-relaxed min-h-[2.5rem]">
-              {address || 'Chưa chọn địa chỉ giao hàng'}
-            </p>
-            <button
-              onClick={() => setIsMapOpen(true)}
-              className="mt-2 w-full flex items-center justify-center gap-1.5 text-xs font-extrabold text-md-primary bg-md-primary/10 hover:bg-md-primary/20 border border-md-primary/15 py-2 rounded-lg transition-all cursor-pointer"
+            <div className="flex items-center justify-between text-xs text-slate-600 mb-2">
+              <span>Số quán đã chọn:</span>
+              <span className="font-extrabold text-slate-800">{selectedRestaurantIds.length} / {carts.length}</span>
+            </div>
+            <div className="flex items-center justify-between text-xs text-slate-600 mb-2">
+              <span>Tổng số món:</span>
+              <span className="font-extrabold text-slate-800">{totalItems} món</span>
+            </div>
+            <div className="flex items-center justify-between text-sm text-slate-600 pt-2 border-t border-slate-100 mb-4">
+              <span className="font-bold text-slate-700">Tổng thanh toán:</span>
+              <span className="font-black text-[#ff6b35] text-lg">{formatCurrency(totalSubtotal)}</span>
+            </div>
+
+            <Button
+              onClick={handleBulkPlaceOrder}
+              disabled={selectedRestaurantIds.length === 0 || submittingCartId === 'BULK_ORDER'}
+              className="w-full mt-4 bg-orange-600 hover:bg-orange-700 text-white font-bold py-3 rounded-lg flex items-center justify-center gap-2"
             >
-              <Map size={14} /> Chọn trên bản đồ
-            </button>
-          </div>
-
-          {/* Số điện thoại nhận hàng */}
-          <div className="bg-white rounded-xl p-4 border border-slate-200 shadow-sm">
-            <h3 className="text-xs font-extrabold text-slate-800 uppercase tracking-wider flex items-center gap-1.5 mb-3">
-              <Phone size={15} className="text-md-primary" /> SĐT nhận hàng
-            </h3>
-            <input
-              type="tel"
-              value={recipientPhone}
-              onChange={(e) => setRecipientPhone(e.target.value)}
-              placeholder="Nhập số điện thoại..."
-              className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg bg-slate-50/50 focus:outline-none focus:border-md-primary focus:bg-white text-slate-700 font-semibold transition-all"
-            />
-          </div>
-
-          {/* Tổng quan toàn bộ giỏ (tổng hợp các quán) */}
-          <div className="bg-white rounded-xl p-4 border border-slate-200 shadow-sm">
-            <h3 className="text-xs font-extrabold text-slate-800 uppercase tracking-wider flex items-center gap-1.5 mb-3">
-              <ShoppingBag size={15} className="text-md-primary" /> Tổng quan
-            </h3>
-            <div className="flex items-center justify-between text-xs text-slate-600 mb-1.5">
-              <span>Số món</span>
-              <span className="font-extrabold text-slate-800">{totalItems}</span>
-            </div>
-            <div className="flex items-center justify-between text-xs text-slate-600">
-              <span>Tạm tính + phí ship</span>
-              <span className="font-extrabold text-md-primary text-base">{formatCurrency(totalSubtotal)}</span>
-            </div>
-            <p className="text-[10px] text-slate-400 mt-3 leading-relaxed">
-              Mỗi quán được đặt thành đơn riêng. Bấm "Thanh toán ngay" ở từng quán để đặt đơn.
-            </p>
+              {submittingCartId === 'BULK_ORDER' ? (
+                <Spinner size="sm" className="text-white" />
+              ) : (
+                <ShoppingBag className="h-5 w-5" />
+              )}
+              Đặt đơn hàng đã chọn ({selectedRestaurantIds.length})
+            </Button>
           </div>
         </aside>
       </div>
 
-      {/* ── MODAL ĐẾM NGƯỢC ĐƠN HÀNG ── */}
-      {showCountdownModal && activeOrderCart && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 transition-all animate-fade-in">
-          <div className="bg-white rounded-2xl p-6 max-w-sm w-full text-center shadow-2xl border border-slate-100 space-y-4 transform scale-100 transition-transform">
+      {/* ── MODAL XÁC NHẬN ĐƠN HÀNG ── */}
+      {showConfirmOrderModal && bulkOrderPayload && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl p-6 max-w-sm w-full text-center shadow-2xl border border-slate-100 space-y-4">
             <div className="relative w-16 h-16 rounded-full bg-amber-50 text-amber-600 flex items-center justify-center mx-auto border border-amber-100">
               <Clock size={26} className="animate-pulse" />
-              <span className="absolute -bottom-1 -right-1 bg-amber-500 text-white rounded-full text-[10px] px-1.5 py-0.5 font-black shadow-sm">
-                {countdown}s
-              </span>
             </div>
             
             <div className="space-y-1">
               <h3 className="font-black text-base text-slate-800">Xác nhận đặt đơn hàng</h3>
               <p className="text-xs text-slate-500 px-2">
-                Hệ thống chuẩn bị gửi đơn đến <span className="font-bold text-slate-700">"Quán {activeOrderCart.restaurantName}"</span>. Bạn có thể bấm hủy trong thời gian đếm ngược.
+                Hệ thống chuẩn bị gửi đơn đặt hàng tới <span className="font-bold text-slate-700">{selectedRestaurantIds.length} quán</span> đã chọn. Bạn có chắc chắn muốn tiếp tục?
               </p>
             </div>
 
-            <div className="flex gap-3 pt-2">
-              <button 
-                onClick={() => { setShowCountdownModal(false); setActiveOrderCart(null); setCountdown(10); }} 
-                className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold py-2.5 rounded-xl text-xs transition cursor-pointer active:scale-95"
+            <div className="flex gap-3 pt-2 justify-center">
+              <button
+                type="button"
+                className="px-4 py-2 text-xs font-bold text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 cursor-pointer"
+                onClick={() => {
+                  setShowConfirmOrderModal(false);
+                  setBulkOrderPayload(null);
+                }}
               >
-                Hủy đơn
+                Hủy bỏ
               </button>
-              <button 
-                onClick={() => activeOrderCart && executePlaceOrder(activeOrderCart)} 
-                className="flex-1 bg-md-primary hover:bg-md-primary/95 text-white font-bold py-2.5 rounded-xl text-xs shadow-md shadow-md-primary/20 transition cursor-pointer active:scale-95"
+              <button
+                type="button"
+                className="px-4 py-2 text-xs font-bold text-white bg-orange-600 rounded-lg hover:bg-orange-700 flex items-center gap-2 cursor-pointer"
+                onClick={executeBulkPlaceOrder}
               >
-                Đặt ngay
+                Xác nhận đặt
               </button>
             </div>
           </div>
@@ -431,8 +507,8 @@ export default function Cart() {
 
       {/* ── MODAL XÁC NHẬN XÓA GIỎ HÀNG ── */}
       {confirmClearCartState.open && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in">
-          <div className="bg-white rounded-2xl max-w-md w-full shadow-2xl border border-slate-100 overflow-hidden transform scale-100 transition-all">
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full shadow-2xl border border-slate-100 overflow-hidden">
             <div className="p-6 flex gap-4 items-start">
               <div className="p-3 bg-red-50 text-red-500 rounded-2xl border border-red-100 shrink-0">
                 <AlertTriangle size={24} />
@@ -453,8 +529,8 @@ export default function Cart() {
                 Hủy bỏ
               </button>
               <button 
-                onClick={handleClearCartConfirm}
-                className="px-4 py-2 rounded-xl text-xs font-bold bg-red-500 hover:bg-red-600 text-white shadow-sm shadow-red-500/20 transition-all cursor-pointer active:scale-95"
+                onClick={handleDeleteCart}
+                className="px-4 py-2 rounded-xl text-xs font-bold bg-red-500 hover:bg-red-600 text-white shadow-sm transition-all cursor-pointer active:scale-95"
               >
                 Xác nhận 
               </button>

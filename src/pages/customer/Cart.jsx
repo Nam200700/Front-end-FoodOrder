@@ -2,7 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCartStore } from '../../stores/cartStore';
 import { useAuthStore } from '../../stores/authStore';
-import { ArrowLeft, MapPin, Map, Phone, Store, XCircle, X, AlertTriangle, Clock, ShoppingBag, CheckSquare, Square, User, Truck } from 'lucide-react'; 
+import { 
+  ArrowLeft, MapPin, Map, Phone, Store, XCircle, X, 
+  AlertTriangle, Clock, ShoppingBag, CheckSquare, Square, 
+  User, Truck, CreditCard, Coins 
+} from 'lucide-react'; 
 import { formatCurrency } from '../../utils/format';
 import Button from '../../components/common/Button';
 import apiClient from '../../services/api';
@@ -32,14 +36,37 @@ export default function Cart() {
   const [showConfirmOrderModal, setShowConfirmOrderModal] = useState(false);
   const [bulkOrderPayload, setBulkOrderPayload] = useState(null);
 
+  const [isUpdatingLocation, setIsUpdatingLocation] = useState(false);
+  
+  // State quản lý phương thức thanh toán mới thêm
+  const [paymentMethod, setPaymentMethod] = useState('');
+
   useEffect(() => { 
     fetchCart(); 
   }, []);
 
-  const handleConfirmLocation = (lat, lng, addressName) => {
+  const handleConfirmLocation = async (lat, lng, addressName) => {
     setDeliveryLat(lat); 
     setDeliveryLng(lng); 
     setAddress(addressName);
+    
+    setIsUpdatingLocation(true);
+    try {
+      await apiClient.put('/users/profile', {
+        fullName: fullname.trim() || user?.name,
+        address: addressName,
+        latitude: Number(lat), 
+        longitude: Number(lng)
+      });
+
+      updateProfile({ name: fullname.trim(), address, lat: deliveryLat, lng: deliveryLng });
+      toast.success('Đã cập nhật vị trí giao hàng!');
+    } catch (err) {
+      console.error('Lỗi cập nhật vị trí vị trí lên:', err);
+      toast.error('Cập nhật vị trí thất bại, vui lòng thử lại!');
+    } finally {
+      setIsUpdatingLocation(false);
+    }
   };
 
   const handleBulkPlaceOrder = () => {
@@ -65,7 +92,7 @@ export default function Cart() {
       restaurantId: selectedRestaurantIds.map(id => parseInt(id)),
       deliveryLat: Number(deliveryLat),
       deliveryLng: Number(deliveryLng),
-      paymentMethod: 'COD',
+      paymentMethod: paymentMethod, // Đã truyền giá trị state động thay vì fix cứng 'COD'
       note: firstCartNote,
     };
 
@@ -82,15 +109,11 @@ export default function Cart() {
     try {
       try {
         await apiClient.put('/users/profile', {
-          fullname: fullname.trim() || user?.name,
-          phone: phone.trim(),
-          address,
-          latitude: Number(deliveryLat), 
-          longitude: Number(deliveryLng)
+          fullName: fullname.trim() || user?.name,
         });
-        updateProfile({ phone: phone.trim(), address, lat: deliveryLat, lng: deliveryLng });
+        updateProfile({ name: fullname.trim(), address, lat: deliveryLat, lng: deliveryLng });
       } catch(err) {
-        console.warn('Lỗi đồng bộ profile:', err);
+        console.warn('Lỗi đồng bộ profile trước khi đặt hàng:', err);
       }
 
       await apiClient.post("/orders", bulkOrderPayload);
@@ -101,7 +124,7 @@ export default function Cart() {
       await fetchCart();
       navigate('/orders');
     } catch(err) {
-      toast.error(err.response?.data?.message || 'Đã xảy ra lỗi khi đặt hàng loạt. Vui lòng thử lại!');
+      toast.error(err.response?.data?.message || 'Đã xảy ra lỗi khi đặt hàng. Vui lòng thử lại!');
     } finally {
       setSubmittingCartId(null);
       setBulkOrderPayload(null);
@@ -347,11 +370,15 @@ export default function Cart() {
                       </div>
                       <div className="flex gap-1.5 items-center">
                         <span className="text-xs text-slate-500">Phí ship:</span>
-                        <span className="font-bold text-xs text-slate-700">{formatCurrency(shippingFee)}</span>
+                        <span className="font-bold text-xs text-slate-700">
+                          {isUpdatingLocation ? 'Đang tính...' : formatCurrency(shippingFee)}
+                        </span>
                       </div>
                       <div className="flex gap-1.5 items-center">
                         <span className="text-xs text-slate-500">Tổng cộng:</span>
-                        <span className="font-extrabold text-sm text-amber-600 md:text-[#ff6b35]">{formatCurrency(cartTotal)}</span>
+                        <span className="font-extrabold text-sm text-amber-600 md:text-[#ff6b35]">
+                          {isUpdatingLocation ? 'Đang tính...' : formatCurrency(cartTotal)}
+                        </span>
                       </div>
                     </div>
                   </div>
@@ -364,7 +391,6 @@ export default function Cart() {
         <aside className="w-full lg:w-80 shrink-0 lg:sticky lg:top-5 space-y-4">
           <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-sm space-y-4">
             <div className="flex items-center gap-2 pb-3 border-b border-slate-100">
-              {/* SỬA TẠI ĐÂY: Thay MapPin thành Truck */}
               <Truck size={18} className="text-[#ff6b35]" />
               <h2 className="text-sm font-black text-slate-800 tracking-tight">THÔNG TIN GIAO HÀNG</h2>
             </div>
@@ -400,7 +426,12 @@ export default function Cart() {
                 <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
                   <MapPin size={12} className="text-slate-400" /> Địa chỉ nhận hàng
                 </label>
-                <div className="p-3 border border-slate-100 rounded-xl bg-slate-50/30 min-h-[56px] flex flex-col justify-center">
+                <div className="p-3 border border-slate-100 rounded-xl bg-slate-50/30 min-h-[56px] flex flex-col justify-center relative">
+                  {isUpdatingLocation && (
+                    <div className="absolute inset-0 bg-white/70 flex items-center justify-center rounded-xl">
+                      <Spinner size="sm" />
+                    </div>
+                  )}
                   <p className="text-xs text-slate-700 font-medium leading-relaxed">
                     {address || 'Chưa chọn địa chỉ giao hàng'}
                   </p>
@@ -408,7 +439,8 @@ export default function Cart() {
                 
                 <button
                   onClick={() => setIsMapOpen(true)}
-                  className="w-full flex items-center justify-center gap-2 text-xs font-bold text-[#ff6b35] bg-orange-50 hover:bg-orange-100/80 border border-orange-100/70 py-2.5 rounded-xl transition-all duration-200 cursor-pointer shadow-sm active:scale-[0.98]"
+                  disabled={isUpdatingLocation}
+                  className="w-full flex items-center justify-center gap-2 text-xs font-bold text-[#ff6b35] bg-orange-50 hover:bg-orange-100/80 border border-orange-100/70 py-2.5 rounded-xl transition-all duration-200 cursor-pointer shadow-sm active:scale-[0.98] disabled:opacity-60"
                 >
                   <Map size={14} /> Thay đổi vị trí trên bản đồ
                 </button>
@@ -420,23 +452,60 @@ export default function Cart() {
             <h3 className="text-xs font-extrabold text-slate-800 uppercase tracking-wider flex items-center gap-1.5 mb-3">
               <ShoppingBag size={15} className="text-[#ff6b35]" /> Tổng quan đơn hàng
             </h3>
+            
             <div className="flex items-center justify-between text-xs text-slate-600 mb-2">
               <span>Số quán đã chọn:</span>
               <span className="font-extrabold text-slate-800">{selectedRestaurantIds.length} / {carts.length}</span>
             </div>
+            
             <div className="flex items-center justify-between text-xs text-slate-600 mb-2">
               <span>Tổng số món:</span>
               <span className="font-extrabold text-slate-800">{totalItems} món</span>
             </div>
+
+            {/* --- PHƯƠNG THỨC THANH TOÁN  --- */}
+            <div className="pt-2 pb-1 border-t border-slate-100">
+              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-2">
+                Phương thức thanh toán
+              </span>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setPaymentMethod('COD')}
+                  className={`flex items-center justify-center gap-1.5 py-2 px-1 border rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                    paymentMethod === 'COD'
+                      ? 'border-[#ff6b35] bg-orange-50 text-[#ff6b35]'
+                      : 'border-slate-200 text-slate-600 hover:bg-slate-50'
+                  }`}
+                >
+                  <Coins size={14} />
+                  Tiền mặt
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPaymentMethod('VNPAY')}
+                  className={`flex items-center justify-center gap-1.5 py-2 px-1 border rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                    paymentMethod === 'VNPAY'
+                      ? 'border-[#ff6b35] bg-orange-50 text-[#ff6b35]'
+                      : 'border-slate-200 text-slate-600 hover:bg-slate-50'
+                  }`}
+                >
+                  <CreditCard size={14} />
+                  Chuyển khoản
+                </button>
+              </div>
+            </div>
+
             <div className="flex items-center justify-between text-sm text-slate-600 pt-2 border-t border-slate-100 mb-4">
               <span className="font-bold text-slate-700">Tổng thanh toán:</span>
-              <span className="font-black text-[#ff6b35] text-lg">{formatCurrency(totalSubtotal)}</span>
+              <span className="font-black text-[#ff6b35] text-lg">
+                {isUpdatingLocation ? 'Đang tính...' : formatCurrency(totalSubtotal)}
+              </span>
             </div>
 
             <Button
               onClick={handleBulkPlaceOrder}
-              disabled={selectedRestaurantIds.length === 0 || submittingCartId === 'BULK_ORDER'}
-
+              disabled={selectedRestaurantIds.length === 0 || submittingCartId === 'BULK_ORDER' || isUpdatingLocation}
               className="w-full mt-4 bg-orange-600 hover:bg-orange-700 text-white font-bold py-3 rounded-xl flex items-center justify-center gap-2"
             >
               {submittingCartId === 'BULK_ORDER' ? (
@@ -460,7 +529,7 @@ export default function Cart() {
             <div className="space-y-1">
               <h3 className="font-black text-base text-slate-800">Xác nhận đặt đơn hàng</h3>
               <p className="text-xs text-slate-500 px-2">
-                Hệ thống chuẩn bị gửi đơn đặt hàng tới <span className="font-bold text-slate-700">{selectedRestaurantIds.length} quán</span> đã chọn. Bạn có chắc chắn muốn tiếp tục?
+                Hệ thống chuẩn bị gửi đơn đặt hàng tới <span className="font-bold text-slate-700">{selectedRestaurantIds.length} quán</span> đã chọn bằng hình thức <span className="font-bold text-orange-600">{paymentMethod === 'COD' ? 'Tiền mặt (COD)' : 'Chuyển khoản'}</span>. Bạn có chắc chắn muốn tiếp tục?
               </p>
             </div>
 

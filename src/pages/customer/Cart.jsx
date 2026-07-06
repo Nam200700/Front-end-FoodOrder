@@ -126,7 +126,7 @@ export default function Cart() {
       await apiClient.post("/orders", bulkOrderPayload);
 
       toast.success('Đặt hàng thành công!');
-      setOrderNotes({});
+      setOrderNotes('');
       setSelectedRestaurantIds([]);
       await fetchCart();
       navigate('/orders');
@@ -142,6 +142,17 @@ export default function Cart() {
     setSelectedRestaurantIds(prev => 
       prev.includes(restaurantId) ? prev.filter(id => id !== restaurantId) : [...prev, restaurantId]
     );
+  };
+
+  //Xử lý Chọn tất cả / Bỏ chọn tất cả
+  const isAllSelected = carts.length > 0 && selectedRestaurantIds.length === carts.length;
+
+  const handleSelectAll = () => {
+    if (isAllSelected) {
+      setSelectedRestaurantIds([]);
+    } else {
+      setSelectedRestaurantIds(carts.map(cart => cart.restaurantId));
+    }
   };
 
   const handleOpenDeleteCartMoDal = (restaurantId, restaurantName) =>
@@ -189,11 +200,25 @@ export default function Cart() {
 
   return (
     <div className="flex-1 p-4 md:p-5 w-full font-google-sans pb-24 bg-slate-50 min-h-screen">
-      <div className="flex items-center gap-3 mb-5">
-        <button onClick={() => navigate(-1)} className="p-1.5 rounded-full hover:bg-slate-200 text-slate-600 transition-colors cursor-pointer">
-          <ArrowLeft size={18} />
+      <div className="flex items-center justify-between mb-5 gap-3">
+        <div className="flex items-center gap-3">
+          <button onClick={() => navigate(-1)} className="p-1.5 rounded-full hover:bg-slate-200 text-slate-600 transition-colors cursor-pointer">
+            <ArrowLeft size={18} />
+          </button>
+          <h1 className="text-xl md:text-2xl font-bold text-gray-900">Giỏ Hàng Của Tôi</h1>
+        </div>
+
+        <button
+          onClick={handleSelectAll}
+          className="flex items-center gap-2 px-3 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold transition-all duration-200 shadow-sm cursor-pointer active:scale-95 select-none"
+        >
+          {isAllSelected ? (
+            <CheckSquare size={16} className="text-[#ff6b35]" fill="#ff6b35" stroke="white" />
+          ) : (
+            <Square size={16} className="text-slate-400" />
+          )}
+          <span>{isAllSelected ? 'Bỏ chọn tất cả' : 'Chọn tất cả'}</span>
         </button>
-        <h1 className="text-xl md:text-2xl font-bold text-gray-900">Giỏ Hàng Của Tôi</h1>
       </div>
 
       <div className="flex flex-col lg:flex-row gap-5 items-start">

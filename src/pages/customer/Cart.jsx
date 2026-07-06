@@ -15,8 +15,7 @@ import MapModal from '../../components/common/MapModal';
 import Spinner from '../../components/common/Spinner';
 import { toast } from 'react-toastify';
 import Modal from '../../components/common/Modal';
-// Import component Card
-import Card from '../../components/common/Card'; // Thay đổi đường dẫn này cho đúng với cấu trúc thư mục của bạn
+import Card from '../../components/common/Card'; 
 
 export default function Cart() {
   const navigate = useNavigate();
@@ -33,7 +32,7 @@ export default function Cart() {
 
   const [confirmClearCartState, setConfirmClearCartState] = useState({ open: false, restaurantId: null, restaurantName: '' });
   
-  const [orderNotes, setOrderNotes] = useState({});
+  const [orderNotes, setOrderNotes] = useState('');
   const [submittingCartId, setSubmittingCartId] = useState(null);
 
   const [selectedRestaurantIds, setSelectedRestaurantIds] = useState([]);
@@ -73,20 +72,14 @@ export default function Cart() {
     }
   };
 
-  const handleRestaurantNoteChange = (restaurantId, value) => {
-    setOrderNotes(prev => ({
-      ...prev,
-      [restaurantId]: value
-    }));
-  };
-
   const handleBulkPlaceOrder = () => {
-    if (!address.trim() || !deliveryLat || !deliveryLng) { 
-      toast.warning('Vui lòng chọn địa chỉ giao hàng trên bản đồ!'); 
+    if (!fullname.trim()) { 
+      toast.warning('Vui lòng nhập họ và tên người nhận!'); 
       return; 
     }
-    if (!phone.trim()) { 
-      toast.warning('Vui lòng nhập số điện thoại nhận hàng!'); 
+
+    if (!address.trim() || !deliveryLat || !deliveryLng) { 
+      toast.warning('Vui lòng chọn địa chỉ giao hàng trên bản đồ!'); 
       return; 
     }
 
@@ -96,13 +89,18 @@ export default function Cart() {
       return;
     }
 
+    if (!paymentMethod.trim()) { 
+      toast.warning('Vui lòng chọn phương thức thanh toán!'); 
+      return; 
+    }
+
     const payload = {
       deliveryAddress: address,
       restaurantId: selectedRestaurantIds.map(id => parseInt(id)),
       deliveryLat: Number(deliveryLat),
       deliveryLng: Number(deliveryLng),
       paymentMethod: paymentMethod,
-      restaurantNotes: orderNotes,
+      note: orderNotes,
     };
 
     setBulkOrderPayload(payload);
@@ -311,7 +309,7 @@ export default function Cart() {
                               <span className="text-[10px] font-bold text-slate-400 shrink-0 uppercase tracking-wider">Ghi chú:</span>
                               <input type="text" placeholder="Thêm ghi chú cho món ăn này" value={item.note || ''}
                                 onChange={(e) => updateNote(item.foodId, e.target.value)}
-                                className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl bg-white text-slate-700 font-semibold focus:outline-none focus:border-[#ff6b35] focus:ring-1 focus:ring-orange-100 transition-all duration-200"
+                                className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl bg-white text-slate-700 font-medium focus:outline-none focus:border-[#ff6b35] focus:ring-1 focus:ring-orange-100 transition-all duration-200"
                               />
                             </div>
                           </div>
@@ -367,7 +365,7 @@ export default function Cart() {
                             <span className="text-[10px] font-bold text-slate-400 shrink-0 uppercase tracking-wider">Ghi chú:</span>
                             <input type="text" placeholder="Thêm ghi chú cho món ăn này" value={item.note || ''}
                               onChange={(e) => updateNote(item.foodId, e.target.value)}
-                              className="w-full max-w-md px-3 py-1.5 text-xs border border-slate-200 rounded-xl bg-white text-slate-700 font-semibold focus:outline-none focus:border-[#ff6b35] focus:ring-1 focus:ring-orange-100 transition-all duration-200"
+                              className="w-full max-w-md px-3 py-1.5 text-xs border border-slate-200 rounded-xl bg-white text-slate-700 font-medium focus:outline-none focus:border-[#ff6b35] focus:ring-1 focus:ring-orange-100 transition-all duration-200"
                             />
                           </div>
                         </div>
@@ -378,25 +376,11 @@ export default function Cart() {
 
                 {/* Footer đơn hàng quán */}
                 <div className="border-t border-slate-100 px-4 py-3 bg-slate-50/40 space-y-3">             
-                  <div className="flex flex-col sm:flex-row sm:items-center gap-2 pt-1 pb-2 border-b border-solid border-slate-200">
-                    <label className="text-xs font-extrabold text-slate-600 flex items-center gap-1 shrink-0">
-                      <FileText size={14} className="text-orange-500" />
-                      Ghi chú đơn hàng:
-                    </label>
-                    <input 
-                      type="text" 
-                      placeholder={'Thêm ghi chú đơn hàng cho quán...'} 
-                      value={orderNotes[cart.restaurantId] || ''}
-                      onChange={(e) => handleRestaurantNoteChange(cart.restaurantId, e.target.value)}
-                      className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl bg-white text-slate-700 font-semibold focus:outline-none focus:border-[#ff6b35] focus:ring-1 focus:ring-orange-100 transition-all duration-200"
-                    />
-                  </div>
-
                   <div className="flex items-center justify-between text-sm text-slate-600">
                     <div className="space-y-0.5 w-full">
                       <div className="flex justify-between items-center">
                         <span className="text-xs text-slate-500">Số lượng món:</span>
-                        <span className="font-extrabold text-sm text-slate-700">{cartItemCount}</span>
+                        <span className="font-bold text-xs text-slate-700">{cartItemCount} món</span>
                       </div>
                       <div className="flex justify-between items-center">
                         <span className="text-xs text-slate-500">Tạm tính:</span>
@@ -489,24 +473,24 @@ export default function Cart() {
           </Card>
 
           {/* TỔNG QUAN ĐƠN HÀNG */}
-          <Card variant="flat" className="p-4 !border-slate-200 !rounded-xl flex flex-col">
-            <h3 className="text-xs font-extrabold text-slate-800 uppercase tracking-wider flex items-center gap-1.5 mb-3">
+          <Card variant="flat" className="p-4 !border-slate-200 !rounded-xl flex flex-col space-y-3">
+            <h3 className="text-xs font-extrabold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
               <ShoppingBag size={15} className="text-[#ff6b35]" /> Tổng quan đơn hàng
             </h3>
             
-            <div className="flex items-center justify-between text-xs text-slate-600 mb-2">
+            <div className="flex items-center justify-between text-xs text-slate-600">
               <span>Số quán đã chọn:</span>
               <span className="font-extrabold text-slate-800">{selectedRestaurantIds.length} / {carts.length}</span>
             </div>
             
-            <div className="flex items-center justify-between text-xs text-slate-600 mb-2">
+            <div className="flex items-center justify-between text-xs text-slate-600">
               <span>Tổng số món:</span>
               <span className="font-extrabold text-slate-800">{totalItems} món</span>
             </div>
 
-            {/* --- PHƯƠNG THỨC THANH TOÁN  --- */}
-            <div className="pt-2 pb-1 border-t border-slate-100">
-              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-2">
+            {/* --- PHƯƠNG THỨC THANH TOÁN --- */}
+            <div className="pt-2 border-t border-slate-100">
+              <span className="text-[11px] font-bold text-slate-400 uppercase block mb-2">
                 Phương thức thanh toán
               </span>
               <div className="grid grid-cols-2 gap-2">
@@ -522,22 +506,23 @@ export default function Cart() {
                   <Coins size={14} />
                   Tiền mặt
                 </button>
-                {/* <button
-                  type="button"
-                  onClick={() => setPaymentMethod('VNPAY')}
-                  className={`flex items-center justify-center gap-1.5 py-2 px-1 border rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                    paymentMethod === 'VNPAY'
-                      ? 'border-[#ff6b35] bg-orange-50 text-[#ff6b35]'
-                      : 'border-slate-200 text-slate-600 hover:bg-slate-50'
-                  }`}
-                >
-                  <CreditCard size={14} />
-                  Chuyển khoản
-                </button> */}
               </div>
             </div>
 
-            <div className="flex items-center justify-between text-sm text-slate-600 pt-2 border-t border-slate-100 mb-2">
+            <div className="pt-2 border-t border-slate-100">
+              <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5 mb-1.5">
+                <FileText size={13} className="text-slate-400" /> Ghi chú đơn hàng
+              </label>
+              <textarea
+                rows={2}
+                value={orderNotes}
+                onChange={(e) => setOrderNotes(e.target.value)}
+                placeholder="Thêm ghi chú cho đơn hàng"
+                className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl bg-white text-slate-700 font-semibold focus:outline-none focus:border-[#ff6b35] focus:ring-1 focus:ring-orange-100 transition-all duration-200 resize-none"
+              />
+            </div>
+
+            <div className="flex items-center justify-between text-sm text-slate-600 pt-1 border-t border-slate-100">
               <span className="font-bold text-slate-700">Tổng thanh toán:</span>
               <span className="font-black text-[#ff6b35] text-lg">
                 {isUpdatingLocation ? 'Đang tính...' : formatCurrency(totalSubtotal)}
@@ -549,7 +534,7 @@ export default function Cart() {
               disabled={selectedRestaurantIds.length === 0 || submittingCartId === 'BULK_ORDER' || isUpdatingLocation}
               loading={submittingCartId === 'BULK_ORDER'}
               icon={ShoppingBag}
-              className="w-full mt-0 !bg-orange-600 hover:!bg-orange-700 text-white font-bold py-3 rounded-xl flex items-center justify-center gap-2"
+              className="w-full !mt-0 !bg-orange-600 hover:!bg-orange-700 text-white font-bold py-3 rounded-xl flex items-center justify-center gap-2"
             >
               Đặt Hàng
             </Button>

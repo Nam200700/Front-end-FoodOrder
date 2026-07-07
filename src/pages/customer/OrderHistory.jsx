@@ -112,7 +112,7 @@ export default function OrderHistory() {
     setIsCancelModalOpen(true);
   };
 
-  // Đóng modal và reset trạng thái dữ liệu
+  // Đóng modal hủy đơn
   const handleCloseCancelModal = () => {
     if (submittingCancel) return;
     setIsCancelModalOpen(false);
@@ -312,7 +312,6 @@ export default function OrderHistory() {
                       </span>
                     </div>
 
-                    {/* Đã giảm size button bằng cách đổi grid-cols-3 thành flex, giảm padding và text size xuống text-[11px] */}
                     <div className="flex items-center justify-end gap-1.5 w-full sm:w-auto" onClick={(e) => e.stopPropagation()}>
                       {order.status === 'PENDING' ? (
                         <Button
@@ -429,7 +428,6 @@ export default function OrderHistory() {
                     <span className="font-bold text-slate-700">Địa chỉ:</span> {selectedOrder.deliveryAddress}
                   </p>
                   
-                  {/* Ghi chú đơn hàng - Đã sửa đồng bộ kiểu chữ và màu text-slate-500 với Địa chỉ */}
                   {selectedOrder.note && (
                     <p className="text-slate-500 leading-tight">
                       <span className="font-bold text-slate-700">Ghi chú đơn hàng:</span>

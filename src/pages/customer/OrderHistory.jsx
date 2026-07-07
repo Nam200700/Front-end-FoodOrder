@@ -66,6 +66,7 @@ export default function OrderHistory() {
           price: Number(i.priceAtOrder),
           quantity: i.quantity,
           image: i.foodImageUrl || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=150&q=80',
+          note: i.note
         })),
         total: Number(order.totalAmount),
         subtotal: Number(order.subtotalAmount || order.totalAmount - (order.shippingFee || 0)),
@@ -75,7 +76,10 @@ export default function OrderHistory() {
         deliveryAddress: order.deliveryAddress || 'Chưa cập nhật địa chỉ',
         createdAt: formattedDate,
         reviewed: order.reviewed || false, 
-        rating: order.restaurantRating || 5 
+        rating: order.restaurantRating || 5,
+        note: order.note,
+        name: order.customerName,
+        phone: order.customerPhone
       };
     });
   };
@@ -192,9 +196,9 @@ export default function OrderHistory() {
       case 'CONFIRMED': 
         return 'bg-blue-50 text-blue-700'; 
       case 'PREPARING': 
-        return 'bg-purple-50 text-purple-700'; 
-      case 'READY_FOR_PICKUP': 
         return 'bg-indigo-50 text-indigo-700'; 
+      case 'READY_FOR_PICKUP': 
+        return 'bg-sky-50 text-sky-700'; 
       case 'DELIVERING':
         return 'bg-orange-50 text-orange-700'; 
       default: 
@@ -317,7 +321,7 @@ export default function OrderHistory() {
                           icon={Ban}
                           className="!px-2.5 !py-1.5 !bg-red-500 hover:!bg-red-600 text-white !rounded-lg text-[11px] !font-bold !shadow-sm w-full sm:w-auto"
                         >
-                          Hủy đơn hàng
+                          Hủy đơn
                         </Button>
                       ) : (
                         <>
@@ -399,67 +403,75 @@ export default function OrderHistory() {
         className="[&_h2]:!text-slate-900 [&_h2]:!text-base [&_h2]:md:!text-lg [&_h2]:!font-bold"
       >
         {selectedOrder && (
-          <div className="space-y-4 text-slate-700">
-            {/* Thông tin chung: Tên quán, ngày đặt bên trái - Trạng thái góc phải */}
-            <div className="border-b border-slate-100 pb-3 text-xs">
-              <div className="flex justify-between items-start gap-4">
-                {/* Nhóm tên quán và ngày đặt ở bên trái */}
-                <div className="space-y-1">
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-slate-500 font-medium">Quán:</span>
-                    <span className="font-bold text-slate-800 text-sm">{selectedOrder.restaurantName}</span>
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-slate-500 font-medium">Ngày đặt:</span>
-                    <span className="font-medium text-slate-700">{selectedOrder.createdAt}</span>
-                  </div>
+          <div className="space-y-3 text-slate-700 !-mt-2">
+            <div className="border-b border-slate-100 pb-2 text-xs">
+              <div className="flex justify-between items-center gap-4">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-slate-500 font-medium">Ngày đặt:</span>
+                  <span className="font-medium text-slate-700">{selectedOrder.createdAt}</span>
                 </div>
 
-                <div className="text-right shrink-0">
-                  <span className={`px-2.5 py-1 rounded-full font-semibold text-[11px] inline-block ${getStatusStyles(selectedOrder.status)}`}>
+                <div className="shrink-0">
+                  <span className={`px-2.5 py-0.5 rounded-full font-semibold text-[11px] inline-block ${getStatusStyles(selectedOrder.status)}`}>
                     {getStatusLabel(selectedOrder.status)}
                   </span>
                 </div>
               </div>
             </div>
 
-            {/* Địa chỉ giao hàng & Phương thức thanh toán */}
-            <div className="border-b border-slate-100 pb-3 space-y-2 text-xs">
-              <div className="flex items-start gap-2">
-                <MapPin className="w-4 h-4 text-slate-400 shrink-0 mt-0.5" />
-                <div>
-                  <p className="font-bold text-slate-500 uppercase tracking-wider text-[10px]">Địa chỉ giao hàng</p>
-                  <p className="text-slate-700 font-medium mt-0.5">{selectedOrder.deliveryAddress}</p>
+            <div className="border-b border-slate-100 pb-2 space-y-1.5 text-xs">
+              <div>
+                <p className="font-bold text-slate-400 uppercase tracking-wider text-[10px]">Thông tin giao hàng</p>
+                <div className="mt-0.5 space-y-0.5 text-slate-700">
+                  <p className="font-semibold text-slate-800">
+                    {selectedOrder.name} — {selectedOrder.phone}
+                  </p>
+                  <p className="font-medium text-slate-600">Địa chỉ: {selectedOrder.deliveryAddress}</p>
                 </div>
               </div>
+              
+              {selectedOrder.note && (
+                <div className="pt-1 border-t border-slate-50 text-[11px] leading-relaxed">
+                  <span className="font-bold mr-1">Ghi chú đơn hàng:</span>
+                  <span className="text-slate-600 italic">"{selectedOrder.note}"</span>
+                </div>
+              )}
             </div>
 
             {/* Danh sách món ăn */}
-            <div className="space-y-3 max-h-[240px] overflow-y-auto pr-1">
+            <div className="space-y-1.5">
               <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Danh sách món ăn:</p>
-              {selectedOrder.items.map((item, idx) => (
-                <div key={idx} className="flex gap-3 items-center justify-between border border-slate-100 rounded-xl p-3 bg-slate-50/50">
-                  <div className="flex gap-3 items-center min-w-0">
-                    <div className="w-12 h-12 rounded-md overflow-hidden shrink-0 border border-slate-200 bg-white">
-                      <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
+              <div className="space-y-2 max-h-[210px] overflow-y-auto pr-1">
+                {selectedOrder.items.map((item, idx) => (
+                  <div key={idx} className="flex gap-3 items-start justify-between border border-slate-100 rounded-xl p-2.5 bg-slate-50/50">
+                    <div className="flex gap-3 items-start min-w-0">
+                      <div className="w-12 h-12 rounded-md overflow-hidden shrink-0 border border-slate-200 bg-white mt-0.5">
+                        <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
+                      </div>
+                      <div className="min-w-0">
+                        <h4 className="font-bold text-slate-800 text-sm truncate">{item.name}</h4>
+                        <p className="text-xs text-orange-500 font-bold mt-0.5">
+                          {formatCurrency(item.price)}
+                          <span className="text-slate-400 font-normal ml-1.5">x{item.quantity}</span>
+                        </p>
+                        {item.note && (
+                          <p className="text-[11px] text-slate-500 font-medium mt-1 leading-relaxed">
+                            <span className="font-semibold mr-1">Ghi chú:</span>
+                            <span className="text-slate-600 italic">"{item.note}"</span>
+                          </p>
+                        )}
+                      </div>
                     </div>
-                    <div className="min-w-0">
-                      <h4 className="font-bold text-slate-800 text-sm truncate">{item.name}</h4>
-                      <p className="text-xs text-orange-500 font-bold mt-0.5">
-                        {formatCurrency(item.price)}
-                        <span className="text-slate-400 font-normal ml-1.5">x{item.quantity}</span>
-                      </p>
+                    <div className="text-sm font-bold text-slate-800 shrink-0 pt-0.5">
+                      {formatCurrency(item.price * item.quantity)}
                     </div>
                   </div>
-                  <div className="text-sm font-bold text-slate-800 shrink-0">
-                    {formatCurrency(item.price * item.quantity)}
-                  </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
 
             {/* Chi tiết dòng tiền tính toán */}
-            <div className="border-t border-slate-100 pt-3 space-y-1.5 text-xs">
+            <div className="border-t border-slate-100 pt-2.5 space-y-1.5 text-xs">
               <div className="flex justify-between items-center text-slate-500">
                 <span>Phương thức thanh toán:</span>
                 <span className="font-semibold">
@@ -494,7 +506,7 @@ export default function OrderHistory() {
         size="sm"
         className="[&_h2]:!text-slate-900 [&_h2]:!text-base [&_h2]:md:!text-lg [&_h2]:!font-bold [&_button]:disabled:opacity-50"
       >
-        <div className="space-y-4 text-slate-700">
+        <div className="space-y-4 text-slate-700 !-mt-3">
           <div className="p-3 bg-amber-50 text-amber-800 rounded-lg text-xs font-medium border border-amber-100 flex items-start gap-2">
             <AlertCircle className="shrink-0 mt-0.5 text-amber-600" size={15} />
             <span>Lưu ý: Hành động hủy đơn hàng không thể hoàn tác sau khi hệ thống đã xử lý.</span>
@@ -535,7 +547,7 @@ export default function OrderHistory() {
             />
           </div>
 
-          <div className="flex justify-end gap-3 pt-3 border-t border-slate-100">            
+          <div className="flex justify-end gap-3 pt-2 border-t border-slate-100">            
             <Button 
               type="button" 
               onClick={handleCancelOrder}

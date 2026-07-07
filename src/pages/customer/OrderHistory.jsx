@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCartStore } from '../../stores/cartStore';
-import { ShoppingBag, RefreshCw, Ban, AlertCircle, MessageSquare, Star, FileText, MapPin, CreditCard } from 'lucide-react'; 
+import { ShoppingBag, RefreshCw, Ban, AlertCircle, MessageSquare, Star, FileText, MapPin, CreditCard, Eye } from 'lucide-react'; 
 import { formatCurrency } from '../../utils/format';
 import { SkeletonOrderCard } from '../../components/common/SkeletonCard';
 import EmptyState from '../../components/common/EmptyState';
@@ -380,7 +380,7 @@ export default function OrderHistory() {
                       <Button
                         type="button"
                         onClick={(e) => handleOpenDetailModal(e, order)}
-                        icon={FileText}
+                        icon={Eye}
                         className="!px-2.5 !py-1.5 !bg-blue-500 hover:!bg-blue-600 !text-white !border-none !rounded-lg text-[11px] !font-bold !shadow-none whitespace-nowrap w-full sm:w-auto"
                       >
                         Chi tiết
@@ -398,71 +398,73 @@ export default function OrderHistory() {
       <Modal
         isOpen={isDetailModalOpen}
         onClose={handleCloseDetailModal}
-        title={`Chi Tiết Đơn Hàng #${selectedOrder?.id}`}
+        title={
+          <div className="flex flex-col text-left">
+            <h2 className="text-base md:text-lg font-bold text-slate-900 leading-tight">
+              Chi Tiết Đơn Hàng #{selectedOrder?.id}
+            </h2>
+            {selectedOrder && (
+              <p className="text-[10px] md:text-xs font-normal text-slate-400 pt-0.5">
+                Ngày đặt: <span className="font-medium text-slate-500">{selectedOrder.createdAt}</span>
+              </p>
+            )}
+          </div>
+        }
         size="md"
-        className="[&_h2]:!text-slate-900 [&_h2]:!text-base [&_h2]:md:!text-lg [&_h2]:!font-bold"
+        className="[&_h2]:!text-slate-900 [&_h2]:!text-base [&_h2]:md:!text-lg [&_h2]:!font-bold [&>div]:border-slate-100 [&_div.flex.items-center.justify-between]:!pb-3"
       >
         {selectedOrder && (
-          <div className="space-y-3 text-slate-700 !-mt-2">
-            <div className="border-b border-slate-100 pb-2 text-xs">
-              <div className="flex justify-between items-center gap-4">
-                <div className="flex items-center gap-1.5">
-                  <span className="text-slate-500 font-medium">Ngày đặt:</span>
-                  <span className="font-medium text-slate-700">{selectedOrder.createdAt}</span>
-                </div>
-
-                <div className="shrink-0">
-                  <span className={`px-2.5 py-0.5 rounded-full font-semibold text-[11px] inline-block ${getStatusStyles(selectedOrder.status)}`}>
-                    {getStatusLabel(selectedOrder.status)}
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            <div className="border-b border-slate-100 pb-2 space-y-1.5 text-xs">
-              <div>
-                <p className="font-bold text-slate-400 uppercase tracking-wider text-[10px]">Thông tin giao hàng</p>
-                <div className="mt-0.5 space-y-0.5 text-slate-700">
-                  <p className="font-semibold text-slate-800">
+          <div className="space-y-4 text-slate-700 !-mt-4 !-mb-5">
+            <div className="text-xs flex flex-row justify-between items-center gap-3 pt-2">
+              <div className="space-y-1 flex-1 min-w-0">
+                <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Thông tin giao hàng</p>
+                
+                <div className="text-slate-700 text-[11px] sm:text-xs pt-0.5 space-y-0.5">
+                  <p className="font-bold text-slate-800">
                     {selectedOrder.name} — {selectedOrder.phone}
                   </p>
-                  <p className="font-medium text-slate-600">Địa chỉ: {selectedOrder.deliveryAddress}</p>
+                  
+                  {/* Địa chỉ */}
+                  <p className="text-slate-500 leading-tight">
+                    <span className="font-bold text-slate-700">Địa chỉ:</span> {selectedOrder.deliveryAddress}
+                  </p>
+                  
+                  {/* Ghi chú đơn hàng - Đã sửa đồng bộ kiểu chữ và màu text-slate-500 với Địa chỉ */}
+                  {selectedOrder.note && (
+                    <p className="text-slate-500 leading-tight">
+                      <span className="font-bold text-slate-700">Ghi chú đơn hàng:</span>
+                      <span className="italic"> "{selectedOrder.note}"</span>
+                    </p>
+                  )}
                 </div>
               </div>
-              
-              {selectedOrder.note && (
-                <div className="pt-1 border-t border-slate-50 text-[11px] leading-relaxed">
-                  <span className="font-bold mr-1">Ghi chú đơn hàng:</span>
-                  <span className="text-slate-600 italic">"{selectedOrder.note}"</span>
-                </div>
-              )}
             </div>
 
             {/* Danh sách món ăn */}
-            <div className="space-y-1.5">
+            <div className="space-y-1.5 !-mt-4">
               <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Danh sách món ăn:</p>
-              <div className="space-y-2 max-h-[210px] overflow-y-auto pr-1">
+              <div className="space-y-1.5 max-h-[140px] overflow-y-auto pr-1 scrollbar-thin">
                 {selectedOrder.items.map((item, idx) => (
-                  <div key={idx} className="flex gap-3 items-start justify-between border border-slate-100 rounded-xl p-2.5 bg-slate-50/50">
-                    <div className="flex gap-3 items-start min-w-0">
-                      <div className="w-12 h-12 rounded-md overflow-hidden shrink-0 border border-slate-200 bg-white mt-0.5">
+                  <div key={idx} className="flex gap-2.5 items-center justify-between border border-slate-100/80 rounded-lg p-1.5 sm:p-2 bg-slate-50/30">
+                    <div className="flex gap-2.5 items-center min-w-0 flex-1">
+                      <div className="w-12 h-12 rounded md overflow-hidden shrink-0 border border-slate-200 bg-white">
                         <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
                       </div>
-                      <div className="min-w-0">
-                        <h4 className="font-bold text-slate-800 text-sm truncate">{item.name}</h4>
-                        <p className="text-xs text-orange-500 font-bold mt-0.5">
+                      <div className="min-w-0 flex-1">
+                        <h4 className="font-bold text-slate-800 text-xs sm:text-sm truncate leading-tight">{item.name}</h4>
+                        <p className="text-[11px] text-orange-500 font-bold mt-0.5">
                           {formatCurrency(item.price)}
-                          <span className="text-slate-400 font-normal ml-1.5">x{item.quantity}</span>
+                          <span className="text-slate-400 font-normal ml-1.5 text-[10px]">x{item.quantity}</span>
                         </p>
                         {item.note && (
-                          <p className="text-[11px] text-slate-500 font-medium mt-1 leading-relaxed">
-                            <span className="font-semibold mr-1">Ghi chú:</span>
-                            <span className="text-slate-600 italic">"{item.note}"</span>
+                          <p className="text-[10px] text-slate-400 truncate mt-0.5">
+                            <span className="font-medium mr-0.5 text-slate-400">Ghi chú:</span>
+                            <span className="italic">"{item.note}"</span>
                           </p>
                         )}
                       </div>
                     </div>
-                    <div className="text-sm font-bold text-slate-800 shrink-0 pt-0.5">
+                    <div className="text-xs sm:text-sm font-bold text-slate-800 shrink-0 pl-2">
                       {formatCurrency(item.price * item.quantity)}
                     </div>
                   </div>
@@ -471,23 +473,23 @@ export default function OrderHistory() {
             </div>
 
             {/* Chi tiết dòng tiền tính toán */}
-            <div className="border-t border-slate-100 pt-2.5 space-y-1.5 text-xs">
+            <div className="border-t border-slate-100 pt-2 text-xs">
               <div className="flex justify-between items-center text-slate-500">
                 <span>Phương thức thanh toán:</span>
-                <span className="font-semibold">
+                <span className="font-semibold text-slate-600">
                   {selectedOrder.paymentMethod === 'COD' && 'Tiền mặt'}
                   {selectedOrder.paymentMethod === 'VNPAY' && 'Chuyển khoản'}
                 </span>
               </div>
               <div className="flex justify-between items-center text-slate-500">
                 <span>Tạm tính:</span>
-                <span className="font-semibold">{formatCurrency(selectedOrder.subtotal)}</span>
+                <span className="font-semibold text-slate-600">{formatCurrency(selectedOrder.subtotal)}</span>
               </div>
               <div className="flex justify-between items-center text-slate-500">
                 <span>Phí vận chuyển:</span>
-                <span className="font-semibold">{formatCurrency(selectedOrder.shippingFee)}</span>
+                <span className="font-semibold text-slate-700">{formatCurrency(selectedOrder.shippingFee)}</span>
               </div>
-              <div className="flex justify-between items-center text-sm pt-1 border-t border-dashed border-slate-100 font-medium">
+              <div className="flex justify-between items-center text-sm pt-2 border-t border-dashed border-slate-200 font-medium">
                 <span className="text-slate-700 font-bold">Tổng thanh toán:</span>
                 <span className="text-base font-extrabold text-orange-500">
                   {formatCurrency(selectedOrder.total)}

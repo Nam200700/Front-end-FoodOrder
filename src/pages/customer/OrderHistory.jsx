@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCartStore } from '../../stores/cartStore';
-import { ShoppingBag, RefreshCw, Ban, AlertCircle, X, MessageSquare, Eye, Star } from 'lucide-react'; 
+import { ShoppingBag, RefreshCw, Ban, AlertCircle, MessageSquare, Star, FileText, MapPin, CreditCard, Eye } from 'lucide-react'; 
 import { formatCurrency } from '../../utils/format';
 import { SkeletonOrderCard } from '../../components/common/SkeletonCard';
 import EmptyState from '../../components/common/EmptyState';
@@ -40,6 +40,10 @@ export default function OrderHistory() {
   const [cancelReasonInput, setCancelReasonInput] = useState('');
   const [submittingCancel, setSubmittingCancel] = useState(false);
 
+  // Các States xử lý Modal Chi tiết đơn hàng
+  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+  const [selectedOrder, setSelectedOrder] = useState(null);
+
   const mapOrders = (data) => {
     const realData = data?.content || [];
     return realData.map((order) => {
@@ -62,12 +66,20 @@ export default function OrderHistory() {
           price: Number(i.priceAtOrder),
           quantity: i.quantity,
           image: i.foodImageUrl || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=150&q=80',
+          note: i.note
         })),
         total: Number(order.totalAmount),
+        subtotal: Number(order.subtotalAmount || order.totalAmount - (order.shippingFee || 0)),
+        shippingFee: Number(order.shippingFee || 0),
         status: order.orderStatus,
+        paymentMethod: order.paymentMethod || 'Tiền mặt',
+        deliveryAddress: order.deliveryAddress || 'Chưa cập nhật địa chỉ',
         createdAt: formattedDate,
         reviewed: order.reviewed || false, 
-        rating: order.restaurantRating || 5 
+        rating: order.restaurantRating || 5,
+        note: order.note,
+        name: order.customerName,
+        phone: order.customerPhone
       };
     });
   };
@@ -100,12 +112,25 @@ export default function OrderHistory() {
     setIsCancelModalOpen(true);
   };
 
-  // Đóng modal và reset trạng thái dữ liệu
+  // Đóng modal hủy đơn
   const handleCloseCancelModal = () => {
     if (submittingCancel) return;
     setIsCancelModalOpen(false);
     setSelectedOrderId(null);
     setCancelReasonInput('');
+  };
+
+  // hiển thị modal chi tiết đơn hàng
+  const handleOpenDetailModal = (e, order) => {
+    e.stopPropagation();
+    setSelectedOrder(order);
+    setIsDetailModalOpen(true);
+  };
+
+  // đóng modal chi tiết đơn hàng
+  const handleCloseDetailModal = () => {
+    setIsDetailModalOpen(false);
+    setSelectedOrder(null);
   };
 
   // Hủy đơn hàng
@@ -171,9 +196,9 @@ export default function OrderHistory() {
       case 'CONFIRMED': 
         return 'bg-blue-50 text-blue-700'; 
       case 'PREPARING': 
-        return 'bg-purple-50 text-purple-700'; 
-      case 'READY_FOR_PICKUP': 
         return 'bg-indigo-50 text-indigo-700'; 
+      case 'READY_FOR_PICKUP': 
+        return 'bg-sky-50 text-sky-700'; 
       case 'DELIVERING':
         return 'bg-orange-50 text-orange-700'; 
       default: 
@@ -228,7 +253,7 @@ export default function OrderHistory() {
                   key={order.id}
                   variant="flat" 
                   onClick={() => navigate(`/orders/${order.id}`)}
-                  className="!border-slate-100 shadow-sm p-4 md:p-5 flex flex-col gap-4 group transition-colors hover:border-slate-200 !rounded-2xl"
+                  className="!border-slate-100 shadow-sm p-4 md:p-5 flex flex-col gap-4 group transition-colors hover:border-slate-200 !rounded-2xl cursor-pointer"
                 >
                   {/* Card Header */}
                   <div className="flex flex-row justify-between items-center gap-2 border-b border-slate-100 pb-3 flex-wrap sm:flex-nowrap">
@@ -268,8 +293,8 @@ export default function OrderHistory() {
                             <div className="min-w-0 flex-1">
                               <h4 className="font-bold text-slate-800 text-sm truncate">{item.name}</h4>
                               <p className="text-xs text-orange-500 font-bold mt-1">
-                                {formatCurrency(item.price)}{' '}
-                                <span className="text-slate-400 font-normal text-[11px] ml-1">x{item.quantity}</span>
+                                {formatCurrency(item.price)}
+                                <span className="text-slate-500 font-medium text-[12px] ml-1.5">x{item.quantity}</span>
                               </p>
                             </div>
                           </div>
@@ -279,23 +304,23 @@ export default function OrderHistory() {
                   </div>
 
                   {/* Card Footer */}
-                  <div className="flex flex-col sm:flex-row justify-between sm:items-center border-t border-slate-100 pt-4 mt-1 gap-3">
-                    <div className="text-sm text-slate-500 font-medium">
-                      Tổng tiền:{' '}
-                      <span className="text-base font-extrabold text-orange-500 ml-1">
+                  <div className="flex flex-col sm:flex-row justify-between sm:items-center border-t border-slate-100 pt-3 mt-0.5 gap-3">
+                    <div className="text-xs sm:text-sm text-slate-500 font-medium">
+                      Tổng thanh toán:{' '}
+                      <span className="text-sm sm:text-base font-extrabold text-orange-500 ml-1">
                         {formatCurrency(order.total)}
                       </span>
                     </div>
 
-                    <div className="grid grid-cols-3 sm:flex items-center gap-1.5 sm:gap-2 w-full sm:w-auto" onClick={(e) => e.stopPropagation()}>
+                    <div className="flex items-center justify-end gap-1.5 w-full sm:w-auto" onClick={(e) => e.stopPropagation()}>
                       {order.status === 'PENDING' ? (
                         <Button
                           type="button"
                           onClick={(e) => handleOpenCancelModal(e, order.id)}
                           icon={Ban}
-                          className="!px-3 !py-2.5 !bg-red-500 hover:!bg-red-600 text-white !rounded-lg !text-xs !font-bold !shadow-sm col-span-3 sm:w-auto"
+                          className="!px-2.5 !py-1.5 !bg-red-500 hover:!bg-red-600 text-white !rounded-lg text-[11px] !font-bold !shadow-sm w-full sm:w-auto"
                         >
-                          Hủy đơn hàng
+                          Hủy đơn
                         </Button>
                       ) : (
                         <>
@@ -305,11 +330,11 @@ export default function OrderHistory() {
                                 type="button"
                                 onClick={(e) => handleReorder(e, order)}
                                 icon={RefreshCw}
-                                className="!px-3 !py-2.5 !bg-orange-500 hover:!bg-orange-600 text-white !rounded-lg !text-xs !font-bold !shadow-sm whitespace-nowrap sm:w-auto"
+                                className="!px-2.5 !py-1.5 !bg-orange-500 hover:!bg-orange-600 text-white !rounded-lg text-[11px] !font-bold !shadow-sm whitespace-nowrap flex-1 sm:flex-none sm:w-auto"
                               >
                                 Mua lại
                               </Button>
-
+                               
                               {order.reviewed ? (
                                 <Button
                                   type="button"
@@ -318,7 +343,7 @@ export default function OrderHistory() {
                                     navigate(`/reviews/${order.id}`);
                                   }}
                                   icon={Star}
-                                  className="!px-3 !py-2.5 !bg-slate-100 !text-slate-500 !border-none !rounded-lg !text-xs !font-bold !shadow-none whitespace-nowrap sm:w-auto cursor-not-allowed flex items-center gap-1"
+                                  className="!px-2.5 !py-1.5 !bg-slate-100 !text-slate-500 !border-none !rounded-lg text-[11px] !font-bold !shadow-none whitespace-nowrap flex-1 sm:flex-none sm:w-auto cursor-not-allowed flex items-center justify-center gap-1"
                                 >
                                   Đã đánh giá ({order.rating}★)
                                 </Button>
@@ -330,31 +355,35 @@ export default function OrderHistory() {
                                     navigate(`/reviews/${order.id}`);
                                   }}
                                   icon={MessageSquare}
-                                  className="!px-3 !py-2.5 !bg-indigo-600 hover:!bg-indigo-700 !text-white !border-none !rounded-lg !text-xs !font-bold !shadow-none whitespace-nowrap sm:w-auto"
+                                  className="!px-2.5 !py-1.5 !bg-indigo-600 hover:!bg-indigo-700 !text-white !border-none !rounded-lg text-[11px] !font-bold !shadow-none whitespace-nowrap flex-1 sm:flex-none sm:w-auto"
                                 >
                                   Đánh giá
                                 </Button>
                               )}
                             </>
-                          )}
-
-                          {order.status !== 'COMPLETED' && (
-                            <Button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation(); 
-                                navigate(`/orders/${order.id}`);
-                              }}
-                              icon={Eye}
-                              className={`!px-3 !py-2.5 !bg-blue-500 hover:!bg-blue-600 !text-white !border-none !rounded-lg !text-xs !font-bold !shadow-none whitespace-nowrap sm:w-auto ${
-                                order.status !== 'COMPLETED' ? 'col-span-3' : ''
-                              }`}
-                            >
-                              Theo dõi
-                            </Button>
-                          )}
+                          )}                        
                         </>
                       )}
+
+                      {order.status === 'CANCELLED' && (
+                        <Button
+                          type="button"
+                          onClick={(e) => handleReorder(e, order)}
+                          icon={RefreshCw}
+                          className="!px-2.5 !py-1.5 !bg-orange-500 hover:!bg-orange-600 text-white !rounded-lg text-[11px] !font-bold !shadow-sm whitespace-nowrap w-full sm:w-auto"
+                        >
+                          Mua lại
+                        </Button>                          
+                      )}
+
+                      <Button
+                        type="button"
+                        onClick={(e) => handleOpenDetailModal(e, order)}
+                        icon={Eye}
+                        className="!px-2.5 !py-1.5 !bg-blue-500 hover:!bg-blue-600 !text-white !border-none !rounded-lg text-[11px] !font-bold !shadow-none whitespace-nowrap w-full sm:w-auto"
+                      >
+                        Chi tiết
+                      </Button>                            
                     </div>
                   </div>
                 </Card>
@@ -364,6 +393,111 @@ export default function OrderHistory() {
         </div>
       </div>
 
+      {/* MODAL CHI TIẾT ĐƠN HÀNG */}
+      <Modal
+        isOpen={isDetailModalOpen}
+        onClose={handleCloseDetailModal}
+        title={
+          <div className="flex flex-col text-left">
+            <h2 className="text-base md:text-lg font-bold text-slate-900 leading-tight">
+              Chi Tiết Đơn Hàng #{selectedOrder?.id}
+            </h2>
+            {selectedOrder && (
+              <p className="text-[10px] md:text-xs font-normal text-slate-400 pt-0.5">
+                Ngày đặt: <span className="font-medium text-slate-500">{selectedOrder.createdAt}</span>
+              </p>
+            )}
+          </div>
+        }
+        size="md"
+        className="[&_h2]:!text-slate-900 [&_h2]:!text-base [&_h2]:md:!text-lg [&_h2]:!font-bold [&>div]:border-slate-100 [&_div.flex.items-center.justify-between]:!pb-3"
+      >
+        {selectedOrder && (
+          <div className="space-y-4 text-slate-700 !-mt-4 !-mb-5">
+            <div className="text-xs flex flex-row justify-between items-center gap-3 pt-2">
+              <div className="space-y-1 flex-1 min-w-0">
+                <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Thông tin giao hàng</p>
+                
+                <div className="text-slate-700 text-[11px] sm:text-xs pt-0.5 space-y-0.5">
+                  <p className="font-bold text-slate-800">
+                    {selectedOrder.name} — {selectedOrder.phone}
+                  </p>
+                  
+                  {/* Địa chỉ */}
+                  <p className="text-slate-500 leading-tight">
+                    <span className="font-bold text-slate-700">Địa chỉ:</span> {selectedOrder.deliveryAddress}
+                  </p>
+                  
+                  {selectedOrder.note && (
+                    <p className="text-slate-500 leading-tight">
+                      <span className="font-bold text-slate-700">Ghi chú đơn hàng:</span>
+                      <span className="italic"> "{selectedOrder.note}"</span>
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Danh sách món ăn */}
+            <div className="space-y-1.5 !-mt-4">
+              <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Danh sách món ăn:</p>
+              <div className="space-y-1.5 max-h-[140px] overflow-y-auto pr-1 scrollbar-thin">
+                {selectedOrder.items.map((item, idx) => (
+                  <div key={idx} className="flex gap-2.5 items-center justify-between border border-slate-100/80 rounded-lg p-1.5 sm:p-2 bg-slate-50/30">
+                    <div className="flex gap-2.5 items-center min-w-0 flex-1">
+                      <div className="w-12 h-12 rounded md overflow-hidden shrink-0 border border-slate-200 bg-white">
+                        <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <h4 className="font-bold text-slate-800 text-xs sm:text-sm truncate leading-tight">{item.name}</h4>
+                        <p className="text-[11px] text-orange-500 font-bold mt-0.5">
+                          {formatCurrency(item.price)}
+                          <span className="text-slate-400 font-normal ml-1.5 text-[10px]">x{item.quantity}</span>
+                        </p>
+                        {item.note && (
+                          <p className="text-[10px] text-slate-400 truncate mt-0.5">
+                            <span className="font-medium mr-0.5 text-slate-400">Ghi chú:</span>
+                            <span className="italic">"{item.note}"</span>
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                    <div className="text-xs sm:text-sm font-bold text-slate-800 shrink-0 pl-2">
+                      {formatCurrency(item.price * item.quantity)}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Chi tiết dòng tiền tính toán */}
+            <div className="border-t border-slate-100 pt-2 text-xs">
+              <div className="flex justify-between items-center text-slate-500">
+                <span>Phương thức thanh toán:</span>
+                <span className="font-semibold text-slate-600">
+                  {selectedOrder.paymentMethod === 'COD' && 'Tiền mặt'}
+                  {selectedOrder.paymentMethod === 'VNPAY' && 'Chuyển khoản'}
+                </span>
+              </div>
+              <div className="flex justify-between items-center text-slate-500">
+                <span>Tạm tính:</span>
+                <span className="font-semibold text-slate-600">{formatCurrency(selectedOrder.subtotal)}</span>
+              </div>
+              <div className="flex justify-between items-center text-slate-500">
+                <span>Phí vận chuyển:</span>
+                <span className="font-semibold text-slate-700">{formatCurrency(selectedOrder.shippingFee)}</span>
+              </div>
+              <div className="flex justify-between items-center text-sm pt-2 border-t border-dashed border-slate-200 font-medium">
+                <span className="text-slate-700 font-bold">Tổng thanh toán:</span>
+                <span className="text-base font-extrabold text-orange-500">
+                  {formatCurrency(selectedOrder.total)}
+                </span>
+              </div>
+            </div>
+          </div>
+        )}
+      </Modal>
+
       {/* MODAL HỦY ĐƠN HÀNG */}
       <Modal
         isOpen={isCancelModalOpen}
@@ -372,7 +506,7 @@ export default function OrderHistory() {
         size="sm"
         className="[&_h2]:!text-slate-900 [&_h2]:!text-base [&_h2]:md:!text-lg [&_h2]:!font-bold [&_button]:disabled:opacity-50"
       >
-        <div className="space-y-4 text-slate-700">
+        <div className="space-y-4 text-slate-700 !-mt-3">
           <div className="p-3 bg-amber-50 text-amber-800 rounded-lg text-xs font-medium border border-amber-100 flex items-start gap-2">
             <AlertCircle className="shrink-0 mt-0.5 text-amber-600" size={15} />
             <span>Lưu ý: Hành động hủy đơn hàng không thể hoàn tác sau khi hệ thống đã xử lý.</span>
@@ -413,16 +547,7 @@ export default function OrderHistory() {
             />
           </div>
 
-          <div className="flex justify-end gap-3 pt-3 border-t border-slate-100">
-            <Button 
-              type="button" 
-              disabled={submittingCancel}
-              onClick={handleCloseCancelModal}
-              className="!px-4 !py-2 !text-xs !font-bold !border !border-slate-200 !bg-white !text-slate-500 !rounded-lg hover:!bg-slate-50"
-            >
-              Đóng
-            </Button>
-            
+          <div className="flex justify-end gap-3 pt-2 border-t border-slate-100">            
             <Button 
               type="button" 
               onClick={handleCancelOrder}

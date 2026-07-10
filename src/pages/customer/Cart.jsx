@@ -610,9 +610,9 @@ export default function Cart() {
         size="sm"
       >
         <div className="text-center space-y-4">
-          <div className="relative w-16 h-16 rounded-full bg-amber-50 text-amber-600 flex items-center justify-center mx-auto border border-amber-100">
+          {/* <div className="relative w-16 h-16 rounded-full bg-amber-50 text-amber-600 flex items-center justify-center mx-auto border border-amber-100">
             <Clock size={26} className="animate-pulse" />
-          </div>
+          </div> */}
           
           <p className="text-xs text-slate-500 leading-relaxed px-2">
             Hệ thống chuẩn bị gửi đơn đặt hàng tới <span className="font-extrabold text-slate-700">{selectedRestaurantIds.length} quán</span>. Bạn có chắc chắn muốn đặt không?

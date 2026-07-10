@@ -10,7 +10,6 @@ import {
 import { formatCurrency } from '../../utils/format';
 import Button from '../../components/common/Button';
 import apiClient from '../../services/api';
-import { calculateHaversineDistance } from '../../utils/haversine';
 import MapModal from '../../components/common/MapModal';
 import Spinner from '../../components/common/Spinner';
 import { toast } from 'react-toastify';
@@ -41,12 +40,43 @@ export default function Cart() {
 
   const [isUpdatingLocation, setIsUpdatingLocation] = useState(false);
   
-  // State quản lý phương thức thanh toán 
   const [paymentMethod, setPaymentMethod] = useState('');
+
+  // STATE lưu khoảng cách, thời gian và phí ship gọi từ API Backend
+  const [shippingInfos, setShippingInfos] = useState({});
+  const [isCalculatingShipping, setIsCalculatingShipping] = useState(false);
 
   useEffect(() => { 
     fetchCart(); 
   }, []);
+
+  // Gọi API lấy phí ship & khoảng cách mỗi khi thay đổi tọa độ giao hàng
+  useEffect(() => {
+    if (deliveryLat && deliveryLng && carts.length > 0) {
+      const fetchShippingData = async () => {
+        setIsCalculatingShipping(true);
+        const infos = {};
+        for (const cart of carts) {
+          try {
+            const res = await apiClient.get('/shipping/calculate', {
+              params: {
+                restaurant_id: cart.restaurantId,
+                delivery_lat: Number(deliveryLat),
+                delivery_lng: Number(deliveryLng)
+              }
+            });
+            infos[cart.restaurantId] = res.data.data;
+          } catch(err) {
+            console.error(`Lỗi khi tính phí ship:`, err.response?.data?.message);
+            toast.error(err.response?.data?.message);
+          }
+        }
+        setShippingInfos(infos);
+        setIsCalculatingShipping(false);
+      };
+      fetchShippingData();
+    }
+  }, [deliveryLat, deliveryLng, carts]);
 
   const handleConfirmLocation = async (lat, lng, addressName) => {
     setDeliveryLat(lat); 
@@ -144,7 +174,6 @@ export default function Cart() {
     );
   };
 
-  //Xử lý Chọn tất cả / Bỏ chọn tất cả
   const isAllSelected = carts.length > 0 && selectedRestaurantIds.length === carts.length;
 
   const handleSelectAll = () => {
@@ -169,10 +198,7 @@ export default function Cart() {
   const totalItems = selectedCarts.reduce((s, c) => s + c.items.reduce((a, i) => a + i.quantity, 0), 0);
   
   const totalSubtotal = selectedCarts.reduce((s, c) => {
-    let dist = null;
-    if (c.latitude && c.longitude && deliveryLat && deliveryLng)
-      dist = calculateHaversineDistance(c.latitude, c.longitude, deliveryLat, deliveryLng);
-    const fee = dist !== null ? Math.max(15000, 15000 + Math.ceil(Math.max(0, dist - 2)) * 5000) : 15000;
+    const fee = shippingInfos[c.restaurantId]?.shippingFee || 0;
     return s + c.subtotal + fee;
   }, 0);
 
@@ -222,13 +248,12 @@ export default function Cart() {
       </div>
 
       <div className="flex flex-col lg:flex-row gap-5 items-start">
-        {/* DANH SÁCH GIỎ HÀNG CỦA CÁC QUÁN */}
         <div className="flex-1 space-y-4 w-full">
           {carts.map(cart => {
-            let dist = null;
-            if (cart.latitude && cart.longitude && deliveryLat && deliveryLng)
-              dist = calculateHaversineDistance(cart.latitude, cart.longitude, deliveryLat, deliveryLng);
-            const shippingFee = dist !== null ? Math.max(15000, 15000 + Math.ceil(Math.max(0, dist - 2)) * 5000) : 15000;
+            const shipInfo = shippingInfos[cart.restaurantId] || { shippingFee: 0, distanceKm: 0, durationMinutes: 0 };
+            const shippingFee = shipInfo.shippingFee;
+            const distance = shipInfo.distanceKm;
+            const duration = shipInfo.durationMinutes;
             
             const cartItemCount = cart.items.reduce((a, i) => a + i.quantity, 0);
             const cartTotal = cart.subtotal + shippingFee;
@@ -411,16 +436,25 @@ export default function Cart() {
                         <span className="text-xs text-slate-500">Tạm tính:</span>
                         <span className="font-bold text-xs text-slate-700">{formatCurrency(cart.subtotal)}</span>
                       </div>
+                      {/* HIỂN THỊ KHOẢNG CÁCH & THỜI GIAN SHIP */}
+                      <div className="flex justify-between items-center">
+                        <span className="text-xs text-slate-500 flex items-center gap-1">
+                          <Map size={12} className="text-slate-400"/> Vị trí & Thời gian dự kiến:
+                        </span>
+                        <span className="font-bold text-xs text-slate-700">
+                          {isCalculatingShipping ? 'Đang tính...' : `${distance.toFixed(1)} km (~${Math.round(duration)} phút)`}
+                        </span>
+                      </div>
                       <div className="flex justify-between items-center">
                         <span className="text-xs text-slate-500">Phí giao hàng:</span>
                         <span className="font-bold text-xs text-slate-700">
-                          {isUpdatingLocation ? 'Đang tính...' : formatCurrency(shippingFee)}
+                          {isCalculatingShipping || isUpdatingLocation ? 'Đang tính...' : formatCurrency(shippingFee)}
                         </span>
                       </div>
                       <div className="flex justify-between items-center pt-1 border-t border-slate-200/60 mt-1">
                         <span className="text-xs font-bold text-slate-700">Tổng cộng:</span>
                         <span className="font-extrabold text-sm text-amber-600 md:text-[#ff6b35]">
-                          {isUpdatingLocation ? 'Đang tính...' : formatCurrency(cartTotal)}
+                          {isCalculatingShipping || isUpdatingLocation ? 'Đang tính...' : formatCurrency(cartTotal)}
                         </span>
                       </div>
                     </div>
@@ -550,13 +584,13 @@ export default function Cart() {
             <div className="flex items-center justify-between text-sm text-slate-600 pt-1 border-t border-slate-100">
               <span className="font-bold text-slate-700">Tổng thanh toán:</span>
               <span className="font-black text-[#ff6b35] text-lg">
-                {isUpdatingLocation ? 'Đang tính...' : formatCurrency(totalSubtotal)}
+                {isCalculatingShipping || isUpdatingLocation ? 'Đang tính...' : formatCurrency(totalSubtotal)}
               </span>
             </div>
 
             <Button
               onClick={handleBulkPlaceOrder}
-              disabled={selectedRestaurantIds.length === 0 || submittingCartId === 'BULK_ORDER' || isUpdatingLocation}
+              disabled={selectedRestaurantIds.length === 0 || submittingCartId === 'BULK_ORDER' || isUpdatingLocation || isCalculatingShipping}
               loading={submittingCartId === 'BULK_ORDER'}
               icon={ShoppingBag}
               className="w-full !mt-0 !bg-orange-600 hover:!bg-orange-700 text-white font-bold py-3 rounded-xl flex items-center justify-center gap-2"

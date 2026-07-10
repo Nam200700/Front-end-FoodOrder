@@ -29,11 +29,13 @@ export default function Cart() {
   const [deliveryLat, setDeliveryLat] = useState(user?.lat || null);
   const [deliveryLng, setDeliveryLng] = useState(user?.lng || null);
 
-  const [confirmClearCartState, setConfirmClearCartState] = useState({ open: false, restaurantId: null, restaurantName: '' });
+  //state xóa giỏ hàng
+  const [confirmDeleteCart, setConfirmDeleteCart] = useState({ open: false, restaurantId: null, restaurantName: '' });
   
   const [orderNotes, setOrderNotes] = useState('');
   const [submittingCartId, setSubmittingCartId] = useState(null);
 
+  //lưu các quán đã chọn
   const [selectedRestaurantIds, setSelectedRestaurantIds] = useState([]);
   const [showConfirmOrderModal, setShowConfirmOrderModal] = useState(false);
   const [bulkOrderPayload, setBulkOrderPayload] = useState(null);
@@ -42,7 +44,7 @@ export default function Cart() {
   
   const [paymentMethod, setPaymentMethod] = useState('');
 
-  // STATE lưu khoảng cách, thời gian và phí ship gọi từ API Backend
+  // STATE lưu khoảng cách, thời gian và phí ship 
   const [shippingInfos, setShippingInfos] = useState({});
   const [isCalculatingShipping, setIsCalculatingShipping] = useState(false);
 
@@ -50,29 +52,29 @@ export default function Cart() {
     fetchCart(); 
   }, []);
 
-  // Gọi API lấy phí ship & khoảng cách mỗi khi thay đổi tọa độ giao hàng
   useEffect(() => {
     if (deliveryLat && deliveryLng && carts.length > 0) {
       const fetchShippingData = async () => {
         setIsCalculatingShipping(true);
-        const infos = {};
-        for (const cart of carts) {
-          try {
-            const res = await apiClient.get('/shipping/calculate', {
-              params: {
-                restaurant_id: cart.restaurantId,
-                delivery_lat: Number(deliveryLat),
-                delivery_lng: Number(deliveryLng)
-              }
-            });
-            infos[cart.restaurantId] = res.data.data;
-          } catch(err) {
-            console.error(`Lỗi khi tính phí ship:`, err.response?.data?.message);
-            toast.error(err.response?.data?.message);
-          }
+        try {
+          const restaurantIds = carts.map(cart => cart.restaurantId);
+          const res = await apiClient.get("/shipping/calculate", {
+            params: {
+              restaurantIds,
+              deliveryLat: Number(deliveryLat),
+              deliveryLng: Number(deliveryLng)
+            }
+          });
+          const infos = {};
+          res.data.data.forEach(item => {
+            infos[item.restaurantId] = item;
+          });
+          setShippingInfos(infos);  
+        } catch(err) {
+          console.error(`Lỗi khi tính phí ship:`, err.response?.data?.message);
+        } finally {
+          setIsCalculatingShipping(false);
         }
-        setShippingInfos(infos);
-        setIsCalculatingShipping(false);
       };
       fetchShippingData();
     }
@@ -185,12 +187,12 @@ export default function Cart() {
   };
 
   const handleOpenDeleteCartMoDal = (restaurantId, restaurantName) =>
-    setConfirmClearCartState({ open: true, restaurantId, restaurantName });
+    setConfirmDeleteCart({ open: true, restaurantId, restaurantName });
 
   const handleDeleteCart = () => {
-    clearCartOfRestaurant(confirmClearCartState.restaurantId);
-    setSelectedRestaurantIds(prev => prev.filter(id => id !== confirmClearCartState.restaurantId));
-    setConfirmClearCartState({ open: false, restaurantId: null, restaurantName: '' });
+    clearCartOfRestaurant(confirmDeleteCart.restaurantId);
+    setSelectedRestaurantIds(prev => prev.filter(id => id !== confirmDeleteCart.restaurantId));
+    setConfirmDeleteCart({ open: false, restaurantId: null, restaurantName: '' });
     toast.success('Đã xóa giỏ hàng thành công!');
   };
 
@@ -436,10 +438,9 @@ export default function Cart() {
                         <span className="text-xs text-slate-500">Tạm tính:</span>
                         <span className="font-bold text-xs text-slate-700">{formatCurrency(cart.subtotal)}</span>
                       </div>
-                      {/* HIỂN THỊ KHOẢNG CÁCH & THỜI GIAN SHIP */}
                       <div className="flex justify-between items-center">
                         <span className="text-xs text-slate-500 flex items-center gap-1">
-                          <Map size={12} className="text-slate-400"/> Vị trí & Thời gian dự kiến:
+                          Khoảng cách & Thời gian dự kiến:
                         </span>
                         <span className="font-bold text-xs text-slate-700">
                           {isCalculatingShipping ? 'Đang tính...' : `${distance.toFixed(1)} km (~${Math.round(duration)} phút)`}
@@ -639,21 +640,21 @@ export default function Cart() {
 
       {/* Modal Clear Cart */}
       <Modal 
-        isOpen={confirmClearCartState.open} 
-        onClose={() => setConfirmClearCartState({ open: false, restaurantId: null, restaurantName: '' })}
+        isOpen={confirmDeleteCart.open} 
+        onClose={() => setConfirmDeleteCart({ open: false, restaurantId: null, restaurantName: '' })}
         title="Xác Nhận Xóa Giỏ Hàng"
         size="sm"
       >
         <div className="text-center space-y-4">          
           <p className="text-xs text-slate-500 leading-relaxed px-2">
-            Bạn chắc chắn muốn xóa toàn bộ sản phẩm thuộc giỏ hàng của <span className="font-extrabold text-slate-700">Quán {confirmClearCartState.restaurantName}</span>? Hành động này không thể hoàn tác.
+            Bạn chắc chắn muốn xóa toàn bộ sản phẩm thuộc giỏ hàng của <span className="font-extrabold text-slate-700">Quán {confirmDeleteCart.restaurantName}</span>? Hành động này không thể hoàn tác.
           </p>
 
           <div className="flex gap-3 pt-2 justify-center">
             <Button
               type="button"
               variant="outline"
-              onClick={() => setConfirmClearCartState({ open: false, restaurantId: null, restaurantName: '' })}
+              onClick={() => setConfirmDeleteCart({ open: false, restaurantId: null, restaurantName: '' })}
               className="w-full !rounded-xl !text-xs !font-bold !py-2.5 cursor-pointer"
             >
               Hủy bỏ

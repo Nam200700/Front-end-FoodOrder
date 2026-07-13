@@ -49,9 +49,15 @@ export default function OrderTracking() {
   // TOẠ ĐỘ QUÁN ĂN NẠP TỪ BACKEND
   const [restaurantCoords, setRestaurantCoords] = useState({ lat: null, lng: null });
 
+  // TỌA ĐỘ ĐƯỜNG ĐI (POLYLINE)
+  const [routePoints, setRoutePoints] = useState([]);
+  const [distanceKm, setDistanceKm] = useState(0);
+  const [durationMinutes, setDurationMinutes] = useState(0);
+
   const mapContainerRef = useRef(null);
   const mapRef = useRef(null);
   const markersRef = useRef({ restaurant: null, customer: null });
+  const polylineRef = useRef(null); // Ref để chứa đường đi
 
   // 1. Tải thông tin đơn hàng chi tiết từ Backend và đồng bộ thời gian thực
   useEffect(() => {
@@ -94,8 +100,6 @@ export default function OrderTracking() {
       console.log('[WebSocket Order Update]: Received updated order', updatedOrder);
       const parsed = parseOrderEvent(updatedOrder);
       if (parsed && parsed.status) {
-        // Tự động tải lại thông tin đơn hàng mới nhất từ API (gồm cả thông tin shipper mới được gán)
-        // mà không hiện spinner để tránh giật lag giao diện của người dùng
         fetchOrderDetails(false);
       }
     });
@@ -118,7 +122,8 @@ export default function OrderTracking() {
         if (realRes && realRes.latitude && realRes.longitude) {
           setRestaurantCoords({
             lat: Number(realRes.latitude),
-            lng: Number(realRes.longitude)
+            lng: Number(realRes.longitude),
+            address: realRes.address
           });
         }
       } catch (err) {
@@ -128,27 +133,57 @@ export default function OrderTracking() {
     fetchRestaurantCoords();
   }, [order?.restaurantId]);
 
-  // 3. Khởi tạo bản đồ Leaflet(chỉ hiển thị Quán ăn và Khách hàng)
+  // 3. TẢI ĐƯỜNG ĐI (ROUTE)
+  useEffect(() => {
+    if (restaurantCoords.lat && order?.deliveryLat) {
+      const fetchRoute = async () => {
+        try {
+          const response = await apiClient.get("/shipping/route", {
+            params: {
+              // Tọa độ quán
+              startLat: restaurantCoords.lat,
+              startLng: restaurantCoords.lng,
+
+              // Tọa độ khách
+              endLat: order.deliveryLat,
+              endLng: order.deliveryLng,
+            },
+          });
+
+          const route = response.data?.data;
+
+          if (route) {
+            setRoutePoints(route.coordinates || []);
+            setDistanceKm(route.distanceKm || 0);
+            setDurationMinutes(route.durationMinutes || 0);
+          }
+        } catch (error) {
+          console.error("Lỗi tải đường đi:", error);
+        }
+      };
+
+      fetchRoute();
+    }
+  }, [restaurantCoords.lat, restaurantCoords.lng, order?.deliveryLat, order?.deliveryLng,]);
+
+  // 4. Khởi tạo bản đồ Leaflet & vẽ Route
   useEffect(() => {
     if (!order || !restaurantCoords.lat || !order.deliveryLat || !mapContainerRef.current) return;
-
     const rLat = restaurantCoords.lat;
     const rLng = restaurantCoords.lng;
     const cLat = order.deliveryLat;
     const cLng = order.deliveryLng;
-
     // Tạo bản đồ
     if (!mapRef.current) {
       const map = L.map(mapContainerRef.current, {
         zoomControl: true,
-        scrollWheelZoom: false // Tránh vô tình zoom khi cuộn trang
+        scrollWheelZoom: false 
       }).setView([(rLat + cLat) / 2, (rLng + cLng) / 2], 14);
       mapRef.current = map;
-
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '&copy; OpenStreetMap contributors'
       }).addTo(map);
-
+      // Icon Quán Ăn
       const resIcon = L.divIcon({
         html: `<div class="flex items-center justify-center w-8 h-8 rounded-full bg-orange-500 text-white shadow-md border-2 border-white"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"/><path d="M7 2v20"/><path d="M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"/></svg></div>`,
         className: 'custom-div-icon',
@@ -156,8 +191,8 @@ export default function OrderTracking() {
         iconAnchor: [16, 16]
       });
       markersRef.current.restaurant = L.marker([rLat, rLng], { icon: resIcon }).addTo(map)
-        .bindPopup(`<b>${order.restaurantName}</b><br/>Nơi chế biến món ăn.`);
-
+        .bindPopup(`<b>Quán ${order.restaurantName}</b><br/>${restaurantCoords.address}`);
+      // Icon Khách hàng
       const custIcon = L.divIcon({
         html: `<div class="flex items-center justify-center w-8 h-8 rounded-full bg-red-500 text-white shadow-md border-2 border-white"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"/><path d="M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg></div>`,
         className: 'custom-div-icon',
@@ -166,18 +201,34 @@ export default function OrderTracking() {
       });
       markersRef.current.customer = L.marker([cLat, cLng], { icon: custIcon }).addTo(map)
         .bindPopup(`<b>Địa chỉ của bạn</b><br/>${order.address}`);
-
       map.fitBounds([[rLat, rLng], [cLat, cLng]], { padding: [40, 40] });
     }
-  }, [restaurantCoords, order?.deliveryLat]);
+    // NẾU CÓ DỮ LIỆU ĐƯỜNG ĐI THÌ VẼ ĐƯỜNG POLYLINE LÊN BẢN ĐỒ
+    if (mapRef.current && routePoints.length > 0) {
+      if (polylineRef.current) {
+        mapRef.current.removeLayer(polylineRef.current);
+      }
+      // Vẽ polyline màu cam gradient
+      polylineRef.current = L.polyline(routePoints, {
+        color: '#ff6b35',
+        weight: 5,
+        opacity: 0.8,
+        lineCap: 'round',
+        lineJoin: 'round'
+      }).addTo(mapRef.current);
+      // Tự động zoom bản đồ sao cho bao trọn cả đường đi
+      mapRef.current.fitBounds(polylineRef.current.getBounds(), { padding: [30, 30] });
+    }
+  }, [restaurantCoords, order?.deliveryLat, routePoints]);
 
-  // 4. Cleanup bản đồ khi huỷ component
+  // 5. Cleanup bản đồ khi huỷ component
   useEffect(() => {
     return () => {
       if (mapRef.current) {
         mapRef.current.remove();
         mapRef.current = null;
         markersRef.current = { restaurant: null, customer: null };
+        polylineRef.current = null;
       }
     };
   }, []);
@@ -550,6 +601,10 @@ export default function OrderTracking() {
 
             {/* Payment Summary */}
             <div className="pt-4 border-t border-slate-100 space-y-2.5 text-sm font-medium">
+              {/* <div className="flex justify-between text-md-on-surface-variant">
+                <span>khoảng cách và thời gian dự kiến:</span>
+                <span className="font-bold">{distanceKm.toFixed(1)} km - {Math.ceil(durationMinutes)} phút</span>
+              </div> */}
               <div className="flex justify-between text-md-on-surface-variant">
                 <span>Tạm tính:</span>
                 <span className="font-bold">{formatCurrency(displayOrder.subtotalAmount)}</span>

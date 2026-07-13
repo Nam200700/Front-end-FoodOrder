@@ -4,6 +4,9 @@ import apiClient from '../services/api';
 export const useCartStore = create((set, get) => ({
   carts: [], // Danh sách giỏ hàng: [{ cartId, restaurantId, restaurantName, latitude, longitude, items: [], subtotal }]
   loading: false,
+  shippingInfos: {},
+  shippingCacheKey: '',
+  isCalculatingShipping: false,
 
   fetchCart: async () => {
     try {
@@ -35,6 +38,58 @@ export const useCartStore = create((set, get) => ({
       console.error('Lỗi khi tải giỏ hàng:', err);
     } finally {
       set({ loading: false });
+    }
+  },
+
+  // phí ship
+  fetchShippingFees: async (deliveryLat, deliveryLng) => {
+    const { carts, shippingCacheKey, isCalculatingShipping } = get();
+
+    if (carts.length === 0 || !deliveryLat || !deliveryLng) return;
+
+    // key xác định dữ liệu hiện tại
+    const cacheKey =
+      `${deliveryLat}-${deliveryLng}-` +
+      carts
+        .map(c => c.restaurantId)
+        .sort()
+        .join(',');
+
+    if (isCalculatingShipping) {
+        return;
+    }
+    // Nếu dữ liệu không đổi thì dùng cache
+    if (shippingCacheKey === cacheKey) {
+      return;
+    }
+
+    set({ isCalculatingShipping: true });
+    try {
+      const restaurantIds = carts.map(c => c.restaurantId);
+      const res = await apiClient.get("/shipping/calculate", {
+        params: {
+          restaurantIds,
+          deliveryLat,
+          deliveryLng
+        }
+      });
+      const newShippingInfos = {};
+      res.data.data.forEach(item => {
+        newShippingInfos[item.restaurantId] = {
+          shippingFee: item.shippingFee,
+          distanceKm: item.distanceKm,
+          durationMinutes: item.durationMinutes
+        };
+      });
+      set({
+        shippingInfos: newShippingInfos,
+        shippingCacheKey: cacheKey
+      });
+
+    } catch (err) {
+      console.error("Lỗi tính phí ship:", err);
+    } finally {
+      set({ isCalculatingShipping: false });
     }
   },
 

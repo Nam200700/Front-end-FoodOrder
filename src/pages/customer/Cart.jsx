@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCartStore } from '../../stores/cartStore';
 import { useAuthStore } from '../../stores/authStore';
@@ -18,7 +18,7 @@ import Card from '../../components/common/Card';
 
 export default function Cart() {
   const navigate = useNavigate();
-  const { carts, loading, fetchCart, updateQty, removeItem, updateNote, clearCartOfRestaurant } = useCartStore();
+  const { carts, loading, fetchCart, updateQty, removeItem, updateNote, clearCartOfRestaurant, shippingInfos, isCalculatingShipping, fetchShippingFees } = useCartStore();
   const { user, updateProfile } = useAuthStore();
 
   const [address, setAddress] = useState(user?.address || '');
@@ -44,41 +44,19 @@ export default function Cart() {
   
   const [paymentMethod, setPaymentMethod] = useState('');
 
-  // STATE lưu khoảng cách, thời gian và phí ship 
-  const [shippingInfos, setShippingInfos] = useState({});
-  const [isCalculatingShipping, setIsCalculatingShipping] = useState(false);
+  const restaurantIds = React.useMemo(() => {
+    return carts.map(cart => cart.restaurantId);
+  }, [carts]);
 
   useEffect(() => { 
     fetchCart(); 
   }, []);
 
   useEffect(() => {
-    if (deliveryLat && deliveryLng && carts.length > 0) {
-      const fetchShippingData = async () => {
-        setIsCalculatingShipping(true);
-        try {
-          const restaurantIds = carts.map(cart => cart.restaurantId);
-          const res = await apiClient.get("/shipping/calculate", {
-            params: {
-              restaurantIds,
-              deliveryLat: Number(deliveryLat),
-              deliveryLng: Number(deliveryLng)
-            }
-          });
-          const infos = {};
-          res.data.data.forEach(item => {
-            infos[item.restaurantId] = item;
-          });
-          setShippingInfos(infos);  
-        } catch(err) {
-          console.error(`Lỗi khi tính phí ship:`, err.response?.data?.message);
-        } finally {
-          setIsCalculatingShipping(false);
-        }
-      };
-      fetchShippingData();
+    if (deliveryLat && deliveryLng) {
+      fetchShippingFees(deliveryLat, deliveryLng);
     }
-  }, [deliveryLat, deliveryLng, carts]);
+  }, [deliveryLat, deliveryLng, JSON.stringify(restaurantIds)]);
 
   const handleConfirmLocation = async (lat, lng, addressName) => {
     setDeliveryLat(lat); 

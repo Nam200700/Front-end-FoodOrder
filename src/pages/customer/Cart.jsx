@@ -549,7 +549,7 @@ export default function Cart() {
 
             <div className="pt-2 border-t border-slate-100">
               <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5 mb-1.5">
-                <FileText size={13} className="text-slate-400" /> Ghi chú đơn hàng
+                Ghi chú đơn hàng
               </label>
               <textarea
                 rows={2}

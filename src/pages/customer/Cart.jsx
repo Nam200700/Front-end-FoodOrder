@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCartStore } from '../../stores/cartStore';
 import { useAuthStore } from '../../stores/authStore';
@@ -10,7 +10,6 @@ import {
 import { formatCurrency } from '../../utils/format';
 import Button from '../../components/common/Button';
 import apiClient from '../../services/api';
-import { calculateHaversineDistance } from '../../utils/haversine';
 import MapModal from '../../components/common/MapModal';
 import Spinner from '../../components/common/Spinner';
 import { toast } from 'react-toastify';
@@ -19,7 +18,7 @@ import Card from '../../components/common/Card';
 
 export default function Cart() {
   const navigate = useNavigate();
-  const { carts, loading, fetchCart, updateQty, removeItem, updateNote, clearCartOfRestaurant } = useCartStore();
+  const { carts, loading, fetchCart, updateQty, removeItem, updateNote, clearCartOfRestaurant, shippingInfos, isCalculatingShipping, fetchShippingFees } = useCartStore();
   const { user, updateProfile } = useAuthStore();
 
   const [address, setAddress] = useState(user?.address || '');
@@ -30,23 +29,34 @@ export default function Cart() {
   const [deliveryLat, setDeliveryLat] = useState(user?.lat || null);
   const [deliveryLng, setDeliveryLng] = useState(user?.lng || null);
 
-  const [confirmClearCartState, setConfirmClearCartState] = useState({ open: false, restaurantId: null, restaurantName: '' });
+  //state xóa giỏ hàng
+  const [confirmDeleteCart, setConfirmDeleteCart] = useState({ open: false, restaurantId: null, restaurantName: '' });
   
   const [orderNotes, setOrderNotes] = useState('');
   const [submittingCartId, setSubmittingCartId] = useState(null);
 
+  //lưu các quán đã chọn
   const [selectedRestaurantIds, setSelectedRestaurantIds] = useState([]);
   const [showConfirmOrderModal, setShowConfirmOrderModal] = useState(false);
   const [bulkOrderPayload, setBulkOrderPayload] = useState(null);
 
   const [isUpdatingLocation, setIsUpdatingLocation] = useState(false);
   
-  // State quản lý phương thức thanh toán 
   const [paymentMethod, setPaymentMethod] = useState('');
+
+  const restaurantIds = React.useMemo(() => {
+    return carts.map(cart => cart.restaurantId);
+  }, [carts]);
 
   useEffect(() => { 
     fetchCart(); 
   }, []);
+
+  useEffect(() => {
+    if (deliveryLat && deliveryLng) {
+      fetchShippingFees(deliveryLat, deliveryLng);
+    }
+  }, [deliveryLat, deliveryLng, JSON.stringify(restaurantIds)]);
 
   const handleConfirmLocation = async (lat, lng, addressName) => {
     setDeliveryLat(lat); 
@@ -126,7 +136,7 @@ export default function Cart() {
       await apiClient.post("/orders", bulkOrderPayload);
 
       toast.success('Đặt hàng thành công!');
-      setOrderNotes({});
+      setOrderNotes('');
       setSelectedRestaurantIds([]);
       await fetchCart();
       navigate('/orders');
@@ -144,13 +154,23 @@ export default function Cart() {
     );
   };
 
+  const isAllSelected = carts.length > 0 && selectedRestaurantIds.length === carts.length;
+
+  const handleSelectAll = () => {
+    if (isAllSelected) {
+      setSelectedRestaurantIds([]);
+    } else {
+      setSelectedRestaurantIds(carts.map(cart => cart.restaurantId));
+    }
+  };
+
   const handleOpenDeleteCartMoDal = (restaurantId, restaurantName) =>
-    setConfirmClearCartState({ open: true, restaurantId, restaurantName });
+    setConfirmDeleteCart({ open: true, restaurantId, restaurantName });
 
   const handleDeleteCart = () => {
-    clearCartOfRestaurant(confirmClearCartState.restaurantId);
-    setSelectedRestaurantIds(prev => prev.filter(id => id !== confirmClearCartState.restaurantId));
-    setConfirmClearCartState({ open: false, restaurantId: null, restaurantName: '' });
+    clearCartOfRestaurant(confirmDeleteCart.restaurantId);
+    setSelectedRestaurantIds(prev => prev.filter(id => id !== confirmDeleteCart.restaurantId));
+    setConfirmDeleteCart({ open: false, restaurantId: null, restaurantName: '' });
     toast.success('Đã xóa giỏ hàng thành công!');
   };
 
@@ -158,10 +178,7 @@ export default function Cart() {
   const totalItems = selectedCarts.reduce((s, c) => s + c.items.reduce((a, i) => a + i.quantity, 0), 0);
   
   const totalSubtotal = selectedCarts.reduce((s, c) => {
-    let dist = null;
-    if (c.latitude && c.longitude && deliveryLat && deliveryLng)
-      dist = calculateHaversineDistance(c.latitude, c.longitude, deliveryLat, deliveryLng);
-    const fee = dist !== null ? Math.max(15000, 15000 + Math.ceil(Math.max(0, dist - 2)) * 5000) : 15000;
+    const fee = shippingInfos[c.restaurantId]?.shippingFee || 0;
     return s + c.subtotal + fee;
   }, 0);
 
@@ -189,21 +206,34 @@ export default function Cart() {
 
   return (
     <div className="flex-1 p-4 md:p-5 w-full font-google-sans pb-24 bg-slate-50 min-h-screen">
-      <div className="flex items-center gap-3 mb-5">
-        <button onClick={() => navigate(-1)} className="p-1.5 rounded-full hover:bg-slate-200 text-slate-600 transition-colors cursor-pointer">
-          <ArrowLeft size={18} />
+      <div className="flex items-center justify-between mb-5 gap-3">
+        <div className="flex items-center gap-3">
+          <button onClick={() => navigate(-1)} className="p-1.5 rounded-full hover:bg-slate-200 text-slate-600 transition-colors cursor-pointer">
+            <ArrowLeft size={18} />
+          </button>
+          <h1 className="text-xl md:text-2xl font-bold text-gray-900">Giỏ Hàng Của Tôi</h1>
+        </div>
+
+        <button
+          onClick={handleSelectAll}
+          className="flex items-center gap-2 px-3 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold transition-all duration-200 shadow-sm cursor-pointer active:scale-95 select-none"
+        >
+          {isAllSelected ? (
+            <CheckSquare size={16} className="text-[#ff6b35]" fill="#ff6b35" stroke="white" />
+          ) : (
+            <Square size={16} className="text-slate-400" />
+          )}
+          <span>{isAllSelected ? 'Bỏ chọn tất cả' : 'Chọn tất cả'}</span>
         </button>
-        <h1 className="text-xl md:text-2xl font-bold text-gray-900">Giỏ Hàng Của Tôi</h1>
       </div>
 
       <div className="flex flex-col lg:flex-row gap-5 items-start">
-        {/* DANH SÁCH GIỎ HÀNG CỦA CÁC QUÁN */}
         <div className="flex-1 space-y-4 w-full">
           {carts.map(cart => {
-            let dist = null;
-            if (cart.latitude && cart.longitude && deliveryLat && deliveryLng)
-              dist = calculateHaversineDistance(cart.latitude, cart.longitude, deliveryLat, deliveryLng);
-            const shippingFee = dist !== null ? Math.max(15000, 15000 + Math.ceil(Math.max(0, dist - 2)) * 5000) : 15000;
+            const shipInfo = shippingInfos[cart.restaurantId] || { shippingFee: 0, distanceKm: 0, durationMinutes: 0 };
+            const shippingFee = shipInfo.shippingFee;
+            const distance = shipInfo.distanceKm;
+            const duration = shipInfo.durationMinutes;
             
             const cartItemCount = cart.items.reduce((a, i) => a + i.quantity, 0);
             const cartTotal = cart.subtotal + shippingFee;
@@ -387,15 +417,23 @@ export default function Cart() {
                         <span className="font-bold text-xs text-slate-700">{formatCurrency(cart.subtotal)}</span>
                       </div>
                       <div className="flex justify-between items-center">
+                        <span className="text-xs text-slate-500 flex items-center gap-1">
+                          Khoảng cách & Thời gian dự kiến:
+                        </span>
+                        <span className="font-bold text-xs text-slate-700">
+                          {isCalculatingShipping ? 'Đang tính...' : `${distance.toFixed(1)} km (~${Math.round(duration)} phút)`}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center">
                         <span className="text-xs text-slate-500">Phí giao hàng:</span>
                         <span className="font-bold text-xs text-slate-700">
-                          {isUpdatingLocation ? 'Đang tính...' : formatCurrency(shippingFee)}
+                          {isCalculatingShipping || isUpdatingLocation ? 'Đang tính...' : formatCurrency(shippingFee)}
                         </span>
                       </div>
                       <div className="flex justify-between items-center pt-1 border-t border-slate-200/60 mt-1">
                         <span className="text-xs font-bold text-slate-700">Tổng cộng:</span>
                         <span className="font-extrabold text-sm text-amber-600 md:text-[#ff6b35]">
-                          {isUpdatingLocation ? 'Đang tính...' : formatCurrency(cartTotal)}
+                          {isCalculatingShipping || isUpdatingLocation ? 'Đang tính...' : formatCurrency(cartTotal)}
                         </span>
                       </div>
                     </div>
@@ -511,7 +549,7 @@ export default function Cart() {
 
             <div className="pt-2 border-t border-slate-100">
               <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5 mb-1.5">
-                <FileText size={13} className="text-slate-400" /> Ghi chú đơn hàng
+                Ghi chú đơn hàng
               </label>
               <textarea
                 rows={2}
@@ -525,13 +563,13 @@ export default function Cart() {
             <div className="flex items-center justify-between text-sm text-slate-600 pt-1 border-t border-slate-100">
               <span className="font-bold text-slate-700">Tổng thanh toán:</span>
               <span className="font-black text-[#ff6b35] text-lg">
-                {isUpdatingLocation ? 'Đang tính...' : formatCurrency(totalSubtotal)}
+                {isCalculatingShipping || isUpdatingLocation ? 'Đang tính...' : formatCurrency(totalSubtotal)}
               </span>
             </div>
 
             <Button
               onClick={handleBulkPlaceOrder}
-              disabled={selectedRestaurantIds.length === 0 || submittingCartId === 'BULK_ORDER' || isUpdatingLocation}
+              disabled={selectedRestaurantIds.length === 0 || submittingCartId === 'BULK_ORDER' || isUpdatingLocation || isCalculatingShipping}
               loading={submittingCartId === 'BULK_ORDER'}
               icon={ShoppingBag}
               className="w-full !mt-0 !bg-orange-600 hover:!bg-orange-700 text-white font-bold py-3 rounded-xl flex items-center justify-center gap-2"
@@ -550,9 +588,9 @@ export default function Cart() {
         size="sm"
       >
         <div className="text-center space-y-4">
-          <div className="relative w-16 h-16 rounded-full bg-amber-50 text-amber-600 flex items-center justify-center mx-auto border border-amber-100">
+          {/* <div className="relative w-16 h-16 rounded-full bg-amber-50 text-amber-600 flex items-center justify-center mx-auto border border-amber-100">
             <Clock size={26} className="animate-pulse" />
-          </div>
+          </div> */}
           
           <p className="text-xs text-slate-500 leading-relaxed px-2">
             Hệ thống chuẩn bị gửi đơn đặt hàng tới <span className="font-extrabold text-slate-700">{selectedRestaurantIds.length} quán</span>. Bạn có chắc chắn muốn đặt không?
@@ -580,21 +618,21 @@ export default function Cart() {
 
       {/* Modal Clear Cart */}
       <Modal 
-        isOpen={confirmClearCartState.open} 
-        onClose={() => setConfirmClearCartState({ open: false, restaurantId: null, restaurantName: '' })}
+        isOpen={confirmDeleteCart.open} 
+        onClose={() => setConfirmDeleteCart({ open: false, restaurantId: null, restaurantName: '' })}
         title="Xác Nhận Xóa Giỏ Hàng"
         size="sm"
       >
         <div className="text-center space-y-4">          
           <p className="text-xs text-slate-500 leading-relaxed px-2">
-            Bạn chắc chắn muốn xóa toàn bộ sản phẩm thuộc giỏ hàng của <span className="font-extrabold text-slate-700">Quán {confirmClearCartState.restaurantName}</span>? Hành động này không thể hoàn tác.
+            Bạn chắc chắn muốn xóa toàn bộ sản phẩm thuộc giỏ hàng của <span className="font-extrabold text-slate-700">Quán {confirmDeleteCart.restaurantName}</span>? Hành động này không thể hoàn tác.
           </p>
 
           <div className="flex gap-3 pt-2 justify-center">
             <Button
               type="button"
               variant="outline"
-              onClick={() => setConfirmClearCartState({ open: false, restaurantId: null, restaurantName: '' })}
+              onClick={() => setConfirmDeleteCart({ open: false, restaurantId: null, restaurantName: '' })}
               className="w-full !rounded-xl !text-xs !font-bold !py-2.5 cursor-pointer"
             >
               Hủy bỏ

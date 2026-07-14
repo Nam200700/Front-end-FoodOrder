@@ -27,6 +27,7 @@ import Favorites from '../pages/customer/Favorites';
 import Chat from '../pages/customer/Chat';
 import Notifications from '../pages/customer/Notifications';
 import Profile from '../pages/customer/Profile';
+import AIChatbot from '../pages/customer/AIChatbot';
 
 // Merchant Pages
 import MerchantDashboard from '../pages/merchant/Dashboard';
@@ -126,6 +127,7 @@ export default function AppRoutes() {
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
       <Route path="/register/otp" element={<Otp />} />
+      <Route path="/public-chatbot" element={<AIChatbot isPublic={true} />} />
       <Route path="/partner/approval" element={
         <ProtectedRoute allowedRoles={['MERCHANT', 'OWNER', 'SHIPPER']}>
           <PartnerApproval />

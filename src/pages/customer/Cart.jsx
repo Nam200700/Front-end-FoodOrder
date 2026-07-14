@@ -32,15 +32,11 @@ export default function Cart() {
   const [deliveryLat, setDeliveryLat] = useState(user?.lat || null);
   const [deliveryLng, setDeliveryLng] = useState(user?.lng || null);
 
-  //state xóa giỏ hàng
-  // const [confirmDeleteCart, setConfirmDeleteCart] = useState({ open: false, restaurantId: null, restaurantName: '' });
-  
   const [orderNotes, setOrderNotes] = useState('');
   const [submittingCartId, setSubmittingCartId] = useState(null);
 
   //lưu các quán đã chọn
   const [selectedRestaurantIds, setSelectedRestaurantIds] = useState([]);
-  // const [showConfirmOrderModal, setShowConfirmOrderModal] = useState(false);
   const [bulkOrderPayload, setBulkOrderPayload] = useState(null);
 
   const [isUpdatingLocation, setIsUpdatingLocation] = useState(false);
@@ -136,11 +132,6 @@ export default function Cart() {
       return;
     }
 
-    if (!paymentMethod.trim()) { 
-      toast.warning('Vui lòng chọn phương thức thanh toán!'); 
-      return; 
-    }
-
     const payload = {
       deliveryAddress: address,
       restaurantId: selectedRestaurantIds.map(id => parseInt(id)),
@@ -205,6 +196,7 @@ export default function Cart() {
     }
   };
 
+  //mở modal xác nhận xóa
   const handleOpenDeleteCartModal = (restaurantId, restaurantName) => {
     deleteCartModal.open({ restaurantId, restaurantName });
   };
@@ -213,7 +205,9 @@ export default function Cart() {
   const handleDeleteCart = () => {
     const { restaurantId } = deleteCartModal.data;
     clearCartOfRestaurant(restaurantId);
-    setSelectedRestaurantIds(prev => prev.filter(id => id !== restaurantId));
+    setSelectedRestaurantIds(prev => 
+      prev.filter(id => Number(id) !== Number(restaurantId))
+    );
     deleteCartModal.close();
     toast.success('Đã xóa giỏ hàng thành công!');
   };

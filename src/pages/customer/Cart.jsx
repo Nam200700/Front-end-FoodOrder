@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useCartStore } from '../../stores/cartStore';
 import { useAuthStore } from '../../stores/authStore';
 import { 
@@ -15,9 +15,12 @@ import Spinner from '../../components/common/Spinner';
 import { toast } from 'react-toastify';
 import Modal from '../../components/common/Modal';
 import Card from '../../components/common/Card'; 
+import { useModalState } from '../../hooks/useModalState';
 
 export default function Cart() {
   const navigate = useNavigate();
+  const location = useLocation();
+
   const { carts, loading, fetchCart, updateQty, removeItem, updateNote, clearCartOfRestaurant, shippingInfos, isCalculatingShipping, fetchShippingFees } = useCartStore();
   const { user, updateProfile } = useAuthStore();
 
@@ -30,19 +33,25 @@ export default function Cart() {
   const [deliveryLng, setDeliveryLng] = useState(user?.lng || null);
 
   //state xóa giỏ hàng
-  const [confirmDeleteCart, setConfirmDeleteCart] = useState({ open: false, restaurantId: null, restaurantName: '' });
+  // const [confirmDeleteCart, setConfirmDeleteCart] = useState({ open: false, restaurantId: null, restaurantName: '' });
   
   const [orderNotes, setOrderNotes] = useState('');
   const [submittingCartId, setSubmittingCartId] = useState(null);
 
   //lưu các quán đã chọn
   const [selectedRestaurantIds, setSelectedRestaurantIds] = useState([]);
-  const [showConfirmOrderModal, setShowConfirmOrderModal] = useState(false);
+  // const [showConfirmOrderModal, setShowConfirmOrderModal] = useState(false);
   const [bulkOrderPayload, setBulkOrderPayload] = useState(null);
 
   const [isUpdatingLocation, setIsUpdatingLocation] = useState(false);
   
-  const [paymentMethod, setPaymentMethod] = useState('');
+  const [paymentMethod, setPaymentMethod] = useState('COD');
+
+  const confirmOrderModal = useModalState(); // Dùng cho modal đặt hàng
+  const deleteCartModal = useModalState({ restaurantId: null, restaurantName: '' }); // Dùng cho xóa giỏ hàng
+
+  //id truyền từ RestaurantDetail.jsx
+  const targetRestaurantId = location.state?.targetRestaurantId;
 
   const restaurantIds = React.useMemo(() => {
     return carts.map(cart => cart.restaurantId);
@@ -58,6 +67,34 @@ export default function Cart() {
     }
   }, [deliveryLat, deliveryLng, JSON.stringify(restaurantIds)]);
 
+  //tự động chọn và cuộn màn hình đến quán ăn được điều hướng từ RestaurantDetail
+  useEffect(() => {
+    if (targetRestaurantId && carts.length > 0) {
+      const numericId = Number(targetRestaurantId);
+      const hasCart = carts.some(cart => Number(cart.restaurantId) === numericId);
+      
+      if (hasCart && !selectedRestaurantIds.includes(numericId)) {
+        setSelectedRestaurantIds(prev => {
+          const numericPrev = prev.map(id => Number(id));
+          if (!numericPrev.includes(numericId)) {
+            return [...prev, numericId];
+          }
+          return prev;
+        });
+        
+        // Cuộn màn hình tới đúng quán đó 
+        setTimeout(() => {
+          const element = document.getElementById(`restaurant-card-${numericId}`);
+          if (element) {
+            element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+        }, 300); 
+        navigate(location.pathname, { replace: true, state: {} });
+      }
+    }
+  }, [targetRestaurantId, carts, navigate, location.pathname]);
+
+  //Lưu cập nhật vị trí giao hàng
   const handleConfirmLocation = async (lat, lng, addressName) => {
     setDeliveryLat(lat); 
     setDeliveryLng(lng); 
@@ -93,7 +130,7 @@ export default function Cart() {
       return; 
     }
 
-    const currentSelectedCarts = carts.filter(c => selectedRestaurantIds.includes(c.restaurantId));
+    const currentSelectedCarts = carts.filter(c => selectedRestaurantIds.includes(Number(c.restaurantId)));
     if (currentSelectedCarts.length === 0) {
       toast.warning('Vui lòng chọn ít nhất một giỏ hàng để đặt!');
       return;
@@ -114,14 +151,15 @@ export default function Cart() {
     };
 
     setBulkOrderPayload(payload);
-    setShowConfirmOrderModal(true);
+    confirmOrderModal.open();
   };
 
+  //đặt hàng
   const executeBulkPlaceOrder = async () => {
     if (!bulkOrderPayload) return;
   
     setSubmittingCartId('BULK_ORDER'); 
-    setShowConfirmOrderModal(false);
+    confirmOrderModal.close();
 
     try {
       try {
@@ -148,32 +186,39 @@ export default function Cart() {
     }
   };
 
+  //Chuyển đổi trạng thái chọn/bỏ chọn một quán
   const handleToggleSelectRestaurant = (restaurantId) => {
-    setSelectedRestaurantIds(prev => 
-      prev.includes(restaurantId) ? prev.filter(id => id !== restaurantId) : [...prev, restaurantId]
+    const numericId = Number(restaurantId);
+    setSelectedRestaurantIds(prev =>
+      prev.includes(numericId) ? prev.filter(id => id !== numericId) : [...prev, numericId]
     );
   };
 
   const isAllSelected = carts.length > 0 && selectedRestaurantIds.length === carts.length;
 
+  //Chuyển đổi trạng thái chọn tất cả hoặc bỏ chọn tất cả các quán
   const handleSelectAll = () => {
     if (isAllSelected) {
       setSelectedRestaurantIds([]);
     } else {
-      setSelectedRestaurantIds(carts.map(cart => cart.restaurantId));
+      setSelectedRestaurantIds(carts.map(cart => Number(cart.restaurantId)));
     }
   };
 
-  const handleOpenDeleteCartMoDal = (restaurantId, restaurantName) =>
-    setConfirmDeleteCart({ open: true, restaurantId, restaurantName });
+  const handleOpenDeleteCartModal = (restaurantId, restaurantName) => {
+    deleteCartModal.open({ restaurantId, restaurantName });
+  };
 
+  //Xóa giỏ hàng của quán và cập nhật lại danh sách đã chọn
   const handleDeleteCart = () => {
-    clearCartOfRestaurant(confirmDeleteCart.restaurantId);
-    setSelectedRestaurantIds(prev => prev.filter(id => id !== confirmDeleteCart.restaurantId));
-    setConfirmDeleteCart({ open: false, restaurantId: null, restaurantName: '' });
+    const { restaurantId } = deleteCartModal.data;
+    clearCartOfRestaurant(restaurantId);
+    setSelectedRestaurantIds(prev => prev.filter(id => id !== restaurantId));
+    deleteCartModal.close();
     toast.success('Đã xóa giỏ hàng thành công!');
   };
 
+  //Tính toán tổng số lượng món và tổng chi phí của các quán đang chọn
   const selectedCarts = carts.filter(c => selectedRestaurantIds.includes(c.restaurantId));
   const totalItems = selectedCarts.reduce((s, c) => s + c.items.reduce((a, i) => a + i.quantity, 0), 0);
   
@@ -237,10 +282,15 @@ export default function Cart() {
             
             const cartItemCount = cart.items.reduce((a, i) => a + i.quantity, 0);
             const cartTotal = cart.subtotal + shippingFee;
-            const isChecked = selectedRestaurantIds.includes(cart.restaurantId);
+            const isChecked = selectedRestaurantIds.includes(Number(cart.restaurantId));
 
             return (
-              <Card key={cart.restaurantId} variant="flat" className="!border-slate-200 !rounded-xl">        
+              <Card 
+                key={cart.restaurantId} 
+                id={`restaurant-card-${cart.restaurantId}`}
+                variant="flat" 
+                className="!border-slate-200 !rounded-xl"
+              >        
                 {/* Header quán */}
                 <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100 bg-gradient-to-r from-slate-50 to-white">
                   <div className="flex items-center gap-3 min-w-0">
@@ -258,7 +308,10 @@ export default function Cart() {
                     <div className="p-1.5 bg-md-primary/10 text-md-primary rounded-lg shrink-0">
                       <Store size={16} className="text-[#ff6b35]" />
                     </div>
-                    <div className="flex items-center gap-2 min-w-0">
+                    <div 
+                      className="flex items-center gap-2 min-w-0 cursor-pointer hover:opacity-75 transition-opacity"
+                      onClick={() => navigate(`/restaurants/${cart.restaurantId}`)}
+                    >
                       <span className="font-extrabold text-sm text-slate-800 truncate" title={cart.restaurantName}>
                         Quán {cart.restaurantName}
                       </span>
@@ -266,7 +319,7 @@ export default function Cart() {
                   </div>
                   
                   <Button 
-                    onClick={() => handleOpenDeleteCartMoDal(cart.restaurantId, cart.restaurantName)} 
+                    onClick={() => handleOpenDeleteCartModal(cart.restaurantId, cart.restaurantName)}
                     variant="text"
                     size="sm"
                     icon={XCircle}
@@ -527,7 +580,7 @@ export default function Cart() {
             </div>
 
             {/* --- PHƯƠNG THỨC THANH TOÁN --- */}
-            <div className="pt-2 border-t border-slate-100">
+            {/* <div className="pt-2 border-t border-slate-100">
               <span className="text-[11px] font-bold text-slate-400 uppercase block mb-2">
                 Phương thức thanh toán
               </span>
@@ -545,7 +598,7 @@ export default function Cart() {
                   Tiền mặt
                 </button>
               </div>
-            </div>
+            </div> */}
 
             <div className="pt-2 border-t border-slate-100">
               <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5 mb-1.5">
@@ -582,16 +635,12 @@ export default function Cart() {
 
       {/* Modal Confirm Order */}
       <Modal 
-        isOpen={showConfirmOrderModal && !!bulkOrderPayload} 
-        onClose={() => setShowConfirmOrderModal(false)}
+        isOpen={confirmOrderModal.isOpen} 
+        onClose={confirmOrderModal.close}
         title="Xác Nhận Đặt Hàng"
         size="sm"
       >
-        <div className="text-center space-y-4">
-          {/* <div className="relative w-16 h-16 rounded-full bg-amber-50 text-amber-600 flex items-center justify-center mx-auto border border-amber-100">
-            <Clock size={26} className="animate-pulse" />
-          </div> */}
-          
+        <div className="text-center space-y-4">          
           <p className="text-xs text-slate-500 leading-relaxed px-2">
             Hệ thống chuẩn bị gửi đơn đặt hàng tới <span className="font-extrabold text-slate-700">{selectedRestaurantIds.length} quán</span>. Bạn có chắc chắn muốn đặt không?
           </p>
@@ -600,7 +649,7 @@ export default function Cart() {
             <Button
               type="button"
               variant="outline"
-              onClick={() => setShowConfirmOrderModal(false)}
+              onClick={confirmOrderModal.close}
               className="w-full !rounded-xl !text-xs !font-bold !py-2.5 cursor-pointer"
             >
               Hủy bỏ
@@ -618,21 +667,21 @@ export default function Cart() {
 
       {/* Modal Clear Cart */}
       <Modal 
-        isOpen={confirmDeleteCart.open} 
-        onClose={() => setConfirmDeleteCart({ open: false, restaurantId: null, restaurantName: '' })}
+        isOpen={deleteCartModal.isOpen} 
+        onClose={deleteCartModal.close}
         title="Xác Nhận Xóa Giỏ Hàng"
         size="sm"
       >
         <div className="text-center space-y-4">          
           <p className="text-xs text-slate-500 leading-relaxed px-2">
-            Bạn chắc chắn muốn xóa toàn bộ sản phẩm thuộc giỏ hàng của <span className="font-extrabold text-slate-700">Quán {confirmDeleteCart.restaurantName}</span>? Hành động này không thể hoàn tác.
+            Bạn chắc chắn muốn xóa toàn bộ sản phẩm thuộc giỏ hàng của <span className="font-extrabold text-slate-700">Quán {deleteCartModal.data?.restaurantName}</span>? Hành động này không thể hoàn tác.
           </p>
 
           <div className="flex gap-3 pt-2 justify-center">
             <Button
               type="button"
               variant="outline"
-              onClick={() => setConfirmDeleteCart({ open: false, restaurantId: null, restaurantName: '' })}
+              onClick={deleteCartModal.close}
               className="w-full !rounded-xl !text-xs !font-bold !py-2.5 cursor-pointer"
             >
               Hủy bỏ

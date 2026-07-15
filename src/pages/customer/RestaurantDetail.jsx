@@ -49,10 +49,10 @@ export default function RestaurantDetail() {
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState('');
   const [isFavorite, setIsFavorite] = useState(false);
-  const [activeTab, setActiveTab] = useState('menu'); // menu, reviews, info
+  const [activeTab, setActiveTab] = useState('menu'); 
   const [activeCategory, setActiveCategory] = useState('');
   const [scrollY, setScrollY] = useState(0);
-  const [addingIds, setAddingIds] = useState({}); // Tracking loading animation per item
+  const [addingIds, setAddingIds] = useState({}); 
   const reportModal = useModalState();
   const [reportReason, setReportReason] = useState('');
   const [submittingReport, setSubmittingReport] = useState(false);
@@ -64,12 +64,19 @@ export default function RestaurantDetail() {
       try {
         setLoading(true);
         setErrorMsg('');
+
+        //lấy thông tin quá
         const resDetailResponse = await apiClient.get(`/restaurants/${id}`);
         const realRes = resDetailResponse.data?.data;
+
+        //lấy danh sách danh mục của quán
+        const categoryResponse = await apiClient.get(`/restaurants/${id}/categories`);
+        const realCategories = categoryResponse.data?.data || [];
         
+        //lấy danh sách món của quán
         const menuResponse = await apiClient.get(`/restaurants/${id}/foods`);
         const realFoods = menuResponse.data?.data || [];
-        
+
         if (realRes) {
           let realReviews = [];
           try {
@@ -92,7 +99,6 @@ export default function RestaurantDetail() {
           if (!isNaN(resLat) && !isNaN(resLng)) {
             dist = calculateHaversineDistance(resLat, resLng, customerLat, customerLng);
           }
-          
           const duration = Math.max(10, Math.round(dist * 5 + 5));
           const shippingFee = Math.max(15000, 15000 + Math.ceil(Math.max(0, dist - 2)) * 5000);
 
@@ -115,14 +121,27 @@ export default function RestaurantDetail() {
             }))
           };
           
-          const mappedMenu = groupMenu(realFoods);
+          const mappedMenu = realCategories.map(cat => ({
+            id: cat.categoryId, 
+            categoryName: cat.categoryName,
+            items: realFoods
+              .filter(food => food.categoryId === cat.categoryId)
+              .map(food => ({
+                id: food.id,
+                name: food.foodName,
+                price: Number(food.price),
+                desc: food.description,
+                image: food.imageUrl,
+              }))
+          })).filter(cat => cat.items.length > 0);
+
           setRestaurant(mappedRes);
           setMenu(mappedMenu);
           if (mappedMenu.length > 0) {
-            setActiveCategory(mappedMenu[0].category);
+            setActiveCategory(mappedMenu[0].categoryName);
           }
         } else {
-          setErrorMsg('Không tìm thấy thông tin chi tiết nhà hàng này trong Database.');
+            setErrorMsg('Không tìm thấy thông tin chi tiết nhà hàng này trong Database.');
         }
       } catch (error) {
         console.error('Lỗi khi tải chi tiết quán từ Backend:', error);
@@ -176,7 +195,7 @@ export default function RestaurantDetail() {
   // Scroll to menu category section
   const scrollToCategory = (catName) => {
     setActiveCategory(catName);
-    const element = menuSectionsRef.current[catName];
+    const element = document.getElementById('menu-content-start');
     if (element) {
       const offset = 140; // Sticky header offset
       const bodyRect = document.body.getBoundingClientRect().top;
@@ -391,114 +410,127 @@ export default function RestaurantDetail() {
 
       {/* ─── TAB CONTENT: MENU ─────────────────────────────────────────────────── */}
       {activeTab === 'menu' && (
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 mt-8 flex flex-col md:flex-row gap-8">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 mt-8 flex flex-col md:flex-row gap-8" id="menu-content-start">
 
-          {/* Category Anchor Sidebar (Sticky, on larger screens and mobile) */}
-          <aside className="w-full md:w-52 shrink-0 sticky top-[47px] sm:top-[57px] md:top-24 bg-md-surface/95 backdrop-blur-md md:bg-transparent z-10 py-3 md:py-2.5 -mx-4 px-4 md:mx-0 md:px-0 border-b border-md-outline-variant/10 md:border-none">
-            <h4 className="text-[11px] font-extrabold text-md-on-surface-variant tracking-wider uppercase mb-4 px-2 hidden md:block">
+          {/* danh mục */}
+          <aside className="w-full md:w-52 shrink-0 md:sticky md:top-24 z-10 py-1 md:py-2.5">
+            <h4 className="text-[11px] font-extrabold text-md-on-surface-variant tracking-wider uppercase mb-3 px-2">
               Danh mục món
             </h4>
-            <div className="flex md:flex-col gap-2 overflow-x-auto no-scrollbar py-1">
-              {menu.map((sec) => {
-                const isActive = activeCategory === sec.category;
+            
+            <div className="flex md:flex-col flex-row gap-2 overflow-x-auto md:overflow-visible no-scrollbar pb-3 md:pb-0 border-b md:border-none border-md-outline-variant/10">              {menu.map((sec) => {
+                const isActive = activeCategory === sec.categoryName;
                 return (
                   <button
                     key={sec.category}
-                    onClick={() => scrollToCategory(sec.category)}
-                    className={`shrink-0 text-left px-3 py-2 sm:px-4 sm:py-3 rounded-radius-lg text-xs sm:text-sm font-bold transition-all w-max md:w-full border ${
+                    onClick={() => scrollToCategory(sec.categoryName)}
+
+                    className={`shrink-0 md:shrink md:w-full text-left transition-all duration-300 font-google-sans cursor-pointer ${
                       isActive
-                        ? 'bg-md-primary/10 text-md-primary border-md-primary/20 font-extrabold shadow-sm'
-                        : 'bg-white hover:bg-slate-50 text-md-on-surface-variant border-md-outline-variant/30 md:border-transparent'
+                        ? 'bg-md-primary text-white shadow-md shadow-md-primary/25 border-md-primary font-bold md:translate-x-1.5 ' + 
+                          'px-4 py-2 md:py-3 rounded-full md:rounded-xl text-xs md:text-sm flex items-center justify-between gap-2'
+                        : 'bg-white hover:bg-slate-50 border border-slate-200 md:border-transparent text-md-on-surface-variant hover:text-md-on-surface md:hover:translate-x-1 ' +
+                          'px-4 py-2 md:py-3 rounded-full md:rounded-xl text-xs md:text-sm flex items-center justify-between gap-2'
                     }`}
                   >
-                    {sec.category}
+                    <span className="truncate">{sec.categoryName}</span>
+                    <span className={`text-[10px] px-1.5 py-0.5 rounded-full shrink-0 font-bold ${
+                      isActive ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-500'
+                    }`}>
+                      {sec.items.length}
+                    </span>
                   </button>
                 );
               })}
             </div>
           </aside>
 
-          {/* Menu Items List */}
+          {/* danh sách món ăn */}
           <div className="flex-1 space-y-10">
-            {menu.map((sec) => (
-              <div 
-                key={sec.category} 
-                ref={(el) => (menuSectionsRef.current[sec.category] = el)}
-                className="scroll-mt-28 sm:scroll-mt-36"
-              >
-                <h3 className="text-sm sm:text-base font-extrabold text-md-on-surface border-b border-md-outline-variant/35 pb-3 mb-6 uppercase tracking-wider">
-                  {sec.category}
-                </h3>
-                
-                <div className="space-y-4 sm:space-y-5">
-                  {sec.items.map((item) => {
-                    const qty = getItemQty(item.id);
-                    return (
-                      <Card 
-                        key={item.id}
-                        variant="flat"
-                        hoverEffect
-                        className="p-3 sm:p-4.5 flex gap-3 sm:gap-5"
-                      >
-                        <div className="w-20 h-20 xs:w-24 xs:h-24 sm:w-28 sm:h-28 rounded-radius-md overflow-hidden shrink-0 shadow-sm">
-                           <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
-                        </div>
-
-                        <div className="flex-1 flex flex-col justify-between min-w-0">
-                          <div>
-                            <h4 className="font-extrabold text-sm xs:text-base md:text-lg text-md-on-surface truncate leading-snug">
-                              {item.name}
-                            </h4>
-                            <p className="text-[11px] xs:text-xs md:text-sm text-md-on-surface-variant leading-relaxed line-clamp-2 mt-1 xs:mt-2 font-medium">
-                              {item.desc}
-                            </p>
+            {menu
+              .filter((sec) => sec.categoryName === activeCategory)
+              .map((sec) => (
+                <div 
+                  key={sec.categoryName} 
+                  ref={(el) => (menuSectionsRef.current[sec.categoryName] = el)}
+                  className="scroll-mt-28 sm:scroll-mt-36"
+                >
+                  <h3 className="text-sm sm:text-base font-extrabold text-md-on-surface border-b border-md-outline-variant/35 pb-3 mb-6 uppercase tracking-wider flex items-center justify-between">
+                    <span>{sec.categoryName}</span>
+                    <span className="text-xs text-md-on-surface-variant font-medium normal-case">
+                      Có {sec.items.length} món
+                    </span>
+                  </h3>
+                  
+                  <div className="space-y-4 sm:space-y-5">
+                    {sec.items.map((item) => {
+                      const qty = getItemQty(item.id);
+                      return (
+                        <Card 
+                          key={item.id}
+                          variant="flat"
+                          hoverEffect
+                          className="p-3 sm:p-4.5 flex gap-3 sm:gap-5"
+                        >
+                          <div className="w-20 h-20 xs:w-24 xs:h-24 sm:w-28 sm:h-28 rounded-radius-md overflow-hidden shrink-0 shadow-sm">
+                             <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
                           </div>
-                          
-                          <div className="flex items-center justify-between mt-2.5 xs:mt-3">
-                            <span className="font-extrabold text-sm xs:text-base md:text-lg text-md-primary">
-                              {formatCurrency(item.price)}
-                            </span>
 
-                            {/* thêm món vào giỏ hàng */}
-                            <div className="shrink-0">
-                              {qty > 0 ? (
-                                <div className="flex items-center bg-md-primary text-white rounded-radius-full py-1 px-2.5 xs:py-1.5 xs:px-3.5 gap-2 xs:gap-3.5 shadow-shadow-2">
-                                  <button 
-                                    onClick={() => updateQty(item.id, qty, qty - 1)}
-                                    className="p-1 rounded-full hover:bg-white/10 active:scale-90 transition-transform"
+                          <div className="flex-1 flex flex-col justify-between min-w-0">
+                            <div>
+                              <h4 className="font-extrabold text-sm xs:text-base md:text-lg text-md-on-surface truncate leading-snug">
+                                {item.name}
+                              </h4>
+                              <p className="text-[11px] xs:text-xs md:text-sm text-md-on-surface-variant leading-relaxed line-clamp-2 mt-1 xs:mt-2 font-medium">
+                                {item.desc}
+                              </p>
+                            </div>
+                            
+                            <div className="flex items-center justify-between mt-2.5 xs:mt-3">
+                              <span className="font-extrabold text-sm xs:text-base md:text-lg text-md-primary">
+                                {formatCurrency(item.price)}
+                              </span>
+
+                              {/* thêm món vào giỏ hàng */}
+                              <div className="shrink-0">
+                                {qty > 0 ? (
+                                  <div className="flex items-center bg-md-primary text-white rounded-radius-full py-1 px-2.5 xs:py-1.5 xs:px-3.5 gap-2 xs:gap-3.5 shadow-shadow-2">
+                                    <button 
+                                      onClick={() => updateQty(item.id, qty, qty - 1)}
+                                      className="p-1 rounded-full hover:bg-white/10 active:scale-90 transition-transform"
+                                    >
+                                      <Minus size={14} className="stroke-[3px] xs:size-[16px]" />
+                                    </button>
+                                    <span className="text-xs xs:text-sm font-extrabold min-w-4 xs:min-w-5 text-center">{qty}</span>
+                                    <button 
+                                      onClick={() => updateQty(item.id, qty, qty + 1)}
+                                      className="p-1 rounded-full hover:bg-white/10 active:scale-90 transition-transform"
+                                    >
+                                      <Plus size={14} className="stroke-[3px] xs:size-[16px]" />
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => handleAddToCart(item)}
+                                    className="w-8 h-8 xs:w-10 xs:h-10 !p-0 rounded-radius-full border border-md-primary/30 text-md-primary hover:bg-md-primary hover:text-white transition-all duration-200 shrink-0"
                                   >
-                                    <Minus size={14} className="stroke-[3px] xs:size-[16px]" />
-                                  </button>
-                                  <span className="text-xs xs:text-sm font-extrabold min-w-4 xs:min-w-5 text-center">{qty}</span>
-                                  <button 
-                                    onClick={() => updateQty(item.id, qty, qty + 1)}
-                                    className="p-1 rounded-full hover:bg-white/10 active:scale-90 transition-transform"
-                                  >
-                                    <Plus size={14} className="stroke-[3px] xs:size-[16px]" />
-                                  </button>
-                                </div>
-                              ) : (
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => handleAddToCart(item)}
-                                  className="w-8 h-8 xs:w-10 xs:h-10 !p-0 rounded-radius-full border border-md-primary/30 text-md-primary hover:bg-md-primary hover:text-white transition-all duration-200 shrink-0"
-                                >
-                                  <Plus size={18} className="stroke-[2.5px] xs:size-[20px]" />
-                                </Button>
-                              )}
+                                    <Plus size={18} className="stroke-[2.5px] xs:size-[20px]" />
+                                  </Button>
+                                )}
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      </Card>
-                    );
-                  })}
+                        </Card>
+                      );
+                    })}
+                  </div>
                 </div>
-              </div>
-            ))}
+              ))}
           </div>
 
-          {/* ── PANEL GIỎ HÀNG (desktop xl+): tóm tắt giỏ của quán này ── */}
+          {/* giỏ hàng */}
           <aside className="hidden xl:block w-80 shrink-0 sticky top-24 self-start">
             <Card variant="elevated" className="p-5">
               <h3 className="text-xs font-extrabold text-md-on-surface uppercase tracking-wider flex items-center gap-1.5 mb-3">
@@ -511,7 +543,7 @@ export default function RestaurantDetail() {
                   <div className="space-y-2 max-h-72 overflow-y-auto no-scrollbar">
                     {cartItems.map((item) => (
                       <div key={item.id} className="flex items-center justify-between text-xs gap-2">
-                        <span className="text-md-on-surface-variant truncate pr-2">{item.quantity}× {item.name}</span>
+                        <span className="text-md-on-surface-variant truncate pr-2">{item.name} x{item.quantity}</span>
                         <span className="font-bold text-md-on-surface shrink-0">{formatCurrency((item.price || 0) * item.quantity)}</span>
                       </div>
                     ))}
@@ -520,6 +552,8 @@ export default function RestaurantDetail() {
                     <span className="text-xs font-bold text-md-on-surface-variant">Tạm tính</span>
                     <span className="text-base font-extrabold text-md-primary">{formatCurrency(currentCart?.subtotal || 0)}</span>
                   </div>
+
+                  
                   <Button 
                     onClick={() => navigate('/cart', { state: { targetRestaurantId: restaurant.id } })} 
                     className="w-full mt-3"
@@ -708,3 +742,4 @@ export default function RestaurantDetail() {
     </div>
   );
 }
+

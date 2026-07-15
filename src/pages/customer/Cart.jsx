@@ -213,7 +213,7 @@ export default function Cart() {
   };
 
   //Tính toán tổng số lượng món và tổng chi phí của các quán đang chọn
-  const selectedCarts = carts.filter(c => selectedRestaurantIds.includes(c.restaurantId));
+  const selectedCarts = carts.filter(c => selectedRestaurantIds.includes(Number(c.restaurantId)));
   const totalItems = selectedCarts.reduce((s, c) => s + c.items.reduce((a, i) => a + i.quantity, 0), 0);
   
   const totalSubtotal = selectedCarts.reduce((s, c) => {
@@ -516,7 +516,7 @@ export default function Cart() {
                 />
               </div>
 
-              <div className="space-y-1">
+              <div className="space-y-1 mb-1">
                 <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
                   <Phone size={12} className="text-slate-400" /> Số điện thoại
                 </label>
@@ -549,7 +549,7 @@ export default function Cart() {
                   disabled={isUpdatingLocation}
                   variant="outline"
                   icon={Map}
-                  className="w-full !text-xs !font-bold !text-[#ff6b35] !bg-orange-50 hover:!bg-orange-100/80 !border-orange-100/70 !py-2.5 !rounded-xl transition-all duration-200 cursor-pointer shadow-sm active:scale-[0.98] disabled:opacity-60"
+                  className="w-full !text-xs !font-bold !text-[#ff6b35] !bg-orange-50 hover:!bg-orange-100/80 !border-orange-100/70 !py-2.5 !rounded-xl transition-all duration-200 cursor-pointer shadow-sm active:scale-[0.98] disabled:opacity-60 mt-1"
                 >
                   Thay đổi vị trí trên bản đồ
                 </Button>
@@ -594,7 +594,7 @@ export default function Cart() {
               </div>
             </div> */}
 
-            <div className="pt-2 border-t border-slate-100">
+            <div className="pt-2 border-t border-slate-100 mb-1">
               <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5 mb-1.5">
                 Ghi chú đơn hàng
               </label>
@@ -607,7 +607,7 @@ export default function Cart() {
               />
             </div>
 
-            <div className="flex items-center justify-between text-sm text-slate-600 pt-1 border-t border-slate-100">
+            <div className="flex items-center justify-between text-sm text-slate-600 pt-1 border-t border-slate-100 mb-1 mt-1">
               <span className="font-bold text-slate-700">Tổng thanh toán:</span>
               <span className="font-black text-[#ff6b35] text-lg">
                 {isCalculatingShipping || isUpdatingLocation ? 'Đang tính...' : formatCurrency(totalSubtotal)}

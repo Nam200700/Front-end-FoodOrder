@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useCartStore } from '../../stores/cartStore';
 import { useChatStore } from '../../stores/chatStore';
 import { useAuthStore } from '../../stores/authStore';
-import { ArrowLeft, Star, Clock, MapPin, Phone, Search, ShoppingBag, Heart, Share2, Plus, Minus, MessageSquare, AlertTriangle, Bike, AlertCircle } from 'lucide-react';
+import { ArrowLeft, Star, Clock, MapPin, Phone, Search, ShoppingBag, Heart, Share2, Plus, Minus, MessageSquare, AlertTriangle, Bike, AlertCircle, X } from 'lucide-react';
 import { formatCurrency } from '../../utils/format';
 import Button from '../../components/common/Button';
 import Card from '../../components/common/Card';
@@ -34,10 +34,7 @@ const groupMenu = (foods) => {
 export default function RestaurantDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const carts = useCartStore((state) => state.carts);
-  const addItem = useCartStore((state) => state.addItem);
-  const updateQty = useCartStore((state) => state.updateQty);
-  
+  const { carts, addItem, updateQty, removeItem } = useCartStore(); 
   const currentCart = carts.find(c => c.restaurantId === id) || { items: [], subtotal: 0 };
   const cartItems = currentCart.items;
   
@@ -50,7 +47,7 @@ export default function RestaurantDetail() {
   const [errorMsg, setErrorMsg] = useState('');
   const [isFavorite, setIsFavorite] = useState(false);
   const [activeTab, setActiveTab] = useState('menu'); 
-  const [activeCategory, setActiveCategory] = useState('');
+  const [activeCategory, setActiveCategory] = useState(null);
   const [scrollY, setScrollY] = useState(0);
   const [addingIds, setAddingIds] = useState({}); 
   const reportModal = useModalState();
@@ -138,7 +135,7 @@ export default function RestaurantDetail() {
           setRestaurant(mappedRes);
           setMenu(mappedMenu);
           if (mappedMenu.length > 0) {
-            setActiveCategory(mappedMenu[0].categoryName);
+            setActiveCategory(mappedMenu[0].id);
           }
         } else {
             setErrorMsg('Không tìm thấy thông tin chi tiết nhà hàng này trong Database.');
@@ -176,7 +173,7 @@ export default function RestaurantDetail() {
 
   const handleAddToCart = (item) => {
     if (!restaurant) return;
-    addItem(item, restaurant.id, restaurant.name);
+    addItem(item);
   };
 
   const handleChatWithMerchant = async () => {
@@ -193,11 +190,11 @@ export default function RestaurantDetail() {
   };
 
   // Scroll to menu category section
-  const scrollToCategory = (catName) => {
-    setActiveCategory(catName);
-    const element = document.getElementById('menu-content-start');
+  const scrollToCategory = (catId) => {
+    setActiveCategory(catId);
+    const element = document.getElementById(`category-${catId}`);
     if (element) {
-      const offset = 140; // Sticky header offset
+      const offset = 140; 
       const bodyRect = document.body.getBoundingClientRect().top;
       const elementRect = element.getBoundingClientRect().top;
       const elementPosition = elementRect - bodyRect;
@@ -411,27 +408,27 @@ export default function RestaurantDetail() {
       {/* ─── TAB CONTENT: MENU ─────────────────────────────────────────────────── */}
       {activeTab === 'menu' && (
         <div className="max-w-6xl mx-auto px-4 sm:px-6 mt-8 flex flex-col md:flex-row gap-8" id="menu-content-start">
-
           {/* danh mục */}
           <aside className="w-full md:w-52 shrink-0 md:sticky md:top-24 z-10 py-1 md:py-2.5">
-            <h4 className="text-[11px] font-extrabold text-md-on-surface-variant tracking-wider uppercase mb-3 px-2">
-              Danh mục món
-            </h4>
+            <div className="flex items-center justify-between pb-3 mb-4 border-b border-md-outline-variant/30">
+              <h3 className="text-xs font-black text-md-on-surface uppercase tracking-[0.2em]">
+                Danh mục
+              </h3>
+            </div>
             
-            <div className="flex md:flex-col flex-row gap-2 overflow-x-auto md:overflow-visible no-scrollbar pb-3 md:pb-0 border-b md:border-none border-md-outline-variant/10">              {menu.map((sec) => {
-                const isActive = activeCategory === sec.categoryName;
+            <div className="flex md:flex-col flex-row gap-2 overflow-x-auto md:overflow-visible no-scrollbar pb-3 md:pb-0 border-b md:border-none border-md-outline-variant/10">
+              {menu.map((sec) => {
+                const isActive = activeCategory === sec.id;
                 return (
                   <button
-                    key={sec.category}
-                    onClick={() => scrollToCategory(sec.categoryName)}
-
-                    className={`shrink-0 md:shrink md:w-full text-left transition-all duration-300 font-google-sans cursor-pointer ${
-                      isActive
-                        ? 'bg-md-primary text-white shadow-md shadow-md-primary/25 border-md-primary font-bold md:translate-x-1.5 ' + 
-                          'px-4 py-2 md:py-3 rounded-full md:rounded-xl text-xs md:text-sm flex items-center justify-between gap-2'
-                        : 'bg-white hover:bg-slate-50 border border-slate-200 md:border-transparent text-md-on-surface-variant hover:text-md-on-surface md:hover:translate-x-1 ' +
-                          'px-4 py-2 md:py-3 rounded-full md:rounded-xl text-xs md:text-sm flex items-center justify-between gap-2'
-                    }`}
+                    key={sec.id} 
+                    onClick={() => scrollToCategory(sec.id)}
+                    className={`shrink-0 md:shrink md:w-full text-left transition-all duration-300 ease-in-out font-google-sans cursor-pointer 
+                      ${isActive 
+                        ? 'bg-md-primary text-white shadow-md shadow-md-primary/25 border-md-primary font-bold md:translate-x-2' 
+                        : 'bg-white hover:bg-slate-50 border border-slate-200 md:border-transparent text-md-on-surface-variant hover:text-md-on-surface md:hover:translate-x-2'
+                      } 
+                      px-4 py-2 md:py-3 rounded-full md:rounded-xl text-xs md:text-sm flex items-center justify-between gap-2`}
                   >
                     <span className="truncate">{sec.categoryName}</span>
                     <span className={`text-[10px] px-1.5 py-0.5 rounded-full shrink-0 font-bold ${
@@ -448,11 +445,12 @@ export default function RestaurantDetail() {
           {/* danh sách món ăn */}
           <div className="flex-1 space-y-10">
             {menu
-              .filter((sec) => sec.categoryName === activeCategory)
+              .filter((sec) => sec.id === activeCategory)
               .map((sec) => (
                 <div 
-                  key={sec.categoryName} 
-                  ref={(el) => (menuSectionsRef.current[sec.categoryName] = el)}
+                  key={sec.id} 
+                  id={`category-${sec.id}`}
+                  ref={(el) => (menuSectionsRef.current[sec.id] = el)}
                   className="scroll-mt-28 sm:scroll-mt-36"
                 >
                   <h3 className="text-sm sm:text-base font-extrabold text-md-on-surface border-b border-md-outline-variant/35 pb-3 mb-6 uppercase tracking-wider flex items-center justify-between">
@@ -469,7 +467,6 @@ export default function RestaurantDetail() {
                         <Card 
                           key={item.id}
                           variant="flat"
-                          hoverEffect
                           className="p-3 sm:p-4.5 flex gap-3 sm:gap-5"
                         >
                           <div className="w-20 h-20 xs:w-24 xs:h-24 sm:w-28 sm:h-28 rounded-radius-md overflow-hidden shrink-0 shadow-sm">
@@ -536,27 +533,42 @@ export default function RestaurantDetail() {
               <h3 className="text-xs font-extrabold text-md-on-surface uppercase tracking-wider flex items-center gap-1.5 mb-3">
                 <ShoppingBag size={15} className="text-md-primary" /> Giỏ hàng
               </h3>
+              
               {cartItems.length === 0 ? (
                 <p className="text-xs text-md-outline font-semibold py-2">Chưa có món nào. Hãy thêm món từ thực đơn.</p>
               ) : (
                 <>
-                  <div className="space-y-2 max-h-72 overflow-y-auto no-scrollbar">
+                  <div className="space-y-3 max-h-72 overflow-y-auto no-scrollbar">
                     {cartItems.map((item) => (
-                      <div key={item.id} className="flex items-center justify-between text-xs gap-2">
-                        <span className="text-md-on-surface-variant truncate pr-2">{item.name} x{item.quantity}</span>
-                        <span className="font-bold text-md-on-surface shrink-0">{formatCurrency((item.price || 0) * item.quantity)}</span>
+                      <div key={item.id} className="flex items-center justify-between text-xs gap-3">
+                        <div className="flex flex-col truncate pr-2">
+                          <span className="text-md-on-surface truncate">{item.name}</span>
+                          <span className="text-md-on-surface truncate">{item.price} x{item.quantity}</span>
+                        </div>
+                        
+                        <div className="flex items-center gap-3 shrink-0">
+                          <span className="font-bold text-md-on-surface">
+                            {formatCurrency((item.price || 0) * item.quantity)}
+                          </span>
+                          <button 
+                            onClick={() => removeItem(item.cartItemId)} 
+                            className="p-1.5 rounded-full bg-slate-50 hover:bg-red-50 text-slate-400 hover:text-red-500 transition-all duration-200 cursor-pointer"
+                          >
+                            <X size={14} strokeWidth={2.5} />
+                          </button>
+                        </div>
                       </div>
                     ))}
                   </div>
-                  <div className="flex items-center justify-between border-t border-slate-100 pt-3 mt-3">
+                  
+                  <div className="flex items-center justify-between border-t border-slate-100 pt-3 mt-4">
                     <span className="text-xs font-bold text-md-on-surface-variant">Tạm tính</span>
                     <span className="text-base font-extrabold text-md-primary">{formatCurrency(currentCart?.subtotal || 0)}</span>
                   </div>
 
-                  
                   <Button 
                     onClick={() => navigate('/cart', { state: { targetRestaurantId: restaurant.id } })} 
-                    className="w-full mt-3"
+                    className="w-full mt-4"
                   >
                     Xem giỏ hàng &amp; đặt
                   </Button>
@@ -609,7 +621,7 @@ export default function RestaurantDetail() {
             <div>
               <h3 className="font-extrabold text-base md:text-lg text-md-on-surface">Giới thiệu quán</h3>
               <p className="text-xs md:text-sm text-md-on-surface-variant leading-relaxed mt-3 font-medium">
-                Chúng tôi mang đến hương vị thơm ngon đặc sắc chuẩn thương hiệu hàng đầu, cam kết tẩm ướp và chế biến chuẩn quy trình vệ sinh an toàn thực phẩm. Sườn và các món ăn đặc trưng luôn nóng hổi khi đến tay khách hàng!
+                {restaurant.description}
               </p>
             </div>
             
@@ -623,10 +635,10 @@ export default function RestaurantDetail() {
                 <span className="text-md-on-surface-variant">Khoảng cách giao hàng tối đa:</span>
                 <span className="font-extrabold text-md-on-surface">7.0km</span>
               </div>
-              <div className="flex items-center justify-between text-xs md:text-sm">
+              {/* <div className="flex items-center justify-between text-xs md:text-sm">
                 <span className="text-md-on-surface-variant">Thanh toán hỗ trợ:</span>
                 <span className="font-extrabold text-md-secondary">Tiền mặt COD</span>
-              </div>
+              </div> */}
             </div>
           </Card>
         </div>
@@ -730,7 +742,7 @@ export default function RestaurantDetail() {
             <Button
               onClick={handleSubmitReport}
               disabled={submittingReport || !reportReason.trim()}
-              className="!px-5 !py-2 !text-xs !font-bold !bg-orange-500 !text-white !rounded-lg hover:!bg-orange-600 disabled:!bg-slate-300"
+              className="!px-5 !py-2 !text-xs !font-bold !bg-orange-500 !text-white !rounded-lg hover:!bg-orange-600 disabled:!bg-slate-300 mb-0"
             >
               {submittingReport ? 'Đang gửi...' : 'Gửi báo cáo'}
             </Button>

@@ -146,13 +146,12 @@ export const useCartStore = create((set, get) => ({
 
   updateQty: async (foodId, currentQty, targetQty) => {
     try {
-      const cleanFoodId = Number(foodId);
       const delta = targetQty - currentQty;
       if (delta === 0) return;
 
       if (targetQty <= 0) {
         const allItems = get().carts.flatMap(c => c.items);
-        const targetItem = allItems.find(i => i.foodId === cleanFoodId);
+        const targetItem = allItems.find(i => i.foodId === Number(foodId));
         if (targetItem) {
           await get().removeItem(targetItem.cartItemId);
         }

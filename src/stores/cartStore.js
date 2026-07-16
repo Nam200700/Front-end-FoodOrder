@@ -23,7 +23,7 @@ export const useCartStore = create((set, get) => ({
         longitude: cart.longitude ? Number(cart.longitude) : null,
         items: (cart.items || []).map(item => ({
           cartItemId: item.cartItemId,
-          id: `food-${item.foodId}`,
+          id: item.foodId,
           foodId: item.foodId,
           name: item.foodName,
           price: Number(item.price || 0),
@@ -93,10 +93,10 @@ export const useCartStore = create((set, get) => ({
     }
   },
 
-  addItem: async (item, resId, resName) => {
+  addItem: async (item) => {
     try {
       const originId = item.foodId || item.id;
-      const foodId = typeof originId === 'string' ? parseInt(originId.replace('food-', '')) : originId;
+      const foodId = Number(originId);
       
       await apiClient.post('/carts/me/items', {
         foodId: foodId,
@@ -114,7 +114,7 @@ export const useCartStore = create((set, get) => ({
 
   updateQty: async (foodId, currentQty, targetQty) => {
     try {
-      const cleanFoodId = typeof foodId === 'string' ? parseInt(foodId.replace('food-', '')) : foodId;
+      const cleanFoodId = Number(foodId);
       const delta = targetQty - currentQty;
       if (delta === 0) return;
 

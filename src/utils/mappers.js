@@ -104,5 +104,6 @@ export const mapRestaurant = (r) => {
     minOrderAmount: Number(r.minOrderAmount || 0),
     avgPrice: 45000,
     featured: r.rating >= 4.8 || (r.restaurantId ? r.restaurantId % 2 === 0 : false),
+    description: r.description,
   };
 };

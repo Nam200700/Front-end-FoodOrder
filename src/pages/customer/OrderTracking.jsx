@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useOrderStore } from '../../stores/orderStore';
 import { useChatStore } from '../../stores/chatStore';
-import { ArrowLeft, Phone, MessageSquare, ChevronDown, ChevronUp, CheckCircle, Clock, Ban, AlertCircle, Map, AlertTriangle, Store, Bike } from 'lucide-react';
+import { ArrowLeft, Phone, MessageSquare, ChevronDown, ChevronUp, CheckCircle, Clock, Ban, AlertCircle, Map, AlertTriangle, Store, Bike, MapPin } from 'lucide-react';
 import { formatCurrency } from '../../utils/format';
 import Button from '../../components/common/Button';
 import Card from '../../components/common/Card';
@@ -85,8 +85,8 @@ export default function OrderTracking() {
           setErrorMsg('Đơn hàng không tồn tại hoặc bạn không có quyền truy cập đơn hàng này.');
         }
       } catch (error) {
-        console.error('Lỗi khi tải chi tiết đơn hàng từ Backend:', error);
-        setErrorMsg('Không thể tải thông tin đơn hàng từ Backend. Vui lòng kiểm tra lại!');
+        console.error('Lỗi khi tải chi tiết đơn hàng:', error);
+        setErrorMsg('Không thể tải thông tin đơn hàng. Vui lòng kiểm tra lại!');
       } finally {
         if (showSpinner) setLoading(false);
       }
@@ -388,7 +388,7 @@ export default function OrderTracking() {
       {/* Header */}
       <div className="flex items-center gap-4 mb-4">
         <button 
-          onClick={() => navigate('/')}
+          onClick={() => navigate('/orders')}
           className="p-2.5 rounded-radius-full hover:bg-slate-100 text-md-on-surface-variant transition-colors cursor-pointer"
         >
           <ArrowLeft size={22} />
@@ -499,15 +499,42 @@ export default function OrderTracking() {
 
       {/* BẢN ĐỒ DẪN ĐƯỜNG THỰC TẾ */}
       {!isCancelled && restaurantCoords.lat && displayOrder.deliveryLat && (
-        <Card variant="flat" className="p-0 overflow-hidden bg-white border border-slate-200 shadow-sm rounded-radius-xl">
-          <div className="px-5 py-4 border-b border-slate-100 flex items-center bg-slate-50/50">
-            <div className="flex items-center gap-2 text-md-primary">
-              <Map size={18} className="stroke-[2.5px]" />
-              <span className="font-extrabold text-sm text-slate-800 uppercase tracking-wider">
-                Bản đồ theo dõi thực tế
-              </span>
+        <Card
+          variant="flat"
+          className="p-0 overflow-hidden bg-white border border-slate-200 shadow-sm rounded-radius-xl"
+        >
+          <div className="px-5 py-4 border-b border-slate-100 bg-slate-50/50">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-center gap-2 text-md-primary">
+                <Map size={18} className="stroke-[2.5px]" />
+                <span className="font-extrabold text-sm text-slate-800 uppercase tracking-wider">
+                  Bản đồ theo dõi
+                </span>
+              </div>
+
+              {distanceKm > 0 && (
+                <div className="flex items-center gap-3">
+                  {/* Khoảng cách */}
+                  <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-blue-50 text-blue-700">
+                    <MapPin size={15} className="stroke-[2.5px]" />
+                    <span className="text-sm font-semibold">
+                      {distanceKm.toFixed(1)} km
+                    </span>
+                  </div>
+
+                  {/* Thời gian */}
+                  <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-orange-50 text-orange-700">
+                    <Clock size={15} className="stroke-[2.5px]" />
+                    <span className="text-sm font-semibold">
+                      {Math.ceil(durationMinutes)} phút
+                    </span>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
+
+          {/* Map */}
           <div className="relative">
             <div ref={mapContainerRef} className="w-full h-[280px] z-10" />
           </div>
@@ -655,82 +682,58 @@ export default function OrderTracking() {
       <Modal
         isOpen={reportModal.isOpen}
         onClose={() => reportModal.close()}
-        title="Báo Cáo Vi Phạm Đơn Hàng"
-        size="md"
+        title={`Báo Cáo Vi Phạm Đơn Hàng #${displayOrder.id}`}
+        size="sm"
+        className="[&_h2]:!text-slate-900 [&_h2]:!text-base [&_h2]:md:!text-lg [&_h2]:!font-bold [&_button]:disabled:opacity-50"
       >
-        <div className="space-y-5">
-          <div className="p-3 bg-red-50 text-red-700 rounded-radius-md text-xs font-bold border border-red-100 flex items-start gap-2">
-            <AlertTriangle className="shrink-0 mt-0.5" size={16} />
-            <span>
-              Báo cáo vi phạm đối với đơn hàng này sẽ được gửi trực tiếp tới Quản trị viên hệ thống để kiểm tra và xử lý.
-            </span>
+        <div className="space-y-4 text-slate-700 !-mt-3">
+          <div className="p-3 bg-amber-50 text-amber-800 rounded-lg text-xs font-medium border border-amber-100 flex items-start gap-2">
+            <AlertCircle className="shrink-0 mt-0.5 text-amber-600" size={15} />
+            <span>Báo cáo vi phạm sẽ được gửi tới Quản trị viên hệ thống để kiểm tra và xử lý.</span>
           </div>
 
           {/* Chọn đối tượng báo cáo */}
-          <div className="space-y-2">
-            <label className="text-xs font-extrabold text-md-on-surface uppercase tracking-wider block">
-              Đối tượng cần báo cáo:
-            </label>
-            <div className="flex gap-3">
+          <div className="space-y-1.5">
+            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Đối tượng cần báo cáo:</span>
+            <div className="flex gap-2">
               <button
                 type="button"
-                onClick={() => {
-                  setReportTarget('RESTAURANT');
-                  setReportReason('');
-                }}
-                className={`flex-1 py-3 px-4 rounded-radius-lg border font-bold text-xs transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                onClick={() => { setReportTarget('RESTAURANT'); setReportReason(''); }}
+                className={`flex-1 py-2 border rounded-lg text-xs font-semibold transition-all flex items-center justify-center gap-2 ${
                   reportTarget === 'RESTAURANT'
-                    ? 'border-md-primary bg-md-primary/10 text-md-primary'
-                    : 'border-slate-200 hover:bg-slate-50 text-slate-600'
+                    ? 'border-orange-500 bg-orange-50/50 text-orange-600'
+                    : 'border-slate-200 text-slate-600 hover:bg-slate-50'
                 }`}
               >
-                <Store size={15} /> Báo cáo Quán ăn
+                <Store size={14} /> Quán {displayOrder.restaurantName}
               </button>
-              
               <button
                 type="button"
                 disabled={!displayOrder.shipper}
-                onClick={() => {
-                  setReportTarget('SHIPPER');
-                  setReportReason('');
-                }}
-                className={`flex-1 py-3 px-4 rounded-radius-lg border font-bold text-xs transition-all flex items-center justify-center gap-2 cursor-pointer ${
-                  !displayOrder.shipper
-                    ? 'opacity-40 cursor-not-allowed border-slate-100 bg-slate-50 text-slate-300'
-                    : reportTarget === 'SHIPPER'
-                      ? 'border-md-primary bg-md-primary/10 text-md-primary'
-                      : 'border-slate-200 hover:bg-slate-50 text-slate-600'
+                onClick={() => { setReportTarget('SHIPPER'); setReportReason(''); }}
+                className={`flex-1 py-2 border rounded-lg text-xs font-semibold transition-all flex items-center justify-center gap-2 ${
+                  !displayOrder.shipper ? 'opacity-50 cursor-not-allowed border-slate-200' : 
+                  reportTarget === 'SHIPPER' ? 'border-orange-500 bg-orange-50/50 text-orange-600' : 'border-slate-200 text-slate-600 hover:bg-slate-50'
                 }`}
-                title={!displayOrder.shipper ? 'Chưa có tài xế nhận đơn để báo cáo' : 'Báo cáo shipper'}
               >
-                <Bike size={15} /> Báo cáo Shipper
+                <Bike size={14} /> Shipper
               </button>
             </div>
           </div>
 
           {/* Lý do mẫu */}
-          <div className="space-y-2">
-            <label className="text-xs font-extrabold text-md-on-surface uppercase tracking-wider block">
-              Chọn lý do vi phạm nhanh:
-            </label>
+          <div className="space-y-1.5">
+            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Chọn lý do nhanh:</span>
             <div className="grid grid-cols-1 gap-1.5">
               {(reportTarget === 'RESTAURANT'
-                ? [
-                    'Quán chuẩn bị thiếu món ăn so với hóa đơn',
-                    'Món ăn không hợp vệ sinh / có dị vật',
-                    'Quán chuẩn bị quá lâu / thái độ phục vụ kém',
-                  ]
-                : [
-                    'Shipper giao thiếu hàng / làm đổ vỡ món ăn',
-                    'Shipper thái độ cọc cằn, xúc phạm khách hàng',
-                    'Shipper đi xe lạng lách đánh võng / không an toàn',
-                  ]
+                ? ['Quán chuẩn bị thiếu món', 'Món ăn không hợp vệ sinh', 'Thái độ phục vụ kém']
+                : ['Shipper giao thiếu hàng', 'Shipper thái độ cọc cằn', 'Lái xe không an toàn']
               ).map((reason, idx) => (
                 <button
-                  key={idx}
-                  type="button"
-                  onClick={() => setReportReason(reason)}
-                  className="text-left px-3.5 py-2.5 rounded-radius-md border border-slate-200 hover:border-md-primary/40 hover:bg-slate-50 transition-all text-xs font-semibold text-slate-700 cursor-pointer"
+                  key={idx} type="button" onClick={() => setReportReason(reason)}
+                  className={`text-left px-3.5 py-2 border rounded-lg text-xs font-semibold transition-all ${
+                    reportReason === reason ? 'border-orange-500 bg-orange-50/50 text-orange-600' : 'border-slate-200 text-slate-600 hover:bg-slate-50'
+                  }`}
                 >
                   {reason}
                 </button>
@@ -739,29 +742,20 @@ export default function OrderTracking() {
           </div>
 
           {/* Nhập tự do */}
-          <div className="space-y-2">
-            <label className="text-xs font-extrabold text-md-on-surface uppercase tracking-wider block">
-              Mô tả chi tiết nội dung vi phạm:
-            </label>
-            <textarea
-              value={reportReason}
-              onChange={(e) => setReportReason(e.target.value)}
-              placeholder="Vui lòng cung cấp thêm thông tin chi tiết (tối thiểu 10 ký tự)..."
-              rows={4}
-              className="w-full p-3.5 border border-slate-200 rounded-radius-md focus:outline-none focus:border-md-primary focus:ring-4 focus:ring-md-primary/10 text-sm font-semibold text-slate-850"
-            />
-          </div>
+          <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Hoặc nhập lý do cụ thể:</span>
+          <textarea
+            value={reportReason}
+            onChange={(e) => setReportReason(e.target.value)}
+            placeholder="Nhập nội dung chi tiết..."
+            rows={3}
+            className="w-full p-3 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-orange-400 bg-slate-50/50 text-slate-800 resize-none"
+          />
 
-          <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-100">
-            <Button variant="outline" size="sm" onClick={() => reportModal.close()} disabled={submittingReport}>
-              Đóng
-            </Button>
-            <Button
-              size="sm"
-              variant="secondary"
+          <div className="flex justify-end gap-3 pt-2 border-t border-slate-100">
+            <Button 
               onClick={handleSubmitReport}
               disabled={submittingReport || !reportReason.trim()}
-              className="bg-red-500 hover:bg-red-600 text-white font-bold"
+              className="!px-5 !py-2 !text-xs !font-bold !bg-orange-500 !text-white !rounded-lg hover:!bg-orange-600 disabled:!bg-slate-300"
             >
               {submittingReport ? 'Đang gửi...' : 'Gửi báo cáo'}
             </Button>
@@ -772,39 +766,26 @@ export default function OrderTracking() {
       {/* ─── MODAL HỦY ĐƠN HÀNG ────────────────────────────────────── */}
       <Modal
         isOpen={cancelModal.isOpen}
-        onClose={() => {
-          cancelModal.close();
-          setCancelReasonInput('');
-        }}
-        title="Xác Nhận Hủy Đơn Hàng"
-        size="md"
+        onClose={() => { cancelModal.close(); setCancelReasonInput(''); }}
+        title={`Xác Nhận Hủy Đơn Hàng #${displayOrder.id}`}
+        size="sm"
+        className="[&_h2]:!text-slate-900 [&_h2]:!text-base [&_h2]:md:!text-lg [&_h2]:!font-bold [&_button]:disabled:opacity-50"
       >
-        <div className="space-y-5">
-          <div className="p-3 bg-red-50 text-red-700 rounded-radius-md text-xs font-bold border border-red-100 flex items-start gap-2">
-            <AlertTriangle className="shrink-0 mt-0.5" size={16} />
-            <span>
-              Lưu ý: Bạn chỉ được tự hủy đơn hàng khi đơn ở trạng thái Mới đặt hoặc Đã xác nhận (quán chưa làm món).
-            </span>
+        <div className="space-y-4 text-slate-700 !-mt-3">
+          <div className="p-3 bg-amber-50 text-amber-800 rounded-lg text-xs font-medium border border-amber-100 flex items-start gap-2">
+            <AlertCircle className="shrink-0 mt-0.5 text-amber-600" size={15} />
+            <span>Lưu ý: Chỉ được hủy khi đơn ở trạng thái Mới đặt hoặc Chưa chuẩn bị món.</span>
           </div>
 
-          {/* Lý do mẫu */}
-          <div className="space-y-2">
-            <label className="text-xs font-extrabold text-md-on-surface uppercase tracking-wider block">
-              Chọn lý do hủy nhanh:
-            </label>
+          <div className="space-y-1.5">
+            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Chọn lý do hủy nhanh:</span>
             <div className="grid grid-cols-1 gap-1.5">
-              {[
-                'Đổi ý không đặt nữa',
-                'Đặt nhầm món / nhầm số lượng',
-                'Thời gian giao hàng quá lâu',
-                'Muốn thay đổi địa chỉ giao hàng',
-                'Tìm thấy quán khác giá rẻ hơn'
-              ].map((reason, idx) => (
-                <button
-                  key={idx}
-                  type="button"
-                  onClick={() => setCancelReasonInput(reason)}
-                  className="text-left px-3.5 py-2.5 rounded-radius-md border border-slate-200 hover:border-md-primary/40 hover:bg-slate-50 transition-all text-xs font-semibold text-slate-700 cursor-pointer"
+              {['Đổi ý không đặt nữa', 'Đặt nhầm món / nhầm số lượng', 'Thời gian giao quá lâu', 'Muốn đổi địa chỉ'].map((reason, idx) => (
+                <button 
+                  key={idx} type="button" onClick={() => setCancelReasonInput(reason)}
+                  className={`text-left px-3.5 py-2 border rounded-lg text-xs font-semibold transition-all ${
+                    cancelReasonInput === reason ? 'border-orange-500 bg-orange-50/50 text-orange-600' : 'border-slate-200 text-slate-600 hover:bg-slate-50'
+                  }`}
                 >
                   {reason}
                 </button>
@@ -812,38 +793,21 @@ export default function OrderTracking() {
             </div>
           </div>
 
-          {/* Nhập tự do */}
-          <div className="space-y-2">
-            <label className="text-xs font-extrabold text-md-on-surface uppercase tracking-wider block">
-              Nhập lý do hủy chi tiết:
-            </label>
-            <textarea
-              value={cancelReasonInput}
-              onChange={(e) => setCancelReasonInput(e.target.value)}
-              placeholder="Vui lòng cung cấp lý do hủy chi tiết (tối đa 300 ký tự)..."
-              rows={3}
-              maxLength={300}
-              className="w-full p-3.5 border border-slate-200 rounded-radius-md focus:outline-none focus:border-md-primary focus:ring-4 focus:ring-md-primary/10 text-sm font-semibold text-slate-850"
-            />
-          </div>
+          <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Hoặc nhập lý do cụ thể:</span>
+          <textarea 
+            value={cancelReasonInput} 
+            onChange={(e) => setCancelReasonInput(e.target.value)} 
+            placeholder="Nhập lý do hủy đơn hàng..." 
+            rows={3}
+            className="w-full p-3 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-orange-400 bg-slate-50/50 text-slate-800 resize-none" 
+            maxLength={300} 
+          />
 
-          <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-100">
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => {
-                cancelModal.close();
-                setCancelReasonInput('');
-              }}
-            >
-              Đóng
-            </Button>
-            <Button
-              size="sm"
-              variant="secondary"
+          <div className="flex justify-end gap-3 pt-2 border-t border-slate-100">
+            <Button 
               onClick={submitCancel}
               disabled={!cancelReasonInput.trim()}
-              className="bg-red-500 hover:bg-red-600 text-white font-bold"
+              className="!px-5 !py-2 !text-xs !font-bold !bg-orange-500 !text-white !rounded-lg hover:!bg-orange-600 disabled:!bg-slate-300"
             >
               Xác nhận hủy
             </Button>

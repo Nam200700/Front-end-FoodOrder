@@ -56,6 +56,15 @@ export default function RestaurantDetail() {
 
   const menuSectionsRef = useRef({});
 
+  // Lấy và tính toán phí ship, khoảng cách, thời gian 
+  const cachedShipping = restaurantShippingCache[id];
+  const shippingFee = cachedShipping?.shippingFee || 0;
+  const distance = cachedShipping ? `${cachedShipping.distanceKm.toFixed(1)}km` : '--';
+  const durationMinutes = cachedShipping ? Math.round(cachedShipping.durationMinutes) : 0;
+  const minDuration = Math.max(10, durationMinutes - 3);
+  const maxDuration = Math.max(minDuration + 5, durationMinutes + 3);
+  const durationText = cachedShipping ? `${minDuration}-${maxDuration} phút` : '--';
+
   useEffect(() => {
     const fetchDetails = async () => {
       try {
@@ -101,10 +110,7 @@ export default function RestaurantDetail() {
             rating: Number(avgRating),
             reviewsCount: realReviews.length,
             phone: realRes.phone,
-            openTime: `${realRes.opensAt?.substring(0, 5)} - ${realRes.closesAt?.substring(0, 5)}`,
-            shippingFee: cached?.shippingFee || 0,
-            distance: cached ? `${cached.distanceKm.toFixed(1)}km` : '--',
-            time: cached ? `${Math.max(10, cached.durationMinutes - 3)}-${cached.durationMinutes + 3} phút` : '--',
+            openTime: (realRes.opensAt && realRes.closesAt) ? `${realRes.opensAt.substring(0, 5)} - ${realRes.closesAt.substring(0, 5)}` : '--',
             reviews: realReviews.map(r => ({
               name: r.customerName,
               rating: r.restaurantRating || 5,
@@ -156,20 +162,7 @@ export default function RestaurantDetail() {
 
     fetchDetails();
     fetchFavoriteStatus();
-  }, [id, user?.lat, user?.lng, restaurantShippingCache[id]]);
-
-  // Thêm đoạn này để tự động cập nhật UI khi cache có dữ liệu mới
-  useEffect(() => {
-    const cached = restaurantShippingCache[id];
-    if (cached && restaurant) {
-      setRestaurant(prev => ({
-        ...prev,
-        shippingFee: cached.shippingFee,
-        distance: `${cached.distanceKm.toFixed(1)}km`,
-        time: `${Math.max(10, cached.durationMinutes - 3)}-${cached.durationMinutes + 3} phút`
-      }));
-    }
-  }, [restaurantShippingCache[id]]); // Chỉ chạy lại khi phí ship của quán này thay đổi
+  }, [id, user?.lat, user?.lng]);
 
   // Parallax scroll effect
   useEffect(() => {
@@ -180,11 +173,13 @@ export default function RestaurantDetail() {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
+  //thêm vào giỏ hàng
   const handleAddToCart = (item) => {
     if (!restaurant) return;
     addItem(item);
   };
 
+  //chat 
   const handleChatWithMerchant = async () => {
     if (!restaurant) return;
     const convId = await startNewConversation(restaurant.ownerId, restaurant.restaurantName, restaurant.image, 'MERCHANT');
@@ -282,13 +277,12 @@ export default function RestaurantDetail() {
   return (
     <div className="flex-1 font-google-sans bg-md-surface pb-24 relative">
       
-      {/* ─── HERO PARALLAX BANNER (Responsive height: h-56 to h-84) ────────────────── */}
       <div className="relative h-56 xs:h-64 sm:h-76 md:h-84 overflow-hidden w-full bg-slate-900 z-0">
         <div 
           className="absolute inset-0 w-full h-full bg-cover bg-center transition-transform duration-75 scale-105"
           style={{ 
             backgroundImage: `url(${restaurant.image})`,
-            transform: `translateY(${scrollY * 0.4}px)` // Parallax
+            transform: `translateY(${scrollY * 0.4}px)` 
           }}
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/75 to-black/20" />
@@ -323,7 +317,7 @@ export default function RestaurantDetail() {
         </div>
       </div>
 
-      {/* ─── FLOATING INFO CARD (translateY -40px, glass-effect) ────────────────── */}
+      {/* ─── thông tin quán ăn ────────────────── */}
       <div className="px-4 sm:px-6 max-w-5xl mx-auto -mt-14 relative z-10">
         <Card variant="glass" className="p-4 sm:p-6 md:p-8 shadow-shadow-3 text-center sm:text-left">
           <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-6">
@@ -339,20 +333,20 @@ export default function RestaurantDetail() {
                 </span>
                 <span className="flex items-center gap-1.5 bg-slate-100 px-2.5 py-1 rounded-radius-sm text-md-on-surface-variant">
                   <Clock size={16} />
-                  {restaurant.time}
+                  {durationText}
                 </span>
                 <span className="flex items-center gap-1.5 bg-slate-100 px-2.5 py-1 rounded-radius-sm text-md-on-surface-variant">
-                  <MapPin size={16} /> {restaurant.distance}
+                  <MapPin size={16} /> {distance}
                 </span>
               </div>
             </div>
 
-            <div className="flex flex-col sm:flex-row gap-3 self-center sm:self-start w-full sm:w-auto shrink-0">
+            <div className="flex flex-row gap-3 self-center sm:self-start w-full sm:w-auto shrink-0">
               <Button 
-                variant="text"
+                variant="outline"
                 onClick={handleChatWithMerchant}
                 icon={MessageSquare}
-                className="bg-md-primary/10 hover:bg-md-primary/20 text-md-primary font-bold w-full sm:w-auto"
+                className="bg-md-primary/10 hover:bg-md-primary/20 text-md-primary font-bold flex-1 sm:w-auto px-3 whitespace-nowrap"
               >
                 Chat với quán
               </Button>
@@ -360,7 +354,7 @@ export default function RestaurantDetail() {
                 variant="outline"
                 onClick={() => reportModal.open()}
                 icon={AlertTriangle}
-                className="border-red-200 hover:border-red-300 text-red-500 hover:bg-red-50 font-bold w-full sm:w-auto shrink-0"
+                className="border-red-200 hover:border-red-300 text-red-500 hover:bg-red-50 font-bold flex-1 sm:w-auto shrink-0 px-3 whitespace-nowrap"
               >
                 Báo cáo
               </Button>
@@ -382,7 +376,7 @@ export default function RestaurantDetail() {
             </div>
             <div className="flex items-center gap-2 min-w-0">
               <span className="flex items-center gap-1.5 font-extrabold text-md-on-surface shrink-0"><Bike size={15} /> Phí ship:</span>
-              <span className="text-md-primary font-bold truncate">Từ {formatCurrency(restaurant.shippingFee)}</span>
+              <span className="text-md-primary font-bold truncate">Từ {formatCurrency(shippingFee)}</span>
             </div>
           </div>
         </Card>
@@ -655,7 +649,7 @@ export default function RestaurantDetail() {
 
       {/* ─── FLOATING CART BOTTOM BAR (Shows when there is item in cart) ────────── */}
       {cartItems.length > 0 && (
-        <div className="fixed bottom-0 left-0 right-0 p-3 xs:p-5 bg-white/80 backdrop-blur-md border-t border-md-outline-variant/30 flex justify-center z-35 shadow-shadow-4 xl:hidden">
+        <div className="fixed bottom-16 md:bottom-0 left-0 right-0 p-3 xs:p-5 bg-white/80 backdrop-blur-md border-t border-md-outline-variant/30 flex justify-center z-50 shadow-shadow-4 xl:hidden">
           <div className="w-full max-w-5xl flex items-center justify-between bg-md-primary text-white px-4 py-3 xs:px-6 xs:py-4.5 rounded-radius-full shadow-shadow-4 hover:scale-[1.01] active:scale-[0.99] transition-all cursor-pointer" onClick={() => navigate('/cart', { state: { targetRestaurantId: restaurant.id } })}>
             <div className="flex items-center gap-3 xs:gap-4 min-w-0">
               <div className="relative shrink-0">
@@ -664,10 +658,6 @@ export default function RestaurantDetail() {
                   {cartItems.reduce((s, i) => s + i.quantity, 0)}
                 </span>
               </div>
-              <div className="flex flex-col items-start leading-none min-w-0">
-                <span className="text-[9px] xs:text-[10px] text-white/85 font-bold">Giỏ hàng chứa món</span>
-                <span className="text-xs xs:text-base font-extrabold mt-1 truncate w-full">{restaurant.name}</span>
-              </div>
             </div>
 
             <div className="flex items-center gap-2 xs:gap-3 shrink-0">
@@ -675,7 +665,7 @@ export default function RestaurantDetail() {
                 {formatCurrency(currentCart.subtotal || 0)}
               </span>
               <span className="text-[10px] xs:text-sm font-extrabold bg-white/20 hover:bg-white/30 px-2.5 py-1 xs:px-4 xs:py-1.5 rounded-full transition-colors">
-                Xem giỏ hàng →
+                Xem giỏ hàng và đặt
               </span>
             </div>
           </div>
@@ -756,10 +746,8 @@ export default function RestaurantDetail() {
               {submittingReport ? 'Đang gửi...' : 'Gửi báo cáo'}
             </Button>
           </div>
-
         </div>
       </Modal>
-
     </div>
   );
 }

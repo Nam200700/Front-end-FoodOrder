@@ -34,7 +34,7 @@ const groupMenu = (foods) => {
 export default function RestaurantDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { carts, addItem, updateQty, removeItem } = useCartStore(); 
+  const { carts, addItem, updateQty, removeItem, restaurantShippingCache, fetchShippingForRestaurant } = useCartStore();
   const currentCart = carts.find(c => c.restaurantId === id) || { items: [], subtotal: 0 };
   const cartItems = currentCart.items;
   
@@ -62,19 +62,26 @@ export default function RestaurantDetail() {
         setLoading(true);
         setErrorMsg('');
 
-        //lấy thông tin quá
-        const resDetailResponse = await apiClient.get(`/restaurants/${id}`);
-        const realRes = resDetailResponse.data?.data;
+        // Lấy thông tin nhà hàng, danh mục và món ăn
+        const [resDetailResponse, categoryResponse, menuResponse] = await Promise.all([
+          apiClient.get(`/restaurants/${id}`),
+          apiClient.get(`/restaurants/${id}/categories`),
+          apiClient.get(`/restaurants/${id}/foods`)
+        ]);
 
-        //lấy danh sách danh mục của quán
-        const categoryResponse = await apiClient.get(`/restaurants/${id}/categories`);
+        const realRes = resDetailResponse.data?.data;
         const realCategories = categoryResponse.data?.data || [];
-        
-        //lấy danh sách món của quán
-        const menuResponse = await apiClient.get(`/restaurants/${id}/foods`);
         const realFoods = menuResponse.data?.data || [];
 
         if (realRes) {
+          const cached = restaurantShippingCache[id];
+          if (!cached) {
+            const customerLat = user?.lat || 10.762622;
+            const customerLng = user?.lng || 106.660172;
+            fetchShippingForRestaurant(id, customerLat, customerLng);
+          }
+
+          // Lấy đánh giá
           let realReviews = [];
           try {
             const reviewsRes = await apiClient.get(`/restaurants/${id}/reviews`);
@@ -86,30 +93,18 @@ export default function RestaurantDetail() {
           const totalRating = realReviews.reduce((sum, r) => sum + (r.restaurantRating || 0), 0);
           const avgRating = realReviews.length > 0 ? (totalRating / realReviews.length).toFixed(1) : '5.0';
 
-          // TÍNH KHOẢNG CÁCH VÀ THỜI GIAN THẬT BẰNG HAVERSINE
-          const customerLat = user?.lat || 10.762622;
-          const customerLng = user?.lng || 106.660172;
-          const resLat = Number(realRes.latitude);
-          const resLng = Number(realRes.longitude);
-          
-          let dist = 1.0;
-          if (!isNaN(resLat) && !isNaN(resLng)) {
-            dist = calculateHaversineDistance(resLat, resLng, customerLat, customerLng);
-          }
-          const duration = Math.max(10, Math.round(dist * 5 + 5));
-          const shippingFee = Math.max(15000, 15000 + Math.ceil(Math.max(0, dist - 2)) * 5000);
-
+          // Map thông tin quán ăn
           const mapped = mapRestaurant(realRes);
           const mappedRes = {
             ...mapped,
-            ownerId: realRes.ownerId, 
+            ownerId: realRes.ownerId,
             rating: Number(avgRating),
             reviewsCount: realReviews.length,
-            time: `${Math.max(10, duration - 3)}-${duration + 3} phút`,
-            distance: `${dist.toFixed(1)}km`,
             phone: realRes.phone,
             openTime: `${realRes.opensAt?.substring(0, 5)} - ${realRes.closesAt?.substring(0, 5)}`,
-            shippingFee: shippingFee,
+            shippingFee: cached?.shippingFee || 0,
+            distance: cached ? `${cached.distanceKm.toFixed(1)}km` : '--',
+            time: cached ? `${Math.max(10, cached.durationMinutes - 3)}-${cached.durationMinutes + 3} phút` : '--',
             reviews: realReviews.map(r => ({
               name: r.customerName,
               rating: r.restaurantRating || 5,
@@ -117,9 +112,10 @@ export default function RestaurantDetail() {
               date: new Date(r.createdAt).toLocaleDateString('vi-VN')
             }))
           };
-          
+
+          // Map menu
           const mappedMenu = realCategories.map(cat => ({
-            id: cat.categoryId, 
+            id: cat.categoryId,
             categoryName: cat.categoryName,
             items: realFoods
               .filter(food => food.categoryId === cat.categoryId)
@@ -138,7 +134,7 @@ export default function RestaurantDetail() {
             setActiveCategory(mappedMenu[0].id);
           }
         } else {
-            setErrorMsg('Không tìm thấy thông tin chi tiết nhà hàng này trong Database.');
+          setErrorMsg('Không tìm thấy thông tin chi tiết nhà hàng này trong Database.');
         }
       } catch (error) {
         console.error('Lỗi khi tải chi tiết quán từ Backend:', error);
@@ -160,7 +156,20 @@ export default function RestaurantDetail() {
 
     fetchDetails();
     fetchFavoriteStatus();
-  }, [id, user?.lat, user?.lng]);
+  }, [id, user?.lat, user?.lng, restaurantShippingCache[id]]);
+
+  // Thêm đoạn này để tự động cập nhật UI khi cache có dữ liệu mới
+  useEffect(() => {
+    const cached = restaurantShippingCache[id];
+    if (cached && restaurant) {
+      setRestaurant(prev => ({
+        ...prev,
+        shippingFee: cached.shippingFee,
+        distance: `${cached.distanceKm.toFixed(1)}km`,
+        time: `${Math.max(10, cached.durationMinutes - 3)}-${cached.durationMinutes + 3} phút`
+      }));
+    }
+  }, [restaurantShippingCache[id]]); // Chỉ chạy lại khi phí ship của quán này thay đổi
 
   // Parallax scroll effect
   useEffect(() => {

@@ -159,7 +159,7 @@ export const useCartStore = create((set, get) => ({
       }
       
       await apiClient.post('/carts/me/items', {
-        foodId: cleanFoodId,
+        foodId: Number(foodId),
         quantity: delta,
         note: null
       });

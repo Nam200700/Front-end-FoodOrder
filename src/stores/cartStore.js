@@ -7,6 +7,7 @@ export const useCartStore = create((set, get) => ({
   shippingInfos: {},
   shippingCacheKey: '',
   isCalculatingShipping: false,
+  restaurantShippingCache: {},
 
   fetchCart: async () => {
     try {
@@ -23,7 +24,7 @@ export const useCartStore = create((set, get) => ({
         longitude: cart.longitude ? Number(cart.longitude) : null,
         items: (cart.items || []).map(item => ({
           cartItemId: item.cartItemId,
-          id: `food-${item.foodId}`,
+          id: item.foodId,
           foodId: item.foodId,
           name: item.foodName,
           price: Number(item.price || 0),
@@ -41,7 +42,7 @@ export const useCartStore = create((set, get) => ({
     }
   },
 
-  // phí ship
+  // phí ship cho giỏ hàng
   fetchShippingFees: async (deliveryLat, deliveryLng) => {
     const { carts, shippingCacheKey, isCalculatingShipping } = get();
 
@@ -93,10 +94,41 @@ export const useCartStore = create((set, get) => ({
     }
   },
 
-  addItem: async (item, resId, resName) => {
+  fetchShippingForRestaurant: async (resId, deliveryLat, deliveryLng) => {
+    const { restaurantShippingCache } = get();
+    // Nếu đã có trong cache thì không gọi API nữa
+    if (restaurantShippingCache[resId]) return;
+    try {
+      const res = await apiClient.get("/shipping/calculate", {
+        params: {
+          restaurantIds: [resId], 
+          deliveryLat,
+          deliveryLng
+        }
+      });
+      
+      const data = res.data?.data?.[0];
+      if (data) {
+        set(state => ({
+          restaurantShippingCache: {
+            ...state.restaurantShippingCache,
+            [resId]: {
+              shippingFee: data.shippingFee,
+              distanceKm: data.distanceKm,
+              durationMinutes: data.durationMinutes
+            }
+          }
+        }));
+      }
+    } catch (err) {
+      console.error("Lỗi tính phí ship cho từng quán:", err);
+    }
+  },
+
+  addItem: async (item) => {
     try {
       const originId = item.foodId || item.id;
-      const foodId = typeof originId === 'string' ? parseInt(originId.replace('food-', '')) : originId;
+      const foodId = Number(originId);
       
       await apiClient.post('/carts/me/items', {
         foodId: foodId,
@@ -114,13 +146,12 @@ export const useCartStore = create((set, get) => ({
 
   updateQty: async (foodId, currentQty, targetQty) => {
     try {
-      const cleanFoodId = typeof foodId === 'string' ? parseInt(foodId.replace('food-', '')) : foodId;
       const delta = targetQty - currentQty;
       if (delta === 0) return;
 
       if (targetQty <= 0) {
         const allItems = get().carts.flatMap(c => c.items);
-        const targetItem = allItems.find(i => i.foodId === cleanFoodId);
+        const targetItem = allItems.find(i => i.foodId === Number(foodId));
         if (targetItem) {
           await get().removeItem(targetItem.cartItemId);
         }
@@ -128,7 +159,7 @@ export const useCartStore = create((set, get) => ({
       }
       
       await apiClient.post('/carts/me/items', {
-        foodId: cleanFoodId,
+        foodId: Number(foodId),
         quantity: delta,
         note: null
       });

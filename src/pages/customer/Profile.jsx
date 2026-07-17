@@ -23,7 +23,8 @@ export default function Profile() {
 
   const [isMapOpen, setIsMapOpen] = useState(false);
   const [updating, setUpdating] = useState(false);
-  const [phoneError, setPhoneError] = useState(''); // lỗi định dạng SĐT khi sửa hồ sơ
+  const [nameError, setNameError] = useState('');
+  const [phoneError, setPhoneError] = useState(''); 
   const fileInputRef = useRef(null);
   const { uploading: uploadingAvatar, handleAvatarChange: uploadAvatar } = useAvatarUpload();
 
@@ -49,6 +50,13 @@ export default function Profile() {
 
   const handleSave = async (e) => {
     e.preventDefault();
+    if (!name.trim()) {
+      setNameError('Vui lòng nhập họ và tên.');
+      return;
+    } else {
+      setNameError('');
+    }
+
     // Chặn lưu SĐT sai định dạng (bắt đầu bằng 0, gồm 10 chữ số) để không lưu số rác lên DB.
     if (!validatePhone(phone)) {
       setPhoneError('Số điện thoại không hợp lệ (bắt đầu bằng số 0 và gồm 10 chữ số).');
@@ -67,7 +75,7 @@ export default function Profile() {
         longitude: Number(lng)
       });
       updateProfile({ name, phone, address, lat, lng });
-      toast.success('Đã cập nhật thông tin cá nhân và vị trí mặc định thành công!');
+      toast.success('Đã cập nhật thông tin cá nhân thành công!');
     } catch (err) {
       console.error('Lỗi khi lưu profile thật lên DB:', err);
       toast.error(err.response?.data?.message || 'Có lỗi xảy ra khi cập nhật thông tin cá nhân.');
@@ -185,7 +193,7 @@ export default function Profile() {
         {/* Mục "Hồ sơ" của sổ tay */}
         <div className="flex items-center gap-2 pb-1 border-b border-md-outline-variant/20">
           <User size={16} className="text-md-primary" />
-          <h3 className="text-sm font-extrabold text-md-on-surface">Hồ sơ của bạn</h3>
+          <h3 className="text-sm font-extrabold text-md-on-surface">Hồ Sơ Của Bạn</h3>
         </div>
         <div>
           <label className="block text-[10px] font-bold text-md-on-surface-variant uppercase tracking-wider mb-2">
@@ -195,12 +203,21 @@ export default function Profile() {
             <User className="absolute left-3.5 top-1/2 -translate-y-1/2 text-md-outline" size={16} />
             <input
               type="text"
-              required
               value={name}
-              onChange={(e) => setName(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-md-outline-variant rounded-radius-lg text-xs focus:outline-none focus:border-md-primary focus:bg-white transition-all font-semibold"
+              onChange={(e) => {
+                setName(e.target.value);
+                if (nameError) setNameError(''); 
+              }}
+              className={`w-full pl-10 pr-4 py-2.5 bg-slate-50 border rounded-radius-lg text-xs focus:outline-none focus:bg-white transition-all font-semibold ${
+                nameError ? 'border-red-500 focus:border-red-500' : 'border-md-outline-variant focus:border-md-primary'
+              }`}
             />
           </div>
+          {nameError && (
+            <span className="text-[11px] text-red-500 font-bold mt-1 ml-1 flex items-start gap-1">
+              <AlertTriangle size={12} className="shrink-0 mt-0.5" /> <span>{nameError}</span>
+            </span>
+          )}
         </div>
 
         <div>
@@ -210,10 +227,9 @@ export default function Profile() {
           <div className="relative">
             <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 text-md-outline" size={16} />
             <input
-              type="email"
-              disabled
+              type="email"              
               value={user.email}
-              className="w-full pl-10 pr-4 py-2.5 bg-slate-100 border border-md-outline-variant/50 rounded-radius-lg text-xs text-md-outline cursor-not-allowed font-semibold"
+              className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-md-outline-variant rounded-radius-lg text-xs focus:outline-none focus:border-md-primary focus:bg-white transition-all font-semibold"
             />
           </div>
         </div>
@@ -226,7 +242,7 @@ export default function Profile() {
             <Phone className="absolute left-3.5 top-1/2 -translate-y-1/2 text-md-outline" size={16} />
             <input
               type="tel"
-              required
+              readOnly
               value={phone}
               onChange={(e) => { setPhone(e.target.value); if (phoneError) setPhoneError(''); }}
               onBlur={() => setPhoneError(validatePhone(phone) ? '' : 'Số điện thoại không hợp lệ (bắt đầu bằng số 0 và gồm 10 chữ số).')}

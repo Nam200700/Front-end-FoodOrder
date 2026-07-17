@@ -193,7 +193,7 @@ export default function Profile() {
         {/* Mục "Hồ sơ" của sổ tay */}
         <div className="flex items-center gap-2 pb-1 border-b border-md-outline-variant/20">
           <User size={16} className="text-md-primary" />
-          <h3 className="text-sm font-extrabold text-md-on-surface">Hồ sơ của bạn</h3>
+          <h3 className="text-sm font-extrabold text-md-on-surface">Hồ Sơ Của Bạn</h3>
         </div>
         <div>
           <label className="block text-[10px] font-bold text-md-on-surface-variant uppercase tracking-wider mb-2">

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Plus, ToggleLeft, ToggleRight, Edit, Trash2, GripVertical, Check, X, ClipboardList, UtensilsCrossed } from 'lucide-react';
+import { Plus, ToggleLeft, ToggleRight, Edit, Trash2, GripVertical, Check, X, ClipboardList, UtensilsCrossed, AlertTriangle  } from 'lucide-react';
 import { formatCurrency } from '../../utils/format';
 import apiClient from '../../services/api';
 import Spinner from '../../components/common/Spinner';
@@ -13,6 +13,7 @@ import { useFetchData } from '../../hooks/useFetchData';
 import { useModalState } from '../../hooks/useModalState';
 import { useImageUpload } from '../../hooks/useImageUpload';
 import FilterTabs from '../../components/common/FilterTabs';
+
 
 export default function MerchantMenu() {
   const navigate = useNavigate();
@@ -44,7 +45,7 @@ export default function MerchantMenu() {
         price: Number(item.price),
         active: item.isAvailable ?? true,
         image: item.imageUrl || '',
-        desc: item.description || 'Không có mô tả cho món ăn này.'
+        desc: item.description
       }))
     }
   );
@@ -99,6 +100,17 @@ export default function MerchantMenu() {
   const [editFoodPrice, setEditFoodPrice] = useState('');
   const [editFoodCat, setEditFoodCat] = useState('');
   const [editFoodImage, setEditFoodImage] = useState('');
+
+  // State lỗi cho form Thêm mới
+  const [nameErr, setNameErr] = useState('');
+  const [priceErr, setPriceErr] = useState('');
+  const [catErr, setCatErr] = useState('');
+
+  // State lỗi cho form Sửa
+  const [eNameErr, setENameErr] = useState('');
+  const [ePriceErr, setEPriceErr] = useState('');
+  const [eCatErr, setECatErr] = useState('');
+  
 
   // Upload hình ảnh sử dụng useImageUpload
   const { uploading: uploadingAddImage, uploadImage: uploadAddImage } = useImageUpload();
@@ -171,19 +183,52 @@ export default function MerchantMenu() {
     }
   };
 
+  const validate = (name, price, catId, isEdit = false) => {
+    let isValid = true;
+    const getPriceError = (val) => {
+      const strVal = String(val).trim();
+      if (strVal === '') return 'Vui lòng nhập giá.';
+      if (isNaN(Number(val)) || Number(val) < 0) return 'Giá không hợp lệ.';
+      return '';
+    };
+
+    if (!isEdit) {
+      // FORM THÊM MỚI
+      const nErr = !name?.trim() ? 'Vui lòng nhập tên món.' : '';
+      const pErr = getPriceError(price);
+      const cErr = !catId ? 'Vui lòng chọn danh mục.' : '';
+      
+      setNameErr(nErr);
+      setPriceErr(pErr);
+      setCatErr(cErr);
+      
+      if (nErr || pErr || cErr) isValid = false;
+    } else {
+      // FORM CHỈNH SỬA
+      const nErr = !name?.trim() ? 'Vui lòng nhập tên món.' : '';
+      const pErr = getPriceError(price);
+      const cErr = !catId ? 'Vui lòng chọn danh mục.' : '';
+      
+      setENameErr(nErr);
+      setEPriceErr(pErr);
+      setECatErr(cErr);
+      
+      if (nErr || pErr || cErr) isValid = false;
+    }
+    return isValid;
+  };
+
+  //thêm món ăn
   const handleAddFood = async (e) => {
     e.preventDefault();
-    if (!newFoodName.trim() || !newFoodPrice) {
-      toast.warning('Vui lòng điền đầy đủ Tên món và Giá bán!');
-      return;
-    }
+    if (!validate(newFoodName, newFoodPrice, newFoodCat, false)) return;
 
     setSubmitting(true);
     try {
       const createReq = {
         categoryId: Number(newFoodCat),
         foodName: newFoodName,
-        description: newFoodDesc || 'Món ăn chất lượng cao.',
+        description: newFoodDesc,
         price: Number(newFoodPrice),
         imageUrl: newFoodImage
       };
@@ -202,6 +247,7 @@ export default function MerchantMenu() {
   };
 
   const handleOpenEditModal = (item) => {
+    setENameErr(''); setEPriceErr(''); setECatErr('');
     setEditFoodName(item.name);
     setEditFoodDesc(item.desc);
     setEditFoodPrice(item.price);
@@ -210,12 +256,10 @@ export default function MerchantMenu() {
     editFoodModalState.open(item);
   };
 
+  //sửa món ăn
   const handleEditFood = async (e) => {
     e.preventDefault();
-    if (!editFoodName.trim() || !editFoodPrice) {
-      toast.warning('Vui lòng điền đầy đủ Tên món và Giá bán!');
-      return;
-    }
+    if (!validate(editFoodName, editFoodPrice, editFoodCat, true)) return;
 
     const editingItem = editFoodModalState.data;
     if (!editingItem) return;
@@ -225,7 +269,7 @@ export default function MerchantMenu() {
       await apiClient.put(`/merchant/foods/${editingItem.id}`, {
         categoryId: editFoodCat ? Number(editFoodCat) : null,
         foodName: editFoodName.trim(),
-        description: editFoodDesc || 'Món ăn chất lượng cao.',
+        description: editFoodDesc,
         price: Number(editFoodPrice),
         imageUrl: editFoodImage,
         isAvailable: editingItem.active
@@ -242,6 +286,7 @@ export default function MerchantMenu() {
   };
 
   const handleOpenAddModal = () => {
+    setNameErr(''); setPriceErr(''); setCatErr('');
     if (categories.length === 0) {
       toast.warning('Vui lòng tạo ít nhất 1 danh mục trước khi thêm món ăn!');
       return;
@@ -388,7 +433,7 @@ export default function MerchantMenu() {
 
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-xl font-bold text-slate-800">Quản lý Thực Đơn</h1>
+        <h1 className="text-xl font-bold text-slate-800">Quản Lý Thực Đơn</h1>
         <button
           onClick={handleOpenAddModal}
           className="bg-md-secondary text-white font-bold px-4 py-2 rounded-radius-full text-xs shadow-sm hover:scale-105 transition-all flex items-center gap-1.5 cursor-pointer"
@@ -608,235 +653,196 @@ export default function MerchantMenu() {
       )}
 
       {/* MODAL THÊM MÓN MỚI */}
-      {addFoodModal.isOpen && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-radius-xl p-6.5 max-w-md w-full shadow-shadow-5 space-y-4 font-google-sans text-slate-800 animate-slide-up">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <h3 className="font-extrabold text-base text-slate-800">Thêm Món Ăn Mới</h3>
-              <button 
-                onClick={() => addFoodModal.close()}
-                className="p-1 hover:bg-slate-100 rounded-full text-slate-400 hover:text-slate-600"
+      <Modal
+        isOpen={addFoodModal.isOpen}
+        onClose={addFoodModal.close}
+        title="Thêm Món Ăn Mới"
+        size="md"
+      >
+        <form onSubmit={handleAddFood} className="space-y-4" noValidate>
+          <div className="flex items-center gap-4 py-2 border-b border-slate-100">
+            <div className="w-16 h-16 rounded-lg overflow-hidden border border-slate-200 bg-slate-50 shrink-0 flex items-center justify-center">
+              <img src={getFoodImageUrl(newFoodImage)} alt="Preview" className="w-full h-full object-cover" />
+            </div>
+            <div className="flex-1">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => fileInputAddRef.current?.click()}
+                loading={uploadingAddImage}
               >
-                <X size={18} />
-              </button>
+                Chọn ảnh món ăn
+              </Button>
+              <input
+                type="file"
+                ref={fileInputAddRef}
+                className="hidden"
+                accept="image/*"
+                onChange={(e) => handleFoodImageUpload(e, 'add')}
+              />
+              <p className="text-[9px] text-slate-400 mt-1 font-normal">Định dạng JPEG, PNG, WEBP, HEIC, HEIF dưới 5MB</p>
+            </div>
+          </div>
+
+          {/* Form Fields */}
+          <div className="space-y-4">
+            <div>
+              <label className="block text-slate-400 font-bold uppercase tracking-wider mb-1.5 text-[10px]">Tên món ăn *</label>
+              <input
+                type="text"
+                value={newFoodName}
+                placeholder="Ví dụ: Cơm Tấm Sườn..."
+                onChange={(e) => { setNewFoodName(e.target.value); if (nameErr) setNameErr(''); }}
+                className={`w-full px-4 py-2.5 bg-slate-50 border rounded-radius-lg focus:outline-none focus:bg-white transition-all ${nameErr ? 'border-red-500' : 'border-slate-200'}`}
+              />
+              {nameErr && <span className="text-[11px] text-red-500 font-bold mt-1.5 ml-1 flex items-start gap-1"><AlertTriangle size={12} className="shrink-0 mt-0.5" /> {nameErr}</span>}
             </div>
 
-            <form onSubmit={handleAddFood} className="space-y-4 text-xs font-semibold">
-              {/* Food Image upload section */}
-              <div className="flex items-center gap-4 py-2 border-b border-slate-100">
-                <div className="w-16 h-16 rounded-lg overflow-hidden border border-slate-200 bg-slate-50 shrink-0 flex items-center justify-center">
-                  <img src={getFoodImageUrl(newFoodImage)} alt="Preview" className="w-full h-full object-cover" />
-                </div>
-                <div className="flex-1">
-                  <button
-                    type="button"
-                    onClick={() => fileInputAddRef.current?.click()}
-                    disabled={uploadingAddImage}
-                    className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-[10px] font-bold transition-all flex items-center gap-1.5 cursor-pointer"
-                  >
-                    {uploadingAddImage ? (
-                      <span className="w-3.5 h-3.5 border-2 border-slate-700 border-t-transparent rounded-full animate-spin"></span>
-                    ) : (
-                      <Plus size={14} />
-                    )}
-                    Chọn ảnh món ăn
-                  </button>
-                  <input
-                    type="file"
-                    ref={fileInputAddRef}
-                    className="hidden"
-                    accept="image/*"
-                    onChange={(e) => handleFoodImageUpload(e, 'add')}
-                  />
-                  <p className="text-[9px] text-slate-400 mt-1 font-normal">Định dạng JPEG, PNG, WEBP, HEIC, HEIF dưới 5MB</p>
-                </div>
-              </div>
-
+            <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-slate-400 font-bold uppercase tracking-wider mb-1.5">Tên món ăn *</label>
+                <label className="block text-slate-400 font-bold uppercase tracking-wider mb-1.5 text-[10px]">Giá bán (VNĐ) *</label>
                 <input
-                  type="text"
-                  required
-                  placeholder="Ví dụ: Cơm Tấm Sườn Đòn..."
-                  value={newFoodName}
-                  onChange={(e) => setNewFoodName(e.target.value)}
-                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-radius-lg focus:outline-none focus:border-md-secondary focus:bg-white"
+                  type="number"
+                  value={newFoodPrice}
+                  placeholder="Ví dụ: 45000"
+                  onChange={(e) => { setNewFoodPrice(e.target.value); if (priceErr) setPriceErr(''); }}
+                  className={`w-full px-4 py-2.5 bg-slate-50 border rounded-radius-lg focus:outline-none focus:bg-white transition-all ${priceErr ? 'border-red-500' : 'border-slate-200'}`}
                 />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-slate-400 font-bold uppercase tracking-wider mb-1.5">Giá bán (VNĐ) *</label>
-                  <input
-                    type="number"
-                    required
-                    placeholder="Ví dụ: 45000"
-                    value={newFoodPrice}
-                    onChange={(e) => setNewFoodPrice(e.target.value)}
-                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-radius-lg focus:outline-none focus:border-md-secondary focus:bg-white"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-slate-400 font-bold uppercase tracking-wider mb-1.5">Danh mục</label>
-                  <select
-                    value={newFoodCat}
-                    onChange={(e) => setNewFoodCat(Number(e.target.value))}
-                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-radius-lg focus:outline-none focus:border-md-secondary focus:bg-white"
-                  >
-                    {categories.map(c => (
-                      <option key={c.id} value={c.id}>{c.name}</option>
-                    ))}
-                  </select>
-                </div>
+                {priceErr && <span className="text-[11px] text-red-500 font-bold mt-1.5 ml-1 flex items-start gap-1"><AlertTriangle size={12} className="shrink-0 mt-0.5" /> {priceErr}</span>}
               </div>
 
               <div>
-                <label className="block text-slate-400 font-bold uppercase tracking-wider mb-1.5">Mô tả món ăn</label>
-                <textarea
-                  rows={2.5}
-                  placeholder="Sườn nướng thơm ngon mật ong..."
-                  value={newFoodDesc}
-                  onChange={(e) => setNewFoodDesc(e.target.value)}
-                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-radius-lg focus:outline-none focus:border-md-secondary focus:bg-white resize-none"
-                />
+                <label className="block text-slate-400 font-bold uppercase tracking-wider mb-1.5 text-[10px]">Danh mục</label>
+                <select
+                  value={newFoodCat}
+                  onChange={(e) => { setNewFoodCat(Number(e.target.value)); if (catErr) setCatErr(''); }}
+                  className={`w-full px-4 py-2.5 bg-slate-50 border rounded-radius-lg focus:outline-none focus:bg-white transition-all ${catErr ? 'border-red-500' : 'border-slate-200'}`}
+                >
+                  {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                </select>
+                {catErr && <span className="text-[11px] text-red-500 font-bold mt-1.5 ml-1 flex items-start gap-1"><AlertTriangle size={12} className="shrink-0 mt-0.5" /> {catErr}</span>}
               </div>
+            </div>
 
-              <button
-                type="submit"
-                disabled={submitting}
-                className="w-full bg-md-secondary hover:bg-opacity-95 text-white font-extrabold py-3.5 rounded-radius-full shadow-md flex items-center justify-center gap-1.5 uppercase cursor-pointer"
-              >
-                {submitting ? (
-                  <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
-                ) : (
-                  <>
-                    <span>Lưu món ăn mới</span>
-                    <Check size={16} />
-                  </>
-                )}
-              </button>
-            </form>
+            <div>
+              <label className="block text-slate-400 font-bold uppercase tracking-wider mb-1.5 text-[10px]">Mô tả món ăn</label>
+              <textarea
+                rows={2.5}
+                value={newFoodDesc}
+                onChange={(e) => setNewFoodDesc(e.target.value)}
+                className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-radius-lg focus:outline-none focus:border-md-secondary focus:bg-white resize-none transition-all"
+              />
+            </div>
           </div>
-        </div>
-      )}
+
+          {/* Nút lưu */}
+          <Button
+            type="submit"
+            variant="secondary"
+            loading={submitting}
+            className="w-full"
+          >
+            Lưu món ăn mới
+          </Button>
+        </form>
+      </Modal>
 
       {/* MODAL CHỈNH SỬA MÓN ĂN */}
-      {editFoodModalState.isOpen && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-radius-xl p-6.5 max-w-md w-full shadow-shadow-5 space-y-4 font-google-sans text-slate-800 animate-slide-up">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <h3 className="font-extrabold text-base text-slate-800">Chỉnh Sửa Món Ăn</h3>
-              <button 
-                onClick={() => editFoodModalState.close()}
-                className="p-1 hover:bg-slate-100 rounded-full text-slate-400 hover:text-slate-600 cursor-pointer"
+      <Modal
+        isOpen={editFoodModalState.isOpen}
+        onClose={editFoodModalState.close}
+        title="Chỉnh Sửa Món Ăn"
+        size="md"
+      >
+        <form onSubmit={handleEditFood} className="space-y-4" noValidate>
+          <div className="flex items-center gap-4 py-2 border-b border-slate-100">
+            <div className="w-16 h-16 rounded-lg overflow-hidden border border-slate-200 bg-slate-50 shrink-0 flex items-center justify-center">
+              <img src={getFoodImageUrl(editFoodImage)} alt="Preview" className="w-full h-full object-cover" />
+            </div>
+            <div className="flex-1">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => fileInputEditRef.current?.click()}
+                loading={uploadingEditImage}
               >
-                <X size={18} />
-              </button>
+                Thay đổi ảnh món ăn
+              </Button>
+              <input
+                type="file"
+                ref={fileInputEditRef}
+                className="hidden"
+                accept="image/*"
+                onChange={(e) => handleFoodImageUpload(e, 'edit')}
+              />
+              <p className="text-[9px] text-slate-400 mt-1 font-normal">Định dạng JPEG, PNG, WEBP, HEIC, HEIF dưới 5MB</p>
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            <div>
+              <label className="block text-slate-400 font-bold uppercase tracking-wider mb-1.5 text-[10px]">Tên món ăn *</label>
+              <input
+                type="text"
+                value={editFoodName}
+                onChange={(e) => { setEditFoodName(e.target.value); if (eNameErr) setENameErr(''); }}
+                className={`w-full px-4 py-2.5 bg-slate-50 border rounded-radius-lg focus:outline-none focus:bg-white transition-all ${eNameErr ? 'border-red-500' : 'border-slate-200'}`}
+              />
+              {eNameErr && <span className="text-[11px] text-red-500 font-bold mt-1.5 ml-1 flex items-start gap-1"><AlertTriangle size={12} className="shrink-0 mt-0.5" /> {eNameErr}</span>}
             </div>
 
-            <form onSubmit={handleEditFood} className="space-y-4 text-xs font-semibold">
-              {/* Food Image edit section */}
-              <div className="flex items-center gap-4 py-2 border-b border-slate-100">
-                <div className="w-16 h-16 rounded-lg overflow-hidden border border-slate-200 bg-slate-50 shrink-0 flex items-center justify-center">
-                  <img src={getFoodImageUrl(editFoodImage)} alt="Preview" className="w-full h-full object-cover" />
-                </div>
-                <div className="flex-1">
-                  <button
-                    type="button"
-                    onClick={() => fileInputEditRef.current?.click()}
-                    disabled={uploadingEditImage}
-                    className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-[10px] font-bold transition-all flex items-center gap-1.5 cursor-pointer"
-                  >
-                    {uploadingEditImage ? (
-                      <span className="w-3.5 h-3.5 border-2 border-slate-700 border-t-transparent rounded-full animate-spin"></span>
-                    ) : (
-                      <Plus size={14} />
-                    )}
-                    Thay đổi ảnh món ăn
-                  </button>
-                  <input
-                    type="file"
-                    ref={fileInputEditRef}
-                    className="hidden"
-                    accept="image/*"
-                    onChange={(e) => handleFoodImageUpload(e, 'edit')}
-                  />
-                  <p className="text-[9px] text-slate-400 mt-1 font-normal">Định dạng JPEG, PNG, WEBP, HEIC, HEIF dưới 5MB</p>
-                </div>
-              </div>
-
+            <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-slate-400 font-bold uppercase tracking-wider mb-1.5">Tên món ăn *</label>
+                <label className="block text-slate-400 font-bold uppercase tracking-wider mb-1.5 text-[10px]">Giá bán (VNĐ) *</label>
                 <input
-                  type="text"
-                  required
-                  placeholder="Ví dụ: Cơm Tấm Sườn Đòn..."
-                  value={editFoodName}
-                  onChange={(e) => setEditFoodName(e.target.value)}
-                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-radius-lg focus:outline-none focus:border-md-secondary focus:bg-white"
+                  type="number"
+                  value={editFoodPrice}
+                  onChange={(e) => { setEditFoodPrice(e.target.value); if (ePriceErr) setEPriceErr(''); }}
+                  className={`w-full px-4 py-2.5 bg-slate-50 border rounded-radius-lg focus:outline-none focus:bg-white transition-all ${ePriceErr ? 'border-red-500' : 'border-slate-200'}`}
                 />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-slate-400 font-bold uppercase tracking-wider mb-1.5">Giá bán (VNĐ) *</label>
-                  <input
-                    type="number"
-                    required
-                    placeholder="Ví dụ: 45000"
-                    value={editFoodPrice}
-                    onChange={(e) => setEditFoodPrice(e.target.value)}
-                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-radius-lg focus:outline-none focus:border-md-secondary focus:bg-white"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-slate-400 font-bold uppercase tracking-wider mb-1.5">Danh mục</label>
-                  <select
-                    value={editFoodCat || ''}
-                    onChange={(e) => setEditFoodCat(e.target.value ? Number(e.target.value) : null)}
-                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-radius-lg focus:outline-none focus:border-md-secondary focus:bg-white"
-                  >
-                    {!editFoodCat && (
-                      <option value="">-- Chưa phân loại --</option>
-                    )}
-                    {categories.map(c => (
-                      <option key={c.id} value={c.id}>{c.name}</option>
-                    ))}
-                  </select>
-                </div>
+                {ePriceErr && <span className="text-[11px] text-red-500 font-bold mt-1.5 ml-1 flex items-start gap-1"><AlertTriangle size={12} className="shrink-0 mt-0.5" /> {ePriceErr}</span>}
               </div>
 
               <div>
-                <label className="block text-slate-400 font-bold uppercase tracking-wider mb-1.5">Mô tả món ăn</label>
-                <textarea
-                  rows={2.5}
-                  placeholder="Sườn nướng thơm ngon mật ong..."
-                  value={editFoodDesc}
-                  onChange={(e) => setEditFoodDesc(e.target.value)}
-                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-radius-lg focus:outline-none focus:border-md-secondary focus:bg-white resize-none"
-                />
+                <label className="block text-slate-400 font-bold uppercase tracking-wider mb-1.5 text-[10px]">Danh mục</label>
+                <select
+                  value={editFoodCat || ''}
+                  onChange={(e) => setEditFoodCat(e.target.value ? Number(e.target.value) : null)}
+                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-radius-lg focus:outline-none focus:border-md-secondary focus:bg-white transition-all"
+                >
+                  {!editFoodCat && <option value="">-- Chưa phân loại --</option>}
+                  {categories.map(c => (
+                    <option key={c.id} value={c.id}>{c.name}</option>
+                  ))}
+                </select>
               </div>
+            </div>
 
-              <button
-                type="submit"
-                disabled={submitting}
-                className="w-full bg-md-secondary hover:bg-opacity-95 text-white font-extrabold py-3.5 rounded-radius-full shadow-md flex items-center justify-center gap-1.5 uppercase cursor-pointer"
-              >
-                {submitting ? (
-                  <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
-                ) : (
-                  <>
-                    <span>Lưu thay đổi</span>
-                    <Check size={16} />
-                  </>
-                )}
-              </button>
-            </form>
+            <div>
+              <label className="block text-slate-400 font-bold uppercase tracking-wider mb-1.5 text-[10px]">Mô tả món ăn</label>
+              <textarea
+                rows={2.5}
+                placeholder="Sườn nướng thơm ngon mật ong..."
+                value={editFoodDesc}
+                onChange={(e) => setEditFoodDesc(e.target.value)}
+                className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-radius-lg focus:outline-none focus:border-md-secondary focus:bg-white resize-none transition-all"
+              />
+            </div>
           </div>
-        </div>
-      )}
+
+          {/* Nút lưu */}
+          <Button
+            type="submit"
+            variant="secondary"
+            loading={submitting}
+            className="w-full"
+          >
+            Lưu thay đổi
+          </Button>
+        </form>
+      </Modal>
 
       {/* Confirm xóa món ăn */}
       <ConfirmDialog
@@ -854,7 +860,7 @@ export default function MerchantMenu() {
       <Modal
         isOpen={addCatModal.isOpen}
         onClose={() => addCatModal.close()}
-        title="Thêm danh mục mới"
+        title="Thêm Danh Mục"
         size="sm"
       >
         <div className="space-y-4 font-google-sans">
@@ -894,7 +900,7 @@ export default function MerchantMenu() {
       <Modal
         isOpen={editCatModal.isOpen}
         onClose={() => editCatModal.close()}
-        title="Sửa tên danh mục"
+        title="Chỉnh Sửa Danh Mục"
         size="sm"
       >
         <div className="space-y-4 font-google-sans">

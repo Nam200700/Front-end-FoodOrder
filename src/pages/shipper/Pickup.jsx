@@ -12,6 +12,10 @@ import { SkeletonOrderCard } from '../../components/common/SkeletonCard';
 import EmptyState from '../../components/common/EmptyState';
 import { toast } from 'react-toastify';
 import { mapOrder } from '../../utils/mappers';
+import Modal from '../../components/common/Modal';
+import Button from '../../components/common/Button';
+import { useModalState } from '../../hooks/useModalState';
+import { useCartStore } from '../../stores/cartStore';
 
 
 // Fix lỗi default marker của Leaflet trong React
@@ -42,6 +46,10 @@ export default function ShipperPickup() {
   const mapRef = useRef(null);
   const markersRef = useRef({ restaurant: null, customer: null, shipper: null });
   const polylineRef = useRef(null);
+
+  const orderModal = useModalState(null);
+
+  const { fetchShippingForRestaurant, restaurantShippingCache } = useCartStore();
 
   const handleChatWithCustomer = async () => {
     if (!activeJob || !activeJob.customerId) {
@@ -92,7 +100,6 @@ export default function ShipperPickup() {
           fee: mappedOrder.shippingFee,
           total: mappedOrder.total,
           phone: mappedOrder.customerPhone || '0901234567',
-          // status: trạng thái THẬT của đơn (dùng để gọi đúng chuỗi lệnh, tránh kẹt)
           status: mappedOrder.status,
           step: (mappedOrder.status === 'PICKED_UP' || mappedOrder.status === 'DELIVERING') ? 'PICKED_UP' : 'ACCEPTED'
         });
@@ -103,6 +110,8 @@ export default function ShipperPickup() {
       console.warn('Lỗi lấy thông tin công việc hiện tại của shipper:', err);
     }
   }, []);
+
+  
 
   // 2. Lấy danh sách các đơn hàng khả dụng có thể nhận giao
   const fetchAvailableOrders = useCallback(async () => {
@@ -118,7 +127,8 @@ export default function ShipperPickup() {
           restaurantId: mappedOrder.restaurantId,
           restaurant: mappedOrder.restaurantName,
           customer: mappedOrder.customerName,
-          resAddress: `Tại Quán: ${mappedOrder.restaurantName}`,
+          customerPhone: mappedOrder.customerPhone,
+          resAddress: mappedOrder.restaurantAddress,
           custAddress: mappedOrder.address,
           distance: 'Thành phố',
           fee: mappedOrder.shippingFee,
@@ -126,7 +136,8 @@ export default function ShipperPickup() {
           itemsCount: mappedOrder.itemsCount,
           items: ord.items || [],
           note: mappedOrder.note,
-          paymentMethod: mappedOrder.paymentMethod
+          paymentMethod: mappedOrder.paymentMethod,
+          subtotalAmount: mappedOrder.subtotalAmount,
         };
       });
       setAvailableOrders(mapped);
@@ -365,6 +376,15 @@ export default function ShipperPickup() {
     }
   };
 
+  const handleOpenDetail = (order) => {
+    // Gọi API tính khoảng cách nếu chưa có trong cache
+    // Truyền vào ID quán và tọa độ giao hàng của đơn
+    if (order.restaurantId && order.deliveryLat && order.deliveryLng) {
+      fetchShippingForRestaurant(order.restaurantId, order.deliveryLat, order.deliveryLng);
+    }
+    orderModal.open(order);
+  };
+
 
 
   return (
@@ -557,7 +577,7 @@ export default function ShipperPickup() {
 
                     <div className="flex gap-2">
                       <button
-                        onClick={() => setSelectedDetailOrder(order)}
+                        onClick={() => orderModal.open(order)}
                         className="px-3 py-2.5 border border-slate-200 text-slate-500 hover:text-md-secondary hover:border-md-secondary rounded-radius-full hover:bg-slate-50 transition-all flex items-center gap-1 font-extrabold text-xs cursor-pointer shadow-sm"
                         title="Chi tiết đơn"
                       >
@@ -580,145 +600,75 @@ export default function ShipperPickup() {
         </div>
       )}
 
-      {/* MODAL CHI TIẾT ĐƠN HÀNG CHỜ NHẬN CHO SHIPPER */}
-      {selectedDetailOrder && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-radius-xl p-6.5 max-w-md w-full shadow-shadow-5 flex flex-col max-h-[85vh] font-google-sans text-slate-800 animate-slide-up">
-            
-            {/* Modal Header */}
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <div>
-                <span className="text-[10px] text-md-secondary bg-md-secondary-container/20 font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider">
-                  MÃ ĐƠN #{selectedDetailOrder.id}
-                </span>
-                <h3 className="font-extrabold text-base text-slate-800 mt-2">
-                  Chi tiết đơn đặt món
-                </h3>
+      <Modal
+        isOpen={orderModal.isOpen}
+        onClose={orderModal.close}
+        title={`Chi Tiết Đơn #${orderModal.data?.id}`}
+        size="md"
+      >
+        {orderModal.data && (
+          <div className="space-y-4 text-xs font-semibold text-slate-700">
+            {/* Thông tin Quán & Khách */}
+            <div className="bg-slate-50 p-2 rounded-lg border border-slate-100 space-y-2">
+              <div className="flex gap-2 items-start">
+                <Utensils size={14} className="text-md-tertiary shrink-0 mt-0.5" />
+                <div className="flex-1 overflow-hidden">
+                  <p className="text-slate-850 truncate"><b>Quán:</b> {orderModal.data.restaurant}</p>
+                  <p className="text-slate-450 text-[10px]">{orderModal.data.resAddress}</p>
+                </div>
               </div>
-              <button 
-                onClick={() => setSelectedDetailOrder(null)}
-                className="p-1.5 rounded-full hover:bg-slate-100 text-slate-450 hover:text-slate-650 cursor-pointer"
-              >
-                <X size={20} />
-              </button>
+              <div className="border-t border-slate-200/50" />
+              <div className="flex gap-2 items-start">
+                <Home size={14} className="text-md-primary shrink-0 mt-0.5" />
+                <div className="flex-1 overflow-hidden">
+                  <p className="text-slate-850"><b>Khách hàng:</b> {orderModal.data.customer} - {orderModal.data.customerPhone}</p>
+                  <p className="text-slate-450 text-[10px]">{orderModal.data.custAddress}</p>
+                </div>
+              </div>
             </div>
 
-            {/* Modal Body */}
-            <div className="flex-1 overflow-y-auto py-5.5 space-y-5.5 text-xs font-semibold text-slate-700">
-              
-              {/* Quán & Khách */}
-              <div className="space-y-3">
-                <span className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider flex items-center gap-1.5">
-                  {/* icon Route thay emoji 📍 */}
-                  <Route size={12} /> Tuyến Đường Giao Hàng
-                </span>
-                <div className="bg-slate-50 p-4 rounded-radius-lg border border-slate-100 space-y-3.5 leading-relaxed font-bold">
-                  <div className="flex items-start gap-2">
-                    {/* icon Utensils thay emoji 🍜 */}
-                    <Utensils size={14} className="text-md-tertiary shrink-0 mt-0.5" />
-                    <div>
-                      <p className="text-slate-850"><b>Cửa hàng:</b> {selectedDetailOrder.restaurant}</p>
-                      <p className="text-slate-450 text-[10px] font-semibold mt-0.5">{selectedDetailOrder.resAddress}</p>
-                    </div>
+            {/* Danh sách món ăn */}
+            <div className="space-y-1">
+              <span className="text-[10px] text-slate-400 font-extrabold uppercase ml-1">
+                Danh Sách Món ({orderModal.data.itemsCount})
+              </span>
+              <div className="max-h-[180px] overflow-y-auto scrollbar-thin">
+                {orderModal.data.items?.map((item, idx) => (
+                  <div key={idx} className="flex justify-between items-center py-2 border-b border-slate-100 last:border-0">
+                    <p className="text-slate-700 font-medium">
+                      {item.foodName} <span className="text-slate-400">x{item.quantity}</span>
+                    </p>
+                    <span className="text-slate-700 font-bold">{formatCurrency(Number(item.priceAtOrder || 0) * item.quantity)}</span>
                   </div>
-                  <div className="border-t border-slate-200/50 my-2" />
-                  <div className="flex items-start gap-2">
-                    {/* icon Home thay emoji 🏠 */}
-                    <Home size={14} className="text-md-primary shrink-0 mt-0.5" />
-                    <div>
-                      <p className="text-slate-850"><b>Khách hàng:</b> {selectedDetailOrder.customer}</p>
-                      <p className="text-slate-450 text-[10px] font-semibold mt-0.5">{selectedDetailOrder.custAddress}</p>
-                    </div>
-                  </div>
-                </div>
+                ))}
               </div>
-
-              {/* Danh sách món ăn */}
-              <div className="space-y-3">
-                <span className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider flex items-center gap-1.5">
-                  {/* icon Utensils thay emoji 🍜 */}
-                  <Utensils size={12} /> Danh Sách Món Ăn ({selectedDetailOrder.itemsCount} phần)
-                </span>
-                <div className="border border-slate-150 rounded-radius-lg overflow-hidden bg-white shadow-sm">
-                  {selectedDetailOrder.items && selectedDetailOrder.items.length > 0 ? (
-                    selectedDetailOrder.items.map((item, idx) => (
-                      <div key={idx} className="p-3.5 border-b border-slate-100 last:border-b-0 flex justify-between items-start">
-                        <div>
-                          <div className="text-slate-800 font-bold">
-                            <span className="text-md-secondary font-extrabold">{item.quantity}x</span> {item.foodName}
-                          </div>
-                          {item.note && (
-                            <div className="text-[9px] text-red-500 bg-red-50 px-2 py-0.5 rounded italic mt-1.5 font-extrabold border border-red-100/30 flex items-center gap-1 max-w-max">
-                              {/* icon AlertTriangle thay emoji ⚠️ */}
-                              <AlertTriangle size={10} className="shrink-0" /> "{item.note}"
-                            </div>
-                          )}
-                        </div>
-                        <span className="font-bold text-slate-600">
-                          {formatCurrency(Number(item.priceAtOrder || 0) * item.quantity)}
-                        </span>
-                      </div>
-                    ))
-                  ) : (
-                    <div className="p-4 text-center text-slate-400">Không có thông tin món ăn chi tiết</div>
-                  )}
-                </div>
-              </div>
-
-              {/* Ghi chú đơn hàng */}
-              {selectedDetailOrder.note && (
-                <div className="space-y-2">
-                  <span className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider flex items-center gap-1.5">
-                    {/* icon FileText thay emoji 📝 */}
-                    <FileText size={12} /> Ghi Chú Đơn Hàng
-                  </span>
-                  <div className="bg-amber-50/50 border border-amber-100 p-3 rounded-radius-md text-amber-800 italic font-bold">
-                    "{selectedDetailOrder.note}"
-                  </div>
-                </div>
-              )}
-
-              {/* Thanh toán & Phí ship */}
-              <div className="bg-slate-50 p-4 rounded-radius-lg border border-slate-100 space-y-2.5 font-bold">
-                <div className="flex items-center justify-between text-slate-550">
-                  <span>Phương thức thanh toán:</span>
-                  <span className="text-slate-850 uppercase">{selectedDetailOrder.paymentMethod}</span>
-                </div>
-                <div className="flex items-center justify-between text-slate-550">
-                  <span>Phí giao hàng:</span>
-                  <span className="text-md-tertiary font-extrabold">{formatCurrency(selectedDetailOrder.fee)}</span>
-                </div>
-                <div className="border-t border-slate-200/50 pt-2.5 flex items-center justify-between text-sm">
-                  <span className="text-slate-850 font-extrabold">Tổng tiền đơn:</span>
-                  <span className="text-slate-850 font-extrabold">{formatCurrency(selectedDetailOrder.total)}</span>
-                </div>
-              </div>
-
             </div>
 
-            {/* Modal Footer Action */}
-            <div className="border-t border-slate-100 pt-4 flex gap-3">
-              <button
-                onClick={() => setSelectedDetailOrder(null)}
-                className="flex-1 border border-slate-200 hover:bg-slate-50 text-slate-500 font-extrabold py-3.5 rounded-radius-full text-xs uppercase cursor-pointer"
-              >
-                Đóng
-              </button>
-              <button
-                onClick={() => {
-                  handleAcceptJob(selectedDetailOrder);
-                  setSelectedDetailOrder(null);
-                }}
-                className="flex-1 bg-md-tertiary hover:bg-opacity-95 text-white font-extrabold py-3.5 rounded-radius-full shadow-md text-xs uppercase transition-all active:scale-[0.98] cursor-pointer flex items-center justify-center gap-1.5"
-              >
-                <Check size={14} className="stroke-[3.5px]" />
-                Nhận đơn
-              </button>
+            {/* Thanh toán */}
+            <div className="bg-slate-50 p-3 rounded-lg border border-slate-100 space-y-1.5 text-xs">
+              <div className="flex justify-between text-slate-500"><span>Tạm tính</span><span>{formatCurrency(orderModal.data.subtotalAmount)}</span></div>
+              <div className="flex justify-between text-slate-500"><span>Phí ship</span><span className="text-md-tertiary font-bold">{formatCurrency(orderModal.data.fee)}</span></div>
+              <div className="flex justify-between text-sm pt-1.5 border-t border-slate-200">
+                <span className="font-extrabold text-slate-800">Tổng thanh toán</span>
+                <span className="font-extrabold text-slate-800">{formatCurrency(orderModal.data.total)}</span>
+              </div>
             </div>
 
+            {/* nút nhận đơn */}
+            <Button 
+              variant="primary" 
+              className="w-full !bg-emerald-600 !border-emerald-600 h-10" 
+              icon={Check} 
+              onClick={() => { 
+                handleAcceptJob(orderModal.data); 
+                orderModal.close(); 
+              }}
+            >
+              Nhận đơn
+            </Button>
           </div>
-        </div>
-      )}
+        )}
+      </Modal>
 
     </div>
   );

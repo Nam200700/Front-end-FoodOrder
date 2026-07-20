@@ -18,7 +18,6 @@ import { useModalState } from '../../hooks/useModalState';
 import { useCartStore } from '../../stores/cartStore';
 
 
-// Fix lỗi default marker của Leaflet trong React
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
   iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
@@ -37,7 +36,7 @@ export default function ShipperPickup() {
   
   const startNewConversation = useChatStore((state) => state.startNewConversation);
 
-  // TOẠ ĐỘ QUÁN ĂN NẠP TỪ BACKEND
+  // TOẠ ĐỘ QUÁN ĂN NẠP 
   const [restaurantCoords, setRestaurantCoords] = useState({ lat: null, lng: null });
   // TOẠ ĐỘ TÀI XẾ MÔ PHỎNG DI CHUYỂN
   const [shipperCoords, setShipperCoords] = useState({ lat: null, lng: null });
@@ -51,6 +50,7 @@ export default function ShipperPickup() {
 
   const { fetchShippingForRestaurant, restaurantShippingCache, fetchDistanceToCustomer, orderDistanceCache } = useCartStore();
 
+  //tọa độ đường đi
   const [routeCoords, setRouteCoords] = useState([]);
 
   const handleChatWithCustomer = async () => {
@@ -75,7 +75,7 @@ export default function ShipperPickup() {
     }
   };
 
-  // 1. Lấy thông tin đơn hàng đang nhận giao (nếu có) từ danh sách đơn của shipper
+  // 1. Lấy thông tin đơn hàng đang nhận giao 
   const fetchActiveJob = useCallback(async () => {
     try {
       const response = await apiClient.get('/shipper/orders');
@@ -144,7 +144,7 @@ export default function ShipperPickup() {
         });
         setAvailableOrders(mapped);
 
-        // 🔹 Tính khoảng cách quán -> khách hàng cho từng đơn, chạy song song không chặn UI
+        //Tính khoảng cách quán -> khách hàng cho từng đơn
         mapped.forEach(order => {
           if (order.restaurantId && order.deliveryLat && order.deliveryLng) {
             fetchDistanceToCustomer(order.id, order.restaurantId, order.deliveryLat, order.deliveryLng);
@@ -199,7 +199,7 @@ export default function ShipperPickup() {
     };
   }, [online, subscribe, fetchActiveJob, fetchAvailableOrders]);
 
-  // Nạp toạ độ Quán ăn khi có đơn activeJob
+  // lấy toạ độ Quán ăn khi có đơn activeJob
   useEffect(() => {
     if (!activeJob?.restaurantId) return;
     const fetchRestaurantCoords = async () => {
@@ -209,7 +209,7 @@ export default function ShipperPickup() {
         if (realRes && realRes.latitude && realRes.longitude) {
           setRestaurantCoords({
             lat: Number(realRes.latitude),
-            lng: Number(realRes.longitude)
+            lng: Number(realRes.longitude),
           });
         }
       } catch (err) {
@@ -275,7 +275,7 @@ export default function ShipperPickup() {
     };
   }, [activeJob?.step, restaurantCoords, activeJob?.deliveryLat]);
 
-  // Gọi API lấy tuyến đường thật quán -> khách khi mở màn hình "Đang giao"
+  // lấy tuyến đường giao hàng từ quán -> khách khi mở màn hình "Đang giao"
   useEffect(() => {
     if (!activeJob || !restaurantCoords.lat || !activeJob.deliveryLat) return;
 
@@ -291,8 +291,6 @@ export default function ShipperPickup() {
         });
 
         const routeData = res.data?.data;
-        // Chuẩn hoá coordinates về dạng [[lat, lng], ...] để Leaflet vẽ được
-        // (điều chỉnh tên field cho khớp đúng RouteInfoResponse thật của bạn)
         const rawCoords = routeData?.coordinates || routeData?.points || [];
         const normalized = rawCoords.map(pt =>
           Array.isArray(pt) ? [pt[0], pt[1]] : [pt.lat ?? pt.latitude, pt.lng ?? pt.longitude]
@@ -305,7 +303,6 @@ export default function ShipperPickup() {
         );
       } catch (err) {
         console.warn('Lỗi lấy tuyến đường quán -> khách:', err);
-        // Fallback: vẽ đường thẳng nếu API lỗi, tránh vỡ giao diện
         setRouteCoords([[restaurantCoords.lat, restaurantCoords.lng], [activeJob.deliveryLat, activeJob.deliveryLng]]);
       }
     };
@@ -313,7 +310,7 @@ export default function ShipperPickup() {
     fetchRoute();
   }, [activeJob?.id, activeJob?.step, restaurantCoords.lat, activeJob?.deliveryLat]);
 
-  // Vẽ / cập nhật đường polyline tuyến đường thật lên bản đồ Leaflet
+  // Vẽ / cập nhật đường polyline tuyến đường lên bản đồ Leaflet
   useEffect(() => {
     if (!mapRef.current || routeCoords.length === 0) return;
 
@@ -331,7 +328,7 @@ export default function ShipperPickup() {
     mapRef.current.fitBounds(polylineRef.current.getBounds(), { padding: [40, 40] });
   }, [routeCoords]);
 
-  // Vẽ bản đồ Leaflet thật cho Shipper (Chỉ hiển thị Owner và Customer)
+  // Vẽ bản đồ Leaflet thật cho Shipper 
   useEffect(() => {
     if (!activeJob || !restaurantCoords.lat || !activeJob.deliveryLat || !mapContainerRef.current) return;
 
@@ -348,7 +345,7 @@ export default function ShipperPickup() {
         attribution: '&copy; OpenStreetMap contributors'
       }).addTo(map);
 
-      // Marker Quán ăn — icon dao/nĩa (SVG) thay emoji 🍜
+      // Marker Quán ăn 
       const resIcon = L.divIcon({
         html: `<div class="flex items-center justify-center w-8 h-8 rounded-full bg-orange-500 text-white shadow-md border-2 border-white"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 2v7c0 1.1.9 2 2 2a2 2 0 0 0 2-2V2"/><path d="M7 2v20"/><path d="M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"/></svg></div>`,
         className: 'custom-div-icon',
@@ -356,9 +353,9 @@ export default function ShipperPickup() {
         iconAnchor: [16, 16]
       });
       markersRef.current.restaurant = L.marker([rLat, rLng], { icon: resIcon }).addTo(map)
-        .bindPopup(`<b>Quán ăn: ${activeJob.restaurant}</b><br/>Địa điểm lấy hàng.`);
+        .bindPopup(`<b>Quán ${activeJob.restaurant}</b><br/> ${activeJob.resAddress}`);
 
-      // Marker Khách hàng — icon nhà (SVG) thay emoji 🏠
+      // Marker Khách hàng 
       const custIcon = L.divIcon({
         html: `<div class="flex items-center justify-center w-8 h-8 rounded-full bg-red-500 text-white shadow-md border-2 border-white"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 22V12h6v10"/></svg></div>`,
         className: 'custom-div-icon',
@@ -366,7 +363,7 @@ export default function ShipperPickup() {
         iconAnchor: [16, 16]
       });
       markersRef.current.customer = L.marker([cLat, cLng], { icon: custIcon }).addTo(map)
-        .bindPopup(`<b>Khách hàng: ${activeJob.customer}</b><br/>Giao tại: ${activeJob.custAddress}`);
+        .bindPopup(`<b>Khách hàng: ${activeJob.customer}</b><br/>${activeJob.custAddress}`);
 
       map.fitBounds([[rLat, rLng], [cLat, cLng]], { padding: [40, 40] });
     }
@@ -390,7 +387,7 @@ export default function ShipperPickup() {
       await apiClient.post(`/shipper/orders/${order.id}/accept`);
       toast.success(`Đã nhận thành công đơn hàng #${order.id}! Hãy đến quán lấy đồ ăn.`);
       if (selectedDetailOrder && selectedDetailOrder.id === order.id) {
-        setSelectedDetailOrder(null); // Đóng modal chi tiết
+        setSelectedDetailOrder(null); 
       }
       await fetchActiveJob();
       await fetchAvailableOrders();
@@ -406,31 +403,28 @@ export default function ShipperPickup() {
     if (!activeJob) return;
     try {
       setLoading(true);
-      // Máy trạng thái backend tuần tự nghiêm ngặt:
       // READY_FOR_PICKUP -> PICKED_UP -> DELIVERING -> COMPLETED.
-      // Rẽ nhánh theo trạng thái THẬT của đơn để gọi đúng chuỗi lệnh, tránh gọi thẳng
-      // /complete khi đơn còn ở PICKED_UP (gây 422 "không thể chuyển trạng thái" -> kẹt).
       const status = activeJob.status;
       const id = activeJob.id;
-
       if (status === 'READY_FOR_PICKUP') {
-        // Bước 1: lấy hàng ở quán rồi chuyển sang đang giao
+        // lấy hàng ở quán và chuyển sang đang giao
         await apiClient.patch(`/shipper/orders/${id}/picked-up`);
         await apiClient.patch(`/shipper/orders/${id}/delivering`);
-        toast.success('Đã xác nhận lấy hàng thành công! Đang giao hàng đến khách hàng.');
+        toast.success('Đã xác nhận lấy hàng thành công!');
         await fetchActiveJob();
-      } else if (status === 'PICKED_UP') {
-        // Đơn kẹt ở PICKED_UP (chưa qua DELIVERING) -> đẩy tiếp rồi hoàn tất (tự cứu)
-        await apiClient.patch(`/shipper/orders/${id}/delivering`);
+      } 
+      // else if (status === 'PICKED_UP') {
+      //   await apiClient.patch(`/shipper/orders/${id}/delivering`);
+      //   await apiClient.patch(`/shipper/orders/${id}/complete`);
+      //   toast.success('Chúc mừng! Đơn hàng đã giao thành công và tiền ship đã được ghi nhận.');
+      //   setActiveJob(null);
+      //   setRouteCoords([]); 
+      //   await fetchAvailableOrders();
+      // } 
+      else if (status === 'DELIVERING') {
+        // hoàn tất giao hàng
         await apiClient.patch(`/shipper/orders/${id}/complete`);
-        toast.success('Chúc mừng! Đơn hàng đã giao thành công và tiền ship đã được ghi nhận.');
-        setActiveJob(null);
-        setRouteCoords([]); 
-        await fetchAvailableOrders();
-      } else if (status === 'DELIVERING') {
-        // Bước 2: hoàn tất giao hàng
-        await apiClient.patch(`/shipper/orders/${id}/complete`);
-        toast.success('Chúc mừng! Đơn hàng đã giao thành công và tiền ship đã được ghi nhận.');
+        toast.success('Đơn hàng đã giao thành công!');
         setActiveJob(null);
         setRouteCoords([]); 
         await fetchAvailableOrders();
@@ -462,7 +456,7 @@ export default function ShipperPickup() {
             <Bike className="text-md-tertiary" size={22} /> Shipper Hub
           </h1>
           <p className="text-[10px] md:text-[11px] text-slate-400 font-bold mt-0.5 uppercase tracking-wide">
-            Trạng thái hoạt động nhận đơn
+            Trạng thái hoạt động
           </p>
         </div>
 
@@ -481,7 +475,7 @@ export default function ShipperPickup() {
         </button>
       </div>
 
-      {/* ACTIVE JOB SCREEN (Nếu đang nhận 1 đơn giao) */}
+      {/* giao diện đơn đang giao */}
       {activeJob ? (
         <div className="bg-white rounded-radius-xl border border-slate-200/60 shadow-shadow-2 overflow-hidden flex flex-col md:flex-row h-max transition-all duration-300 animate-slide-up">
           
@@ -490,12 +484,11 @@ export default function ShipperPickup() {
               <div ref={mapContainerRef} className="w-full h-full min-h-[300px] z-10" />
             ) : (
               <div className="w-full h-full min-h-[300px] flex items-center justify-center bg-slate-50 text-slate-400 font-bold text-xs">
-                Đang tải dữ liệu bản đồ chỉ đường...
+                Đang tải dữ liệu bản đồ...
               </div>
             )}
           </div>
 
-          {/* Stepper active panel */}
           <div className="w-full md:w-96 p-6 flex flex-col justify-between space-y-6 shrink-0 bg-white">
             <div>
               <div className="flex items-center justify-between border-b border-slate-100 pb-4">
@@ -522,7 +515,7 @@ export default function ShipperPickup() {
                     1
                   </div>
                   <div>
-                    <span className="text-xs font-extrabold text-slate-700 block">Đến quán nhận đồ ăn</span>
+                    <span className="text-xs font-extrabold text-slate-700 block">Lấy hàng tại quán: {activeJob.restaurant}</span>
                     <span className="text-[10px] md:text-[11px] text-slate-400 block mt-0.5 font-bold">Địa chỉ: {activeJob.resAddress}</span>
                   </div>
                 </div>
@@ -536,7 +529,7 @@ export default function ShipperPickup() {
                     2
                   </div>
                   <div>
-                    <span className="text-xs font-extrabold text-slate-700 block">Khách hàng</span>
+                    <span className="text-xs font-extrabold text-slate-700 block">Giao đến khách hàng</span>
                     <span className="text-[10px] md:text-[11px] text-slate-400 block mt-0.5 font-bold">Địa chỉ: {activeJob.custAddress}</span>
                   </div>
                 </div>
@@ -546,8 +539,8 @@ export default function ShipperPickup() {
             {/* Quick Contact with customer */}
             <div className="bg-slate-50 p-4 rounded-radius-lg border border-slate-100 flex items-center justify-between text-xs font-semibold">
               <div className="min-w-0 pr-3">
-                <span className="text-[10px] text-slate-400 font-bold block uppercase leading-none">KHÁCH HÀNG</span>
-                <span className="font-extrabold text-slate-800 block truncate mt-1.5 leading-none">{activeJob.customer}</span>
+                <span className="text-[10px] text-slate-400 font-bold block uppercase leading-none">Thông tin người nhận</span>
+                <span className="font-extrabold text-slate-800 block truncate mt-1.5 leading-none">{activeJob.customer} - {activeJob.phone}</span>
               </div>
               <div className="flex gap-2.5">
                 <button 
@@ -574,7 +567,7 @@ export default function ShipperPickup() {
 
         </div>
       ) : (
-        /* AVAILABLE JOBS LIST (Nếu chưa nhận đơn nào) */
+        /* danh sách đơn hàng chờ nhận giao */
         <div className="space-y-4 animate-fade-in">
           <h2 className="text-xs md:text-sm font-extrabold text-slate-800 uppercase tracking-wider flex items-center gap-1.5 mb-2">
             <Navigation className="text-md-tertiary" size={18} />
@@ -583,9 +576,8 @@ export default function ShipperPickup() {
 
           {!online ? (
             <div className="bg-white rounded-radius-xl p-10 border border-slate-200/60 shadow-sm text-center text-xs text-slate-400 font-semibold leading-relaxed flex flex-col items-center gap-3">
-              {/* icon PowerOff thay emoji 📴 */}
               <PowerOff size={36} className="text-slate-300" strokeWidth={1.5} />
-              <span>Vui lòng chuyển trạng thái sang <span className="text-slate-600 font-extrabold">ONLINE</span> để bắt đầu quét các đơn hàng xung quanh.</span>
+              <span>Vui lòng chuyển trạng thái sang <span className="text-slate-600 font-extrabold">ONLINE</span> để bắt đầu quét các đơn hàng.</span>
             </div>
           ) : loading ? (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
@@ -701,7 +693,7 @@ export default function ShipperPickup() {
             {/* Danh sách món ăn */}
             <div className="space-y-1">
               <span className="text-[10px] text-slate-400 font-extrabold uppercase ml-1">
-                Danh Sách Món ({orderModal.data.itemsCount})
+                Danh Sách Món Ăn({orderModal.data.itemsCount})
               </span>
               <div className="max-h-[180px] overflow-y-auto scrollbar-thin">
                 {orderModal.data.items?.map((item, idx) => (

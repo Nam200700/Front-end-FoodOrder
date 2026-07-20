@@ -76,7 +76,7 @@ export default function ShipperPickup() {
     }
   };
 
-  // 1. Lấy thông tin đơn hàng đang nhận giao (nếu có) từ danh sách đơn của shipper
+  // 1. Lấy thông tin đơn hàng đang nhận giao 
   const fetchActiveJob = useCallback(async () => {
     try {
       const response = await apiClient.get('/shipper/orders');
@@ -401,19 +401,20 @@ export default function ShipperPickup() {
       if (status === 'READY_FOR_PICKUP') {
         await apiClient.patch(`/shipper/orders/${id}/picked-up`);
         await apiClient.patch(`/shipper/orders/${id}/delivering`);
-        toast.success('Đã xác nhận lấy hàng thành công! Đang giao hàng đến khách hàng.');
+        toast.success('Đã xác nhận lấy hàng thành công!');
         await fetchActiveJob();
-      } else if (status === 'PICKED_UP') {
-        // Đơn kẹt ở PICKED_UP (chưa qua DELIVERING) -> đẩy tiếp rồi hoàn tất (tự cứu)
-        await apiClient.patch(`/shipper/orders/${id}/delivering`);
+      } 
+      // else if (status === 'PICKED_UP') {
+      //   await apiClient.patch(`/shipper/orders/${id}/delivering`);
+      //   await apiClient.patch(`/shipper/orders/${id}/complete`);
+      //   toast.success('Đơn hàng đã giao thành công!');
+      //   setActiveJob(null);
+      //   setRouteCoords([]);
+      //   await fetchAvailableOrders();
+      // } 
+      else if (status === 'DELIVERING') {
         await apiClient.patch(`/shipper/orders/${id}/complete`);
-        toast.success('Chúc mừng! Đơn hàng đã giao thành công và tiền ship đã được ghi nhận.');
-        setActiveJob(null);
-        setRouteCoords([]);
-        await fetchAvailableOrders();
-      } else if (status === 'DELIVERING') {
-        await apiClient.patch(`/shipper/orders/${id}/complete`);
-        toast.success('Chúc mừng! Đơn hàng đã giao thành công và tiền ship đã được ghi nhận.');
+        toast.success('Đơn hàng đã giao thành công!');
         setActiveJob(null);
         setRouteCoords([]);
         await fetchAvailableOrders();
@@ -439,26 +440,42 @@ export default function ShipperPickup() {
     <div className="flex-1 p-4 md:p-8 max-w-4xl mx-auto w-full font-google-sans pb-24 space-y-6">
 
       {/* Header with online toggle */}
-      <Card variant="elevated" className="!rounded-radius-xl p-5 flex items-center justify-between transition-all duration-300">
-        <div>
-          <h1 className="text-lg md:text-xl font-extrabold text-slate-800 flex items-center gap-2">
-            <Bike className="text-md-tertiary" size={22} /> Shipper Hub
-          </h1>
-          <p className="text-[10px] md:text-[11px] text-slate-400 font-bold mt-0.5 uppercase tracking-wide">
-            Trạng thái hoạt động
-          </p>
+      <Card variant="elevated" className={`!rounded-radius-xl p-5 flex items-center justify-between transition-all duration-300 border ${
+        online 
+          ? 'bg-gradient-to-r from-emerald-50/50 via-white to-white border-emerald-200/60' 
+          : 'bg-white border-slate-100'
+      }`}>
+        <div className="flex items-center gap-3">
+          <div className={`p-2.5 rounded-radius-lg flex items-center justify-center transition-colors ${
+            online ? 'bg-emerald-100 text-emerald-600' : 'bg-slate-100 text-slate-400'
+          }`}>
+            <Bike size={24} />
+          </div>
+          <div>
+            <h1 className="text-lg md:text-xl font-extrabold text-slate-800 tracking-tight">
+              Shipper Hub
+            </h1>
+            <div className="flex items-center gap-1.5 mt-0.5">
+              <span className={`w-2 h-2 rounded-full inline-block ${
+                online ? 'bg-emerald-500 animate-pulse' : 'bg-slate-300'
+              }`} />
+              <p className="text-[11px] text-slate-500 font-bold uppercase tracking-wider">
+                {online ? 'Sẵn sàng nhận đơn giao hàng' : 'Đang tạm dừng nhận đơn'}
+              </p>
+            </div>
+          </div>
         </div>
 
         <button
           onClick={() => setOnline(!online)}
-          className={`px-4 py-2 text-xs font-bold rounded-radius-full transition-all shadow-sm flex items-center gap-1.5 hover:scale-[1.03] active:scale-[0.97] cursor-pointer ${
+          className={`px-4 py-2.5 text-xs font-extrabold rounded-radius-full transition-all shadow-sm flex items-center gap-2 hover:scale-[1.03] active:scale-[0.97] cursor-pointer ${
             online
-              ? 'bg-[#E8F5E9] text-[#2E7D32] border border-[#C8E6C9]'
-              : 'bg-slate-100 text-slate-400 border border-slate-200'
+              ? 'bg-emerald-600 text-white shadow-emerald-200 hover:bg-emerald-700'
+              : 'bg-slate-100 text-slate-500 border border-slate-200 hover:bg-slate-200/70'
           }`}
         >
           <span className={`w-2 h-2 rounded-full inline-block ${
-            online ? 'bg-emerald-500 animate-pulse' : 'bg-slate-300'
+            online ? 'bg-white animate-ping' : 'bg-slate-400'
           }`} />
           {online ? 'ĐANG BẬT ONLINE' : 'ĐANG TẮT OFFLINE'}
         </button>
@@ -492,7 +509,7 @@ export default function ShipperPickup() {
                 </div>
               </div>
 
-              <div className="flex items-center justify-between pt-1 pb-4">
+              <div className="flex items-center justify-between pt-0 pb-4">
                 <div className="flex items-center gap-1.5 text-[11px] text-slate-500 font-bold">
                   <Route size={13} className="text-md-tertiary shrink-0" />
                   <span>
@@ -501,7 +518,7 @@ export default function ShipperPickup() {
                       : 'Đang tính...'}
                   </span>
                   {activeDistance?.durationMinutes && (
-                    <span>· ~{Math.round(activeDistance.durationMinutes)} phút</span>
+                    <span> ~{Math.round(activeDistance.durationMinutes)} phút</span>
                   )}
                 </div>
 
@@ -607,7 +624,7 @@ export default function ShipperPickup() {
                   hoverEffect
                   className="!rounded-radius-xl p-5 flex flex-col justify-between animate-fade-in"
                 >
-                  <div>
+                  <div className="mt-0 pt-0 mb-2">
                     <div className="flex items-center justify-between border-b border-slate-100 pb-2">
                       <div>
                         <span className="text-[10px] text-slate-400 font-bold uppercase leading-none">MÃ ĐƠN #{order.id}</span>
@@ -621,7 +638,7 @@ export default function ShipperPickup() {
                       </div>
                     </div>
 
-                    <div className="space-y-3 my-4 text-xs font-semibold text-slate-700">
+                    <div className="space-y-3 my-3 text-xs font-semibold text-slate-700">
                       <div className="flex items-center gap-2">
                         <Utensils size={14} className="text-md-tertiary shrink-0" />
                         <span className=""><b>Quán:</b> Địa chỉ: {order.resAddress}</span>
@@ -633,19 +650,20 @@ export default function ShipperPickup() {
                     </div>
                   </div>
 
-                  <div className="flex items-center justify-between border-t border-slate-100 pt-4 mt-1 flex-wrap gap-2">
-                    <div>
+                  <div className="flex items-center justify-between border-t border-slate-100 pt-3 mt-1 flex-nowrap gap-2">
+                    <div className="shrink-0">
                       <span className="text-[9px] text-slate-400 block font-bold uppercase leading-none tracking-wider">Phí giao hàng</span>
-                      <span className="font-extrabold text-sm md:text-base text-md-tertiary mt-1.5 block leading-none">{formatCurrency(order.fee)}</span>
+                      <span className="font-extrabold text-xs sm:text-sm text-md-tertiary mt-1 block leading-none">{formatCurrency(order.fee)}</span>
                     </div>
 
-                    <div className="flex gap-2">
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      {/* Yêu cầu 2: Đồng bộ kiểu chữ của nút "Chi tiết" giống nút "Nhận đơn" */}
                       <Button
                         onClick={() => handleOpenDetail(order)}
                         variant="outline"
                         size="sm"
                         icon={Eye}
-                        className="!rounded-radius-full !px-3 !py-2.5 text-xs uppercase tracking-wider"
+                        className="!rounded-radius-full !px-2.5 sm:!px-3 !py-2 text-[10px] sm:text-xs uppercase tracking-wider"
                       >
                         Chi tiết
                       </Button>
@@ -654,7 +672,7 @@ export default function ShipperPickup() {
                         variant="primary"
                         size="sm"
                         icon={Check}
-                        className="!bg-md-tertiary hover:!bg-opacity-95 !rounded-radius-full !px-4 !py-2.5 text-xs uppercase tracking-wider"
+                        className="!bg-md-tertiary hover:!bg-opacity-95 !rounded-radius-full !px-3 sm:!px-4 !py-2 text-[10px] sm:text-xs uppercase tracking-wider"
                       >
                         Nhận đơn
                       </Button>
@@ -674,9 +692,8 @@ export default function ShipperPickup() {
         size="md"
       >
         {orderModal.data && (
-          <div className="space-y-4 text-xs font-semibold text-slate-700">
-            {/* Thông tin Quán & Khách */}
-            <div className="bg-slate-50 p-2 rounded-lg border border-slate-100 space-y-2 mt-0">
+          <div className="space-y-3 text-xs font-semibold text-slate-700 -mt-2">
+            <div className="bg-slate-50 p-2.5 rounded-lg border border-slate-100 space-y-2">
               <div className="flex gap-2 items-start">
                 <Utensils size={14} className="text-md-tertiary shrink-0 mt-0.5" />
                 <div className="flex-1 overflow-hidden">
@@ -692,29 +709,36 @@ export default function ShipperPickup() {
                   <p className="text-slate-450 text-[10px]">{orderModal.data.custAddress}</p>
                 </div>
               </div>
-              {orderDistanceCache[orderModal.data.id] && (
-                <div className="flex items-center gap-2 text-[10px] text-slate-500 font-bold">
-                  <Route size={13} className="text-md-tertiary" />
-                  Khoảng cách: {orderDistanceCache[orderModal.data.id].distanceKm?.toFixed(1)} km
+            </div>
+
+            {/* Khoảng cách */}
+            {orderDistanceCache[orderModal.data.id] && (
+              <div className="flex items-center justify-between bg-emerald-50 border border-emerald-100 p-2.5 rounded-lg text-emerald-800">
+                <div className="flex items-center gap-2">
+                  <Route size={15} className="text-md-tertiary" />
+                  <span className="font-extrabold text-xs">Khoảng cách:</span>
+                </div>
+                <span className="font-extrabold text-xs text-md-tertiary">
+                  {orderDistanceCache[orderModal.data.id].distanceKm?.toFixed(1)} km
                   {orderDistanceCache[orderModal.data.id].durationMinutes
                     ? ` (~${Math.round(orderDistanceCache[orderModal.data.id].durationMinutes)} phút)`
                     : ''}
-                </div>
-              )}
-            </div>
+                </span>
+              </div>
+            )}
 
             {/* Danh sách món ăn */}
             <div className="space-y-1">
-              <span className="text-[10px] text-slate-400 font-extrabold uppercase ml-1">
+              <span className="text-[11px] text-slate-400 font-extrabold uppercase ml-1 tracking-wider">
                 Danh Sách Món Ăn ({orderModal.data.itemsCount})
               </span>
-              <div className="max-h-[180px] overflow-y-auto scrollbar-thin">
+              <div className="max-h-[120px] overflow-y-auto scrollbar-thin px-1 bg-white border border-slate-100 rounded-lg">
                 {orderModal.data.items?.map((item, idx) => (
-                  <div key={idx} className="flex justify-between items-center py-2 border-b border-slate-100 last:border-0">
-                    <p className="text-slate-700 font-medium">
-                      {item.foodName} <span className="text-slate-400">x{item.quantity}</span>
+                  <div key={idx} className="flex justify-between items-center py-1.5 border-b border-slate-100 last:border-0 text-sm">
+                    <p className="text-slate-800 font-medium">
+                      {item.foodName} <span className="text-slate-400 text-xs font-semibold">x{item.quantity}</span>
                     </p>
-                    <span className="text-slate-700 font-bold">{formatCurrency(Number(item.priceAtOrder || 0) * item.quantity)}</span>
+                    <span className="text-slate-800 font-bold">{formatCurrency(Number(item.priceAtOrder || 0) * item.quantity)}</span>
                   </div>
                 ))}
               </div>
@@ -730,10 +754,10 @@ export default function ShipperPickup() {
               </div>
             </div>
 
-            {/* nút nhận đơn */}
+            {/* Nút nhận đơn */}
             <Button
               variant="primary"
-              className="w-full !bg-emerald-600 !border-emerald-600 h-10"
+              className="w-full !bg-emerald-600 !border-emerald-600 h-10 uppercase tracking-wider text-xs font-bold"
               icon={Check}
               onClick={() => {
                 handleAcceptJob(orderModal.data);

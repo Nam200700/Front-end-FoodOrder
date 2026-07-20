@@ -49,7 +49,9 @@ export default function ShipperPickup() {
 
   const orderModal = useModalState(null);
 
-  const { fetchShippingForRestaurant, restaurantShippingCache } = useCartStore();
+  const { fetchShippingForRestaurant, restaurantShippingCache, fetchDistanceToCustomer, orderDistanceCache } = useCartStore();
+
+  const [routeCoords, setRouteCoords] = useState([]);
 
   const handleChatWithCustomer = async () => {
     if (!activeJob || !activeJob.customerId) {
@@ -92,7 +94,7 @@ export default function ShipperPickup() {
           restaurant: mappedOrder.restaurantName,
           customer: mappedOrder.customerName,
           customerId: mappedOrder.customerId,
-          resAddress: `Tại Quán: ${mappedOrder.restaurantName}`,
+          resAddress: mappedOrder.restaurantAddress,
           custAddress: mappedOrder.address,
           deliveryLat: mappedOrder.deliveryLat,
           deliveryLng: mappedOrder.deliveryLng,
@@ -111,42 +113,49 @@ export default function ShipperPickup() {
     }
   }, []);
 
-  
-
   // 2. Lấy danh sách các đơn hàng khả dụng có thể nhận giao
   const fetchAvailableOrders = useCallback(async () => {
-    if (!online) return;
-    try {
-      setLoading(true);
-      const response = await apiClient.get('/shipper/orders/available');
-      const rawOrders = response.data?.data || [];
-      const mapped = rawOrders.map(ord => {
-        const mappedOrder = mapOrder(ord);
-        return {
-          id: mappedOrder.id,
-          restaurantId: mappedOrder.restaurantId,
-          restaurant: mappedOrder.restaurantName,
-          customer: mappedOrder.customerName,
-          customerPhone: mappedOrder.customerPhone,
-          resAddress: mappedOrder.restaurantAddress,
-          custAddress: mappedOrder.address,
-          distance: 'Thành phố',
-          fee: mappedOrder.shippingFee,
-          total: mappedOrder.total,
-          itemsCount: mappedOrder.itemsCount,
-          items: ord.items || [],
-          note: mappedOrder.note,
-          paymentMethod: mappedOrder.paymentMethod,
-          subtotalAmount: mappedOrder.subtotalAmount,
-        };
-      });
-      setAvailableOrders(mapped);
-    } catch (err) {
-      console.error('Lỗi khi tải đơn hàng khả dụng:', err);
-    } finally {
-      setLoading(false);
-    }
-  }, [online]);
+      if (!online) return;
+      try {
+        setLoading(true);
+        const response = await apiClient.get('/shipper/orders/available');
+        const rawOrders = response.data?.data || [];
+        const mapped = rawOrders.map(ord => {
+          const mappedOrder = mapOrder(ord);
+          return {
+            id: mappedOrder.id,
+            restaurantId: mappedOrder.restaurantId,
+            restaurant: mappedOrder.restaurantName,
+            customer: mappedOrder.customerName,
+            customerPhone: mappedOrder.customerPhone,
+            resAddress: mappedOrder.restaurantAddress,
+            custAddress: mappedOrder.address,
+            deliveryLat: mappedOrder.deliveryLat,   
+            deliveryLng: mappedOrder.deliveryLng,  
+            distance: 'Thành phố',
+            fee: mappedOrder.shippingFee,
+            total: mappedOrder.total,
+            itemsCount: mappedOrder.itemsCount,
+            items: ord.items || [],
+            note: mappedOrder.note,
+            paymentMethod: mappedOrder.paymentMethod,
+            subtotalAmount: mappedOrder.subtotalAmount,
+          };
+        });
+        setAvailableOrders(mapped);
+
+        // 🔹 Tính khoảng cách quán -> khách hàng cho từng đơn, chạy song song không chặn UI
+        mapped.forEach(order => {
+          if (order.restaurantId && order.deliveryLat && order.deliveryLng) {
+            fetchDistanceToCustomer(order.id, order.restaurantId, order.deliveryLat, order.deliveryLng);
+          }
+        });
+      } catch (err) {
+        console.error('Lỗi khi tải đơn hàng khả dụng:', err);
+      } finally {
+        setLoading(false);
+      }
+  }, [online, fetchDistanceToCustomer]);
 
   useEffect(() => {
     const init = async () => {
@@ -266,6 +275,62 @@ export default function ShipperPickup() {
     };
   }, [activeJob?.step, restaurantCoords, activeJob?.deliveryLat]);
 
+  // Gọi API lấy tuyến đường thật quán -> khách khi mở màn hình "Đang giao"
+  useEffect(() => {
+    if (!activeJob || !restaurantCoords.lat || !activeJob.deliveryLat) return;
+
+    const fetchRoute = async () => {
+      try {
+        const res = await apiClient.get('/shipping/route', {
+          params: {
+            startLat: restaurantCoords.lat,
+            startLng: restaurantCoords.lng,
+            endLat: activeJob.deliveryLat,
+            endLng: activeJob.deliveryLng
+          }
+        });
+
+        const routeData = res.data?.data;
+        // Chuẩn hoá coordinates về dạng [[lat, lng], ...] để Leaflet vẽ được
+        // (điều chỉnh tên field cho khớp đúng RouteInfoResponse thật của bạn)
+        const rawCoords = routeData?.coordinates || routeData?.points || [];
+        const normalized = rawCoords.map(pt =>
+          Array.isArray(pt) ? [pt[0], pt[1]] : [pt.lat ?? pt.latitude, pt.lng ?? pt.longitude]
+        );
+
+        setRouteCoords(
+          normalized.length > 0
+            ? normalized
+            : [[restaurantCoords.lat, restaurantCoords.lng], [activeJob.deliveryLat, activeJob.deliveryLng]]
+        );
+      } catch (err) {
+        console.warn('Lỗi lấy tuyến đường quán -> khách:', err);
+        // Fallback: vẽ đường thẳng nếu API lỗi, tránh vỡ giao diện
+        setRouteCoords([[restaurantCoords.lat, restaurantCoords.lng], [activeJob.deliveryLat, activeJob.deliveryLng]]);
+      }
+    };
+
+    fetchRoute();
+  }, [activeJob?.id, activeJob?.step, restaurantCoords.lat, activeJob?.deliveryLat]);
+
+  // Vẽ / cập nhật đường polyline tuyến đường thật lên bản đồ Leaflet
+  useEffect(() => {
+    if (!mapRef.current || routeCoords.length === 0) return;
+
+    // Xoá polyline cũ trước khi vẽ mới
+    if (polylineRef.current) {
+      mapRef.current.removeLayer(polylineRef.current);
+    }
+
+    polylineRef.current = L.polyline(routeCoords, {
+      color: '#00B14F',
+      weight: 4,
+      opacity: 0.85
+    }).addTo(mapRef.current);
+
+    mapRef.current.fitBounds(polylineRef.current.getBounds(), { padding: [40, 40] });
+  }, [routeCoords]);
+
   // Vẽ bản đồ Leaflet thật cho Shipper (Chỉ hiển thị Owner và Customer)
   useEffect(() => {
     if (!activeJob || !restaurantCoords.lat || !activeJob.deliveryLat || !mapContainerRef.current) return;
@@ -337,35 +402,6 @@ export default function ShipperPickup() {
     }
   };
 
-//   const handleAcceptJob = async (order) => {
-//   try {
-//     setLoading(true);
-//     // 1. Gửi yêu cầu nhận đơn lên server
-//     await apiClient.post(`/shipper/orders/${order.id}/accept`);
-    
-//     // 2. Cập nhật dữ liệu từ server
-//     // Việc gọi await ở đây đảm bảo dữ liệu mới nhất đã được fetch về
-//     await Promise.all([
-//       fetchActiveJob(),
-//       fetchAvailableOrders()
-//     ]);
-    
-//     toast.success(`Đã nhận thành công đơn hàng #${order.id}!`);
-    
-//     // 3. Đóng modal sau khi đã cập nhật xong dữ liệu
-//     orderModal.close(); 
-    
-//     if (selectedDetailOrder && selectedDetailOrder.id === order.id) {
-//       setSelectedDetailOrder(null);
-//     }
-//   } catch (err) {
-//     console.error(err);
-//     toast.error(err.response?.data?.message || 'Không thể nhận đơn hàng!');
-//   } finally {
-//     setLoading(false);
-//   }
-// };
-
   const handleNextStep = async () => {
     if (!activeJob) return;
     try {
@@ -389,12 +425,14 @@ export default function ShipperPickup() {
         await apiClient.patch(`/shipper/orders/${id}/complete`);
         toast.success('Chúc mừng! Đơn hàng đã giao thành công và tiền ship đã được ghi nhận.');
         setActiveJob(null);
+        setRouteCoords([]); 
         await fetchAvailableOrders();
       } else if (status === 'DELIVERING') {
         // Bước 2: hoàn tất giao hàng
         await apiClient.patch(`/shipper/orders/${id}/complete`);
         toast.success('Chúc mừng! Đơn hàng đã giao thành công và tiền ship đã được ghi nhận.');
         setActiveJob(null);
+        setRouteCoords([]); 
         await fetchAvailableOrders();
       }
     } catch (err) {
@@ -413,8 +451,6 @@ export default function ShipperPickup() {
     }
     orderModal.open(order);
   };
-
-
 
   return (
     <div className="flex-1 p-4 md:p-8 max-w-4xl mx-auto w-full font-google-sans pb-24 space-y-6">
@@ -467,10 +503,10 @@ export default function ShipperPickup() {
                   <span className="text-[10px] text-md-tertiary font-bold bg-[#E8F5E9] px-2.5 py-0.5 rounded-full uppercase">
                     ĐƠN ĐANG GIAO #{activeJob.id}
                   </span>
-                  <h3 className="font-extrabold text-sm md:text-base text-slate-800 mt-2">{activeJob.restaurant}</h3>
                 </div>
+                
                 <div className="text-right">
-                  <span className="text-[10px] text-slate-400 block uppercase font-bold">TIỀN SHIP</span>
+                  <span className="text-[10px] text-slate-400 block uppercase font-bold">Phí giao hàng</span>
                   <span className="text-base md:text-lg font-extrabold text-md-tertiary mt-0.5 block">{formatCurrency(activeJob.fee)}</span>
                 </div>
               </div>
@@ -500,7 +536,7 @@ export default function ShipperPickup() {
                     2
                   </div>
                   <div>
-                    <span className="text-xs font-extrabold text-slate-700 block">Vận chuyển tới khách hàng</span>
+                    <span className="text-xs font-extrabold text-slate-700 block">Khách hàng</span>
                     <span className="text-[10px] md:text-[11px] text-slate-400 block mt-0.5 font-bold">Địa chỉ: {activeJob.custAddress}</span>
                   </div>
                 </div>
@@ -570,13 +606,15 @@ export default function ShipperPickup() {
                   className="bg-white rounded-radius-xl p-5 border border-slate-200/60 shadow-sm flex flex-col justify-between hover:shadow-md hover:border-slate-350 hover:scale-[1.01] transition-all duration-300 animate-fade-in"
                 >
                   <div>
-                    <div className="flex items-start justify-between border-b border-slate-100 pb-3">
+                    <div className="flex items-center justify-between border-b border-slate-100 pb-2">
                       <div>
-                        <span className="text-[10px] text-slate-400 font-bold block uppercase leading-none">MÃ ĐƠN #{order.id}</span>
+                        <span className="text-[10px] text-slate-400 font-bold uppercase leading-none">MÃ ĐƠN #{order.id}</span>
                       </div>
                       <div className="text-right">
-                        <span className="text-[9px] text-[#2E7D32] bg-[#E8F5E9] font-extrabold px-2.5 py-1 rounded-full uppercase tracking-wider leading-none block shadow-sm">
-                          Thành Phố
+                        <span className="text-[10px] text-[#2E7D32] bg-[#E8F5E9] font-extrabold px-2.5 py-1 rounded-full uppercase tracking-wider leading-none shadow-sm inline-block">
+                          {orderDistanceCache[order.id]?.distanceKm != null
+                            ? `${orderDistanceCache[order.id].distanceKm.toFixed(1)} km`
+                            : 'Đang tính...'}
                         </span>
                       </div>
                     </div>
@@ -584,11 +622,11 @@ export default function ShipperPickup() {
                     <div className="space-y-3 my-4 text-xs font-semibold text-slate-700">
                       <div className="flex items-center gap-2">
                         <Utensils size={14} className="text-md-tertiary shrink-0" />
-                        <span className=""><b>Quán:</b> {order.resAddress}</span>
+                        <span className=""><b>Quán:</b> Địa chỉ: {order.resAddress}</span>
                       </div>
                       <div className="flex items-center gap-2">
                         <MapPin size={14} className="text-md-primary shrink-0" />
-                        <span className=""><b>Khách hàng:</b> {order.custAddress}</span>
+                        <span className=""><b>Khách hàng:</b> Địa chỉ: {order.custAddress}</span>
                       </div>
                     </div>
                   </div>
@@ -633,7 +671,7 @@ export default function ShipperPickup() {
         {orderModal.data && (
           <div className="space-y-4 text-xs font-semibold text-slate-700">
             {/* Thông tin Quán & Khách */}
-            <div className="bg-slate-50 p-2 rounded-lg border border-slate-100 space-y-2">
+            <div className="bg-slate-50 p-2 rounded-lg border border-slate-100 space-y-2 mt-0">
               <div className="flex gap-2 items-start">
                 <Utensils size={14} className="text-md-tertiary shrink-0 mt-0.5" />
                 <div className="flex-1 overflow-hidden">
@@ -645,10 +683,19 @@ export default function ShipperPickup() {
               <div className="flex gap-2 items-start">
                 <Home size={14} className="text-md-primary shrink-0 mt-0.5" />
                 <div className="flex-1 overflow-hidden">
-                  <p className="text-slate-850"><b>Khách hàng:</b> {orderModal.data.customer} - {orderModal.data.customerPhone}</p>
+                  <p className="text-slate-850"><b>Khách hàng:</b></p>
                   <p className="text-slate-450 text-[10px]">{orderModal.data.custAddress}</p>
                 </div>
               </div>
+              {orderDistanceCache[orderModal.data.id] && (
+                <div className="flex items-center gap-2 text-[10px] text-slate-500 font-bold">
+                  <Route size={13} className="text-md-tertiary" />
+                  Khoảng cách: {orderDistanceCache[orderModal.data.id].distanceKm?.toFixed(1)} km
+                  {orderDistanceCache[orderModal.data.id].durationMinutes
+                    ? ` (~${Math.round(orderDistanceCache[orderModal.data.id].durationMinutes)} phút)`
+                    : ''}
+                </div>
+              )}
             </div>
 
             {/* Danh sách món ăn */}

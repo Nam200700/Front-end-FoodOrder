@@ -31,6 +31,7 @@ export const mapOrder = (ord) => {
     id: ord.orderId?.toString() || ord.id?.toString(),
     restaurantId: ord.restaurantId?.toString() || ord.restaurant?.restaurantId?.toString(),
     restaurantName: ord.restaurantName || ord.restaurant?.restaurantName || 'Quán Ăn AntiGravity',
+    restaurantAddress: ord.restaurantAddress,
     restaurantImage: ord.imageUrl || ord.restaurantImageUrl || ord.restaurant?.imageUrl || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=150&q=80',
     customerId: ord.customerId?.toString(),
     customerName: ord.customerName || ord.customer?.name || 'Khách hàng',

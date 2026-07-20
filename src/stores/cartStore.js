@@ -8,6 +8,7 @@ export const useCartStore = create((set, get) => ({
   shippingCacheKey: '',
   isCalculatingShipping: false,
   restaurantShippingCache: {},
+  orderDistanceCache: {},
 
   fetchCart: async () => {
     try {
@@ -122,6 +123,43 @@ export const useCartStore = create((set, get) => ({
       }
     } catch (err) {
       console.error("Lỗi tính phí ship cho từng quán:", err);
+    }
+  },
+
+  fetchDistanceToCustomer: async (orderId, restaurantId, deliveryLat, deliveryLng) => {
+    const { orderDistanceCache } = get();
+    if (orderDistanceCache[orderId]) return orderDistanceCache[orderId]; // đã có cache
+    if (!restaurantId || !deliveryLat || !deliveryLng) return null;
+
+    try {
+      const res = await apiClient.get('/shipping/calculate', {
+        params: {
+          restaurantIds: [restaurantId],
+          deliveryLat,
+          deliveryLng
+        }
+      });
+
+      const data = res.data?.data?.[0];
+      if (!data) return null;
+
+      const info = {
+        shippingFee: data.shippingFee,
+        distanceKm: data.distanceKm,
+        durationMinutes: data.durationMinutes
+      };
+
+      set(state => ({
+        orderDistanceCache: {
+          ...state.orderDistanceCache,
+          [orderId]: info
+        }
+      }));
+
+      return info;
+    } catch (err) {
+      console.error('Lỗi tính khoảng cách quán - khách hàng:', err);
+      return null;
     }
   },
 

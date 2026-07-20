@@ -14,6 +14,7 @@ import { toast } from 'react-toastify';
 import { mapOrder } from '../../utils/mappers';
 import Modal from '../../components/common/Modal';
 import Button from '../../components/common/Button';
+import Card from '../../components/common/Card';
 import { useModalState } from '../../hooks/useModalState';
 import { useCartStore } from '../../stores/cartStore';
 
@@ -33,10 +34,10 @@ export default function ShipperPickup() {
   const [availableOrders, setAvailableOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedDetailOrder, setSelectedDetailOrder] = useState(null);
-  
+
   const startNewConversation = useChatStore((state) => state.startNewConversation);
 
-  // TOẠ ĐỘ QUÁN ĂN NẠP 
+  // TOẠ ĐỘ QUÁN ĂN
   const [restaurantCoords, setRestaurantCoords] = useState({ lat: null, lng: null });
   // TOẠ ĐỘ TÀI XẾ MÔ PHỎNG DI CHUYỂN
   const [shipperCoords, setShipperCoords] = useState({ lat: null, lng: null });
@@ -50,7 +51,7 @@ export default function ShipperPickup() {
 
   const { fetchShippingForRestaurant, restaurantShippingCache, fetchDistanceToCustomer, orderDistanceCache } = useCartStore();
 
-  //tọa độ đường đi
+  // toạ độ tuyến đường thật quán -> khách
   const [routeCoords, setRouteCoords] = useState([]);
 
   const handleChatWithCustomer = async () => {
@@ -75,7 +76,7 @@ export default function ShipperPickup() {
     }
   };
 
-  // 1. Lấy thông tin đơn hàng đang nhận giao 
+  // 1. Lấy thông tin đơn hàng đang nhận giao (nếu có) từ danh sách đơn của shipper
   const fetchActiveJob = useCallback(async () => {
     try {
       const response = await apiClient.get('/shipper/orders');
@@ -115,46 +116,46 @@ export default function ShipperPickup() {
 
   // 2. Lấy danh sách các đơn hàng khả dụng có thể nhận giao
   const fetchAvailableOrders = useCallback(async () => {
-      if (!online) return;
-      try {
-        setLoading(true);
-        const response = await apiClient.get('/shipper/orders/available');
-        const rawOrders = response.data?.data || [];
-        const mapped = rawOrders.map(ord => {
-          const mappedOrder = mapOrder(ord);
-          return {
-            id: mappedOrder.id,
-            restaurantId: mappedOrder.restaurantId,
-            restaurant: mappedOrder.restaurantName,
-            customer: mappedOrder.customerName,
-            customerPhone: mappedOrder.customerPhone,
-            resAddress: mappedOrder.restaurantAddress,
-            custAddress: mappedOrder.address,
-            deliveryLat: mappedOrder.deliveryLat,   
-            deliveryLng: mappedOrder.deliveryLng,  
-            distance: 'Thành phố',
-            fee: mappedOrder.shippingFee,
-            total: mappedOrder.total,
-            itemsCount: mappedOrder.itemsCount,
-            items: ord.items || [],
-            note: mappedOrder.note,
-            paymentMethod: mappedOrder.paymentMethod,
-            subtotalAmount: mappedOrder.subtotalAmount,
-          };
-        });
-        setAvailableOrders(mapped);
+    if (!online) return;
+    try {
+      setLoading(true);
+      const response = await apiClient.get('/shipper/orders/available');
+      const rawOrders = response.data?.data || [];
+      const mapped = rawOrders.map(ord => {
+        const mappedOrder = mapOrder(ord);
+        return {
+          id: mappedOrder.id,
+          restaurantId: mappedOrder.restaurantId,
+          restaurant: mappedOrder.restaurantName,
+          customer: mappedOrder.customerName,
+          customerPhone: mappedOrder.customerPhone,
+          resAddress: mappedOrder.restaurantAddress,
+          custAddress: mappedOrder.address,
+          deliveryLat: mappedOrder.deliveryLat,
+          deliveryLng: mappedOrder.deliveryLng,
+          distance: 'Thành phố',
+          fee: mappedOrder.shippingFee,
+          total: mappedOrder.total,
+          itemsCount: mappedOrder.itemsCount,
+          items: ord.items || [],
+          note: mappedOrder.note,
+          paymentMethod: mappedOrder.paymentMethod,
+          subtotalAmount: mappedOrder.subtotalAmount,
+        };
+      });
+      setAvailableOrders(mapped);
 
-        //Tính khoảng cách quán -> khách hàng cho từng đơn
-        mapped.forEach(order => {
-          if (order.restaurantId && order.deliveryLat && order.deliveryLng) {
-            fetchDistanceToCustomer(order.id, order.restaurantId, order.deliveryLat, order.deliveryLng);
-          }
-        });
-      } catch (err) {
-        console.error('Lỗi khi tải đơn hàng khả dụng:', err);
-      } finally {
-        setLoading(false);
-      }
+      // Tính khoảng cách quán -> khách hàng cho từng đơn 
+      mapped.forEach(order => {
+        if (order.restaurantId && order.deliveryLat && order.deliveryLng) {
+          fetchDistanceToCustomer(order.id, order.restaurantId, order.deliveryLat, order.deliveryLng);
+        }
+      });
+    } catch (err) {
+      console.error('Lỗi khi tải đơn hàng khả dụng:', err);
+    } finally {
+      setLoading(false);
+    }
   }, [online, fetchDistanceToCustomer]);
 
   useEffect(() => {
@@ -172,34 +173,31 @@ export default function ShipperPickup() {
 
     // Subscribe topic đơn hàng khả dụng cho shipper toàn sàn
     const availableDest = '/topic/available-orders';
-    console.log('[Shipper WebSocket]: Subscribing to ' + availableDest);
-    const subAvailable = subscribe(availableDest, (event) => {
-      console.log('[Shipper WebSocket]: Available orders update', event);
+    const subAvailable = subscribe(availableDest, () => {
       fetchAvailableOrders();
     });
 
     // Subscribe topic notification cá nhân để biết đơn được gán hoặc hủy
     const notifyDest = '/user/queue/notify';
-    console.log('[Shipper WebSocket]: Subscribing to ' + notifyDest);
-    const subNotify = subscribe(notifyDest, (event) => {
-      console.log('[Shipper WebSocket]: Personal notification received', event);
+    const subNotify = subscribe(notifyDest, () => {
       fetchActiveJob();
       fetchAvailableOrders();
     });
 
     return () => {
-      if (subAvailable) {
-        console.log('[Shipper WebSocket]: Unsubscribing from ' + availableDest);
-        subAvailable.unsubscribe();
-      }
-      if (subNotify) {
-        console.log('[Shipper WebSocket]: Unsubscribing from ' + notifyDest);
-        subNotify.unsubscribe();
-      }
+      if (subAvailable) subAvailable.unsubscribe();
+      if (subNotify) subNotify.unsubscribe();
     };
   }, [online, subscribe, fetchActiveJob, fetchAvailableOrders]);
 
-  // lấy toạ độ Quán ăn khi có đơn activeJob
+  // Đảm bảo có sẵn khoảng cách của đơn đang giao (phòng trường hợp fetchActiveJob chạy trước khi list available có cache)
+  useEffect(() => {
+    if (!activeJob?.id || !activeJob.restaurantId || !activeJob.deliveryLat || !activeJob.deliveryLng) return;
+    if (orderDistanceCache[activeJob.id]) return;
+    fetchDistanceToCustomer(activeJob.id, activeJob.restaurantId, activeJob.deliveryLat, activeJob.deliveryLng);
+  }, [activeJob?.id, activeJob?.restaurantId, activeJob?.deliveryLat, activeJob?.deliveryLng, orderDistanceCache, fetchDistanceToCustomer]);
+
+  // Nạp toạ độ Quán ăn khi có đơn activeJob
   useEffect(() => {
     if (!activeJob?.restaurantId) return;
     const fetchRestaurantCoords = async () => {
@@ -209,7 +207,7 @@ export default function ShipperPickup() {
         if (realRes && realRes.latitude && realRes.longitude) {
           setRestaurantCoords({
             lat: Number(realRes.latitude),
-            lng: Number(realRes.longitude),
+            lng: Number(realRes.longitude)
           });
         }
       } catch (err) {
@@ -231,7 +229,6 @@ export default function ShipperPickup() {
     let intervalId;
 
     if (activeJob.step === 'ACCEPTED') {
-      // Shipper đi từ điểm ngoài vào quán ăn lấy hàng
       const startLat = rLat + 0.009;
       const startLng = rLng - 0.009;
       setShipperCoords({ lat: startLat, lng: startLng });
@@ -251,7 +248,6 @@ export default function ShipperPickup() {
         });
       }, 1000);
     } else {
-      // Shipper đi từ quán ăn sang giao cho khách
       setShipperCoords({ lat: rLat, lng: rLng });
 
       let step = 0;
@@ -275,7 +271,7 @@ export default function ShipperPickup() {
     };
   }, [activeJob?.step, restaurantCoords, activeJob?.deliveryLat]);
 
-  // lấy tuyến đường giao hàng từ quán -> khách khi mở màn hình "Đang giao"
+  // Lấy tuyến đường thật quán -> khách khi mở màn hình "Đang giao"
   useEffect(() => {
     if (!activeJob || !restaurantCoords.lat || !activeJob.deliveryLat) return;
 
@@ -310,11 +306,10 @@ export default function ShipperPickup() {
     fetchRoute();
   }, [activeJob?.id, activeJob?.step, restaurantCoords.lat, activeJob?.deliveryLat]);
 
-  // Vẽ / cập nhật đường polyline tuyến đường lên bản đồ Leaflet
+  // Vẽ / cập nhật đường polyline tuyến đường thật lên bản đồ Leaflet
   useEffect(() => {
     if (!mapRef.current || routeCoords.length === 0) return;
 
-    // Xoá polyline cũ trước khi vẽ mới
     if (polylineRef.current) {
       mapRef.current.removeLayer(polylineRef.current);
     }
@@ -328,7 +323,7 @@ export default function ShipperPickup() {
     mapRef.current.fitBounds(polylineRef.current.getBounds(), { padding: [40, 40] });
   }, [routeCoords]);
 
-  // Vẽ bản đồ Leaflet thật cho Shipper 
+  // Vẽ bản đồ Leaflet thật cho Shipper
   useEffect(() => {
     if (!activeJob || !restaurantCoords.lat || !activeJob.deliveryLat || !mapContainerRef.current) return;
 
@@ -345,7 +340,6 @@ export default function ShipperPickup() {
         attribution: '&copy; OpenStreetMap contributors'
       }).addTo(map);
 
-      // Marker Quán ăn 
       const resIcon = L.divIcon({
         html: `<div class="flex items-center justify-center w-8 h-8 rounded-full bg-orange-500 text-white shadow-md border-2 border-white"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 2v7c0 1.1.9 2 2 2a2 2 0 0 0 2-2V2"/><path d="M7 2v20"/><path d="M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"/></svg></div>`,
         className: 'custom-div-icon',
@@ -355,7 +349,6 @@ export default function ShipperPickup() {
       markersRef.current.restaurant = L.marker([rLat, rLng], { icon: resIcon }).addTo(map)
         .bindPopup(`<b>Quán ${activeJob.restaurant}</b><br/> ${activeJob.resAddress}`);
 
-      // Marker Khách hàng 
       const custIcon = L.divIcon({
         html: `<div class="flex items-center justify-center w-8 h-8 rounded-full bg-red-500 text-white shadow-md border-2 border-white"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 22V12h6v10"/></svg></div>`,
         className: 'custom-div-icon',
@@ -386,9 +379,6 @@ export default function ShipperPickup() {
       setLoading(true);
       await apiClient.post(`/shipper/orders/${order.id}/accept`);
       toast.success(`Đã nhận thành công đơn hàng #${order.id}! Hãy đến quán lấy đồ ăn.`);
-      if (selectedDetailOrder && selectedDetailOrder.id === order.id) {
-        setSelectedDetailOrder(null); 
-      }
       await fetchActiveJob();
       await fetchAvailableOrders();
     } catch (err) {
@@ -406,27 +396,25 @@ export default function ShipperPickup() {
       // READY_FOR_PICKUP -> PICKED_UP -> DELIVERING -> COMPLETED.
       const status = activeJob.status;
       const id = activeJob.id;
+
       if (status === 'READY_FOR_PICKUP') {
-        // lấy hàng ở quán và chuyển sang đang giao
         await apiClient.patch(`/shipper/orders/${id}/picked-up`);
         await apiClient.patch(`/shipper/orders/${id}/delivering`);
-        toast.success('Đã xác nhận lấy hàng thành công!');
+        toast.success('Đã xác nhận lấy hàng thành công! Đang giao hàng đến khách hàng.');
         await fetchActiveJob();
-      } 
-      // else if (status === 'PICKED_UP') {
-      //   await apiClient.patch(`/shipper/orders/${id}/delivering`);
-      //   await apiClient.patch(`/shipper/orders/${id}/complete`);
-      //   toast.success('Chúc mừng! Đơn hàng đã giao thành công và tiền ship đã được ghi nhận.');
-      //   setActiveJob(null);
-      //   setRouteCoords([]); 
-      //   await fetchAvailableOrders();
-      // } 
-      else if (status === 'DELIVERING') {
-        // hoàn tất giao hàng
+      } else if (status === 'PICKED_UP') {
+        // Đơn kẹt ở PICKED_UP (chưa qua DELIVERING) -> đẩy tiếp rồi hoàn tất (tự cứu)
+        await apiClient.patch(`/shipper/orders/${id}/delivering`);
         await apiClient.patch(`/shipper/orders/${id}/complete`);
-        toast.success('Đơn hàng đã giao thành công!');
+        toast.success('Chúc mừng! Đơn hàng đã giao thành công và tiền ship đã được ghi nhận.');
         setActiveJob(null);
-        setRouteCoords([]); 
+        setRouteCoords([]);
+        await fetchAvailableOrders();
+      } else if (status === 'DELIVERING') {
+        await apiClient.patch(`/shipper/orders/${id}/complete`);
+        toast.success('Chúc mừng! Đơn hàng đã giao thành công và tiền ship đã được ghi nhận.');
+        setActiveJob(null);
+        setRouteCoords([]);
         await fetchAvailableOrders();
       }
     } catch (err) {
@@ -438,19 +426,19 @@ export default function ShipperPickup() {
   };
 
   const handleOpenDetail = (order) => {
-    // Gọi API tính khoảng cách nếu chưa có trong cache
-    // Truyền vào ID quán và tọa độ giao hàng của đơn
     if (order.restaurantId && order.deliveryLat && order.deliveryLng) {
       fetchShippingForRestaurant(order.restaurantId, order.deliveryLat, order.deliveryLng);
     }
     orderModal.open(order);
   };
 
+  const activeDistance = activeJob ? orderDistanceCache[activeJob.id] : null;
+
   return (
     <div className="flex-1 p-4 md:p-8 max-w-4xl mx-auto w-full font-google-sans pb-24 space-y-6">
-      
+
       {/* Header with online toggle */}
-      <div className="flex items-center justify-between bg-white rounded-radius-xl p-5 border border-slate-200/60 shadow-sm transition-all duration-300">
+      <Card variant="elevated" className="!rounded-radius-xl p-5 flex items-center justify-between transition-all duration-300">
         <div>
           <h1 className="text-lg md:text-xl font-extrabold text-slate-800 flex items-center gap-2">
             <Bike className="text-md-tertiary" size={22} /> Shipper Hub
@@ -473,12 +461,12 @@ export default function ShipperPickup() {
           }`} />
           {online ? 'ĐANG BẬT ONLINE' : 'ĐANG TẮT OFFLINE'}
         </button>
-      </div>
+      </Card>
 
-      {/* giao diện đơn đang giao */}
+      {/* ACTIVE JOB SCREEN */}
       {activeJob ? (
-        <div className="bg-white rounded-radius-xl border border-slate-200/60 shadow-shadow-2 overflow-hidden flex flex-col md:flex-row h-max transition-all duration-300 animate-slide-up">
-          
+        <Card variant="elevated" className="!rounded-radius-xl shadow-shadow-2 overflow-hidden flex flex-col md:flex-row h-max transition-all duration-300 animate-slide-up">
+
           <div className="flex-1 min-h-[280px] relative border-b md:border-b-0 md:border-r border-slate-200/60">
             {restaurantCoords.lat && activeJob.deliveryLat ? (
               <div ref={mapContainerRef} className="w-full h-full min-h-[300px] z-10" />
@@ -489,6 +477,7 @@ export default function ShipperPickup() {
             )}
           </div>
 
+          {/* Stepper active panel */}
           <div className="w-full md:w-96 p-6 flex flex-col justify-between space-y-6 shrink-0 bg-white">
             <div>
               <div className="flex items-center justify-between border-b border-slate-100 pb-4">
@@ -496,8 +485,18 @@ export default function ShipperPickup() {
                   <span className="text-[10px] text-md-tertiary font-bold bg-[#E8F5E9] px-2.5 py-0.5 rounded-full uppercase">
                     ĐƠN ĐANG GIAO #{activeJob.id}
                   </span>
+                  {/* Khoảng cách quán -> khách ngay dưới nhãn đơn đang giao */}
+                  <div className="flex items-center gap-1.5 mt-2 text-[10px] md:text-[11px] text-slate-500 font-bold">
+                    <Route size={13} className="text-md-tertiary shrink-0" />
+                    {activeDistance?.distanceKm != null
+                      ? `${activeDistance.distanceKm.toFixed(1)} km`
+                      : 'Đang tính khoảng cách...'}
+                    {activeDistance?.durationMinutes
+                      ? ` · ~${Math.round(activeDistance.durationMinutes)} phút`
+                      : ''}
+                  </div>
                 </div>
-                
+
                 <div className="text-right">
                   <span className="text-[10px] text-slate-400 block uppercase font-bold">Phí giao hàng</span>
                   <span className="text-base md:text-lg font-extrabold text-md-tertiary mt-0.5 block">{formatCurrency(activeJob.fee)}</span>
@@ -543,7 +542,7 @@ export default function ShipperPickup() {
                 <span className="font-extrabold text-slate-800 block truncate mt-1.5 leading-none">{activeJob.customer} - {activeJob.phone}</span>
               </div>
               <div className="flex gap-2.5">
-                <button 
+                <button
                   onClick={handleChatWithCustomer}
                   className="p-2 bg-white rounded-full border border-slate-200 hover:text-md-tertiary hover:border-md-tertiary hover:scale-105 active:scale-95 transition-all shadow-sm cursor-pointer"
                 >
@@ -556,18 +555,20 @@ export default function ShipperPickup() {
             </div>
 
             {/* Action button */}
-            <button
+            <Button
               onClick={handleNextStep}
-              className="w-full bg-md-tertiary hover:bg-opacity-95 text-white font-extrabold py-3.5 px-4 rounded-radius-full shadow-shadow-2 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2 text-xs uppercase cursor-pointer tracking-wider"
+              variant="primary"
+              size="md"
+              icon={Check}
+              className="w-full !bg-md-tertiary hover:!bg-opacity-95 !rounded-radius-full !py-3.5 text-xs uppercase tracking-wider"
             >
-              <Check size={14} className="stroke-[3.5px]" />
               {activeJob.step === 'ACCEPTED' ? 'Xác nhận đã lấy hàng' : 'Xác nhận giao thành công'}
-            </button>
+            </Button>
           </div>
 
-        </div>
+        </Card>
       ) : (
-        /* danh sách đơn hàng chờ nhận giao */
+        /* AVAILABLE JOBS LIST */
         <div className="space-y-4 animate-fade-in">
           <h2 className="text-xs md:text-sm font-extrabold text-slate-800 uppercase tracking-wider flex items-center gap-1.5 mb-2">
             <Navigation className="text-md-tertiary" size={18} />
@@ -575,10 +576,10 @@ export default function ShipperPickup() {
           </h2>
 
           {!online ? (
-            <div className="bg-white rounded-radius-xl p-10 border border-slate-200/60 shadow-sm text-center text-xs text-slate-400 font-semibold leading-relaxed flex flex-col items-center gap-3">
+            <Card variant="elevated" className="!rounded-radius-xl p-10 text-center text-xs text-slate-400 font-semibold leading-relaxed flex flex-col items-center gap-3">
               <PowerOff size={36} className="text-slate-300" strokeWidth={1.5} />
               <span>Vui lòng chuyển trạng thái sang <span className="text-slate-600 font-extrabold">ONLINE</span> để bắt đầu quét các đơn hàng.</span>
-            </div>
+            </Card>
           ) : loading ? (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               <SkeletonOrderCard />
@@ -586,16 +587,18 @@ export default function ShipperPickup() {
             </div>
           ) : availableOrders.length === 0 ? (
             <EmptyState
-              title="Đang quét đơn hàng..."
-              message="Đang tìm kiếm các đơn đặt món mới xung quanh vị trí của bạn."
+              title=""
+              message="Không có các đơn hàng xung quanh vị trí của bạn."
               icon={Bike}
             />
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               {availableOrders.map((order) => (
-                <div 
+                <Card
                   key={order.id}
-                  className="bg-white rounded-radius-xl p-5 border border-slate-200/60 shadow-sm flex flex-col justify-between hover:shadow-md hover:border-slate-350 hover:scale-[1.01] transition-all duration-300 animate-fade-in"
+                  variant="elevated"
+                  hoverEffect
+                  className="!rounded-radius-xl p-5 flex flex-col justify-between animate-fade-in"
                 >
                   <div>
                     <div className="flex items-center justify-between border-b border-slate-100 pb-2">
@@ -630,24 +633,27 @@ export default function ShipperPickup() {
                     </div>
 
                     <div className="flex gap-2">
-                      <button
-                        onClick={() => orderModal.open(order)}
-                        className="px-3 py-2.5 border border-slate-200 text-slate-500 hover:text-md-secondary hover:border-md-secondary rounded-radius-full hover:bg-slate-50 transition-all flex items-center gap-1 font-extrabold text-xs cursor-pointer shadow-sm"
-                        title="Chi tiết đơn"
+                      <Button
+                        onClick={() => handleOpenDetail(order)}
+                        variant="outline"
+                        size="sm"
+                        icon={Eye}
+                        className="!rounded-radius-full !px-3 !py-2.5 text-xs uppercase tracking-wider"
                       >
-                        <Eye size={13} />
                         Chi tiết
-                      </button>
-                      <button
+                      </Button>
+                      <Button
                         onClick={() => handleAcceptJob(order)}
-                        className="px-4 py-2.5 bg-md-tertiary hover:bg-opacity-95 text-white font-extrabold text-xs rounded-radius-full shadow-sm hover:scale-[1.05] active:scale-[0.95] hover:shadow-md transition-all flex items-center gap-1 cursor-pointer tracking-wider uppercase"
+                        variant="primary"
+                        size="sm"
+                        icon={Check}
+                        className="!bg-md-tertiary hover:!bg-opacity-95 !rounded-radius-full !px-4 !py-2.5 text-xs uppercase tracking-wider"
                       >
-                        <Check size={12} className="stroke-[3.5px]" />
                         Nhận đơn
-                      </button>
+                      </Button>
                     </div>
                   </div>
-                </div>
+                </Card>
               ))}
             </div>
           )}
@@ -693,7 +699,7 @@ export default function ShipperPickup() {
             {/* Danh sách món ăn */}
             <div className="space-y-1">
               <span className="text-[10px] text-slate-400 font-extrabold uppercase ml-1">
-                Danh Sách Món Ăn({orderModal.data.itemsCount})
+                Danh Sách Món Ăn ({orderModal.data.itemsCount})
               </span>
               <div className="max-h-[180px] overflow-y-auto scrollbar-thin">
                 {orderModal.data.items?.map((item, idx) => (
@@ -718,13 +724,13 @@ export default function ShipperPickup() {
             </div>
 
             {/* nút nhận đơn */}
-            <Button 
-              variant="primary" 
-              className="w-full !bg-emerald-600 !border-emerald-600 h-10" 
-              icon={Check} 
-              onClick={() => { 
-                handleAcceptJob(orderModal.data); 
-                orderModal.close(); 
+            <Button
+              variant="primary"
+              className="w-full !bg-emerald-600 !border-emerald-600 h-10"
+              icon={Check}
+              onClick={() => {
+                handleAcceptJob(orderModal.data);
+                orderModal.close();
               }}
             >
               Nhận đơn

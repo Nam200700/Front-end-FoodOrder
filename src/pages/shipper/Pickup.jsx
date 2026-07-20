@@ -218,6 +218,7 @@ export default function ShipperPickup() {
   }, [activeJob?.restaurantId]);
 
   // Mô phỏng vị trí tài xế di chuyển tịnh tiến thực tế
+  /*
   useEffect(() => {
     if (!activeJob || !restaurantCoords.lat || !activeJob.deliveryLat) return;
 
@@ -269,7 +270,7 @@ export default function ShipperPickup() {
     return () => {
       if (intervalId) clearInterval(intervalId);
     };
-  }, [activeJob?.step, restaurantCoords, activeJob?.deliveryLat]);
+  }, [activeJob?.step, restaurantCoords, activeJob?.deliveryLat]);*/
 
   // Lấy tuyến đường thật quán -> khách khi mở màn hình "Đang giao"
   useEffect(() => {
@@ -480,31 +481,37 @@ export default function ShipperPickup() {
           {/* Stepper active panel */}
           <div className="w-full md:w-96 p-6 flex flex-col justify-between space-y-6 shrink-0 bg-white">
             <div>
-              <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+              <div className="flex items-center justify-between pb-2">
                 <div>
-                  <span className="text-[10px] text-md-tertiary font-bold bg-[#E8F5E9] px-2.5 py-0.5 rounded-full uppercase">
+                  <span className="text-[10px] text-md-tertiary font-bold bg-[#E8F5E9] px-2.5 py-1 rounded-full uppercase inline-block">
                     ĐƠN ĐANG GIAO #{activeJob.id}
                   </span>
-                  {/* Khoảng cách quán -> khách ngay dưới nhãn đơn đang giao */}
-                  <div className="flex items-center gap-1.5 mt-2 text-[10px] md:text-[11px] text-slate-500 font-bold">
-                    <Route size={13} className="text-md-tertiary shrink-0" />
+                </div>
+                <div className="text-right">
+                  <span className="text-[10px] text-slate-400 block uppercase font-bold">Phí giao hàng</span>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between pt-1 pb-4">
+                <div className="flex items-center gap-1.5 text-[11px] text-slate-500 font-bold">
+                  <Route size={13} className="text-md-tertiary shrink-0" />
+                  <span>
                     {activeDistance?.distanceKm != null
                       ? `${activeDistance.distanceKm.toFixed(1)} km`
-                      : 'Đang tính khoảng cách...'}
-                    {activeDistance?.durationMinutes
-                      ? ` · ~${Math.round(activeDistance.durationMinutes)} phút`
-                      : ''}
-                  </div>
+                      : 'Đang tính...'}
+                  </span>
+                  {activeDistance?.durationMinutes && (
+                    <span>· ~{Math.round(activeDistance.durationMinutes)} phút</span>
+                  )}
                 </div>
 
                 <div className="text-right">
-                  <span className="text-[10px] text-slate-400 block uppercase font-bold">Phí giao hàng</span>
-                  <span className="text-base md:text-lg font-extrabold text-md-tertiary mt-0.5 block">{formatCurrency(activeJob.fee)}</span>
+                  <span className="text-sm font-bold text-md-tertiary block">{formatCurrency(activeJob.fee)}</span>
                 </div>
               </div>
 
               {/* Status stepper progress bar */}
-              <div className="mt-5 space-y-5">
+              <div className="mt-2 space-y-5">
                 <div className="flex items-center gap-3">
                   <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold border transition-colors ${
                     activeJob.step === 'ACCEPTED' || activeJob.step === 'PICKED_UP'

@@ -337,6 +337,35 @@ export default function ShipperPickup() {
     }
   };
 
+//   const handleAcceptJob = async (order) => {
+//   try {
+//     setLoading(true);
+//     // 1. Gửi yêu cầu nhận đơn lên server
+//     await apiClient.post(`/shipper/orders/${order.id}/accept`);
+    
+//     // 2. Cập nhật dữ liệu từ server
+//     // Việc gọi await ở đây đảm bảo dữ liệu mới nhất đã được fetch về
+//     await Promise.all([
+//       fetchActiveJob(),
+//       fetchAvailableOrders()
+//     ]);
+    
+//     toast.success(`Đã nhận thành công đơn hàng #${order.id}!`);
+    
+//     // 3. Đóng modal sau khi đã cập nhật xong dữ liệu
+//     orderModal.close(); 
+    
+//     if (selectedDetailOrder && selectedDetailOrder.id === order.id) {
+//       setSelectedDetailOrder(null);
+//     }
+//   } catch (err) {
+//     console.error(err);
+//     toast.error(err.response?.data?.message || 'Không thể nhận đơn hàng!');
+//   } finally {
+//     setLoading(false);
+//   }
+// };
+
   const handleNextStep = async () => {
     if (!activeJob) return;
     try {
@@ -394,7 +423,6 @@ export default function ShipperPickup() {
       <div className="flex items-center justify-between bg-white rounded-radius-xl p-5 border border-slate-200/60 shadow-sm transition-all duration-300">
         <div>
           <h1 className="text-lg md:text-xl font-extrabold text-slate-800 flex items-center gap-2">
-            {/* icon Bike xanh thay emoji 🚴 */}
             <Bike className="text-md-tertiary" size={22} /> Shipper Hub
           </h1>
           <p className="text-[10px] md:text-[11px] text-slate-400 font-bold mt-0.5 uppercase tracking-wide">
@@ -421,7 +449,6 @@ export default function ShipperPickup() {
       {activeJob ? (
         <div className="bg-white rounded-radius-xl border border-slate-200/60 shadow-shadow-2 overflow-hidden flex flex-col md:flex-row h-max transition-all duration-300 animate-slide-up">
           
-          {/* Bản đồ Leaflet chỉ đường thật 100% cho tài xế */}
           <div className="flex-1 min-h-[280px] relative border-b md:border-b-0 md:border-r border-slate-200/60">
             {restaurantCoords.lat && activeJob.deliveryLat ? (
               <div ref={mapContainerRef} className="w-full h-full min-h-[300px] z-10" />
@@ -546,7 +573,6 @@ export default function ShipperPickup() {
                     <div className="flex items-start justify-between border-b border-slate-100 pb-3">
                       <div>
                         <span className="text-[10px] text-slate-400 font-bold block uppercase leading-none">MÃ ĐƠN #{order.id}</span>
-                        <h3 className="font-extrabold text-sm md:text-base text-slate-800 mt-2 truncate max-w-[200px] leading-none">{order.restaurant}</h3>
                       </div>
                       <div className="text-right">
                         <span className="text-[9px] text-[#2E7D32] bg-[#E8F5E9] font-extrabold px-2.5 py-1 rounded-full uppercase tracking-wider leading-none block shadow-sm">
@@ -557,21 +583,19 @@ export default function ShipperPickup() {
 
                     <div className="space-y-3 my-4 text-xs font-semibold text-slate-700">
                       <div className="flex items-center gap-2">
-                        {/* icon Utensils thay emoji 🍜 */}
                         <Utensils size={14} className="text-md-tertiary shrink-0" />
-                        <span className="truncate"><b>Quán:</b> {order.resAddress}</span>
+                        <span className=""><b>Quán:</b> {order.resAddress}</span>
                       </div>
                       <div className="flex items-center gap-2">
-                        {/* icon MapPin thay emoji 📍 */}
                         <MapPin size={14} className="text-md-primary shrink-0" />
-                        <span className="truncate"><b>Khách:</b> {order.custAddress}</span>
+                        <span className=""><b>Khách hàng:</b> {order.custAddress}</span>
                       </div>
                     </div>
                   </div>
 
                   <div className="flex items-center justify-between border-t border-slate-100 pt-4 mt-1 flex-wrap gap-2">
                     <div>
-                      <span className="text-[9px] text-slate-400 block font-bold uppercase leading-none tracking-wider">THU NHẬP SHIP</span>
+                      <span className="text-[9px] text-slate-400 block font-bold uppercase leading-none tracking-wider">Phí giao hàng</span>
                       <span className="font-extrabold text-sm md:text-base text-md-tertiary mt-1.5 block leading-none">{formatCurrency(order.fee)}</span>
                     </div>
 
@@ -647,7 +671,7 @@ export default function ShipperPickup() {
             {/* Thanh toán */}
             <div className="bg-slate-50 p-3 rounded-lg border border-slate-100 space-y-1.5 text-xs">
               <div className="flex justify-between text-slate-500"><span>Tạm tính</span><span>{formatCurrency(orderModal.data.subtotalAmount)}</span></div>
-              <div className="flex justify-between text-slate-500"><span>Phí ship</span><span className="text-md-tertiary font-bold">{formatCurrency(orderModal.data.fee)}</span></div>
+              <div className="flex justify-between text-slate-500"><span>Phí giao hàng</span><span className="text-md-tertiary font-bold">{formatCurrency(orderModal.data.fee)}</span></div>
               <div className="flex justify-between text-sm pt-1.5 border-t border-slate-200">
                 <span className="font-extrabold text-slate-800">Tổng thanh toán</span>
                 <span className="font-extrabold text-slate-800">{formatCurrency(orderModal.data.total)}</span>

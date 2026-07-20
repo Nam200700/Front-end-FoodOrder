@@ -164,6 +164,10 @@ export default function Register() {
           setErrors({ phone: 'Số điện thoại này đã được đăng ký trên hệ thống!' });
         } else if (code === 'EMAIL_EXISTS' || msg.includes('Email') || msg.toLowerCase().includes('email')) {
           setErrors({ email: 'Email này đã được sử dụng bởi một tài khoản khác!' });
+        } else if (code === 'ID_CARD_EXISTS' || msg.includes('CCCD')) {
+          setErrors({ idCard: 'Số CCCD/CMND này đã được sử dụng để đăng ký tài khoản khác!' });
+        } else if (code === 'LICENSE_PLATE_EXISTS' || msg.includes('Biển số xe')) {
+          setErrors({ licensePlate: 'Biển số xe này đã được đăng ký bởi tài xế khác!' });
         } else {
           toast.error(msg);
         }

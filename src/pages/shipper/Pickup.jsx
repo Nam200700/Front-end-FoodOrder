@@ -434,6 +434,19 @@ export default function ShipperPickup() {
     orderModal.open(order);
   };
 
+  //bật tắt trạng thái online offline
+  const handleToggleOnline = async () => {
+    const nextStatus = !online;
+    try {
+      await apiClient.put('/users/profile', { isOnline: nextStatus });
+      setOnline(nextStatus);
+      toast.success(nextStatus ? 'Đã bật trạng thái online!' : 'Đã tắt trạng thái online!');
+    } catch (err) {
+      console.error('Lỗi cập nhật trạng thái online:', err);
+      toast.error(err.response?.data?.message || 'Không thể cập nhật trạng thái. Vui lòng thử lại!');
+    }
+  };
+
   const activeDistance = activeJob ? orderDistanceCache[activeJob.id] : null;
 
   return (
@@ -466,19 +479,15 @@ export default function ShipperPickup() {
           </div>
         </div>
 
-        <button
-          onClick={() => setOnline(!online)}
-          className={`px-4 py-2.5 text-xs font-extrabold rounded-radius-full transition-all shadow-sm flex items-center gap-2 hover:scale-[1.03] active:scale-[0.97] cursor-pointer ${
-            online
-              ? 'bg-emerald-600 text-white shadow-emerald-200 hover:bg-emerald-700'
-              : 'bg-slate-100 text-slate-500 border border-slate-200 hover:bg-slate-200/70'
-          }`}
+        <Button
+          onClick={handleToggleOnline}
+          className="px-4 py-2.5 text-xs font-extrabold rounded-radius-full transition-all shadow-sm flex items-center gap-2 hover:scale-[1.03] active:scale-[0.97] cursor-pointer !bg-md-tertiary text-white shadow-emerald-200"
         >
           <span className={`w-2 h-2 rounded-full inline-block ${
             online ? 'bg-white animate-ping' : 'bg-slate-400'
           }`} />
           {online ? 'ĐANG BẬT ONLINE' : 'ĐANG TẮT OFFLINE'}
-        </button>
+        </Button>
       </Card>
 
       {/* ACTIVE JOB SCREEN */}

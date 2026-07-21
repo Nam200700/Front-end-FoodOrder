@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { History, ClipboardList, Clipboard, Check, X, Utensils, Wallet, CheckCircle2, ChevronLeft, ChevronRight } from 'lucide-react';
+import { History, ClipboardList, Clipboard, Check, X, Utensils, Wallet, CheckCircle2, ChevronLeft, ChevronRight, User, Clock } from 'lucide-react';
 import { formatCurrency } from '../../utils/format';
 import { useFetchData } from '../../hooks/useFetchData';
 import { SkeletonOrderCard } from '../../components/common/SkeletonCard';
@@ -18,9 +18,7 @@ export default function ShipperHistory() {
     
     return content.map(ord => {
       const dateObj = new Date(ord.createdAt);
-      const formattedDate = dateObj.toLocaleDateString('vi-VN') + ' ' + 
-        String(dateObj.getHours()).padStart(2, '0') + ':' + 
-        String(dateObj.getMinutes()).padStart(2, '0');
+      const formattedDate = dateObj.toLocaleDateString('vi-VN');
 
       return {
         id: ord.orderId.toString(),
@@ -67,7 +65,7 @@ export default function ShipperHistory() {
   const list = mapHistory({ content: rawContent });
   const totalPages = pageData?.totalPages || 1;
 
-  // Lọc danh sách theo Tab đang chọn ở giao diện phía client cho trang hiện tại
+  // Lọc danh sách theo Tab 
   const filteredList = list.filter(item => {
     if (activeTab === 'COMPLETED') return item.status === 'COMPLETED';
     if (activeTab === 'CANCELLED') return item.status === 'CANCELLED';
@@ -123,7 +121,7 @@ export default function ShipperHistory() {
                   <Card
                     key={item.id}
                     variant="elevated"
-                    hoverEffect={true}
+                    // hoverEffect={true}
                     className="flex items-stretch overflow-hidden"
                   >
                     <div className={`w-1.5 shrink-0 ${isDone ? 'bg-md-tertiary' : 'bg-blue-400'}`} />
@@ -134,11 +132,10 @@ export default function ShipperHistory() {
                             ? 'bg-[#E8F5E9] text-md-tertiary border-[#C8E6C9]'
                             : 'bg-blue-50 text-blue-500 border-blue-100'
                         }`}>
-                          {isDone ? <Check size={18} strokeWidth={3} /> : <X size={18} strokeWidth={3} />}
+                          {isDone ? <Check size={18} strokeWidth={3} /> : <Clock size={18} strokeWidth={3} />}
                         </div>
 
                         <div className="min-w-0">
-                          {/* ─── HÀNG 1: MÃ ĐƠN - NGÀY ĐẶT - TRẠNG THÁI NẰM CHUNG TRÊN 1 HÀNG ─── */}
                           <div className="flex items-center gap-2 flex-wrap">
                             <span className="font-bold text-xs sm:text-sm text-slate-800">
                               Mã Đơn #{item.id}
@@ -157,7 +154,7 @@ export default function ShipperHistory() {
                           </div>
                           
                           <span className="text-[10px] text-slate-400 mt-1 flex items-center gap-1">
-                            <Utensils size={11} className="shrink-0" /> Khách hàng: {item.customer}
+                            <User size={11} className="shrink-0" /> Khách hàng: {item.customer}
                           </span>
                           <span className="text-[10px] text-slate-400 mt-1 flex items-center gap-1">
                             <Utensils size={11} className="shrink-0" /> Quán: {item.restaurant}

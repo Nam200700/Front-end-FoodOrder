@@ -127,7 +127,7 @@ export default function AppRoutes() {
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
       <Route path="/register/otp" element={<Otp />} />
-      <Route path="/public-chatbot" element={<AIChatbot isPublic={true} />} />
+
       <Route path="/partner/approval" element={
         <ProtectedRoute allowedRoles={['MERCHANT', 'OWNER', 'SHIPPER']}>
           <PartnerApproval />
@@ -184,6 +184,11 @@ export default function AppRoutes() {
         <Route path="profile" element={
           <ProtectedRoute allowedRoles={['CUSTOMER']}>
             <Profile />
+          </ProtectedRoute>
+        } />
+        <Route path="chatbot" element={
+          <ProtectedRoute allowedRoles={['CUSTOMER']}>
+            <AIChatbot isPublic={false} />
           </ProtectedRoute>
         } />
       </Route>

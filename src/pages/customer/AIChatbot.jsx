@@ -1,22 +1,21 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Send, Bot, User, Sparkles, AlertCircle, RefreshCw, Trash2, ArrowLeft, Plus, MessageSquare } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { Send, Bot, User, Sparkles, AlertCircle, RefreshCw, ArrowLeft, Calendar } from 'lucide-react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import apiClient from '../../services/api';
 
 export default function AIChatbot({ isPublic = false }) {
   const navigate = useNavigate();
+  const location = useLocation();
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [historyLoading, setHistoryLoading] = useState(true);
   const [error, setError] = useState(null);
   
-  // Session states
-  const [sessionId, setSessionId] = useState(() => {
-    return localStorage.getItem('chatbot_active_session_id') || 'session_' + Math.random().toString(36).substring(2, 11);
-  });
-  const [sessions, setSessions] = useState([]);
+  // Date groups for sidebar navigation
+  const [dateGroups, setDateGroups] = useState([]);
   const messagesEndRef = useRef(null);
+  const messageRefs = useRef({});
 
   // Suggestions for user to click
   const suggestions = [
@@ -26,64 +25,68 @@ export default function AIChatbot({ isPublic = false }) {
     "Hỏi thông tin về an toàn hệ thống"
   ];
 
-  // Load sessions and history on mount & when sessionId changes
+  // Load history on mount
   useEffect(() => {
-    localStorage.setItem('chatbot_active_session_id', sessionId);
-    fetchSessions();
     fetchHistory();
-  }, [sessionId]);
+  }, []);
 
-  // Auto-scroll to bottom of messages
+  // Auto-scroll to bottom on new messages
   useEffect(() => {
     scrollToBottom();
   }, [messages, loading]);
-
-  const fetchSessions = async () => {
-    try {
-      const endpoint = isPublic ? '/auth/chatbot/sessions' : '/chatbot/sessions';
-      const response = await apiClient.get(endpoint);
-      const sessionList = response.data.data || [];
-      
-      // Ensure the current sessionId is included in the sidebar list
-      if (!sessionList.includes(sessionId)) {
-        sessionList.unshift(sessionId);
-      }
-      setSessions(sessionList);
-    } catch (err) {
-      console.error("Lỗi khi tải danh sách phiên chat:", err);
-    }
-  };
 
   const fetchHistory = async () => {
     setHistoryLoading(true);
     setError(null);
     try {
-      const endpoint = isPublic ? `/auth/chatbot/history?sessionId=${sessionId}` : `/chatbot/history?sessionId=${sessionId}`;
+      const endpoint = isPublic ? '/auth/chatbot/history' : '/chatbot/history';
       const response = await apiClient.get(endpoint);
       const historyData = response.data.data || [];
-      // Map API fields (sender, content, createdAt) to view state
-      const mapped = historyData.map(msg => ({
-        id: Math.random().toString(),
-        sender: msg.sender ? msg.sender.toLowerCase() : 'bot',
-        text: msg.content || '',
-        time: (() => {
-          if (!msg.createdAt) return '';
+      
+      // Map API fields
+      const mapped = historyData.map((msg, index) => {
+        // Safe date parsing
+        let dateObj = null;
+        let dateStr = 'Trước đây';
+        let timeStr = '';
+        
+        if (msg.createdAt) {
           try {
             if (Array.isArray(msg.createdAt)) {
               const [year, month, day, hour, minute] = msg.createdAt;
-              const h = hour !== undefined ? hour.toString().padStart(2, '0') : '00';
-              const m = minute !== undefined ? minute.toString().padStart(2, '0') : '00';
-              return `${h}:${m}`;
+              dateObj = new Date(year, month - 1, day, hour, minute);
+            } else {
+              dateObj = new Date(msg.createdAt);
             }
-            const date = new Date(msg.createdAt);
-            if (isNaN(date.getTime())) return '';
-            return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            if (!isNaN(dateObj.getTime())) {
+              dateStr = dateObj.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
+              timeStr = dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            }
           } catch (e) {
-            return '';
+            console.error(e);
           }
-        })()
-      }));
+        }
+
+        return {
+          id: msg.messageId || `msg_${index}_${Math.random()}`,
+          sender: msg.sender ? msg.sender.toLowerCase() : 'bot',
+          text: msg.content || '',
+          dateLabel: dateStr,
+          time: timeStr
+        };
+      });
+
       setMessages(mapped);
+
+      // Extract unique dates for sidebar grouping
+      const uniqueDates = [];
+      mapped.forEach(msg => {
+        if (msg.dateLabel && !uniqueDates.includes(msg.dateLabel)) {
+          uniqueDates.push(msg.dateLabel);
+        }
+      });
+      setDateGroups(uniqueDates);
+
     } catch (err) {
       console.error("Lỗi khi tải lịch sử chat:", err);
       setError("Không thể tải lịch sử trò chuyện. Hãy thử lại!");
@@ -96,15 +99,12 @@ export default function AIChatbot({ isPublic = false }) {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
-  const handleNewChat = () => {
-    const newId = 'session_' + Math.random().toString(36).substring(2, 11);
-    setSessionId(newId);
-    setMessages([]);
-    setError(null);
-  };
-
-  const selectSession = (id) => {
-    setSessionId(id);
+  const scrollToDate = (dateLabel) => {
+    // Find first message of this date group
+    const firstMsgOfDate = messages.find(m => m.dateLabel === dateLabel);
+    if (firstMsgOfDate && messageRefs.current[firstMsgOfDate.id]) {
+      messageRefs.current[firstMsgOfDate.id].scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
   };
 
   const handleSendMessage = async (textToSend) => {
@@ -114,35 +114,35 @@ export default function AIChatbot({ isPublic = false }) {
     if (!textToSend) setInput('');
     setError(null);
 
-    // Add user message to UI
+    // Add user message locally
     const userMsg = {
-      id: Math.random().toString(),
+      id: `temp_${Math.random()}`,
       sender: 'user',
       text: text,
+      dateLabel: new Date().toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' }),
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     };
     setMessages(prev => [...prev, userMsg]);
     setLoading(true);
 
     try {
-      const endpoint = isPublic ? '/auth/chatbot/chat' : '/auth/chatbot/chat';
-      const response = await apiClient.post(endpoint, { 
-        message: text,
-        sessionId: sessionId
-      }, { timeout: 60000 });
+      const endpoint = isPublic ? '/auth/chatbot/chat' : '/chatbot/chat';
+      const response = await apiClient.post(endpoint, { message: text }, { timeout: 60000 });
       const result = response.data.data;
       
-      // Add Bot reply to UI
+      // Add Bot reply locally
       const botMsg = {
-        id: Math.random().toString(),
+        id: `temp_${Math.random()}`,
         sender: 'bot',
         text: result.reply,
+        dateLabel: new Date().toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' }),
         time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
       };
       setMessages(prev => [...prev, botMsg]);
       
-      // Refresh session list in case this is a newly saved session
-      fetchSessions();
+      // Re-extract date groups in case a new day started
+      const todayStr = new Date().toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
+      setDateGroups(prev => prev.includes(todayStr) ? prev : [...prev, todayStr]);
     } catch (err) {
       console.error("Lỗi gửi tin nhắn chatbot:", err);
       const errMsg = err.response?.data?.message || "Đã xảy ra lỗi hệ thống. Vui lòng thử lại!";
@@ -161,35 +161,35 @@ export default function AIChatbot({ isPublic = false }) {
   return (
     <div className="flex-1 flex h-[calc(100vh-64px)] font-google-sans bg-gray-50 w-full overflow-hidden relative shadow-sm">
       
-      {/* ─── SIDEBAR: CHAT HISTORY ─── */}
-      <div className="hidden md:flex w-68 bg-white border-r border-gray-200 flex-col h-full shrink-0">
-        <div className="p-4 border-b border-gray-100">
+      {/* ─── SIDEBAR: TIMELINE HISTORY ─── */}
+      <div className="hidden md:flex w-68 bg-white border-r border-gray-200 flex-col h-full shrink-0 animate-fade-in">
+        <div className="p-4 border-b border-gray-100 flex items-center justify-between">
+          <span className="text-sm font-bold text-gray-700">Lịch sử trò chuyện</span>
           <button 
-            onClick={handleNewChat} 
-            className="w-full py-2.5 px-4 bg-orange-500 hover:bg-orange-600 text-white rounded-xl text-xs md:text-sm font-semibold flex items-center justify-center gap-2 shadow-xs transition-all hover:scale-[1.01] active:scale-[0.99] cursor-pointer"
+            onClick={fetchHistory}
+            disabled={historyLoading}
+            className="p-1.5 text-gray-400 hover:text-orange-500 hover:bg-orange-50 rounded-lg transition-all"
+            title="Làm mới lịch sử"
           >
-            <Plus size={16} />
-            Cuộc trò chuyện mới
+            <RefreshCw size={14} className={historyLoading ? "animate-spin" : ""} />
           </button>
         </div>
-        <div className="flex-1 overflow-y-auto p-3 space-y-1">
-          <p className="text-[10px] font-bold text-gray-400 px-3 uppercase tracking-wider mb-2">Lịch sử hội thoại</p>
-          {sessions.map((s) => (
-            <button 
-              key={s} 
-              onClick={() => selectSession(s)} 
-              className={`w-full text-left py-2.5 px-3 rounded-xl text-xs md:text-sm font-medium transition-all truncate flex items-center gap-2.5 ${
-                s === sessionId 
-                  ? 'bg-orange-50 text-orange-600 font-semibold border border-orange-100 shadow-2xs' 
-                  : 'text-gray-600 hover:bg-gray-50 border border-transparent'
-              }`}
-            >
-              <MessageSquare size={14} className={s === sessionId ? "text-orange-500" : "text-gray-400"} />
-              <span className="truncate">
-                {s.startsWith('session_') ? `Đoạn chat ${s.substring(8, 14)}` : `Cuộc trò chuyện ${s}`}
-              </span>
-            </button>
-          ))}
+        <div className="flex-grow overflow-y-auto p-3 space-y-1">
+          <p className="text-[10px] font-bold text-gray-400 px-3 uppercase tracking-wider mb-2">Các ngày nhắn tin</p>
+          {dateGroups.length === 0 ? (
+            <div className="text-center py-8 text-xs text-gray-400">Chưa có tin nhắn nào</div>
+          ) : (
+            dateGroups.map((date) => (
+              <button 
+                key={date} 
+                onClick={() => scrollToDate(date)} 
+                className="w-full text-left py-2.5 px-3 rounded-xl text-xs md:text-sm font-medium text-gray-600 hover:text-orange-600 hover:bg-orange-50 border border-transparent hover:border-orange-100/50 transition-all truncate flex items-center gap-2.5 cursor-pointer"
+              >
+                <Calendar size={14} className="text-gray-400" />
+                <span className="truncate">Ngày {date}</span>
+              </button>
+            ))
+          )}
         </div>
       </div>
 
@@ -200,7 +200,10 @@ export default function AIChatbot({ isPublic = false }) {
         <div className="bg-white px-6 py-4 flex items-center justify-between border-b border-gray-100 shadow-xs z-10">
           <div className="flex items-center gap-3">
             <button 
-              onClick={() => navigate(-1)} 
+              onClick={() => {
+                const fromPath = location.state?.from || '/';
+                navigate(fromPath);
+              }} 
               className="p-2 hover:bg-gray-100 rounded-full transition-colors text-gray-500"
             >
               <ArrowLeft size={20} />
@@ -221,18 +224,10 @@ export default function AIChatbot({ isPublic = false }) {
           </div>
 
           <div className="flex items-center gap-2">
-            {/* Quick button to clear/reset chat for mobile */}
-            <button 
-              onClick={handleNewChat}
-              title="Đoạn chat mới"
-              className="md:hidden p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-all"
-            >
-              <Plus size={18} />
-            </button>
             <button 
               onClick={fetchHistory} 
               disabled={historyLoading} 
-              title="Tải lại lịch sử chat"
+              title="Tải lại lịch sử"
               className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-all"
             >
               <RefreshCw size={18} className={historyLoading ? "animate-spin" : ""} />
@@ -242,7 +237,7 @@ export default function AIChatbot({ isPublic = false }) {
 
         {/* Error Alert */}
         {error && (
-          <div className="bg-red-50 text-red-700 px-6 py-3 flex items-center gap-2 border-b border-red-100 animate-fade-in">
+          <div className="bg-red-50 text-red-700 px-6 py-3 flex items-center gap-2 border-b border-red-100">
             <AlertCircle size={18} className="shrink-0" />
             <span className="text-xs md:text-sm font-medium">{error}</span>
           </div>
@@ -253,10 +248,10 @@ export default function AIChatbot({ isPublic = false }) {
           {historyLoading ? (
             <div className="h-full flex flex-col items-center justify-center gap-2 text-gray-400">
               <div className="w-8 h-8 border-3 border-orange-500 border-t-transparent rounded-full animate-spin"></div>
-              <span className="text-sm font-medium">Đang tải lịch sử hội thoại...</span>
+              <span className="text-sm font-medium">Đang tải lịch sử trò chuyện...</span>
             </div>
           ) : messages.length === 0 ? (
-            /* Empty State / Welcoming suggestions */
+            /* Empty State */
             <div className="h-full flex flex-col items-center justify-center text-center max-w-md mx-auto px-4">
               <div className="bg-gradient-to-br from-orange-50 to-orange-100/50 p-6 rounded-full text-orange-500 mb-4 shadow-xs">
                 <Bot size={48} />
@@ -283,42 +278,58 @@ export default function AIChatbot({ isPublic = false }) {
             </div>
           ) : (
             /* Messages list */
-            <div className="space-y-4">
-              {messages.map((msg) => {
+            <div className="space-y-4 animate-fade-in">
+              {messages.map((msg, index) => {
                 const isBot = msg.sender === 'bot';
+                
+                // Show date separator if date changes
+                const showSeparator = index === 0 || messages[index - 1].dateLabel !== msg.dateLabel;
+                
                 return (
-                  <div key={msg.id} className={`flex items-start gap-2.5 ${isBot ? 'justify-start' : 'justify-end'}`}>
-                    {isBot && (
-                      <div className="w-8 h-8 rounded-xl bg-orange-100 text-orange-600 flex items-center justify-center shrink-0">
-                        <Bot size={16} />
+                  <div key={msg.id} ref={el => messageRefs.current[msg.id] = el}>
+                    {showSeparator && (
+                      <div className="flex items-center justify-center my-6">
+                        <div className="h-px bg-gray-200 flex-grow"></div>
+                        <span className="mx-4 text-[10px] font-bold text-gray-400 bg-gray-100 px-3 py-1 rounded-full uppercase tracking-wider">
+                          Ngày {msg.dateLabel}
+                        </span>
+                        <div className="h-px bg-gray-200 flex-grow"></div>
                       </div>
                     )}
                     
-                    <div className={`max-w-[75%] rounded-2xl px-4 py-2.5 shadow-2xs ${
-                      isBot 
-                        ? 'bg-white text-gray-800 border border-gray-100 rounded-tl-xs' 
-                        : 'bg-orange-500 text-white rounded-tr-xs'
-                    }`}>
-                      <p className="text-xs md:text-sm leading-relaxed whitespace-pre-wrap">{msg.text}</p>
-                      {msg.time && (
-                        <span className={`text-[10px] block mt-1 text-right ${isBot ? 'text-gray-400' : 'text-orange-200'}`}>
-                          {msg.time}
-                        </span>
+                    <div className={`flex items-start gap-2.5 ${isBot ? 'justify-start' : 'justify-end'} mt-3`}>
+                      {isBot && (
+                        <div className="w-8 h-8 rounded-xl bg-orange-100 text-orange-600 flex items-center justify-center shrink-0">
+                          <Bot size={16} />
+                        </div>
+                      )}
+                      
+                      <div className={`max-w-[75%] rounded-2xl px-4 py-2.5 shadow-2xs ${
+                        isBot 
+                          ? 'bg-white text-gray-800 border border-gray-100 rounded-tl-xs' 
+                          : 'bg-orange-500 text-white rounded-tr-xs'
+                      }`}>
+                        <p className="text-xs md:text-sm leading-relaxed whitespace-pre-wrap">{msg.text}</p>
+                        {msg.time && (
+                          <span className={`text-[10px] block mt-1 text-right ${isBot ? 'text-gray-400' : 'text-orange-200'}`}>
+                            {msg.time}
+                          </span>
+                        )}
+                      </div>
+
+                      {!isBot && (
+                        <div className="w-8 h-8 rounded-xl bg-gray-200 text-gray-600 flex items-center justify-center shrink-0">
+                          <User size={16} />
+                        </div>
                       )}
                     </div>
-
-                    {!isBot && (
-                      <div className="w-8 h-8 rounded-xl bg-gray-200 text-gray-600 flex items-center justify-center shrink-0">
-                        <User size={16} />
-                      </div>
-                    )}
                   </div>
                 );
               })}
 
               {/* Loading Indicator */}
               {loading && (
-                <div className="flex items-start gap-2.5 justify-start">
+                <div className="flex items-start gap-2.5 justify-start mt-3">
                   <div className="w-8 h-8 rounded-xl bg-orange-100 text-orange-600 flex items-center justify-center shrink-0">
                     <Bot size={16} />
                   </div>

@@ -2,6 +2,7 @@ import React from 'react';
 import { BrowserRouter } from 'react-router-dom';
 import AppRoutes from './routes';
 import RoleSwitcher from './components/widget/RoleSwitcher';
+import ChatbotWidget from './components/widget/ChatbotWidget';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { WebSocketProvider } from './contexts/WebSocketContext';
 import { ErrorBoundary } from './components/common/ErrorBoundary';
@@ -17,6 +18,9 @@ function App() {
 
             {/* Floating Demo Tool để chuyển vai trò cực kỳ tiện lợi */}
             <RoleSwitcher />
+
+            {/* Reusable Floating Chatbot widget */}
+            <ChatbotWidget />
           </BrowserRouter>
         </WebSocketProvider>
       </ThemeProvider>

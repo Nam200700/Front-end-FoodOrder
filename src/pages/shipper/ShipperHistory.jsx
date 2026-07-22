@@ -31,7 +31,7 @@ export default function ShipperHistory() {
     });
   };
 
-  // Gọi API với phân trang từ backend (page và size)
+  // gọi api lấy danh sách lịch sử đơn giao
   const { data: pageData, loading, error, refetch } = useFetchData(`/shipper/orders?page=${page}&size=${pageSize}`, {
     mapFn: (data) => data, 
   });
@@ -69,7 +69,7 @@ export default function ShipperHistory() {
   const filteredList = list.filter(item => {
     if (activeTab === 'COMPLETED') return item.status === 'COMPLETED';
     if (activeTab === 'CANCELLED') return item.status === 'CANCELLED';
-    if (activeTab === 'DELIVERING') return item.status === 'DELIVERING' || item.status === 'PICKED_UP';
+    if (activeTab === 'DELIVERING') return item.status === 'DELIVERING' || item.status === 'READY_FOR_PICKUP';
     return true; 
   });
 

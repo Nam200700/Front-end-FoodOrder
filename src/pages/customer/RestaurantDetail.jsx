@@ -3,8 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useCartStore } from '../../stores/cartStore';
 import { useChatStore } from '../../stores/chatStore';
 import { useAuthStore } from '../../stores/authStore';
-import { ArrowLeft, Star, Clock, MapPin, Phone, Search, ShoppingBag, Heart, Share2, Plus, Minus, MessageSquare, AlertTriangle, Bike, AlertCircle, X, ZoomIn } from 'lucide-react';
-import { formatCurrency } from '../../utils/format';
+import { ArrowLeft, Star, Clock, MapPin, Phone, Search, ShoppingBag, Heart, Share2, Plus, Minus, MessageSquare, AlertTriangle, Bike, AlertCircle, X, ZoomIn, ChevronLeft, ChevronRight } from 'lucide-react';import { formatCurrency } from '../../utils/format';
 import Button from '../../components/common/Button';
 import Card from '../../components/common/Card';
 import Spinner from '../../components/common/Spinner';
@@ -59,6 +58,11 @@ export default function RestaurantDetail() {
   // State quản lý phóng to ảnh trong tab hiện tại 
   const [selectedImage, setSelectedImage] = useState(null);
 
+  // Khai báo state phân trang 
+  const [page, setPage] = useState(0);
+  const [totalPages, setTotalPages] = useState(0); 
+  const size = 10;
+
   // Lấy và tính toán phí ship, khoảng cách, thời gian 
   const cachedShipping = restaurantShippingCache[id];
   const shippingFee = cachedShipping?.shippingFee || 0;
@@ -95,12 +99,19 @@ export default function RestaurantDetail() {
 
           // Lấy đánh giá
           let realReviews = [];
+          let fetchedTotalPages = 0;
           try {
-            const reviewsRes = await apiClient.get(`/restaurants/${id}/reviews`);
-            realReviews = reviewsRes.data?.data?.content || [];
+            const reviewsRes = await apiClient.get(`/restaurants/${id}/reviews?page=${page}&size=${size}`);
+            const reviewData = reviewsRes.data?.data;
+            realReviews = reviewData?.content || [];
+            fetchedTotalPages = reviewData?.totalPages || 0;
+            setTotalPages(fetchedTotalPages);
           } catch (reviewErr) {
             console.warn('Lỗi khi tải đánh giá nhà hàng:', reviewErr);
           }
+
+            const totalReviews = realReviews.totalElements;
+            const totalPages = realReviews.totalPages || 0;
 
           const totalRating = realReviews.reduce((sum, r) => sum + (r.restaurantRating || 0), 0);
           const avgRating = realReviews.length > 0 ? (totalRating / realReviews.length).toFixed(1) : '5.0';
@@ -597,51 +608,81 @@ export default function RestaurantDetail() {
               <p className="text-sm text-md-outline mt-1">Hãy đặt đơn và trở thành người đánh giá đầu tiên!</p>
             </Card>
           ) : (
-            restaurant.reviews.map((rev, i) => (
-              <Card key={i} variant="elevated" className="p-4 sm:p-5 space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="font-extrabold text-sm sm:text-base text-md-on-surface">{rev.name}</span>
-                  <span className="text-[10px] sm:text-xs text-md-outline font-medium">{rev.date}</span>
-                </div>
-                <div className="flex items-center gap-1 text-amber-500">
-                  {[...Array(5)].map((_, idx) => (
-                    <Star 
-                      key={idx} 
-                      size={14} 
-                      className={idx < rev.rating ? 'fill-amber-500 text-amber-500' : 'text-slate-200'} 
-                    />
-                  ))}
-                </div>
-                <p className="text-xs sm:text-sm text-md-on-surface-variant leading-relaxed font-medium">
-                  {rev.comment}
-                </p>
-
-                {/* Hiển thị danh sách hình ảnh đính kèm trong review nếu có */}
-                {rev.images && rev.images.length > 0 && (
-                  <div className="flex flex-wrap gap-2 pt-2">
-                    {rev.images.map((imgUrl, imgIndex) => (
-                      <div 
-                        key={imgIndex} 
-                        className="relative group w-16 h-16 xs:w-20 xs:h-20 rounded-radius-md overflow-hidden border border-slate-200 shadow-sm cursor-pointer hover:opacity-90 transition-opacity"
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            setSelectedImage(imgUrl);
-                        }}
-                      >
-                        <img 
-                          src={imgUrl} 
-                          alt={`Review image ${imgIndex + 1}`} 
-                          className="w-full h-full object-cover" 
+            <>
+              {/* Danh sách các review */}
+              <div className="space-y-4">
+                {restaurant.reviews.map((rev, i) => (
+                  <Card key={i} variant="elevated" className="p-4 sm:p-5 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="font-extrabold text-sm sm:text-base text-md-on-surface">{rev.name}</span>
+                      <span className="text-[10px] sm:text-xs text-md-outline font-medium">{rev.date}</span>
+                    </div>
+                    <div className="flex items-center gap-1 text-amber-500">
+                      {[...Array(5)].map((_, idx) => (
+                        <Star 
+                          key={idx} 
+                          size={14} 
+                          className={idx < rev.rating ? 'fill-amber-500 text-amber-500' : 'text-slate-200'} 
                         />
-                        <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white">
-                          <ZoomIn size={16} />
-                        </div>
+                      ))}
+                    </div>
+                    <p className="text-xs sm:text-sm text-md-on-surface-variant leading-relaxed font-medium">
+                      {rev.comment}
+                    </p>
+
+                    {/* Hiển thị danh sách hình ảnh đính kèm trong review */}
+                    {rev.images && rev.images.length > 0 && (
+                      <div className="flex flex-wrap gap-2 pt-2">
+                        {rev.images.map((imgUrl, imgIndex) => (
+                          <div 
+                            key={imgIndex} 
+                            className="relative group w-16 h-16 xs:w-20 xs:h-20 rounded-radius-md overflow-hidden border border-slate-200 shadow-sm cursor-pointer hover:opacity-90 transition-opacity"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedImage(imgUrl);
+                            }}
+                          >
+                            <img 
+                              src={imgUrl} 
+                              alt={`Review image ${imgIndex + 1}`} 
+                              className="w-full h-full object-cover" 
+                            />
+                            <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white">
+                              <ZoomIn size={16} />
+                            </div>
+                          </div>
+                        ))}
                       </div>
-                    ))}
-                  </div>
-                )}
-              </Card>
-            ))
+                    )}
+                  </Card>
+                ))}
+              </div>
+
+              {/* Thanh phân trang*/}
+              {totalPages > 1 && (
+                <div className="flex items-center justify-end gap-3 pt-4 pb-6 border-t border-slate-200/60">
+                  <button
+                    onClick={() => setPage((prev) => Math.max(prev - 1, 0))}
+                    disabled={page === 0}
+                    className="flex items-center gap-1 px-3 py-1.5 rounded-radius-md text-xs font-bold bg-white border border-slate-200 text-slate-600 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-50 transition-all cursor-pointer"
+                  >
+                    <ChevronLeft size={16} />
+                  </button>
+
+                  <span className="text-xs font-bold text-slate-500 mx-1">
+                    Trang {page + 1} / {totalPages}
+                  </span>
+
+                  <button
+                    onClick={() => setPage((prev) => Math.min(prev + 1, totalPages - 1))}
+                    disabled={page >= totalPages - 1}
+                    className="flex items-center gap-1 px-3 py-1.5 rounded-radius-md text-xs font-bold bg-white border border-slate-200 text-slate-600 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-50 transition-all cursor-pointer"
+                  >
+                    <ChevronRight size={16} />
+                  </button>
+                </div>
+              )}
+            </>
           )}
         </div>
       )}

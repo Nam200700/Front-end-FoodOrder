@@ -1,8 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useOrderStore } from '../../stores/orderStore';
-import { ArrowLeft, Star, Send, Utensils, Bike, Camera, X } from 'lucide-react';
-import { useFetchData } from '../../hooks/useFetchData';
+import { ArrowLeft, Star, Send, Utensils, Bike, Camera, X, CheckCircle2 } from 'lucide-react';
 import { useImageUpload } from '../../hooks/useImageUpload';
 import apiClient from '../../services/api';
 import Spinner from '../../components/common/Spinner';
@@ -32,12 +31,16 @@ export default function Reviews() {
   const navigate = useNavigate();
   const addReview = useOrderStore((state) => state.addReview);
 
-  // quán ăn
+  const [loadingData, setLoadingData] = useState(true);
+  const [existingReview, setExistingReview] = useState(null); // Lưu thông tin nếu đã đánh giá
+  const [orderInfo, setOrderInfo] = useState(null); // Thông tin đơn hàng 
+
+  // Quán ăn
   const [restaurantRating, setRestaurantRating] = useState(0);
   const [restaurantComment, setRestaurantComment] = useState('');
   const [restaurantHover, setRestaurantHover] = useState(0);
 
-  // shipper
+  // Shipper
   const [shipperRating, setShipperRating] = useState(0);
   const [shipperComment, setShipperComment] = useState('');
   const [shipperHover, setShipperHover] = useState(0);
@@ -49,11 +52,45 @@ export default function Reviews() {
   // Hook upload ảnh
   const { uploading, uploadImage } = useImageUpload({ uploadEndpoint: '/images/upload', maxSizeMB: 5 });
 
-  const { data: order, loading, error } = useFetchData(`/orders/${orderId}`, {
-    deps: [orderId],
-  });
+  useEffect(() => {
+    const fetchReviewAndOrder = async () => {
+      try {
+        setLoadingData(true);
+
+        // 1. Lấy thông tin đơn hàng 
+        const orderRes = await apiClient.get(`/orders/${orderId}`);
+        setOrderInfo(orderRes.data?.data || orderRes.data);
+
+        // 2. kiểm tra xem đơn hàng đã được đánh giá hay chưa
+        try {
+          const reviewRes = await apiClient.get(`/reviews/${orderId}`);
+          if (reviewRes.data?.data) {
+            const rev = reviewRes.data.data;
+            setExistingReview(rev);
+            
+            setRestaurantRating(rev.restaurantRating || 0);
+            setRestaurantComment(rev.restaurantComment || '');
+            setShipperRating(rev.shipperRating || 0);
+            setShipperComment(rev.shipperComment || '');
+            setImageUrls(rev.images || []);
+          }
+        } catch (reviewErr) {
+          setExistingReview(null);
+        }
+      } catch (err) {
+        console.error('Lỗi tải dữ liệu:', err);
+      } finally {
+        setLoadingData(false);
+      }
+    };
+
+    if (orderId) {
+      fetchReviewAndOrder();
+    }
+  }, [orderId]);
 
   const handleFileChange = async (e) => {
+    if (existingReview) return; 
     const files = Array.from(e.target.files);
     if (files.length === 0) return;
 
@@ -72,10 +109,23 @@ export default function Reviews() {
   };
 
   const handleRemoveImage = (indexToRemove) => {
+    if (existingReview) return;
     setImageUrls((prev) => prev.filter((_, index) => index !== indexToRemove));
   };
 
   const handleSubmit = async () => {
+    if (existingReview) return;
+
+    if (restaurantRating === 0) {
+      toast.warn('Vui lòng chọn số sao đánh giá quán ăn!');
+      return;
+    }
+
+    if (shipperRating === 0) {
+      toast.warn('Vui lòng chọn số sao đánh giá shipper!');
+      return;
+    }
+
     setSubmitting(true);
     try {
       const reviewData = {
@@ -85,27 +135,14 @@ export default function Reviews() {
         images: imageUrls,
       };
 
-      if (order?.shipperId) {
+      if (orderInfo?.shipperId || shipperRating > 0) {
         reviewData.shipperRating = Number(shipperRating);
         reviewData.shipperComment = shipperComment;
       }
 
       await apiClient.post('/reviews', reviewData);
 
-      const localReviewData = {
-        restaurant_rating: restaurantRating,
-        restaurant_comment: restaurantComment,
-        images: imageUrls,
-      };
-
-      if (order?.shipperId) {
-        localReviewData.shipper_rating = shipperRating;
-        localReviewData.shipper_comment = shipperComment;
-      }
-
-      addReview(orderId, localReviewData);
-
-      toast.success('Cảm ơn bạn đã gửi đánh giá và hình ảnh!');
+      toast.success('Cảm ơn bạn đã gửi đánh giá!');
       navigate('/orders');
     } catch (err) {
       console.error('Lỗi gửi đánh giá:', err);
@@ -115,8 +152,9 @@ export default function Reviews() {
     }
   };
 
-  if (loading) return <Spinner fullScreen />;
-  if (error || !order) {
+  if (loadingData) return <Spinner fullScreen />;
+
+  if (!orderInfo) {
     return (
       <div className="flex-1 p-10 flex flex-col items-center justify-center text-center font-google-sans h-full min-h-[60vh] bg-md-surface">
         <h2 className="text-xl font-bold text-md-on-surface mb-3">Không tìm thấy thông tin đơn hàng</h2>
@@ -133,18 +171,29 @@ export default function Reviews() {
   return (
     <div className="flex-1 p-4 md:p-8 max-w-xl mx-auto w-full font-google-sans pb-28">
       {/* Header điều hướng */}
-      <div className="flex items-center gap-3 mb-6">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => navigate('/orders')}
-          className="!p-2.5 rounded-radius-full border-md-outline-variant/40"
-        >
-          <ArrowLeft size={18} />
-        </Button>
-        <div>
-          <h1 className="text-lg font-extrabold text-md-on-surface">Đánh Giá Đơn Hàng #{orderId}</h1>
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-3">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => navigate('/orders')}
+            className="!p-2.5 rounded-radius-full border-md-outline-variant/40"
+          >
+            <ArrowLeft size={18} />
+          </Button>
+          <div>
+            <h1 className="text-lg font-extrabold text-md-on-surface">
+              {existingReview ? `Chi Tiết Đánh Giá #${orderId}` : `Đánh Giá Đơn Hàng #${orderId}`}
+            </h1>
+          </div>
         </div>
+
+        {existingReview && (
+          <div className="flex items-center gap-1.5 bg-emerald-50 text-emerald-700 px-3 py-1 rounded-full text-xs font-bold border border-emerald-200">
+            <CheckCircle2 size={14} />
+            <span>Đã đánh giá</span>
+          </div>
+        )}
       </div>
 
       <div className="space-y-6">
@@ -156,7 +205,7 @@ export default function Reviews() {
             </div>
             <div>
               <span className="text-[10px] text-md-outline font-extrabold uppercase tracking-wider block">Chất lượng món ăn</span>
-              <h3 className="font-extrabold text-base text-md-on-surface mt-0.5">Quán: {order?.restaurantName || 'Quán ăn'}</h3>
+              <h3 className="font-extrabold text-base text-md-on-surface mt-0.5">Quán: {orderInfo?.restaurantName || 'Quán ăn'}</h3>
             </div>
           </div>
 
@@ -168,10 +217,11 @@ export default function Reviews() {
                   <button
                     type="button"
                     key={idx}
+                    disabled={Boolean(existingReview)}
                     onClick={() => setRestaurantRating(ratingValue)}
-                    onMouseEnter={() => setRestaurantHover(ratingValue)}
-                    onMouseLeave={() => setRestaurantHover(0)}
-                    className="focus:outline-none active:scale-95 transition-transform p-1"
+                    onMouseEnter={() => !existingReview && setRestaurantHover(ratingValue)}
+                    onMouseLeave={() => !existingReview && setRestaurantHover(0)}
+                    className={`focus:outline-none transition-transform p-1 ${existingReview ? 'cursor-default' : 'active:scale-95'}`}
                   >
                     <Star
                       size={32}
@@ -193,9 +243,14 @@ export default function Reviews() {
           <textarea
             rows={3}
             value={restaurantComment}
+            disabled={Boolean(existingReview)}
             onChange={(e) => setRestaurantComment(e.target.value)}
             placeholder="Món ăn thế nào? Hãy chia sẻ trải nghiệm của bạn nhé..."
-            className="w-full px-4 py-3 bg-slate-50/70 border border-md-outline-variant/40 rounded-radius-lg text-xs focus:outline-none focus:border-md-primary focus:bg-white transition-all resize-none"
+            className={`w-full px-4 py-3 border rounded-radius-lg text-xs transition-all resize-none ${
+              existingReview 
+                ? 'bg-slate-100 border-slate-200 text-slate-700 cursor-default select-text' 
+                : 'bg-slate-50/70 border-md-outline-variant/40 focus:outline-none focus:border-md-primary focus:bg-white'
+            }`}
           />
 
           {/* UPLOAD & PREVIEW ẢNH */}
@@ -211,17 +266,19 @@ export default function Reviews() {
               {imageUrls.map((url, idx) => (
                 <div key={idx} className="relative w-18 h-18 rounded-radius-lg overflow-hidden border border-md-outline-variant/40 group shadow-sm">
                   <img src={url} alt={`Preview ${idx}`} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
-                  <button
-                    type="button"
-                    onClick={() => handleRemoveImage(idx)}
-                    className="absolute top-1 right-1 bg-black/70 text-white rounded-full p-1 hover:bg-red-600 transition-colors shadow-md"
-                  >
-                    <X size={12} />
-                  </button>
+                  {!existingReview && (
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveImage(idx)}
+                      className="absolute top-1 right-1 bg-black/70 text-white rounded-full p-1 hover:bg-red-600 transition-colors shadow-md"
+                    >
+                      <X size={12} />
+                    </button>
+                  )}
                 </div>
               ))}
 
-              {imageUrls.length < 5 && (
+              {!existingReview && imageUrls.length < 5 && (
                 <label className="w-18 h-18 border-2 border-dashed border-md-outline-variant/60 hover:border-md-primary rounded-radius-lg flex flex-col items-center justify-center cursor-pointer bg-slate-50/50 hover:bg-md-primary-container/10 text-md-outline hover:text-md-primary transition-all">
                   {uploading ? (
                     <span className="w-5 h-5 border-2 border-md-primary border-t-transparent rounded-full animate-spin"></span>
@@ -239,7 +296,7 @@ export default function Reviews() {
         </Card>
 
         {/* ĐÁNH GIÁ SHIPPER */}
-        {order?.shipperId && (
+        {(orderInfo?.shipperId || shipperRating > 0 || shipperComment) && (
           <Card variant="elevated" className="p-6 space-y-5">
             <div className="flex items-center gap-3.5 border-b border-md-outline-variant/15 pb-2">
               <div className="w-11 h-11 bg-emerald-50 text-emerald-600 rounded-radius-xl flex items-center justify-center shrink-0">
@@ -247,7 +304,7 @@ export default function Reviews() {
               </div>
               <div>
                 <span className="text-[10px] text-md-outline font-extrabold uppercase tracking-wider block">Dịch vụ giao hàng</span>
-                <h3 className="font-extrabold text-base text-md-on-surface mt-0.5">Tài xế: {order?.shipperName || 'Tài xế'}</h3>
+                <h3 className="font-extrabold text-base text-md-on-surface mt-0.5">Tài xế: {orderInfo?.shipperName || 'Tài xế'}</h3>
               </div>
             </div>
 
@@ -259,10 +316,11 @@ export default function Reviews() {
                     <button
                       type="button"
                       key={idx}
+                      disabled={Boolean(existingReview)}
                       onClick={() => setShipperRating(ratingValue)}
-                      onMouseEnter={() => setShipperHover(ratingValue)}
-                      onMouseLeave={() => setShipperHover(0)}
-                      className="focus:outline-none active:scale-95 transition-transform p-1"
+                      onMouseEnter={() => !existingReview && setShipperHover(ratingValue)}
+                      onMouseLeave={() => !existingReview && setShipperHover(0)}
+                      className={`focus:outline-none transition-transform p-1 ${existingReview ? 'cursor-default' : 'active:scale-95'}`}
                     >
                       <Star
                         size={32}
@@ -284,25 +342,42 @@ export default function Reviews() {
             <textarea
               rows={2}
               value={shipperComment}
+              disabled={Boolean(existingReview)}
               onChange={(e) => setShipperComment(e.target.value)}
               placeholder="Tài xế giao hàng thân thiện, nhanh chóng chứ? (Không bắt buộc)..."
-              className="w-full px-4 py-3 bg-slate-50/70 border border-md-outline-variant/40 rounded-radius-lg text-xs focus:outline-none focus:border-md-primary focus:bg-white transition-all resize-none"
+              className={`w-full px-4 py-3 border rounded-radius-lg text-xs transition-all resize-none ${
+                existingReview 
+                  ? 'bg-slate-100 border-slate-200 text-slate-700 cursor-default select-text' 
+                  : 'bg-slate-50/70 border-md-outline-variant/40 focus:outline-none focus:border-md-primary focus:bg-white'
+              }`}
             />
           </Card>
         )}
 
         <div className="pt-2">
-          <Button
-            type="button"
-            variant="primary"
-            size="md"
-            loading={submitting || uploading}
-            icon={Send}
-            onClick={handleSubmit}
-            className="w-full py-4 text-sm uppercase tracking-wider shadow-md"
-          >
-            Gửi đánh giá 
-          </Button>
+          {existingReview ? (
+            <Button
+              type="button"
+              variant="outline"
+              size="md"
+              onClick={() => navigate('/orders')}
+              className="w-full py-4 text-sm uppercase tracking-wider"
+            >
+              Quay lại danh sách đơn hàng
+            </Button>
+          ) : (
+            <Button
+              type="button"
+              variant="primary"
+              size="md"
+              loading={submitting || uploading}
+              icon={Send}
+              onClick={handleSubmit}
+              className="w-full py-4 text-sm uppercase tracking-wider shadow-md"
+            >
+              Gửi đánh giá
+            </Button>
+          )}
         </div>
       </div>
     </div>

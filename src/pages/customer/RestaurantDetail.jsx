@@ -14,22 +14,6 @@ import { toast } from 'react-toastify';
 import { mapRestaurant } from '../../utils/mappers';
 import { useModalState } from '../../hooks/useModalState';
 
-const groupMenu = (foods) => {
-  if (!foods || foods.length === 0) return [];
-  
-  const categories = [...new Set(foods.map(f => f.category || 'Món chính'))];
-  return categories.map(cat => ({
-    category: cat,
-    items: foods.filter(f => (f.category || 'Món chính') === cat).map(f => ({
-      id: f.id,
-      name: f.foodName,
-      price: Number(f.price),
-      desc: f.description || 'Hương vị thơm ngon đậm đà, được chế biến từ các nguyên liệu tươi mới sạch sẽ.',
-      image: f.imageUrl || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=150&q=80',
-    }))
-  }));
-};
-
 export default function RestaurantDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -110,8 +94,8 @@ export default function RestaurantDetail() {
             console.warn('Lỗi khi tải đánh giá nhà hàng:', reviewErr);
           }
 
-            const totalReviews = realReviews.totalElements;
-            const totalPages = realReviews.totalPages || 0;
+          const totalReviews = realReviews.totalElements;
+          const totalPages = realReviews.totalPages || 0;
 
           const totalRating = realReviews.reduce((sum, r) => sum + (r.restaurantRating || 0), 0);
           const avgRating = realReviews.length > 0 ? (totalRating / realReviews.length).toFixed(1) : '5.0';
@@ -402,7 +386,7 @@ export default function RestaurantDetail() {
         <div className="max-w-5xl mx-auto flex items-center justify-around">
           {[
             { id: 'menu', name: 'Thực đơn' },
-            { id: 'reviews', name: `Đánh giá (${restaurant.reviews.length})` },
+            { id: 'reviews', name: `Đánh giá` },
             { id: 'info', name: 'Thông tin' }
           ].map((tab) => {
             const isActive = activeTab === tab.id;
@@ -630,7 +614,7 @@ export default function RestaurantDetail() {
                       {rev.comment}
                     </p>
 
-                    {/* Hiển thị danh sách hình ảnh đính kèm trong review */}
+                    {/* Hiển thị danh sách hình ảnh */}
                     {rev.images && rev.images.length > 0 && (
                       <div className="flex flex-wrap gap-2 pt-2">
                         {rev.images.map((imgUrl, imgIndex) => (

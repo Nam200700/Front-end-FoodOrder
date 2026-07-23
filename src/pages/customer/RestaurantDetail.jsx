@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useCartStore } from '../../stores/cartStore';
 import { useChatStore } from '../../stores/chatStore';
 import { useAuthStore } from '../../stores/authStore';
-import { ArrowLeft, Star, Clock, MapPin, Phone, Search, ShoppingBag, Heart, Share2, Plus, Minus, MessageSquare, AlertTriangle, Bike, AlertCircle, X } from 'lucide-react';
+import { ArrowLeft, Star, Clock, MapPin, Phone, Search, ShoppingBag, Heart, Share2, Plus, Minus, MessageSquare, AlertTriangle, Bike, AlertCircle, X, ZoomIn } from 'lucide-react';
 import { formatCurrency } from '../../utils/format';
 import Button from '../../components/common/Button';
 import Card from '../../components/common/Card';
@@ -55,6 +55,9 @@ export default function RestaurantDetail() {
   const [submittingReport, setSubmittingReport] = useState(false);
 
   const menuSectionsRef = useRef({});
+
+  // State quản lý phóng to ảnh trong tab hiện tại 
+  const [selectedImage, setSelectedImage] = useState(null);
 
   // Lấy và tính toán phí ship, khoảng cách, thời gian 
   const cachedShipping = restaurantShippingCache[id];
@@ -115,7 +118,8 @@ export default function RestaurantDetail() {
               name: r.customerName,
               rating: r.restaurantRating || 5,
               comment: r.restaurantComment || '',
-              date: new Date(r.createdAt).toLocaleDateString('vi-VN')
+              date: new Date(r.createdAt).toLocaleDateString('vi-VN'),
+              images: r.images 
             }))
           };
 
@@ -611,6 +615,31 @@ export default function RestaurantDetail() {
                 <p className="text-xs sm:text-sm text-md-on-surface-variant leading-relaxed font-medium">
                   {rev.comment}
                 </p>
+
+                {/* Hiển thị danh sách hình ảnh đính kèm trong review nếu có */}
+                {rev.images && rev.images.length > 0 && (
+                  <div className="flex flex-wrap gap-2 pt-2">
+                    {rev.images.map((imgUrl, imgIndex) => (
+                      <div 
+                        key={imgIndex} 
+                        className="relative group w-16 h-16 xs:w-20 xs:h-20 rounded-radius-md overflow-hidden border border-slate-200 shadow-sm cursor-pointer hover:opacity-90 transition-opacity"
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedImage(imgUrl);
+                        }}
+                      >
+                        <img 
+                          src={imgUrl} 
+                          alt={`Review image ${imgIndex + 1}`} 
+                          className="w-full h-full object-cover" 
+                        />
+                        <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white">
+                          <ZoomIn size={16} />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </Card>
             ))
           )}
@@ -748,6 +777,28 @@ export default function RestaurantDetail() {
           </div>
         </div>
       </Modal>
+
+      {selectedImage && (
+        <div 
+          onClick={() => setSelectedImage(null)}
+          className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-fadeIn cursor-zoom-out"
+        >
+          <div className="relative max-w-4xl max-h-[90vh] w-full flex items-center justify-center" onClick={(e) => e.stopPropagation()}>
+            <button
+              onClick={() => setSelectedImage(null)}
+              className="absolute -top-12 right-0 text-white bg-white/20 hover:bg-white/40 p-2 rounded-full transition-colors cursor-pointer"
+              title="Đóng"
+            >
+              <X size={20} />
+            </button>
+            <img 
+              src={selectedImage} 
+              alt="Enlarged review" 
+              className="max-w-full max-h-[80vh] object-contain rounded-2xl shadow-2xl"
+            />
+          </div>
+        </div>
+      )}      
     </div>
   );
 }

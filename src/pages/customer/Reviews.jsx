@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useOrderStore } from '../../stores/orderStore';
+import { useFetchData } from '../../hooks/useFetchData';
 import { ArrowLeft, Star, Send, Utensils, Bike, Camera, X, MessageSquareReply } from 'lucide-react';
 import { useImageUpload } from '../../hooks/useImageUpload';
 import apiClient from '../../services/api';
@@ -57,11 +58,11 @@ export default function Reviews() {
       try {
         setLoadingData(true);
 
-        // 1. Lấy thông tin đơn hàng 
+        // Lấy thông tin đơn hàng 
         const orderRes = await apiClient.get(`/orders/${orderId}`);
         setOrderInfo(orderRes.data?.data || orderRes.data);
 
-        // 2. kiểm tra xem đơn hàng đã được đánh giá hay chưa
+        //đơn hàng đã được đánh giá
         try {
           const reviewRes = await apiClient.get(`/reviews/${orderId}`);
           if (reviewRes.data?.data) {

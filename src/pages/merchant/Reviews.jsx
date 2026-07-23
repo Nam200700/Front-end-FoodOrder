@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Reply, ClipboardList, Star, Store, Send, X, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Reply, ClipboardList, Star, Store, Send, X, ChevronLeft, ChevronRight, ZoomIn } from 'lucide-react';
 import { useFetchData } from '../../hooks/useFetchData';
 import apiClient from '../../services/api';
 import Spinner from '../../components/common/Spinner';
@@ -14,18 +14,19 @@ export default function MerchantReviews() {
   const [submitting, setSubmitting] = useState(false);
   const [starFilter, setStarFilter] = useState('all');
 
-  // 1. Khai báo state phân trang (page bắt đầu từ 0)
+  // State quản lý phóng to ảnh trong tab hiện tại 
+  const [selectedImage, setSelectedImage] = useState(null);
+
+  // Khai báo state phân trang 
   const [page, setPage] = useState(0);
-  const size = 10; // Số lượng phần tử mỗi trang
+  const size = 10; 
 
   const { data: restaurant, loading: loadingRestaurant, error: errorRestaurant, refetch: refetchRestaurant } = useFetchData('/merchant/restaurant');
   const restaurantId = restaurant?.restaurantId || restaurant?.id;
 
-  // 2. Lưu trữ toàn bộ dữ liệu PageResponse trả về từ API
   const [pageData, setPageData] = useState({ content: [], totalPages: 0, totalElements: 0 });
 
   const mapReviews = (data) => {
-    // Lưu lại object phân trang gốc để lấy totalPages, totalElements
     setPageData(data || { content: [], totalPages: 0, totalElements: 0 });
     
     const realData = data?.content || [];
@@ -33,14 +34,13 @@ export default function MerchantReviews() {
       id: rev.reviewId.toString(),
       author: rev.customerName || 'Khách hàng',
       rating: rev.restaurantRating || 5,
-      date: new Date(rev.createdAt).toLocaleDateString('vi-VN') + ' ' + new Date(rev.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      date: new Date(rev.createdAt).toLocaleDateString('vi-VN') + ' ' + new Date(rev.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }),
       comment: rev.restaurantComment || '',
       reply: rev.merchantReply,
       images: rev.images || []
     }));
   };
 
-  // 3. Truyền thêm param `page` và `size` vào hook gọi API
   const { data: reviews, loading: loadingReviews, error: errorReviews, refetch } = useFetchData(
     restaurantId ? `/restaurants/${restaurantId}/reviews?page=${page}&size=${size}` : null,
     {
@@ -69,7 +69,7 @@ export default function MerchantReviews() {
   const loading = loadingRestaurant || loadingReviews || submitting;
   const reviewsList = reviews || [];
 
-  const totalReviews = pageData.totalElements || reviewsList.length;
+  const totalReviews = pageData.totalElements;
   const totalPages = pageData.totalPages || 0;
   
   const avgRating = totalReviews ? reviewsList.reduce((s, r) => s + (r.rating || 0), 0) / reviewsList.length : 0;
@@ -242,23 +242,23 @@ export default function MerchantReviews() {
                     rows={2}
                   />
 
-                  {/* Danh sách ảnh đính kèm */}
                   {rev.images && rev.images.length > 0 && (
                     <div className="flex flex-wrap gap-2 pt-1">
                       {rev.images.map((imgUrl, index) => (
-                        <a 
+                        <div 
                           key={index} 
-                          href={imgUrl} 
-                          target="_blank" 
-                          rel="noopener noreferrer"
-                          className="block w-16 h-16 rounded-xl overflow-hidden border border-slate-200 hover:opacity-90 transition-opacity shadow-sm"
+                          onClick={() => setSelectedImage(imgUrl)}
+                          className="relative group block w-16 h-16 rounded-xl overflow-hidden border border-slate-200 hover:border-amber-500 transition-all cursor-pointer shadow-sm"
                         >
                           <img 
                             src={imgUrl} 
                             alt={`Review img ${index + 1}`} 
-                            className="w-full h-full object-cover"
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                           />
-                        </a>
+                          <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white">
+                            <ZoomIn size={16} />
+                          </div>
+                        </div>
                       ))}
                     </div>
                   )}
@@ -289,7 +289,7 @@ export default function MerchantReviews() {
                             value={replyText}
                             onChange={(e) => setReplyText(e.target.value)}
                             placeholder="Viết phản hồi để gửi đến khách hàng..."
-                            className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs font-medium focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 resize-none custom-scrollbar"
+                            className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs font-medium focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 resize-none custom-scrollbar"
                           />
                           <div className="flex justify-end gap-2">
                             <Button
@@ -335,11 +335,9 @@ export default function MerchantReviews() {
             ))}
           </div>
 
-          {/* phân trang */}
+          {/* Phân trang */}
           {totalPages > 1 && (
             <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-200/60">
-              
-
               <button
                 onClick={() => setPage((prev) => Math.max(prev - 1, 0))}
                 disabled={page === 0}
@@ -361,6 +359,29 @@ export default function MerchantReviews() {
               </button>
             </div>
           )}
+        </div>
+      )}
+
+      {/*phóng to ảnh trực tiếp trong tab hiện tại */}
+      {selectedImage && (
+        <div 
+          onClick={() => setSelectedImage(null)}
+          className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-fadeIn cursor-zoom-out"
+        >
+          <div className="relative max-w-4xl max-h-[90vh] w-full flex items-center justify-center" onClick={(e) => e.stopPropagation()}>
+            <button
+              onClick={() => setSelectedImage(null)}
+              className="absolute -top-12 right-0 text-white bg-white/20 hover:bg-white/40 p-2 rounded-full transition-colors cursor-pointer"
+              title="Đóng"
+            >
+              <X size={20} />
+            </button>
+            <img 
+              src={selectedImage} 
+              alt="Enlarged review" 
+              className="max-w-full max-h-[80vh] object-contain rounded-2xl shadow-2xl"
+            />
+          </div>
         </div>
       )}
     </div>

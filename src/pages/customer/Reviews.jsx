@@ -89,6 +89,7 @@ export default function Reviews() {
     }
   }, [orderId]);
 
+  //thêm hình ảnh
   const handleFileChange = async (e) => {
     if (existingReview) return; 
     const files = Array.from(e.target.files);
@@ -108,11 +109,13 @@ export default function Reviews() {
     e.target.value = '';
   };
 
+  //xóa hình ảnh
   const handleRemoveImage = (indexToRemove) => {
     if (existingReview) return;
     setImageUrls((prev) => prev.filter((_, index) => index !== indexToRemove));
   };
 
+  //gửi đánh giá
   const handleSubmit = async () => {
     if (existingReview) return;
 
@@ -133,12 +136,9 @@ export default function Reviews() {
         restaurantRating: Number(restaurantRating),
         restaurantComment: restaurantComment,
         images: imageUrls,
+        shipperRating: Number(shipperRating),
+        shipperComment: shipperComment
       };
-
-      if (orderInfo?.shipperId || shipperRating > 0) {
-        reviewData.shipperRating = Number(shipperRating);
-        reviewData.shipperComment = shipperComment;
-      }
 
       await apiClient.post('/reviews', reviewData);
 
@@ -188,18 +188,18 @@ export default function Reviews() {
           </div>
         </div>
 
-        {existingReview && (
+        {/* {existingReview && (
           <div className="flex items-center gap-1.5 bg-emerald-50 text-emerald-700 px-3 py-1 rounded-full text-xs font-bold border border-emerald-200">
             <CheckCircle2 size={14} />
             <span>Đã đánh giá</span>
           </div>
-        )}
+        )} */}
       </div>
 
       <div className="space-y-6">
         {/* ĐÁNH GIÁ QUÁN ĂN */}
         <Card variant="elevated" className="p-6 space-y-5">
-          <div className="flex items-center gap-3.5 border-b border-md-outline-variant/15 pb-4">
+          <div className="flex items-center gap-3.5 border-b border-md-outline-variant/15 pb-0">
             <div className="w-11 h-11 bg-md-primary-container/30 text-md-primary rounded-radius-xl flex items-center justify-center shrink-0">
               <Utensils size={22} />
             </div>
@@ -288,6 +288,7 @@ export default function Reviews() {
                       <span className="text-[10px] font-bold mt-1">Thêm ảnh</span>
                     </>
                   )}
+                  {/* multiple: cho phép upload nhiều ảnh */}
                   <input type="file" accept="image/*" multiple onChange={handleFileChange} className="hidden" disabled={uploading} />
                 </label>
               )}
@@ -298,7 +299,7 @@ export default function Reviews() {
         {/* ĐÁNH GIÁ SHIPPER */}
         {(orderInfo?.shipperId || shipperRating > 0 || shipperComment) && (
           <Card variant="elevated" className="p-6 space-y-5">
-            <div className="flex items-center gap-3.5 border-b border-md-outline-variant/15 pb-2">
+            <div className="flex items-center gap-3.5 border-b border-md-outline-variant/15 pb-0">
               <div className="w-11 h-11 bg-emerald-50 text-emerald-600 rounded-radius-xl flex items-center justify-center shrink-0">
                 <Bike size={22} />
               </div>
@@ -358,7 +359,7 @@ export default function Reviews() {
           {existingReview ? (
             <Button
               type="button"
-              variant="outline"
+              variant="primary"
               size="md"
               onClick={() => navigate('/orders')}
               className="w-full py-4 text-sm uppercase tracking-wider"

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Reply, ClipboardList, Star, Store, Send, X, MessageSquareQuote } from 'lucide-react';
+import { Reply, ClipboardList, Star, Store, Send, X, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useFetchData } from '../../hooks/useFetchData';
 import apiClient from '../../services/api';
 import Spinner from '../../components/common/Spinner';
@@ -14,10 +14,20 @@ export default function MerchantReviews() {
   const [submitting, setSubmitting] = useState(false);
   const [starFilter, setStarFilter] = useState('all');
 
+  // 1. Khai báo state phân trang (page bắt đầu từ 0)
+  const [page, setPage] = useState(0);
+  const size = 10; // Số lượng phần tử mỗi trang
+
   const { data: restaurant, loading: loadingRestaurant, error: errorRestaurant, refetch: refetchRestaurant } = useFetchData('/merchant/restaurant');
   const restaurantId = restaurant?.restaurantId || restaurant?.id;
 
+  // 2. Lưu trữ toàn bộ dữ liệu PageResponse trả về từ API
+  const [pageData, setPageData] = useState({ content: [], totalPages: 0, totalElements: 0 });
+
   const mapReviews = (data) => {
+    // Lưu lại object phân trang gốc để lấy totalPages, totalElements
+    setPageData(data || { content: [], totalPages: 0, totalElements: 0 });
+    
     const realData = data?.content || [];
     return realData.map(rev => ({
       id: rev.reviewId.toString(),
@@ -30,11 +40,12 @@ export default function MerchantReviews() {
     }));
   };
 
+  // 3. Truyền thêm param `page` và `size` vào hook gọi API
   const { data: reviews, loading: loadingReviews, error: errorReviews, refetch } = useFetchData(
-    restaurantId ? `/restaurants/${restaurantId}/reviews` : null,
+    restaurantId ? `/restaurants/${restaurantId}/reviews?page=${page}&size=${size}` : null,
     {
       mapFn: mapReviews,
-      deps: [restaurantId],
+      deps: [restaurantId, page],
     }
   );
 
@@ -58,11 +69,13 @@ export default function MerchantReviews() {
   const loading = loadingRestaurant || loadingReviews || submitting;
   const reviewsList = reviews || [];
 
-  const totalReviews = reviewsList.length;
-  const avgRating = totalReviews ? reviewsList.reduce((s, r) => s + (r.rating || 0), 0) / totalReviews : 0;
+  const totalReviews = pageData.totalElements || reviewsList.length;
+  const totalPages = pageData.totalPages || 0;
+  
+  const avgRating = totalReviews ? reviewsList.reduce((s, r) => s + (r.rating || 0), 0) / reviewsList.length : 0;
   const ratingDist = [5, 4, 3, 2, 1].map((star) => {
     const count = reviewsList.filter((r) => Math.round(r.rating) === star).length;
-    return { star, count, pct: totalReviews ? (count / totalReviews) * 100 : 0 };
+    return { star, count, pct: reviewsList.length ? (count / reviewsList.length) * 100 : 0 };
   });
 
   const filteredReviews = starFilter === 'all'
@@ -198,127 +211,154 @@ export default function MerchantReviews() {
           </Button>
         </Card>
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 items-start">
-          {filteredReviews.map((rev) => (
-            <Card 
-              key={rev.id} 
-              variant="elevated" 
-              className="p-5 min-h-[380px] flex flex-col justify-between border-slate-200/60 shadow-sm hover:shadow-md transition-shadow"
-            >
-              <div className="space-y-3 shrink-0">
-                <div className="flex justify-between items-start gap-3">
-                  <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-full bg-amber-100 text-amber-800 font-bold flex items-center justify-center text-xs shrink-0 shadow-inner">
-                      {rev.author.charAt(0).toUpperCase()}
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 items-start">
+            {filteredReviews.map((rev) => (
+              <Card 
+                key={rev.id} 
+                variant="elevated" 
+                className="p-5 min-h-[380px] flex flex-col justify-between border-slate-200/60 shadow-sm hover:shadow-md transition-shadow"
+              >
+                <div className="space-y-3 shrink-0">
+                  <div className="flex justify-between items-start gap-3">
+                    <div className="flex items-center gap-3">
+                      <div className="w-9 h-9 rounded-full bg-amber-100 text-amber-800 font-bold flex items-center justify-center text-xs shrink-0 shadow-inner">
+                        {rev.author.charAt(0).toUpperCase()}
+                      </div>
+                      <div>
+                        <h3 className="font-bold text-xs sm:text-sm text-slate-800 leading-tight">{rev.author}</h3>
+                        <span className="text-[11px] text-slate-400 mt-0.5 block font-medium">{rev.date}</span>
+                      </div>
                     </div>
-                    <div>
-                      <h3 className="font-bold text-xs sm:text-sm text-slate-800 leading-tight">{rev.author}</h3>
-                      <span className="text-[11px] text-slate-400 mt-0.5 block font-medium">{rev.date}</span>
-                    </div>
+                    <StarRating rating={rev.rating} size={13} />
                   </div>
-                  <StarRating rating={rev.rating} size={13} />
                 </div>
-              </div>
 
-              <div className="flex-1 my-3.5 pr-1.5 space-y-3 max-h-[260px] overflow-y-auto custom-scrollbar">
-                <textarea
-                  readOnly
-                  value={rev.comment}
-                  className="w-full text-xs font-medium text-slate-700 leading-relaxed bg-slate-50/80 p-3.5 rounded-xl border border-slate-100 focus:outline-none resize-none custom-scrollbar"
-                  rows={2}
-                />
+                <div className="flex-1 my-3.5 pr-1.5 space-y-3 max-h-[260px] overflow-y-auto custom-scrollbar">
+                  <textarea
+                    readOnly
+                    value={rev.comment}
+                    className="w-full text-xs font-medium text-slate-700 leading-relaxed bg-slate-50/80 p-3.5 rounded-xl border border-slate-100 focus:outline-none resize-none custom-scrollbar"
+                    rows={2}
+                  />
 
-                {/* Danh sách ảnh đính kèm */}
-                {rev.images && rev.images.length > 0 && (
-                  <div className="flex flex-wrap gap-2 pt-1">
-                    {rev.images.map((imgUrl, index) => (
-                      <a 
-                        key={index} 
-                        href={imgUrl} 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        className="block w-16 h-16 rounded-xl overflow-hidden border border-slate-200 hover:opacity-90 transition-opacity shadow-sm"
-                      >
-                        <img 
-                          src={imgUrl} 
-                          alt={`Review img ${index + 1}`} 
-                          className="w-full h-full object-cover"
-                        />
-                      </a>
-                    ))}
-                  </div>
-                )}
+                  {/* Danh sách ảnh đính kèm */}
+                  {rev.images && rev.images.length > 0 && (
+                    <div className="flex flex-wrap gap-2 pt-1">
+                      {rev.images.map((imgUrl, index) => (
+                        <a 
+                          key={index} 
+                          href={imgUrl} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="block w-16 h-16 rounded-xl overflow-hidden border border-slate-200 hover:opacity-90 transition-opacity shadow-sm"
+                        >
+                          <img 
+                            src={imgUrl} 
+                            alt={`Review img ${index + 1}`} 
+                            className="w-full h-full object-cover"
+                          />
+                        </a>
+                      ))}
+                    </div>
+                  )}
 
-                {/* Hiển thị khung phản hồi của quán */}
-                {rev.reply && (
-                  <div className="bg-amber-50/50 p-3.5 rounded-xl border border-amber-100/60 text-xs font-medium space-y-1.5">
-                    <span className="font-bold text-amber-900 flex items-center gap-1.5">
-                      <Store size={14} className="text-amber-600" /> Phản hồi từ quán:
-                    </span>
-                    <textarea
-                      readOnly
-                      value={rev.reply}
-                      className="w-full bg-transparent text-slate-700 leading-relaxed pl-1 focus:outline-none resize-none custom-scrollbar border-0 p-0"
-                      rows={2}
-                    />
-                  </div>
-                )}
-              </div>
+                  {/* Hiển thị khung phản hồi của quán */}
+                  {rev.reply && (
+                    <div className="bg-amber-50/50 p-3.5 rounded-xl border border-amber-100/60 text-xs font-medium space-y-1.5">
+                      <span className="font-bold text-amber-900 flex items-center gap-1.5">
+                        <Store size={14} className="text-amber-600" /> Phản hồi từ quán:
+                      </span>
+                      <textarea
+                        readOnly
+                        value={rev.reply}
+                        className="w-full bg-transparent text-slate-700 leading-relaxed pl-1 focus:outline-none resize-none custom-scrollbar border-0 p-0"
+                        rows={2}
+                      />
+                    </div>
+                  )}
+                </div>
 
-              <div className="shrink-0 pt-3 border-t border-slate-100 mt-auto">
-                {!rev.reply && (
-                  <>
-                    {activeReplyId === rev.id ? (
-                      <div className="w-full flex flex-col gap-2.5 animate-fadeIn">
-                        <textarea
-                          rows={2}
-                          value={replyText}
-                          onChange={(e) => setReplyText(e.target.value)}
-                          placeholder="Viết phản hồi để gửi đến khách hàng..."
-                          className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs font-medium focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 resize-none custom-scrollbar"
-                        />
-                        <div className="flex justify-end gap-2">
+                <div className="shrink-0 pt-3 border-t border-slate-100 mt-auto">
+                  {!rev.reply && (
+                    <>
+                      {activeReplyId === rev.id ? (
+                        <div className="w-full flex flex-col gap-2.5 animate-fadeIn">
+                          <textarea
+                            rows={2}
+                            value={replyText}
+                            onChange={(e) => setReplyText(e.target.value)}
+                            placeholder="Viết phản hồi để gửi đến khách hàng..."
+                            className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs font-medium focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 resize-none custom-scrollbar"
+                          />
+                          <div className="flex justify-end gap-2">
+                            <Button
+                              onClick={() => setActiveReplyId(null)}
+                              variant="outline"
+                              size="sm"
+                              className="bg-slate-100 text-slate-500 border-transparent hover:bg-slate-200"
+                              icon={X}
+                            >
+                              Hủy
+                            </Button>
+                            <Button
+                              onClick={() => handleSendReply(rev.id)}
+                              variant="secondary"
+                              size="sm"
+                              icon={Send}
+                              className="bg-amber-600 text-white"
+                            >
+                              Gửi
+                            </Button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="flex justify-end">
                           <Button
-                            onClick={() => setActiveReplyId(null)}
-                            variant="outline"
+                            onClick={() => {
+                              setActiveReplyId(rev.id);
+                              setReplyText('');
+                            }}
+                            variant="text"
                             size="sm"
-                            className="bg-slate-100 text-slate-500 border-transparent hover:bg-slate-200"
-                            icon={X}
+                            icon={Reply}
+                            className="text-amber-600 hover:text-amber-700 hover:bg-amber-50/50 font-semibold"
                           >
-                            Hủy
-                          </Button>
-                          <Button
-                            onClick={() => handleSendReply(rev.id)}
-                            variant="secondary"
-                            size="sm"
-                            icon={Send}
-                            className="bg-amber-600 text-white"
-                          >
-                            Gửi
+                            Phản hồi khách hàng
                           </Button>
                         </div>
-                      </div>
-                    ) : (
-                      <div className="flex justify-end">
-                        <Button
-                          onClick={() => {
-                            setActiveReplyId(rev.id);
-                            setReplyText('');
-                          }}
-                          variant="text"
-                          size="sm"
-                          icon={Reply}
-                          className="text-amber-600 hover:text-amber-700 hover:bg-amber-50/50 font-semibold"
-                        >
-                          Phản hồi khách hàng
-                        </Button>
-                      </div>
-                    )}
-                  </>
-                )}
-              </div>
-            </Card>
-          ))}
+                      )}
+                    </>
+                  )}
+                </div>
+              </Card>
+            ))}
+          </div>
+
+          {/* Thanh phân trang với định dạng theo yêu cầu */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between pt-4 border-t border-slate-200/60">
+              <button
+                onClick={() => setPage((prev) => Math.max(prev - 1, 0))}
+                disabled={page === 0}
+                className="flex items-center gap-1 px-3 py-1.5 rounded-radius-md text-xs font-bold bg-white border border-slate-200 text-slate-600 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-50 transition-all cursor-pointer"
+              >
+                <ChevronLeft size={16} /> Trước đó
+              </button>
+              
+              <span className="text-xs font-bold text-slate-500">
+                Trang {page + 1} / {totalPages}
+              </span>
+
+              <button
+                onClick={() => setPage((prev) => Math.min(prev + 1, totalPages - 1))}
+                disabled={page >= totalPages - 1}
+                className="flex items-center gap-1 px-3 py-1.5 rounded-radius-md text-xs font-bold bg-white border border-slate-200 text-slate-600 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-50 transition-all cursor-pointer"
+              >
+                Kế tiếp <ChevronRight size={16} />
+              </button>
+            </div>
+          )}
         </div>
       )}
     </div>

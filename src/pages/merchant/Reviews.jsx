@@ -50,7 +50,10 @@ export default function MerchantReviews() {
   );
 
   const handleSendReply = async (reviewId) => {
-    if (!replyText.trim()) return;
+    if (!replyText.trim()) {
+      toast.warn('Vui lòng viết phản hồi!');
+      return;
+    }
     setSubmitting(true);
     try {
       await apiClient.post(`/merchant/reviews/${reviewId}/reply`, { reply: replyText });

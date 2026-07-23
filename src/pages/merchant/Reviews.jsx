@@ -129,7 +129,7 @@ export default function MerchantReviews() {
 
       {/* Thẻ tổng quan điểm số */}
       {reviewsList.length > 0 && (
-        <Card variant="elevated" className="p-6 bg-gradient-to-br from-white via-white to-amber-50/20 border-slate-100 shadow-sm flex flex-col sm:flex-row gap-6 items-center">
+        <Card variant="elevated" className="bg-white rounded-xl border border-slate-100 shadow-sm p-4 md:p-5 flex flex-col sm:flex-row gap-6 items-center">
           <div className="flex flex-col items-center justify-center shrink-0 sm:border-r sm:border-slate-100 sm:pr-8 text-center">
             <span className="text-5xl font-black text-slate-800 tracking-tight leading-none">{avgRating.toFixed(1)}</span>
             <div className="mt-2">
@@ -198,15 +198,15 @@ export default function MerchantReviews() {
       {loading && reviewsList.length === 0 ? (
         <Spinner />
       ) : reviewsList.length === 0 ? (
-        <Card variant="elevated" className="text-center py-16 border-slate-100">
+        <Card variant="elevated" className="bg-white rounded-xl border border-slate-100 shadow-sm p-4 md:p-5 flex flex-col text-center py-16">
           <Star size={48} className="mx-auto text-slate-300 mb-3.5" />
           <p className="text-sm font-bold text-slate-600">Chưa có đánh giá nào cho nhà hàng của bạn</p>
         </Card>
       ) : filteredReviews.length === 0 ? (
-        <Card variant="elevated" className="text-center py-16 border-slate-100">
+        <Card variant="elevated" className="bg-white rounded-xl border border-slate-100 shadow-sm p-4 md:p-5 flex flex-col text-center py-16">
           <Star size={48} className="mx-auto text-slate-300 mb-3.5" />
           <p className="text-sm font-bold text-slate-600">Không có đánh giá {starFilter} sao nào</p>
-          <Button onClick={() => setStarFilter('all')} variant="text" size="sm" className="mt-3 text-amber-600">
+          <Button onClick={() => setStarFilter('all')} variant="text" size="sm" className="mt-3 text-blue-600">
             Xem tất cả đánh giá
           </Button>
         </Card>
@@ -217,7 +217,7 @@ export default function MerchantReviews() {
               <Card 
                 key={rev.id} 
                 variant="elevated" 
-                className="p-5 min-h-[380px] flex flex-col justify-between border-slate-200/60 shadow-sm hover:shadow-md transition-shadow"
+                className="bg-white rounded-xl border border-slate-100 shadow-sm p-4 md:p-5 flex flex-col justify-between cursor-pointer transition-colors hover:border-slate-200 min-h-[380px]"
               >
                 <div className="space-y-3 shrink-0">
                   <div className="flex justify-between items-start gap-3">
@@ -248,7 +248,10 @@ export default function MerchantReviews() {
                         {rev.images.map((imgUrl, index) => (
                           <div 
                             key={index} 
-                            onClick={() => setSelectedImage(imgUrl)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedImage(imgUrl);
+                            }}
                             className="relative group block w-16 h-16 rounded-xl overflow-hidden border border-slate-200 hover:border-amber-500 transition-all cursor-pointer shadow-sm"
                           >
                             <img 
@@ -280,7 +283,7 @@ export default function MerchantReviews() {
                   )}
                 </div>
 
-                <div className="shrink-0 pt-3 border-t border-slate-100 mt-auto">
+                <div className="shrink-0 pt-3 border-t border-slate-100 mt-auto" onClick={(e) => e.stopPropagation()}>
                   {!rev.reply && (
                     <>
                       {activeReplyId === rev.id ? (

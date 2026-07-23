@@ -234,38 +234,39 @@ export default function MerchantReviews() {
                   </div>
                 </div>
 
-                <div className="flex-1 my-3.5 pr-1.5 space-y-3 max-h-[260px] overflow-y-auto custom-scrollbar">
-                  <textarea
-                    readOnly
-                    value={rev.comment}
-                    className="w-full text-xs font-medium text-slate-700 leading-relaxed bg-slate-50/80 p-3.5 rounded-xl border border-slate-100 focus:outline-none resize-none custom-scrollbar"
-                    rows={2}
-                  />
+                <div className="flex-1 my-3.5 pr-1.5 flex flex-col justify-between max-h-[260px] overflow-y-auto custom-scrollbar">
+                  <div className="space-y-3">
+                    <textarea
+                      readOnly
+                      value={rev.comment}
+                      className="w-full text-xs font-medium text-slate-700 leading-relaxed bg-slate-50/80 p-3.5 rounded-xl border border-slate-100 focus:outline-none resize-none custom-scrollbar"
+                      rows={2}
+                    />
 
-                  {rev.images && rev.images.length > 0 && (
-                    <div className="flex flex-wrap gap-2 pt-1">
-                      {rev.images.map((imgUrl, index) => (
-                        <div 
-                          key={index} 
-                          onClick={() => setSelectedImage(imgUrl)}
-                          className="relative group block w-16 h-16 rounded-xl overflow-hidden border border-slate-200 hover:border-amber-500 transition-all cursor-pointer shadow-sm"
-                        >
-                          <img 
-                            src={imgUrl} 
-                            alt={`Review img ${index + 1}`} 
-                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                          />
-                          <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white">
-                            <ZoomIn size={16} />
+                    {rev.images && rev.images.length > 0 && (
+                      <div className="flex flex-wrap gap-2 pt-1">
+                        {rev.images.map((imgUrl, index) => (
+                          <div 
+                            key={index} 
+                            onClick={() => setSelectedImage(imgUrl)}
+                            className="relative group block w-16 h-16 rounded-xl overflow-hidden border border-slate-200 hover:border-amber-500 transition-all cursor-pointer shadow-sm"
+                          >
+                            <img 
+                              src={imgUrl} 
+                              alt={`Review img ${index + 1}`} 
+                              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                            />
+                            <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white">
+                              <ZoomIn size={16} />
+                            </div>
                           </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
+                        ))}
+                      </div>
+                    )}
+                  </div>
 
-                  {/* Hiển thị khung phản hồi của quán */}
                   {rev.reply && (
-                    <div className="bg-amber-50/50 p-3.5 rounded-xl border border-amber-100/60 text-xs font-medium space-y-1.5">
+                    <div className="bg-amber-50/50 p-3.5 rounded-xl border border-amber-100/60 text-xs font-medium space-y-1.5 mt-3">
                       <span className="font-bold text-amber-900 flex items-center gap-1.5">
                         <Store size={14} className="text-amber-600" /> Phản hồi từ quán:
                       </span>
@@ -362,7 +363,6 @@ export default function MerchantReviews() {
         </div>
       )}
 
-      {/*phóng to ảnh trực tiếp trong tab hiện tại */}
       {selectedImage && (
         <div 
           onClick={() => setSelectedImage(null)}

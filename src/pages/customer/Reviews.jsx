@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useOrderStore } from '../../stores/orderStore';
-import { ArrowLeft, Star, Send, Utensils, Bike, Camera, X, CheckCircle2 } from 'lucide-react';
+import { ArrowLeft, Star, Send, Utensils, Bike, Camera, X, MessageSquareReply } from 'lucide-react';
 import { useImageUpload } from '../../hooks/useImageUpload';
 import apiClient from '../../services/api';
 import Spinner from '../../components/common/Spinner';
@@ -187,19 +187,12 @@ export default function Reviews() {
             </h1>
           </div>
         </div>
-
-        {/* {existingReview && (
-          <div className="flex items-center gap-1.5 bg-emerald-50 text-emerald-700 px-3 py-1 rounded-full text-xs font-bold border border-emerald-200">
-            <CheckCircle2 size={14} />
-            <span>Đã đánh giá</span>
-          </div>
-        )} */}
       </div>
 
       <div className="space-y-6">
         {/* ĐÁNH GIÁ QUÁN ĂN */}
         <Card variant="elevated" className="p-6 space-y-5">
-          <div className="flex items-center gap-3.5 border-b border-md-outline-variant/15 pb-0">
+          <div className="flex items-center gap-3.5 border-b border-md-outline-variant/15 pb-3">
             <div className="w-11 h-11 bg-md-primary-container/30 text-md-primary rounded-radius-xl flex items-center justify-center shrink-0">
               <Utensils size={22} />
             </div>
@@ -294,12 +287,39 @@ export default function Reviews() {
               )}
             </div>
           </div>
+
+          {/* PHẢN HỒI TỪ QUÁN */}
+          {existingReview?.merchantReply && (
+            <div className="bg-slate-50 border border-slate-200 rounded-radius-lg p-3.5 space-y-1.5 mt-1">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1.5 text-xs font-extrabold text-md-primary">
+                  <MessageSquareReply size={16} />
+                  <span>Phản hồi từ Quán {orderInfo?.restaurantName || 'Quán'}</span>
+                </div>
+                {existingReview.repliedAt && (
+                  <span className="text-[10px] text-slate-400">
+                    {`${new Date(existingReview.repliedAt).toLocaleDateString('vi-VN', {
+                      day: '2-digit',
+                      month: '2-digit',
+                      year: 'numeric'
+                    })}  ${new Date(existingReview.repliedAt).toLocaleTimeString('vi-VN', {
+                      hour: '2-digit',
+                      minute: '2-digit'
+                    })}`}
+                  </span>
+                )}
+              </div>
+              <p className="text-xs text-slate-600 leading-relaxed pl-5 whitespace-pre-wrap">
+                {existingReview.merchantReply}
+              </p>
+            </div>
+          )}
         </Card>
 
         {/* ĐÁNH GIÁ SHIPPER */}
         {(orderInfo?.shipperId || shipperRating > 0 || shipperComment) && (
           <Card variant="elevated" className="p-6 space-y-5">
-            <div className="flex items-center gap-3.5 border-b border-md-outline-variant/15 pb-0">
+            <div className="flex items-center gap-3.5 border-b border-md-outline-variant/15 pb-3">
               <div className="w-11 h-11 bg-emerald-50 text-emerald-600 rounded-radius-xl flex items-center justify-center shrink-0">
                 <Bike size={22} />
               </div>
@@ -341,7 +361,7 @@ export default function Reviews() {
             </div>
 
             <textarea
-              rows={2}
+              rows={3}
               value={shipperComment}
               disabled={Boolean(existingReview)}
               onChange={(e) => setShipperComment(e.target.value)}

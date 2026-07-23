@@ -335,18 +335,20 @@ export default function MerchantReviews() {
             ))}
           </div>
 
-          {/* Thanh phân trang với định dạng theo yêu cầu */}
+          {/* phân trang */}
           {totalPages > 1 && (
-            <div className="flex items-center justify-between pt-4 border-t border-slate-200/60">
+            <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-200/60">
+              
+
               <button
                 onClick={() => setPage((prev) => Math.max(prev - 1, 0))}
                 disabled={page === 0}
                 className="flex items-center gap-1 px-3 py-1.5 rounded-radius-md text-xs font-bold bg-white border border-slate-200 text-slate-600 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-50 transition-all cursor-pointer"
               >
-                <ChevronLeft size={16} /> Trước đó
+                <ChevronLeft size={16} />
               </button>
-              
-              <span className="text-xs font-bold text-slate-500">
+
+              <span className="text-xs font-bold text-slate-500 mr-1">
                 Trang {page + 1} / {totalPages}
               </span>
 
@@ -355,7 +357,7 @@ export default function MerchantReviews() {
                 disabled={page >= totalPages - 1}
                 className="flex items-center gap-1 px-3 py-1.5 rounded-radius-md text-xs font-bold bg-white border border-slate-200 text-slate-600 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-50 transition-all cursor-pointer"
               >
-                Kế tiếp <ChevronRight size={16} />
+                <ChevronRight size={16} />
               </button>
             </div>
           )}

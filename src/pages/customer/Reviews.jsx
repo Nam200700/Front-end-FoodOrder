@@ -10,19 +10,18 @@ import Card from '../../components/common/Card';
 import Button from '../../components/common/Button';
 import { toast } from 'react-toastify';
 
-// Hàm helper hiển thị nhãn đánh giá tương ứng số sao
 const getRatingLabel = (rating) => {
   switch (rating) {
     case 1:
-      return 'Tệ 😞';
+      return 'Tệ';
     case 2:
-      return 'Không hài lòng 😕';
+      return 'Không hài lòng';
     case 3:
-      return 'Bình thường 😐';
+      return 'Bình thường';
     case 4:
-      return 'Hài lòng 😊';
+      return 'Hài lòng';
     case 5:
-      return 'Tuyệt vời 🤩';
+      return 'Tuyệt vời';
     default:
       return '';
   }
@@ -33,11 +32,13 @@ export default function Reviews() {
   const navigate = useNavigate();
   const addReview = useOrderStore((state) => state.addReview);
 
-  const [restaurantRating, setRestaurantRating] = useState(5);
+  // quán ăn
+  const [restaurantRating, setRestaurantRating] = useState(0);
   const [restaurantComment, setRestaurantComment] = useState('');
   const [restaurantHover, setRestaurantHover] = useState(0);
 
-  const [shipperRating, setShipperRating] = useState(5);
+  // shipper
+  const [shipperRating, setShipperRating] = useState(0);
   const [shipperComment, setShipperComment] = useState('');
   const [shipperHover, setShipperHover] = useState(0);
 
@@ -74,8 +75,7 @@ export default function Reviews() {
     setImageUrls((prev) => prev.filter((_, index) => index !== indexToRemove));
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const handleSubmit = async () => {
     setSubmitting(true);
     try {
       const reviewData = {
@@ -147,8 +147,8 @@ export default function Reviews() {
         </div>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-6">
-        {/* CARD ĐÁNH GIÁ QUÁN ĂN */}
+      <div className="space-y-6">
+        {/* ĐÁNH GIÁ QUÁN ĂN */}
         <Card variant="elevated" className="p-6 space-y-5">
           <div className="flex items-center gap-3.5 border-b border-md-outline-variant/15 pb-4">
             <div className="w-11 h-11 bg-md-primary-container/30 text-md-primary rounded-radius-xl flex items-center justify-center shrink-0">
@@ -156,11 +156,10 @@ export default function Reviews() {
             </div>
             <div>
               <span className="text-[10px] text-md-outline font-extrabold uppercase tracking-wider block">Chất lượng món ăn</span>
-              <h3 className="font-extrabold text-base text-md-on-surface mt-0.5">{order?.restaurantName || 'Quán ăn'}</h3>
+              <h3 className="font-extrabold text-base text-md-on-surface mt-0.5">Quán: {order?.restaurantName || 'Quán ăn'}</h3>
             </div>
           </div>
 
-          {/* Chọn số sao kèm nhãn cảm xúc */}
           <div className="flex flex-col items-center justify-center py-1 space-y-2">
             <div className="flex items-center gap-2">
               {[...Array(5)].map((_, idx) => {
@@ -172,7 +171,7 @@ export default function Reviews() {
                     onClick={() => setRestaurantRating(ratingValue)}
                     onMouseEnter={() => setRestaurantHover(ratingValue)}
                     onMouseLeave={() => setRestaurantHover(0)}
-                    className="focus:outline-none hover:scale-125 active:scale-95 transition-transform p-1"
+                    className="focus:outline-none active:scale-95 transition-transform p-1"
                   >
                     <Star
                       size={32}
@@ -184,17 +183,19 @@ export default function Reviews() {
                 );
               })}
             </div>
-            <span className="text-xs font-bold text-amber-600 bg-amber-50 px-3 py-1 rounded-full">
-              {getRatingLabel(currentRestaurantRating)}
-            </span>
+            {restaurantRating > 0 && (
+              <span className="text-xs font-bold text-amber-600 bg-amber-50 px-3 py-1 rounded-full animate-fade-in">
+                {getRatingLabel(restaurantRating)}
+              </span>
+            )}
           </div>
 
           <textarea
             rows={3}
             value={restaurantComment}
             onChange={(e) => setRestaurantComment(e.target.value)}
-            placeholder="Món ăn thế nào? Đóng gói ra sao? Hãy chia sẻ trải nghiệm của bạn nhé..."
-            className="w-full px-4 py-3 bg-slate-50/70 border border-md-outline-variant/40 rounded-radius-lg text-xs focus:outline-none focus:border-md-primary focus:bg-white transition-all resize-none shadow-inner"
+            placeholder="Món ăn thế nào? Hãy chia sẻ trải nghiệm của bạn nhé..."
+            className="w-full px-4 py-3 bg-slate-50/70 border border-md-outline-variant/40 rounded-radius-lg text-xs focus:outline-none focus:border-md-primary focus:bg-white transition-all resize-none"
           />
 
           {/* UPLOAD & PREVIEW ẢNH */}
@@ -237,10 +238,10 @@ export default function Reviews() {
           </div>
         </Card>
 
-        {/* CARD ĐÁNH GIÁ SHIPPER */}
+        {/* ĐÁNH GIÁ SHIPPER */}
         {order?.shipperId && (
           <Card variant="elevated" className="p-6 space-y-5">
-            <div className="flex items-center gap-3.5 border-b border-md-outline-variant/15 pb-4">
+            <div className="flex items-center gap-3.5 border-b border-md-outline-variant/15 pb-2">
               <div className="w-11 h-11 bg-emerald-50 text-emerald-600 rounded-radius-xl flex items-center justify-center shrink-0">
                 <Bike size={22} />
               </div>
@@ -261,7 +262,7 @@ export default function Reviews() {
                       onClick={() => setShipperRating(ratingValue)}
                       onMouseEnter={() => setShipperHover(ratingValue)}
                       onMouseLeave={() => setShipperHover(0)}
-                      className="focus:outline-none hover:scale-125 active:scale-95 transition-transform p-1"
+                      className="focus:outline-none active:scale-95 transition-transform p-1"
                     >
                       <Star
                         size={32}
@@ -273,9 +274,11 @@ export default function Reviews() {
                   );
                 })}
               </div>
-              <span className="text-xs font-bold text-amber-600 bg-amber-50 px-3 py-1 rounded-full">
-                {getRatingLabel(currentShipperRating)}
-              </span>
+              {shipperRating > 0 && (
+                <span className="text-xs font-bold text-amber-600 bg-amber-50 px-3 py-1 rounded-full animate-fade-in">
+                  {getRatingLabel(shipperRating)}
+                </span>
+              )}
             </div>
 
             <textarea
@@ -283,25 +286,25 @@ export default function Reviews() {
               value={shipperComment}
               onChange={(e) => setShipperComment(e.target.value)}
               placeholder="Tài xế giao hàng thân thiện, nhanh chóng chứ? (Không bắt buộc)..."
-              className="w-full px-4 py-3 bg-slate-50/70 border border-md-outline-variant/40 rounded-radius-lg text-xs focus:outline-none focus:border-md-primary focus:bg-white transition-all resize-none shadow-inner"
+              className="w-full px-4 py-3 bg-slate-50/70 border border-md-outline-variant/40 rounded-radius-lg text-xs focus:outline-none focus:border-md-primary focus:bg-white transition-all resize-none"
             />
           </Card>
         )}
 
-        {/* NÚT SUBMIT SỬ DỤNG COMPONENT BUTTON */}
         <div className="pt-2">
           <Button
-            type="submit"
+            type="button"
             variant="primary"
             size="md"
             loading={submitting || uploading}
             icon={Send}
+            onClick={handleSubmit}
             className="w-full py-4 text-sm uppercase tracking-wider shadow-md"
           >
-            Gửi đánh giá ngay
+            Gửi đánh giá 
           </Button>
         </div>
-      </form>
+      </div>
     </div>
   );
 }

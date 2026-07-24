@@ -92,6 +92,12 @@ export default function ShipperProfile() {
       return;
     }
 
+    const plateRegex = /^[0-9]{2}[A-Z0-9]{1,4}[-.]?[0-9]{3,4}(\.[0-9]{2})?$/;
+    if (!plateRegex.test(licensePlate.trim())) {
+      toast.warning('Biển số xe không hợp lệ (Ví dụ: 29E2-678.90)!');
+      return;
+    }
+
     setUpdating(true);
     try {
       await apiClient.put('/users/profile', {

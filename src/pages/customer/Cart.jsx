@@ -881,7 +881,85 @@ export default function Cart() {
         </div>
       </Modal>
 
+      {/* ================= MODAL 2: THÊM ĐỊA CHỈ MỚI ================= */}
+      <Modal 
+        isOpen={addAddressModal.isOpen} 
+        onClose={addAddressModal.close}
+        title="Thêm Địa Chỉ Mới"
+        size="md"
+        className="!rounded-2xl"
+      >
+        <form onSubmit={handleSaveNewAddress} className="space-y-4 -mx-6 -my-6 px-6 py-4">
+          <div>
+            <label className="text-xs font-bold text-slate-800 block mb-1.5">
+              Địa chỉ cụ thể <span className="text-red-500">*</span>
+            </label>
+            <div className="flex gap-2">
+              <div className="relative flex-1">
+                <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                  <MapPin size={15} />
+                </span>
+                <input 
+                  type="text"
+                  readOnly
+                  value={newAddressText}
+                  placeholder="Nhập địa chỉ nhà hoặc chọn bản đồ..."
+                  className="w-full pl-9 pr-3 py-3 text-xs border border-slate-200 rounded-2xl bg-slate-50/50 text-slate-800 font-semibold focus:outline-none"
+                />
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  addAddressModal.close(); 
+                  mapModal.open(); 
+                }}
+                className="px-4 py-3 bg-slate-100/80 hover:bg-slate-200 text-slate-700 font-bold rounded-2xl text-xs flex items-center gap-1.5 shrink-0 cursor-pointer border border-slate-200 transition-colors"
+              >
+                <MapPin size={14} className="text-[#ff6b35]" fill="#ff6b35" stroke="white" /> Bản đồ
+              </button>
+            </div>
+          </div>
 
+          <div>
+            <label className="text-xs font-bold text-slate-800 block mb-2">Loại địa chỉ:</label>
+            <div className="flex gap-3">
+              {['Nhà riêng', 'Văn phòng'].map((lbl) => (
+                <button
+                  key={lbl}
+                  type="button"
+                  onClick={() => setAddressLabel(lbl)}
+                  className={`px-5 py-2.5 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
+                    addressLabel === lbl ? 'border-[#ff6b35] bg-orange-50/40 text-[#ff6b35] shadow-sm' : 'border-slate-200 text-slate-600 hover:bg-slate-50'
+                  }`}
+                >
+                  {lbl}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Đường gân phân cách footer giống hình mẫu */}
+          <div className="pt-4 -mx-6 px-6 border-t border-slate-100 flex items-center justify-end gap-3 mt-6 bg-white">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                addAddressModal.close();
+                addressListModal.open(); 
+              }}
+              className="!rounded-2xl !text-xs !font-bold !py-2.5 !px-5 cursor-pointer border-slate-200 text-slate-600 hover:bg-slate-50"
+            >
+              Quay Lại
+            </Button>
+            <Button
+              type="submit"
+              className="!rounded-2xl !text-xs !font-bold !py-2.5 !px-6 !bg-[#ff6b35] text-white hover:!bg-orange-600 cursor-pointer shadow-md shadow-orange-500/20"
+            >
+              Hoàn Thành
+            </Button>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 }

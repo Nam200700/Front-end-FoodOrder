@@ -4,6 +4,8 @@ import { useAuthStore } from '../../stores/authStore';
 import { User, Bike, Phone, LogOut, Camera, Mail, ShieldCheck, Clipboard, Trophy, Star, Package, CheckCircle2 } from 'lucide-react';
 import apiClient from '../../services/api';
 import Spinner from '../../components/common/Spinner';
+import Card from '../../components/common/Card'; // Nhập component Card
+import Button from '../../components/common/Button'; // Nhập component Button
 import { getAvatarUrl } from '../../utils/avatarHelper';
 import { useAvatarUpload } from '../../hooks/useAvatarUpload';
 import { validatePhone } from '../../utils/validation';
@@ -81,10 +83,6 @@ export default function ShipperProfile() {
       toast.warning('Vui lòng nhập email!');
       return;
     }
-    if (!validateEmail(email)) {
-      toast.warning('Email không hợp lệ!');
-      return;
-    }
     if (!licensePlate.trim()) {
       toast.warning('Vui lòng nhập biển số xe!');
       return;
@@ -92,14 +90,13 @@ export default function ShipperProfile() {
 
     setUpdating(true);
     try {
-      const response = await apiClient.put('/users/profile', {
+      await apiClient.put('/users/profile', {
         fullName: name.trim(),
         phone: phone.trim(),
         vehicleType: vehicleType,
         licensePlate: licensePlate.trim()
       });
       
-      // Đồng bộ vào local store
       updateProfile({
         name: name.trim(),
         phone: phone.trim(),
@@ -131,7 +128,7 @@ export default function ShipperProfile() {
         <Spinner />
       ) : (
         <>
-          <div className="bg-white rounded-radius-xl border border-slate-200/60 shadow-sm overflow-hidden relative animate-fade-in">
+          <Card variant="flat" className="border-slate-200/60 shadow-sm relative animate-fade-in">
             <div className="h-24 bg-gradient-to-br from-[#2E7D32] to-md-tertiary relative">
               <div className="absolute -right-6 -top-6 w-28 h-28 rounded-full bg-white/10" />
               <Bike className="absolute right-4 bottom-3 text-white/20" size={40} />
@@ -144,25 +141,26 @@ export default function ShipperProfile() {
                   alt="Shipper Avatar"
                   className="w-24 h-24 rounded-radius-full border-4 border-white object-cover shadow-md"
                 />
-                <button
+                <Button
                   type="button"
                   onClick={handleAvatarClick}
                   disabled={uploadingAvatar}
-                  className="absolute bottom-0 right-0 p-2 bg-md-tertiary text-white rounded-radius-full shadow-sm hover:scale-105 transition-all cursor-pointer border-2 border-white flex items-center justify-center"
+                  variant="secondary"
+                  className="absolute bottom-0 right-0 !p-2 !w-auto !h-auto bg-md-tertiary text-white rounded-radius-full shadow-sm hover:scale-105 border-2 border-white"
                 >
                   {uploadingAvatar ? (
                     <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
                   ) : (
                     <Camera size={14} />
                   )}
-                </button>
+                </Button>
               </div>
               <h2 className="font-bold text-base text-slate-800 mt-3">{name}</h2>
               <span className="text-[10px] text-md-tertiary bg-[#E8F5E9] font-bold px-3 py-1 rounded-full uppercase mt-1.5 tracking-wider border border-[#C8E6C9] inline-flex items-center gap-1">
                 <Trophy size={11} /> TÀI XẾ {Number(avgRating).toFixed(1)} SAO
               </span>
 
-              {/* Stats block: đang giao · hoàn thành · đánh giá */}
+              {/* Stats block */}
               <div className="grid grid-cols-3 gap-3 w-full mt-5 pt-5 border-t border-slate-100">
                 <div className="bg-amber-50/60 rounded-2xl p-3 flex flex-col items-center border border-amber-100/50">
                   <Package size={16} className="text-amber-500" />
@@ -181,10 +179,9 @@ export default function ShipperProfile() {
                 </div>
               </div>
             </div>
-          </div>
+          </Card>
 
-          {/* Form cập nhật hồ sơ */}
-          <form onSubmit={handleSave} className="bg-white rounded-radius-xl p-5 border border-slate-200/60 shadow-sm space-y-5 animate-slide-up">            
+          <Card as="form" onSubmit={handleSave} variant="flat" className="p-5 border-slate-200/60 shadow-sm space-y-5 animate-slide-up">
             <h3 className="font-bold text-sm text-slate-800 border-b border-slate-100 pb-2 flex items-center gap-1.5">
               <ShieldCheck size={16} className="text-md-tertiary" />
               Thông Tin Cá Nhân
@@ -285,28 +282,26 @@ export default function ShipperProfile() {
               />
             </div>
 
-            <button
+            <Button
               type="submit"
-              disabled={updating}
-              className="w-full mt-4 bg-md-tertiary hover:bg-opacity-95 text-white font-bold py-3.5 px-4 rounded-radius-full shadow-sm hover:scale-[1.01] active:scale-[0.99] transition-all flex items-center justify-center gap-2 text-xs uppercase tracking-wider cursor-pointer"
+              loading={updating}
+              className="w-full mt-4 !bg-md-tertiary text-white font-bold !py-3.5 !px-4 rounded-radius-full shadow-sm hover:scale-[1.01] active:scale-[0.99] transition-all text-xs uppercase tracking-wider"
             >
-              {updating ? (
-                <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
-              ) : (
-                'Cập Nhật Hồ Sơ'
-              )}
-            </button>
-          </form>
+              Cập Nhật Hồ Sơ
+            </Button>
+          </Card>
         </>
       )}
 
-      <button
+      <Button
         onClick={handleLogout}
-        className="w-full flex items-center justify-center gap-2 text-xs font-bold text-red-500 hover:text-red-700 bg-red-50 hover:bg-red-100 py-3.5 rounded-radius-full border border-red-200/50 transition-all active:scale-[0.99] cursor-pointer shadow-sm"
+        variant="outline"
+        className="w-full gap-2 text-xs font-bold text-red-500 hover:text-red-700 bg-red-50 hover:bg-red-100 !py-3.5 rounded-radius-full border-red-200/50 shadow-sm"
+        icon={LogOut}
       >
-        <LogOut size={15} />
         Đăng xuất khỏi hệ thống
-      </button>
+      </Button>
+
       <input 
         type="file" 
         ref={fileInputRef} 

@@ -4,11 +4,11 @@ import { useAuthStore } from '../../stores/authStore';
 import { User, Bike, Phone, LogOut, Camera, Mail, ShieldCheck, Clipboard, Trophy, Star, Package, CheckCircle2 } from 'lucide-react';
 import apiClient from '../../services/api';
 import Spinner from '../../components/common/Spinner';
-import Card from '../../components/common/Card'; // Nhập component Card
-import Button from '../../components/common/Button'; // Nhập component Button
+import Card from '../../components/common/Card';
+import Button from '../../components/common/Button';
 import { getAvatarUrl } from '../../utils/avatarHelper';
 import { useAvatarUpload } from '../../hooks/useAvatarUpload';
-import { validatePhone } from '../../utils/validation';
+import { validateEmail } from '../../utils/validation';
 import { toast } from 'react-toastify';
 
 export default function ShipperProfile() {
@@ -73,8 +73,7 @@ export default function ShipperProfile() {
     fetchProfile();
   }, []);
 
-  const handleSave = async (e) => {
-    e.preventDefault();
+  const handleSave = async () => {
     if (!name.trim()) {
       toast.warning('Vui lòng nhập Họ và tên!');
       return;
@@ -83,6 +82,11 @@ export default function ShipperProfile() {
       toast.warning('Vui lòng nhập email!');
       return;
     }
+    if (!validateEmail(email)) {
+      toast.warning('Email Không hợp lệ!');
+      return;
+    }
+
     if (!licensePlate.trim()) {
       toast.warning('Vui lòng nhập biển số xe!');
       return;
@@ -92,14 +96,14 @@ export default function ShipperProfile() {
     try {
       await apiClient.put('/users/profile', {
         fullName: name.trim(),
-        phone: phone.trim(),
+        email: email.trim(),
         vehicleType: vehicleType,
         licensePlate: licensePlate.trim()
       });
       
       updateProfile({
         name: name.trim(),
-        phone: phone.trim(),
+        email: email.trim(),
         vehicleType: vehicleType,
         licensePlate: licensePlate.trim()
       });
@@ -160,7 +164,6 @@ export default function ShipperProfile() {
                 <Trophy size={11} /> TÀI XẾ {Number(avgRating).toFixed(1)} SAO
               </span>
 
-              {/* Stats block */}
               <div className="grid grid-cols-3 gap-3 w-full mt-5 pt-5 border-t border-slate-100">
                 <div className="bg-amber-50/60 rounded-2xl p-3 flex flex-col items-center border border-amber-100/50">
                   <Package size={16} className="text-amber-500" />
@@ -181,7 +184,7 @@ export default function ShipperProfile() {
             </div>
           </Card>
 
-          <Card as="form" onSubmit={handleSave} variant="flat" className="p-5 border-slate-200/60 shadow-sm space-y-5 animate-slide-up">
+          <Card variant="flat" className="p-5 border-slate-200/60 shadow-sm space-y-5 animate-slide-up">
             <h3 className="font-bold text-sm text-slate-800 border-b border-slate-100 pb-2 flex items-center gap-1.5">
               <ShieldCheck size={16} className="text-md-tertiary" />
               Thông Tin Cá Nhân
@@ -195,7 +198,6 @@ export default function ShipperProfile() {
                 <User className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
                 <input
                   type="text"
-                  required
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-radius-lg text-xs focus:outline-none focus:border-md-tertiary focus:bg-white transition-all font-semibold text-slate-700"
@@ -275,7 +277,7 @@ export default function ShipperProfile() {
               </label>
               <input
                 type="text"
-                placeholder="Ví dụ: 29E2-678.90..."
+                placeholder="Ví dụ: 29E2-678.90"
                 value={licensePlate}
                 onChange={(e) => setLicensePlate(e.target.value)}
                 className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-radius-lg text-xs focus:outline-none focus:border-md-tertiary focus:bg-white transition-all font-semibold text-slate-700"
@@ -283,7 +285,8 @@ export default function ShipperProfile() {
             </div>
 
             <Button
-              type="submit"
+              type="button"
+              onClick={handleSave}
               loading={updating}
               className="w-full mt-4 !bg-md-tertiary text-white font-bold !py-3.5 !px-4 rounded-radius-full shadow-sm hover:scale-[1.01] active:scale-[0.99] transition-all text-xs uppercase tracking-wider"
             >

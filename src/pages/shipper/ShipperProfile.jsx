@@ -19,9 +19,11 @@ export default function ShipperProfile() {
   // States cho form chỉnh sửa
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
+  const [email, setEmail] = useState('');
   const [vehicleType, setVehicleType] = useState('MOTORBIKE');
   const [licensePlate, setLicensePlate] = useState('');
   const [idCard, setIdCard] = useState('');
+
   const [activeDelivery, setActiveDelivery] = useState(0);
   const [totalDelivery, setTotalDelivery] = useState(0);
   const [avgRating, setAvgRating] = useState(5.0);
@@ -50,7 +52,8 @@ export default function ShipperProfile() {
       if (realUser) {
         setName(realUser.fullName || '');
         setPhone(realUser.phone || '');
-        setVehicleType(realUser.vehicleType || 'MOTORBIKE');
+        setEmail(realUser.email || '');
+        setVehicleType(realUser.vehicleType || '');
         setLicensePlate(realUser.licensePlate || '');
         setIdCard(realUser.idCard || 'Chưa cung cấp');
         setActiveDelivery(realUser.activeDelivery || 0);
@@ -74,9 +77,12 @@ export default function ShipperProfile() {
       toast.warning('Vui lòng nhập Họ và tên!');
       return;
     }
-    // Dùng validatePhone (0 + 10 số) thay vì chỉ đếm độ dài -> chặn cả chữ và số 11 ký tự.
-    if (!validatePhone(phone)) {
-      toast.warning('Số điện thoại không hợp lệ (bắt đầu bằng số 0 và gồm 10 chữ số)!');
+    if (!email.trim()) {
+      toast.warning('Vui lòng nhập email!');
+      return;
+    }
+    if (!validateEmail(email)) {
+      toast.warning('Email không hợp lệ!');
       return;
     }
     if (!licensePlate.trim()) {
@@ -101,7 +107,7 @@ export default function ShipperProfile() {
         licensePlate: licensePlate.trim()
       });
       
-      toast.success('Đã cập nhật hồ sơ cá nhân và thông tin phương tiện thành công!');
+      toast.success('Đã cập nhật hồ sơ cá nhân thành công!');
     } catch (err) {
       console.error('Lỗi khi cập nhật hồ sơ shipper:', err);
       toast.error(err.response?.data?.message || 'Có lỗi xảy ra khi cập nhật hồ sơ.');
@@ -119,15 +125,13 @@ export default function ShipperProfile() {
 
   return (
     <div className="flex-1 p-4 md:p-8 max-w-xl mx-auto w-full font-google-sans pb-24 space-y-6">
-      <h1 className="text-xl font-bold text-slate-800">Hồ sơ cá nhân</h1>
+      <h1 className="text-xl font-bold text-slate-800">Hồ Sơ Cá Nhân</h1>
 
       {loading ? (
         <Spinner />
       ) : (
         <>
-          {/* Shipper Avatar card — cover gradient + avatar đè lên + 3 thẻ thống kê */}
           <div className="bg-white rounded-radius-xl border border-slate-200/60 shadow-sm overflow-hidden relative animate-fade-in">
-            {/* Cover gradient xanh shipper */}
             <div className="h-24 bg-gradient-to-br from-[#2E7D32] to-md-tertiary relative">
               <div className="absolute -right-6 -top-6 w-28 h-28 rounded-full bg-white/10" />
               <Bike className="absolute right-4 bottom-3 text-white/20" size={40} />
@@ -155,7 +159,6 @@ export default function ShipperProfile() {
               </div>
               <h2 className="font-bold text-base text-slate-800 mt-3">{name}</h2>
               <span className="text-[10px] text-md-tertiary bg-[#E8F5E9] font-bold px-3 py-1 rounded-full uppercase mt-1.5 tracking-wider border border-[#C8E6C9] inline-flex items-center gap-1">
-                {/* icon Trophy thay emoji 🏆 */}
                 <Trophy size={11} /> TÀI XẾ {Number(avgRating).toFixed(1)} SAO
               </span>
 
@@ -181,11 +184,10 @@ export default function ShipperProfile() {
           </div>
 
           {/* Form cập nhật hồ sơ */}
-          <form onSubmit={handleSave} className="bg-white rounded-radius-xl p-5 border border-slate-200/60 shadow-sm space-y-5 animate-slide-up">
-            
+          <form onSubmit={handleSave} className="bg-white rounded-radius-xl p-5 border border-slate-200/60 shadow-sm space-y-5 animate-slide-up">            
             <h3 className="font-bold text-sm text-slate-800 border-b border-slate-100 pb-2 flex items-center gap-1.5">
               <ShieldCheck size={16} className="text-md-tertiary" />
-              Thông tin tài khoản & Liên hệ
+              Thông Tin Cá Nhân
             </h3>
 
             <div>
@@ -206,28 +208,28 @@ export default function ShipperProfile() {
 
             <div>
               <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">
-                Địa chỉ Email (Không thể thay đổi)
+                Địa chỉ Email 
               </label>
               <div className="relative">
                 <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-350" size={16} />
                 <input
                   type="email"
-                  disabled
-                  value={user.email}
-                  className="w-full pl-10 pr-4 py-2.5 bg-slate-100 border border-slate-200/50 rounded-radius-lg text-xs text-slate-400 cursor-not-allowed font-semibold"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-radius-lg text-xs focus:outline-none focus:border-md-tertiary focus:bg-white transition-all font-semibold text-slate-700"
                 />
               </div>
             </div>
 
             <div>
               <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">
-                Số điện thoại liên hệ
+                Số điện thoại 
               </label>
               <div className="relative">
                 <Phone className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
                 <input
                   type="tel"
-                  required
+                  readOnly
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
                   className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-radius-lg text-xs focus:outline-none focus:border-md-tertiary focus:bg-white transition-all font-semibold text-slate-700"
@@ -237,22 +239,22 @@ export default function ShipperProfile() {
 
             <div>
               <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">
-                Căn cước công dân (Đã xác minh hệ thống)
+                Căn cước công dân 
               </label>
               <div className="relative">
                 <Clipboard className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-355" size={16} />
                 <input
                   type="text"
-                  disabled
+                  readOnly
                   value={idCard}
-                  className="w-full pl-10 pr-4 py-2.5 bg-slate-100 border border-slate-200/50 rounded-radius-lg text-xs text-slate-400 cursor-not-allowed font-semibold"
+                  className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-radius-lg text-xs focus:outline-none focus:border-md-tertiary focus:bg-white transition-all font-semibold text-slate-700"
                 />
               </div>
             </div>
 
             <h3 className="font-bold text-sm text-slate-800 border-b border-slate-100 pt-4 pb-2 flex items-center gap-1.5">
               <Bike size={16} className="text-md-tertiary" />
-              Thông tin phương tiện di chuyển
+              Thông Tin Phương Tiện Di Chuyển
             </h3>
 
             <div>
@@ -264,15 +266,15 @@ export default function ShipperProfile() {
                 onChange={(e) => setVehicleType(e.target.value)}
                 className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-radius-lg text-xs focus:outline-none focus:border-md-tertiary focus:bg-white transition-all font-semibold text-slate-700"
               >
-                <option value="MOTORBIKE">Xe máy (Motorbike)</option>
-                <option value="BICYCLE">Xe đạp (Bicycle)</option>
-                <option value="CAR">Ô tô (Car)</option>
+                <option value="ALL">Tất cả</option>
+                <option value="MOTORBIKE">Xe máy</option>
+                <option value="CAR">Ô tô</option>
               </select>
             </div>
 
             <div>
               <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">
-                Biển số xe / Biển kiểm soát
+                Biển số xe
               </label>
               <input
                 type="text"
@@ -291,7 +293,7 @@ export default function ShipperProfile() {
               {updating ? (
                 <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
               ) : (
-                'Lưu thay đổi hồ sơ'
+                'Cập Nhật Hồ Sơ'
               )}
             </button>
           </form>

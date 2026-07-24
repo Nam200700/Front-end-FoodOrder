@@ -7,15 +7,16 @@ import apiClient from '../../services/api';
 import { getAvatarUrl } from '../../utils/avatarHelper';
 import { toast } from 'react-toastify';
 import { useAvatarUpload } from '../../hooks/useAvatarUpload';
-import { validatePhone } from '../../utils/validation';
+import { validateEmail } from '../../utils/validation';
 
 export default function Profile() {
   const navigate = useNavigate();
   const { user, logout, updateProfile } = useAuthStore();
 
-  const [name, setName] = useState(user?.name || 'Nguyễn Văn A');
-  const [phone, setPhone] = useState(user?.phone || '0901234567');
-  const [address, setAddress] = useState(user?.address || '123 Lê Lợi, Phường Bến Thành, Quận 1, TP.HCM');
+  const [name, setName] = useState(user?.name || '');
+  const [phone, setPhone] = useState(user?.phone || '');
+  const [email, setEmail] = useState(user?.email || '')
+  const [address, setAddress] = useState(user?.address || '');
   
   // TOẠ ĐỘ MẶC ĐỊNH LƯU TRONG PROFILE
   const [lat, setLat] = useState(user?.lat || 10.762622);
@@ -24,7 +25,7 @@ export default function Profile() {
   const [isMapOpen, setIsMapOpen] = useState(false);
   const [updating, setUpdating] = useState(false);
   const [nameError, setNameError] = useState('');
-  const [phoneError, setPhoneError] = useState(''); 
+  const [emailError, setEmailError] = useState('');
   const fileInputRef = useRef(null);
   const { uploading: uploadingAvatar, handleAvatarChange: uploadAvatar } = useAvatarUpload();
 
@@ -51,31 +52,32 @@ export default function Profile() {
   const handleSave = async (e) => {
     e.preventDefault();
     if (!name.trim()) {
-      setNameError('Vui lòng nhập họ và tên.');
+      setNameError('Vui lòng nhập họ và tên!');
       return;
     } else {
       setNameError('');
     }
 
-    // Chặn lưu SĐT sai định dạng (bắt đầu bằng 0, gồm 10 chữ số) để không lưu số rác lên DB.
-    if (!validatePhone(phone)) {
-      setPhoneError('Số điện thoại không hợp lệ (bắt đầu bằng số 0 và gồm 10 chữ số).');
-      toast.warn('Số điện thoại không hợp lệ. Vui lòng kiểm tra lại!');
+    if(!email.trim()) {
+      setEmailError('Vui lòng nhập Email!');
       return;
     }
-    setPhoneError('');
+    if (!validateEmail(email)) {
+      setEmailError('Email không hợp lệ!');
+      return;
+    }
+
     setUpdating(true);
     try {
-      // Cập nhật thông tin profile thật gồm cả toạ độ mặc định lên cơ sở dữ liệu backend
       await apiClient.put('/users/profile', {
         fullName: name,
-        phone: phone,
+        email: email,
         address: address,
         latitude: Number(lat),
         longitude: Number(lng)
       });
       updateProfile({ name, phone, address, lat, lng });
-      toast.success('Đã cập nhật thông tin cá nhân thành công!');
+      toast.success('Cập nhật thông tin cá nhân thành công!');
     } catch (err) {
       console.error('Lỗi khi lưu profile thật lên DB:', err);
       toast.error(err.response?.data?.message || 'Có lỗi xảy ra khi cập nhật thông tin cá nhân.');
@@ -93,16 +95,12 @@ export default function Profile() {
 
   return (
     <div className="flex-1 p-4 md:p-8 max-w-4xl mx-auto w-full font-google-sans pb-24 space-y-6">
-      {/* Bố cục 2 cột BẰNG NHAU (desktop): thẻ thành viên (trái) + form hồ sơ (phải).
-          Bỏ items-start → 2 cột kéo giãn cao bằng nhau (form cao = thẻ thành viên +
-          truy cập nhanh). Mini-map đưa xuống dưới full-width. */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
       {/* ─── CỘT TRÁI: thẻ thành viên + thẻ truy cập nhanh ───────────────────────── */}
       <div className="space-y-6">
 
       {/* ─── THẺ THÀNH VIÊN ẨM THỰC (membership card, accent cam) ─────────────────── */}
       <div className="relative overflow-hidden rounded-radius-xl p-6 shadow-shadow-2 bg-gradient-to-br from-md-primary to-[#FF8C42] text-white animate-fade-in">
-        {/* Hoạ tiết line-art mờ ở góc tạo cảm giác "sổ tay ẩm thực" */}
         <Utensils className="absolute -right-4 -bottom-4 text-white/10" size={120} strokeWidth={1.2} />
 
         <div className="relative flex items-center gap-5">
@@ -136,9 +134,6 @@ export default function Profile() {
           </div>
         </div>
 
-        {/* Dải chân thẻ kiểu thẻ hội viên thật: mã thành viên (từ userId thật) +
-            trạng thái xác thực — lấp khoảng trống & tăng cảm giác "thẻ" chỉn chu.
-            Chỉ dùng dữ liệu đang có (userId/email), KHÔNG bịa điểm/hạng. */}
         <div className="relative mt-6 pt-4 border-t border-white/25 flex items-end justify-between gap-3">
           <div className="min-w-0">
             <p className="text-[9px] font-bold text-white/70 uppercase tracking-[0.15em]">Mã thành viên</p>
@@ -152,9 +147,6 @@ export default function Profile() {
         </div>
       </div>
 
-      {/* ─── THẺ TRUY CẬP NHANH: lối tắt tới các trang sẵn có (orders/favorites/...) ──
-          Dùng navigate() tới đúng route đang tồn tại — không thêm logic/route mới,
-          vừa lấp khoảng trống vừa tăng tiện ích cho "sổ tay ẩm thực". */}
       <div className="bg-white rounded-radius-xl p-5 border border-md-outline-variant/20 shadow-sm">
         <h3 className="text-sm font-extrabold text-md-on-surface flex items-center gap-2 pb-3 mb-2 border-b border-md-outline-variant/20">
           <Sparkles size={16} className="text-md-primary" /> Truy cập nhanh
@@ -227,11 +219,21 @@ export default function Profile() {
           <div className="relative">
             <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 text-md-outline" size={16} />
             <input
-              type="email"              
-              value={user.email}
-              className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-md-outline-variant rounded-radius-lg text-xs focus:outline-none focus:border-md-primary focus:bg-white transition-all font-semibold"
-            />
+              type="text"              
+              value={email}
+              onChange={(e) => {
+                setEmail(e.target.value);
+                if (emailError) setEmailError('');
+              }}
+              className={`w-full pl-10 pr-4 py-2.5 bg-slate-50 border rounded-radius-lg text-xs focus:outline-none focus:bg-white transition-all font-semibold ${
+                emailError ? 'border-red-500 focus:border-red-500' : 'border-md-outline-variant focus:border-md-primary'
+              }`}            />
           </div>
+          {emailError && (
+            <span className="text-[11px] text-red-500 font-bold mt-1.5 ml-1 flex items-start gap-1">
+              <AlertTriangle size={12} className="shrink-0 mt-0.5" /> <span>{emailError}</span>
+            </span>
+          )}
         </div>
 
         <div>
@@ -244,18 +246,10 @@ export default function Profile() {
               type="tel"
               readOnly
               value={phone}
-              onChange={(e) => { setPhone(e.target.value); if (phoneError) setPhoneError(''); }}
-              onBlur={() => setPhoneError(validatePhone(phone) ? '' : 'Số điện thoại không hợp lệ (bắt đầu bằng số 0 và gồm 10 chữ số).')}
-              className={`w-full pl-10 pr-4 py-2.5 bg-slate-50 border rounded-radius-lg text-xs focus:outline-none focus:bg-white transition-all font-semibold ${
-                phoneError ? 'border-red-500 focus:border-red-500' : 'border-md-outline-variant focus:border-md-primary'
-              }`}
+              onChange={(e) => { setPhone(e.target.value);}}
+              className={`w-full pl-10 pr-4 py-2.5 bg-slate-50 border rounded-radius-lg text-xs focus:outline-none focus:bg-white transition-all font-semibold`}
             />
           </div>
-          {phoneError && (
-            <span className="text-[11px] text-red-500 font-bold mt-1.5 ml-1 flex items-start gap-1">
-              <AlertTriangle size={12} className="shrink-0 mt-0.5" /> <span>{phoneError}</span>
-            </span>
-          )}
         </div>
 
         {/* Địa chỉ mặc định thật có chọn bản đồ */}
@@ -293,18 +287,12 @@ export default function Profile() {
           {updating ? (
             <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
           ) : (
-            'Lưu thay đổi'
+            'Cập nhật thông tin'
           )}
         </button>
       </form>
 
       </div>
-      {/* đóng grid 2 cột */}
-
-      {/* ─── THẺ XEM TRƯỚC VỊ TRÍ GIAO HÀNG (FULL-WIDTH, nằm dưới 2 cột) ───────────
-          Hiển thị bản đồ tĩnh (nhúng OpenStreetMap, miễn phí, không cần API key)
-          theo đúng toạ độ lat/lng đang lưu trong state — tự cập nhật khi user chọn
-          lại địa chỉ qua MapModal. Thuần trình bày, không đụng logic/backend. */}
       <div className="bg-white rounded-radius-xl p-5 border border-md-outline-variant/20 shadow-sm">
         <div className="flex items-center justify-between mb-3">
           <h3 className="text-sm font-extrabold text-md-on-surface flex items-center gap-2">
@@ -318,7 +306,6 @@ export default function Profile() {
             <Map size={13} /> Chọn lại
           </button>
         </div>
-        {/* Khung map preview: bbox quanh toạ độ + marker tại đúng vị trí đã lưu */}
         <div className="rounded-radius-lg overflow-hidden border border-md-outline-variant/30">
           <iframe
             title="Bản đồ vị trí giao hàng"

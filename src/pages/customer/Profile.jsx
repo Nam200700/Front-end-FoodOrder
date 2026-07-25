@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../stores/authStore';
-import { User, Phone, Mail, MapPin, LogOut, Camera, Map, Utensils, Sparkles, ShoppingBag, Heart, Bell, MessageCircle, ChevronRight, ShieldCheck, Edit2 } from 'lucide-react';
+import { User, Phone, Mail, MapPin, LogOut, Camera, Map, Utensils, Sparkles, ShoppingBag, Heart, Bell, MessageCircle, ChevronRight, ShieldCheck, Edit2, Plus } from 'lucide-react';
 import MapModal from '../../components/common/MapModal';
 import apiClient from '../../services/api';
 import { getAvatarUrl } from '../../utils/avatarHelper';
@@ -50,7 +50,7 @@ export default function Profile() {
   const [editingAddressId, setEditingAddressId] = useState(null);
   const [isUpdatingLocation, setIsUpdatingLocation] = useState(false);
 
-  // Lấy danh sách địa chỉ khi load trang
+  // Lấy danh sách địa chỉ 
   useEffect(() => { 
     fetchUserAddresses();
   }, []);
@@ -315,10 +315,11 @@ export default function Profile() {
           <span className="inline-flex items-center gap-1 text-[10px] font-bold bg-white/15 px-2.5 py-1 rounded-full shrink-0">
             <ShieldCheck size={12} /> Đã xác thực
           </span>
+
         </div>
       </div>
 
-      <div className="bg-white rounded-radius-xl p-5 border border-md-outline-variant/20 shadow-sm">
+      <Card className="p-5 border border-md-outline-variant/20 shadow-sm">
         <h3 className="text-sm font-extrabold text-md-on-surface flex items-center gap-2 pb-3 mb-2 border-b border-md-outline-variant/20">
           <Sparkles size={16} className="text-md-primary" /> Truy cập nhanh
         </h3>
@@ -346,12 +347,12 @@ export default function Profile() {
             </button>
           ))}
         </div>
-      </div>
+      </Card>
 
       </div>
 
       {/* ─── CỘT PHẢI: form hồ sơ ──────────────────────────── */}
-      <form onSubmit={handleSave} className="bg-white rounded-radius-xl p-5 border border-md-outline-variant/20 shadow-sm space-y-5.5 animate-slide-up h-full flex flex-col">
+      <Card as="form" onSubmit={handleSave} className="p-5 border border-md-outline-variant/20 shadow-sm space-y-5.5 animate-slide-up h-full flex flex-col">
         <div className="flex items-center gap-2 pb-1 border-b border-md-outline-variant/20">
           <User size={16} className="text-md-primary" />
           <h3 className="text-sm font-extrabold text-md-on-surface">Hồ Sơ Của Bạn</h3>
@@ -378,10 +379,10 @@ export default function Profile() {
           <div className="relative">
             <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 text-md-outline" size={16} />
             <input
-              type="text"             
+              type="text"            
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-md-outline-variant focus:border-md-primary rounded-radius-lg text-xs focus:outline-none focus:bg-white transition-all font-semibold"           />
+              className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-md-outline-variant focus:border-md-primary rounded-radius-lg text-xs focus:outline-none focus:bg-white transition-all font-semibold"         />
           </div>
         </div>
 
@@ -401,69 +402,67 @@ export default function Profile() {
           </div>
         </div>
 
-        {/* Địa chỉ mặc định thật có chọn bản đồ */}
         <div className="space-y-1.5 pt-1">
-          <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
-            <MapPin size={12} className="text-slate-400" /> Địa chỉ 
+          <label className="block text-[10px] font-bold text-md-on-surface-variant uppercase tracking-wider mb-2">
+            Địa chỉ 
           </label>
-          <div className="p-3 border border-slate-100 rounded-xl bg-slate-50/30 min-h-[56px] flex flex-col justify-center relative">
-            {isUpdatingLocation && (
-              <div className="absolute inset-0 bg-white/70 flex items-center justify-center rounded-xl">
-                <Spinner size="sm" />
-              </div>
-            )}
-            <p className="text-xs text-slate-700 font-medium leading-relaxed">
-              {address || 'Chưa chọn địa chỉ giao hàng'}
-            </p>
+          <div className="relative flex items-center">
+            <MapPin className="absolute left-3.5 text-md-outline pointer-events-none" size={16} />
+            <div className="w-full pl-10 pr-24 py-2.5 bg-slate-50 border border-md-outline-variant rounded-radius-lg text-xs font-semibold text-slate-700 min-h-[42px] flex items-center truncate">
+              {isUpdatingLocation ? (
+                <span className="flex items-center gap-2 text-slate-400">
+                  <Spinner size="sm" /> Đang cập nhật...
+                </span>
+              ) : (
+                <span className="truncate">{address || 'Chưa chọn địa chỉ giao hàng'}</span>
+              )}
+            </div>
+
+            <button
+              type="button"
+              onClick={() => {
+                if (!address) {
+                  setEditingAddressId(null);
+                  setNewAddressText('');
+                  setNewAddressLat(null);
+                  setNewAddressLng(null);
+                  setAddressLabel('Nhà riêng');
+                  addAddressModal.open();
+                } else {
+                  addressListModal.open();
+                }
+              }}
+              className="absolute right-1.5 px-3 py-1.5 bg-md-primary/10 hover:bg-md-primary/20 text-md-primary rounded-md text-[11px] font-bold transition-all cursor-pointer flex items-center gap-1"
+            >
+              {address ? (
+                <>
+                  <Edit2 size={12} /> Đổi
+                </>
+              ) : (
+                <>
+                  <Plus size={12} /> Thêm
+                </>
+              )}
+            </button>
           </div>
-          
-          <Button
-            type="button"
-            icon={address ? Edit2 : Plus}
-            onClick={() => {
-              if (!address) {
-                setEditingAddressId(null);
-                setNewAddressText('');
-                setNewAddressLat(null);
-                setNewAddressLng(null);
-                setAddressLabel('Nhà riêng');
-                addAddressModal.open();
-              } else {
-                addressListModal.open();
-              }
-            }}
-            className="w-full !mt-0 !bg-orange-600 hover:!bg-orange-700 text-white font-bold py-3 rounded-xl flex items-center justify-center gap-2 cursor-pointer"
-          >
-            {address ? 'Thay Đổi Địa Chỉ' : 'Thêm Mới Địa Chỉ'}
-          </Button>
         </div>
 
-        <button
+        <Button
           type="submit"
           disabled={updating}
+          loading={updating}
           className="w-full mt-auto bg-md-primary text-white font-bold py-3.5 px-4 rounded-radius-full shadow-shadow-2 hover:shadow-shadow-3 hover:translate-y-[-1.5px] active:translate-y-[0px] transition-all flex items-center justify-center gap-2 text-xs uppercase tracking-wider cursor-pointer"
         >
-          {updating ? (
-            <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
-          ) : (
-            'Cập nhật thông tin'
-          )}
-        </button>
-      </form>
+          Cập nhật thông tin
+        </Button>
+      </Card>
 
       </div>
-      <div className="bg-white rounded-radius-xl p-5 border border-md-outline-variant/20 shadow-sm">
+      <Card className="p-5 border border-md-outline-variant/20 shadow-sm">
         <div className="flex items-center justify-between mb-3">
           <h3 className="text-sm font-extrabold text-md-on-surface flex items-center gap-2">
-            <MapPin size={16} className="text-md-primary" /> Vị trí giao hàng
+            <MapPin size={16} className="text-md-primary" /> Vị Trí 
           </h3>
-          <button
-            type="button"
-            onClick={() => setIsMapOpen(true)}
-            className="text-xs font-bold text-md-primary hover:underline flex items-center gap-1 cursor-pointer"
-          >
-            <Map size={13} /> Chọn lại
-          </button>
         </div>
         <div className="rounded-radius-lg overflow-hidden border border-md-outline-variant/30">
           <iframe
@@ -477,16 +476,18 @@ export default function Profile() {
           <MapPin size={14} className="mt-0.5 shrink-0 text-md-primary" />
           {address}
         </p>
-      </div>
+      </Card>
 
       {/* Dangerous Operations */}
-      <button
+      <Button
+        type="button"
+        variant="danger"
         onClick={handleLogout}
-        className="w-full flex items-center justify-center gap-2 text-xs font-bold text-red-500 hover:text-red-700 bg-red-50 hover:bg-red-100 py-3.5 rounded-radius-full border border-red-200/50 transition-all active:scale-[0.99] cursor-pointer"
+        className="w-full !flex items-center justify-center gap-2 text-xs font-bold !text-red-500 hover:!text-red-700 !bg-red-50 hover:!bg-red-100 py-3.5 rounded-radius-full border !border-red-200/50 transition-all active:scale-[0.99] cursor-pointer shadow-none"
+        icon={LogOut}
       >
-        <LogOut size={15} />
         Đăng xuất khỏi hệ thống
-      </button>
+      </Button>
 
       {/* MapModal chọn địa chỉ mặc định */}
       <MapModal
@@ -658,9 +659,10 @@ export default function Profile() {
               type="button"
               onClick={handleProceedToMap}
               disabled={isUpdatingLocation}
+              loading={isUpdatingLocation}
               className="!rounded-2xl !text-xs !font-bold !py-2.5 !px-6 !bg-[#ff6b35] text-white hover:!bg-orange-600 cursor-pointer shadow-md shadow-orange-500/20"
             >
-              {isUpdatingLocation ? 'Đang xử lý...' : 'Xác nhận'}
+              Xác nhận
             </Button>
           </div>
         </div>

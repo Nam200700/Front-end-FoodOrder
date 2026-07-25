@@ -110,7 +110,97 @@ export default function Profile() {
     }
   };
 
+  // Chuyển sang MapModal từ modal nhập text
+  const handleProceedToMap = async (e) => {
+    e.preventDefault();
+    if (!newAddressText.trim()) {
+      toast.warning('Vui lòng nhập địa chỉ cụ thể!');
+      return;
+    }
 
+    setIsUpdatingLocation(true);
+    try {
+      let cleanQuery = newAddressText
+        .replace(/trường\s+thcs\s+/gi, '')
+        .replace(/trường\s+tiểu học\s+/gi, '')
+        .replace(/xã\s+/gi, '')
+        .replace(/\d+\/\d+\s+ấp\s+\d+/gi, '')
+        .replace(/ấp\s+\d+/gi, '')
+        .replace(/^\d+[\/\-]?\d*\s*,?/g, '')
+        .trim();
+
+      const response = await axios.get(`https://nominatim.openstreetmap.org/search`, {
+        params: { format: 'json', q: cleanQuery, limit: 1, 'accept-language': 'vi' },
+        headers: { 'User-Agent': 'FoodDeliveryApp/1.0' }
+      });
+
+      let lat = 10.7769; 
+      let lng = 106.7009;
+
+      if (response.data && response.data.length > 0) {
+        lat = parseFloat(response.data[0].lat);
+        lng = parseFloat(response.data[0].lon);
+      }
+
+      setNewAddressLat(lat);
+      setNewAddressLng(lng);
+
+      addAddressModal.close();
+      mapModal.open();
+    } catch (err) {
+      console.warn('Lỗi lấy tọa độ, chuyển sang ghim thủ công:', err);
+      setNewAddressLat(10.7769);
+      setNewAddressLng(106.7009);
+
+      toast.info('Vui lòng chọn hoặc di chuyển ghim trực tiếp trên bản đồ.');
+      addAddressModal.close();
+      mapModal.open();
+    } finally {
+      setIsUpdatingLocation(false);
+    }
+  };
+
+  // Lưu lại sau khi ghim trên bản đồ
+  const handleMapConfirmAndSave = async (lat, lng, addressName) => {
+    try {
+      const payload = {
+        label: addressLabel || 'Nhà riêng',
+        address: newAddressText,
+        latitude: Number(lat),
+        longitude: Number(lng),
+        isDefault: userAddresses.length === 0
+      };
+
+      if (editingAddressId) {
+        await apiClient.put(`/addresses/${editingAddressId}`, payload);
+        toast.success('Cập nhật địa chỉ thành công!');
+      } else {
+        await apiClient.post('/addresses', payload);
+        toast.success('Thêm địa chỉ mới thành công!');
+      }
+
+      if (!selectedAddressId || editingAddressId === selectedAddressId || payload.isDefault) {
+        setAddress(newAddressText);
+        setLat(Number(lat));
+        setLng(Number(lng));
+        updateProfile({ 
+          name: name.trim(), 
+          address: newAddressText, 
+          lat: Number(lat), 
+          lng: Number(lng) 
+        });
+      }
+      
+      mapModal.close();
+      setEditingAddressId(null);
+      await fetchUserAddresses();
+      addAddressModal.close();
+      addressListModal.open();
+    } catch (err) {
+      console.error('Lỗi lưu địa chỉ:', err);
+      toast.error(err.response?.data?.message || 'Lưu địa chỉ thất bại!');
+    }
+  };
 
   const handleAvatarClick = () => {
     if (fileInputRef.current) {

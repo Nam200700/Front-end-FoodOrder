@@ -367,7 +367,7 @@ export default function Profile() {
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-md-outline-variant focus:border-md-primary rounded-radius-lg text-xs focus:outline-none focus:bg-white transition-all font-semibold"
+              className="w-full pl-10 pr-4 py-2.5 border border-md-outline-variant focus:border-md-primary rounded-radius-lg text-xs focus:outline-none focus:bg-white transition-all font-semibold"
             />
           </div>
         </div>
@@ -382,7 +382,7 @@ export default function Profile() {
               type="text"            
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-md-outline-variant focus:border-md-primary rounded-radius-lg text-xs focus:outline-none focus:bg-white transition-all font-semibold"         />
+              className="w-full pl-10 pr-4 py-2.5 border border-md-outline-variant focus:border-md-primary rounded-radius-lg text-xs focus:outline-none focus:bg-white transition-all font-semibold"         />
           </div>
         </div>
 
@@ -397,27 +397,16 @@ export default function Profile() {
               readOnly
               value={phone}
               onChange={(e) => { setPhone(e.target.value);}}
-              className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-md-outline-variant rounded-radius-lg text-xs focus:outline-none focus:bg-white transition-all font-semibold"
+              className="w-full pl-10 pr-4 py-2.5 border border-md-outline-variant rounded-radius-lg text-xs focus:outline-none focus:bg-white transition-all font-semibold"
             />
           </div>
         </div>
 
         <div className="space-y-1.5 pt-1">
-          <label className="block text-[10px] font-bold text-md-on-surface-variant uppercase tracking-wider mb-2">
-            Địa chỉ 
-          </label>
-          <div className="relative flex items-center">
-            <MapPin className="absolute left-3.5 text-md-outline pointer-events-none" size={16} />
-            <div className="w-full pl-10 pr-24 py-2.5 bg-slate-50 border border-md-outline-variant rounded-radius-lg text-xs font-semibold text-slate-700 min-h-[42px] flex items-center truncate">
-              {isUpdatingLocation ? (
-                <span className="flex items-center gap-2 text-slate-400">
-                  <Spinner size="sm" /> Đang cập nhật...
-                </span>
-              ) : (
-                <span className="truncate">{address || 'Chưa chọn địa chỉ giao hàng'}</span>
-              )}
-            </div>
-
+          <div className="flex items-center justify-between mb-2">
+            <label className="block text-[10px] font-bold text-md-on-surface-variant uppercase tracking-wider">
+              Địa chỉ giao hàng
+            </label>
             <button
               type="button"
               onClick={() => {
@@ -432,18 +421,31 @@ export default function Profile() {
                   addressListModal.open();
                 }
               }}
-              className="absolute right-1.5 px-3 py-1.5 bg-md-primary/10 hover:bg-md-primary/20 text-md-primary rounded-md text-[11px] font-bold transition-all cursor-pointer flex items-center gap-1"
+              className="px-2.5 py-1 bg-md-primary/10 hover:bg-md-primary/20 text-md-primary rounded-md text-[11px] font-bold transition-all cursor-pointer inline-flex items-center gap-1"
             >
               {address ? (
                 <>
-                  <Edit2 size={12} /> Đổi
+                  <Edit2 size={12} /> Đổi địa chỉ
                 </>
               ) : (
                 <>
-                  <Plus size={12} /> Thêm
+                  <Plus size={12} /> Thêm địa chỉ
                 </>
               )}
             </button>
+          </div>
+
+          <div className="relative flex items-start">
+            <MapPin className="absolute left-3.5 top-3 text-md-outline pointer-events-none" size={16} />
+            <div className="w-full pl-10 pr-4 py-2.5 border border-md-outline-variant rounded-radius-lg text-xs font-semibold text-slate-700 min-h-[46px] flex items-center">
+              {isUpdatingLocation ? (
+                <span className="flex items-center gap-2 text-slate-400">
+                  <Spinner size="sm" /> Đang cập nhật...
+                </span>
+              ) : (
+                <span className="break-words whitespace-normal leading-relaxed">{address || 'Chưa chọn địa chỉ giao hàng'}</span>
+              )}
+            </div>
           </div>
         </div>
 

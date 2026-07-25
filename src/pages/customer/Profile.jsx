@@ -617,7 +617,93 @@ export default function Profile() {
         </div>
       </Modal>
 
+      {/* ================= MODAL THÊM / CẬP NHẬT ĐỊA CHỈ ================= */}
+      <Modal 
+        isOpen={addAddressModal.isOpen} 
+        onClose={() => {
+          addAddressModal.close();
+          setEditingAddressId(null);
+        }}
+        title={editingAddressId ? "Cập Nhật Địa Chỉ" : "Thêm Địa Chỉ Mới"}
+        size="md"
+        className="!rounded-2xl"
+      >
+        <div className="space-y-4 -mx-6 -my-6 px-6 py-4">
+          <div>
+            <label className="text-xs font-bold text-slate-800 block mb-1.5">
+              Địa chỉ cụ thể <span className="text-red-500">*</span>
+            </label>
+            <div className="relative">
+              <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                <MapPin size={15} />
+              </span>
+              <input 
+                type="text"
+                value={newAddressText}
+                onChange={(e) => setNewAddressText(e.target.value)}
+                placeholder="Ví dụ: Đường Tô Ký, Phường Trung Mỹ Tây, TP.HCM..."
+                className="w-full pl-9 pr-3 py-3 text-xs border border-slate-200 rounded-2xl bg-white text-slate-800 font-semibold focus:outline-none focus:border-[#ff6b35]"
+              />
+            </div>
+          </div>
 
+          <div>
+            <label className="text-xs font-bold text-slate-800 block mb-2">Loại địa chỉ:</label>
+            <div className="flex gap-3">
+              {['Nhà riêng', 'Văn phòng'].map((lbl) => (
+                <button
+                  key={lbl}
+                  type="button"
+                  onClick={() => setAddressLabel(lbl)}
+                  className={`px-5 py-2.5 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
+                    addressLabel === lbl ? 'border-[#ff6b35] bg-orange-50/40 text-[#ff6b35] shadow-sm' : 'border-slate-200 text-slate-600 hover:bg-slate-50'
+                  }`}
+                >
+                  {lbl}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="pt-4 -mx-6 px-6 border-t border-slate-100 flex items-center justify-end gap-3 mt-6 bg-white">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                addAddressModal.close();
+                setEditingAddressId(null);
+                addressListModal.open(); 
+              }}
+              className="!rounded-2xl !text-xs !font-bold !py-2.5 !px-5 cursor-pointer border-slate-200 text-slate-600 hover:bg-slate-50"
+            >
+              Quay Lại
+            </Button>
+            <Button
+              type="button"
+              onClick={handleProceedToMap}
+              disabled={isUpdatingLocation}
+              className="!rounded-2xl !text-xs !font-bold !py-2.5 !px-6 !bg-[#ff6b35] text-white hover:!bg-orange-600 cursor-pointer shadow-md shadow-orange-500/20"
+            >
+              {isUpdatingLocation ? 'Đang xử lý...' : 'Xác nhận'}
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* ================= MAP MODAL ================= */}
+      {mapModal.isOpen && (
+        <MapModal 
+          key={`${newAddressLat}_${newAddressLng}_${mapModal.isOpen}`}
+          isOpen={mapModal.isOpen} 
+          onClose={() => {
+            mapModal.close();
+            addAddressModal.open(); 
+          }} 
+          onConfirm={handleMapConfirmAndSave} 
+          initialLat={newAddressLat || 10.7769} 
+          initialLng={newAddressLng || 106.7009} 
+        />
+      )}
     </div>  
   );
 }

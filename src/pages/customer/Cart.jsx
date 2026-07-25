@@ -291,6 +291,72 @@ export default function Cart() {
     }
   };
 
+  // Nhập địa chỉ ở modal thêm mới -> Lấy kinh độ và vĩ độ -> Mở MapModal lên để xác nhận
+  const handleProceedToMap = async (e) => {
+    e.preventDefault();
+    if (!newAddressText.trim()) {
+      toast.warning('Vui lòng nhập địa chỉ cụ thể!');
+      return;
+    }
+
+    setIsUpdatingLocation(true);
+    try {
+      let cleanQuery = newAddressText
+        .replace(/trường\s+thcs\s+/gi, '')
+        .replace(/trường\s+tiểu học\s+/gi, '')
+        .replace(/xã\s+/gi, '')
+        // Loại bỏ các định dạng số nhà / ấp (ví dụ: "5/10 ấp 5", "123/4 ấp 2", v.v.)
+        .replace(/\d+\/\d+\s+ấp\s+\d+/gi, '')
+        // Loại bỏ các trường hợp chỉ có "ấp [số]" đứng độc lập nếu cần
+        .replace(/ấp\s+\d+/gi, '')
+        // Loại bỏ số nhà dạng "5/10," hoặc "5/10" ở đầu câu
+        .replace(/^\d+[\/\-]?\d*\s*,?/g, '')
+        .trim();
+
+      const response = await axios.get(
+        `https://nominatim.openstreetmap.org/search`, 
+        {
+          params: {
+            format: 'json',
+            q: cleanQuery,
+            limit: 1,
+            'accept-language': 'vi'
+          },
+          headers: {
+            'User-Agent': 'FoodDeliveryApp/1.0'
+          }
+        }
+      );
+
+      // Tọa độ mặc định TP.HCM 
+      let lat = 10.7769; 
+      let lng = 106.7009;
+
+      if (response.data && response.data.length > 0) {
+        lat = parseFloat(response.data[0].lat);
+        lng = parseFloat(response.data[0].lon);
+      } else {
+        toast.info('Không tìm thấy tọa độ chính xác, vui lòng kiểm tra và ghim vị trí trên bản đồ.');
+      }
+
+      setNewAddressLat(lat);
+      setNewAddressLng(lng);
+
+      addAddressModal.close();
+      mapModal.open();
+    } catch (err) {
+      console.warn('Lỗi lấy tọa độ, chuyển sang ghim thủ công:', err);
+      setNewAddressLat(10.7769);
+      setNewAddressLng(106.7009);
+
+      toast.info('Vui lòng chọn hoặc di chuyển ghim trực tiếp trên bản đồ.');
+      addAddressModal.close();
+      mapModal.open();
+    } finally {
+      setIsUpdatingLocation(false);
+    }
+  };
+
 
 
   if (loading && carts.length === 0) return <Spinner fullScreen />;

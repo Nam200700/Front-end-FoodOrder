@@ -940,7 +940,7 @@ export default function Cart() {
         size="md"
         className="!rounded-2xl"
       >
-        <form onSubmit={handleProceedToMap} className="space-y-4 -mx-6 -my-6 px-6 py-4">
+        <div className="space-y-4 -mx-6 -my-6 px-6 py-4">
           <div>
             <label className="text-xs font-bold text-slate-800 block mb-1.5">
               Địa chỉ cụ thể <span className="text-red-500">*</span>
@@ -953,7 +953,7 @@ export default function Cart() {
                 type="text"
                 value={newAddressText}
                 onChange={(e) => setNewAddressText(e.target.value)}
-                placeholder="Ví dụ: 123 Nguyễn Văn Linh, Quận 7, TP.HCM..."
+                placeholder="Ví dụ: Đường Tô Ký, Phường Trung Mỹ Tây, Thành Phố Hồ Chí Minh..."
                 className="w-full pl-9 pr-3 py-3 text-xs border border-slate-200 rounded-2xl bg-white text-slate-800 font-semibold focus:outline-none focus:border-[#ff6b35]"
               />
             </div>
@@ -990,14 +990,15 @@ export default function Cart() {
               Quay Lại
             </Button>
             <Button
-              type="submit"
+              type="button"
+              onClick={handleProceedToMap}
               disabled={isUpdatingLocation}
               className="!rounded-2xl !text-xs !font-bold !py-2.5 !px-6 !bg-[#ff6b35] text-white hover:!bg-orange-600 cursor-pointer shadow-md shadow-orange-500/20"
             >
-              Xác nhận
+              {isUpdatingLocation ? 'Đang xử lý...' : 'Xác nhận'}
             </Button>
           </div>
-        </form>
+        </div>
       </Modal>
 
       {/* ================= MAP MODAL ================= */}

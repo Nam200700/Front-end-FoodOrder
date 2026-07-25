@@ -79,6 +79,7 @@ export default function Cart() {
     }
   }, [deliveryLat, deliveryLng, JSON.stringify(restaurantIds)]);
 
+  //lấy danh sách địa chỉ
   const fetchUserAddresses = async () => {
     try {
       const res = await apiClient.get('/addresses');
@@ -98,31 +99,33 @@ export default function Cart() {
     }
   };
 
-  // Xử lý khi chọn một địa chỉ có sẵn trong danh sách "Địa chỉ của tôi"
+  // chọn địa chỉ mặc định
   const handleSelectAddressItem = async (item) => {
     setSelectedAddressId(item.addressId);
     setAddress(item.address);
     setDeliveryLat(item.latitude);
     setDeliveryLng(item.longitude);
     
-    addressListModal.close();
+    //addressListModal.close();
 
-    // Cập nhật vị trí lên server/profile nếu cần thiết
     setIsUpdatingLocation(true);
     try {
-      await apiClient.put('/users/profile', {
-        fullName: fullname.trim() || user?.name,
+      await apiClient.put(`/addresses/${item.addressId}`, {
+        label: item.label || 'Nhà riêng',
         address: item.address,
         latitude: Number(item.latitude),
-        longitude: Number(item.longitude)
+        longitude: Number(item.longitude),
+        isDefault: true
       });
+
       updateProfile({ 
         name: fullname.trim(), 
         address: item.address, 
         lat: item.latitude, 
         lng: item.longitude 
       });
-      toast.success('Đã chọn địa chỉ giao hàng!');
+      toast.success('Đã chọn địa chỉ giao hàng thành công!');
+      await fetchUserAddresses();
     } catch (err) {
       console.error('Lỗi cập nhật vị trí:', err);
       toast.error('Không thể cập nhật vị trí giao hàng!');
@@ -785,7 +788,7 @@ export default function Cart() {
         </div>
       </Modal>
 
-      <MapModal 
+      {/* <MapModal 
         isOpen={mapModal.isOpen} 
         onClose={mapModal.close} 
         onConfirm={(lat, lng, addressName) => {
@@ -797,9 +800,9 @@ export default function Cart() {
         }} 
         initialLat={newAddressLat || deliveryLat} 
         initialLng={newAddressLng || deliveryLng} 
-      />
+      /> */}
 
-      {/* ================= MODAL 1: ĐỊA CHỈ CỦA TÔI ================= */}
+      {/* ================= MODAl ĐỊA CHỈ CỦA TÔI ================= */}
       <Modal 
         isOpen={addressListModal.isOpen} 
         onClose={addressListModal.close}
@@ -881,7 +884,7 @@ export default function Cart() {
         </div>
       </Modal>
 
-      {/* ================= MODAL 2: THÊM ĐỊA CHỈ MỚI ================= */}
+      {/* ================= MODAL: THÊM ĐỊA CHỈ MỚI ================= */}
       <Modal 
         isOpen={addAddressModal.isOpen} 
         onClose={addAddressModal.close}
@@ -901,7 +904,6 @@ export default function Cart() {
                 </span>
                 <input 
                   type="text"
-                  readOnly
                   value={newAddressText}
                   placeholder="Nhập địa chỉ nhà hoặc chọn bản đồ..."
                   className="w-full pl-9 pr-3 py-3 text-xs border border-slate-200 rounded-2xl bg-slate-50/50 text-slate-800 font-semibold focus:outline-none"

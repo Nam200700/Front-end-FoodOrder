@@ -16,6 +16,7 @@ import { toast } from 'react-toastify';
 import Modal from '../../components/common/Modal';
 import Card from '../../components/common/Card'; 
 import { useModalState } from '../../hooks/useModalState';
+import axios from 'axios';
 
 export default function Cart() {
   const navigate = useNavigate();
@@ -78,89 +79,6 @@ export default function Cart() {
       fetchShippingFees(deliveryLat, deliveryLng);
     }
   }, [deliveryLat, deliveryLng, JSON.stringify(restaurantIds)]);
-
-  //lấy danh sách địa chỉ
-  const fetchUserAddresses = async () => {
-    try {
-      const res = await apiClient.get('/addresses');
-      const list = res.data.data || [];
-      setUserAddresses(list);
-      const defaultAddr = list.find(a => a.default);
-      if (defaultAddr) {
-        setSelectedAddressId(defaultAddr.addressId);
-        if (!address) {
-          setAddress(defaultAddr.address);
-          setDeliveryLat(defaultAddr.latitude);
-          setDeliveryLng(defaultAddr.longitude);
-        }
-      }
-    } catch (err) {
-      console.error('Lỗi tải danh sách địa chỉ:', err);
-    }
-  };
-
-  // chọn địa chỉ mặc định
-  const handleSelectAddressItem = async (item) => {
-    setSelectedAddressId(item.addressId);
-    setAddress(item.address);
-    setDeliveryLat(item.latitude);
-    setDeliveryLng(item.longitude);
-    
-    //addressListModal.close();
-
-    setIsUpdatingLocation(true);
-    try {
-      await apiClient.put(`/addresses/${item.addressId}`, {
-        label: item.label || 'Nhà riêng',
-        address: item.address,
-        latitude: Number(item.latitude),
-        longitude: Number(item.longitude),
-        isDefault: true
-      });
-
-      updateProfile({ 
-        name: fullname.trim(), 
-        address: item.address, 
-        lat: item.latitude, 
-        lng: item.longitude 
-      });
-      toast.success('Đã chọn địa chỉ giao hàng thành công!');
-      await fetchUserAddresses();
-    } catch (err) {
-      console.error('Lỗi cập nhật vị trí:', err);
-      toast.error('Không thể cập nhật vị trí giao hàng!');
-    } finally {
-      setIsUpdatingLocation(false);
-    }
-  };
-
-  // Xử lý lưu địa chỉ mới từ form "Thêm Địa Chỉ Mới"
-  const handleSaveNewAddress = async (e) => {
-    e.preventDefault();
-    if (!newAddressText.trim()) {
-      toast.warning('Vui lòng nhập hoặc chọn địa chỉ cụ thể trên bản đồ!');
-      return;
-    }
-
-    try {
-      const res = await apiClient.post('/addresses', {
-        label: addressLabel,
-        address: newAddressText,
-        latitude: Number(newAddressLat),
-        longitude: Number(newAddressLng),
-        isDefault: userAddresses.length === 0 // Nếu là địa chỉ đầu tiên thì set mặc định luôn
-      });
-
-      const newCreatedAddress = res.data.result;
-      toast.success('Thêm địa chỉ mới thành công!');
-      await fetchUserAddresses();
-      handleSelectAddressItem(newCreatedAddress);
-      addAddressModal.close();
-    } catch (err) {
-      console.error('Lỗi thêm địa chỉ:', err);
-      toast.error(err.response?.data?.message || 'Thêm địa chỉ thất bại!');
-    }
-  };
 
   //tự động chọn và cuộn màn hình đến quán ăn được điều hướng từ RestaurantDetail
   useEffect(() => {
@@ -319,6 +237,61 @@ export default function Cart() {
     const fee = shippingInfos[c.restaurantId]?.shippingFee || 0;
     return s + c.subtotal + fee;
   }, 0);
+
+  //lấy danh sách địa chỉ
+  const fetchUserAddresses = async () => {
+    try {
+      const res = await apiClient.get('/addresses');
+      const list = res.data.data || [];
+      setUserAddresses(list);
+      const defaultAddr = list.find(a => a.default);
+      if (defaultAddr) {
+        setSelectedAddressId(defaultAddr.addressId);
+        if (!address) {
+          setAddress(defaultAddr.address);
+          setDeliveryLat(defaultAddr.latitude);
+          setDeliveryLng(defaultAddr.longitude);
+        }
+      }
+    } catch (err) {
+      console.error('Lỗi tải danh sách địa chỉ:', err);
+    }
+  };
+
+  // chọn địa chỉ mặc định
+  const handleSelectAddressItem = async (item) => {
+    setSelectedAddressId(item.addressId);
+    setAddress(item.address);
+    setDeliveryLat(item.latitude);
+    setDeliveryLng(item.longitude);
+    
+    setIsUpdatingLocation(true);
+    try {
+      await apiClient.put(`/addresses/${item.addressId}`, {
+        label: item.label || 'Nhà riêng',
+        address: item.address,
+        latitude: Number(item.latitude),
+        longitude: Number(item.longitude),
+        isDefault: true
+      });
+
+      updateProfile({ 
+        name: fullname.trim(), 
+        address: item.address, 
+        lat: item.latitude, 
+        lng: item.longitude 
+      });
+      toast.success('Đã chọn địa chỉ giao hàng thành công!');
+      await fetchUserAddresses();
+    } catch (err) {
+      console.error('Lỗi cập nhật vị trí:', err);
+      toast.error('Không thể cập nhật vị trí giao hàng!');
+    } finally {
+      setIsUpdatingLocation(false);
+    }
+  };
+
+
 
   if (loading && carts.length === 0) return <Spinner fullScreen />;
 
@@ -788,20 +761,6 @@ export default function Cart() {
         </div>
       </Modal>
 
-      {/* <MapModal 
-        isOpen={mapModal.isOpen} 
-        onClose={mapModal.close} 
-        onConfirm={(lat, lng, addressName) => {
-          setNewAddressLat(lat);
-          setNewAddressLng(lng);
-          setNewAddressText(addressName);
-          mapModal.close();
-          addAddressModal.open(); // Mở lại modal thêm mới địa chỉ sau khi chọn xong trên bản đồ
-        }} 
-        initialLat={newAddressLat || deliveryLat} 
-        initialLng={newAddressLng || deliveryLng} 
-      /> */}
-
       {/* ================= MODAl ĐỊA CHỈ CỦA TÔI ================= */}
       <Modal 
         isOpen={addressListModal.isOpen} 
@@ -946,23 +905,26 @@ export default function Cart() {
               disabled={isUpdatingLocation}
               className="!rounded-2xl !text-xs !font-bold !py-2.5 !px-6 !bg-[#ff6b35] text-white hover:!bg-orange-600 cursor-pointer shadow-md shadow-orange-500/20"
             >
-              {isUpdatingLocation ? 'Đang tìm tọa độ...' : 'Tiếp tục chọn bản đồ'}
+              Xác nhận
             </Button>
           </div>
         </form>
       </Modal>
 
       {/* ================= MAP MODAL ================= */}
-      <MapModal 
-        isOpen={mapModal.isOpen} 
-        onClose={() => {
-          mapModal.close();
-          addAddressModal.open(); // Nếu tắt map thì quay lại modal thêm
-        }} 
-        onConfirm={handleMapConfirmAndSave} // Nhận tọa độ chuẩn từ MapModal -> Lưu DB -> Mở modal danh sách
-        initialLat={newAddressLat || deliveryLat || 10.7769} 
-        initialLng={newAddressLng || deliveryLng || 106.7009} 
-      />
+      {mapModal.isOpen && (
+        <MapModal 
+          key={`${newAddressLat}_${newAddressLng}_${mapModal.isOpen}`}
+          isOpen={mapModal.isOpen} 
+          onClose={() => {
+            mapModal.close();
+            addAddressModal.open(); 
+          }} 
+          onConfirm={handleMapConfirmAndSave} 
+          initialLat={newAddressLat || 10.7769} 
+          initialLng={newAddressLng || 106.7009} 
+        />
+      )}
     </div>
   );
 }

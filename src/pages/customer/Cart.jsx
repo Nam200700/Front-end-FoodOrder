@@ -355,7 +355,36 @@ export default function Cart() {
     }
   };
 
+  // xử lý thêm mới và cập nhật địa chỉ
+  const handleMapConfirmAndSave = async (lat, lng, addressName) => {
+    try {
+      const payload = {
+        label: addressLabel || 'Nhà riêng',
+        address: newAddressText,
+        latitude: Number(lat),
+        longitude: Number(lng),
+        isDefault: userAddresses.length === 0
+      };
 
+      if (editingAddressId) {
+        await apiClient.put(`/addresses/${editingAddressId}`, payload);
+        toast.success('Cập nhật địa chỉ thành công!');
+      } else {
+        await apiClient.post('/addresses', payload);
+        toast.success('Thêm địa chỉ mới thành công!');
+      }
+      
+      mapModal.close();
+      addAddressModal.close();
+      setEditingAddressId(null);
+      
+      await fetchUserAddresses();
+      addressListModal.open();
+    } catch (err) {
+      console.error('Lỗi lưu địa chỉ:', err);
+      toast.error(err.response?.data?.message || 'Lưu địa chỉ thất bại!');
+    }
+  };
 
   if (loading && carts.length === 0) return <Spinner fullScreen />;
 

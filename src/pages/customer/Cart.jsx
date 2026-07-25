@@ -357,7 +357,30 @@ export default function Cart() {
     }
   };
 
+  // Lưu địa chỉ
+  const handleMapConfirmAndSave = async (lat, lng, addressName) => {
+    try {
+      const payload = {
+        label: addressLabel || 'Nhà riêng',
+        address: newAddressText,
+        latitude: Number(lat),
+        longitude: Number(lng),
+        isDefault: userAddresses.length === 0
+      };
 
+      await apiClient.post('/addresses', payload);
+      
+      toast.success('Thêm địa chỉ mới thành công!');
+      mapModal.close();
+      addAddressModal.close();
+      
+      await fetchUserAddresses();
+      addressListModal.open();
+    } catch (err) {
+      console.error('Lỗi lưu địa chỉ:', err);
+      toast.error(err.response?.data?.message || 'Thêm địa chỉ thất bại!');
+    }
+  };
 
   if (loading && carts.length === 0) return <Spinner fullScreen />;
 

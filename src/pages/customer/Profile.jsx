@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../stores/authStore';
-import { User, Phone, Mail, MapPin, LogOut, Camera, Map, Utensils, Sparkles, ShoppingBag, Heart, Bell, MessageCircle, ChevronRight, ShieldCheck, AlertTriangle, Edit2 } from 'lucide-react';
+import { User, Phone, Mail, MapPin, LogOut, Camera, Map, Utensils, Sparkles, ShoppingBag, Heart, Bell, MessageCircle, ChevronRight, ShieldCheck, Edit2 } from 'lucide-react';
 import MapModal from '../../components/common/MapModal';
 import apiClient from '../../services/api';
 import { getAvatarUrl } from '../../utils/avatarHelper';
@@ -30,8 +30,6 @@ export default function Profile() {
 
   const [isMapOpen, setIsMapOpen] = useState(false);
   const [updating, setUpdating] = useState(false);
-  const [nameError, setNameError] = useState('');
-  const [emailError, setEmailError] = useState('');
   const fileInputRef = useRef(null);
   const { uploading: uploadingAvatar, handleAvatarChange: uploadAvatar } = useAvatarUpload();
 
@@ -110,7 +108,7 @@ export default function Profile() {
     }
   };
 
-  // Chuyển sang MapModal từ modal nhập text
+  // Nhập địa chỉ ở modal thêm mới -> Lấy kinh độ và vĩ độ -> Mở MapModal lên để xác nhận
   const handleProceedToMap = async (e) => {
     e.preventDefault();
     if (!newAddressText.trim()) {
@@ -160,7 +158,7 @@ export default function Profile() {
     }
   };
 
-  // Lưu lại sau khi ghim trên bản đồ
+  // xử lý thêm mới và cập nhật địa chỉ
   const handleMapConfirmAndSave = async (lat, lng, addressName) => {
     try {
       const payload = {
@@ -222,21 +220,21 @@ export default function Profile() {
     setAddress(addressName);
   };
 
+  // Xử lý validate bằng Toast
   const handleSave = async (e) => {
     e.preventDefault();
     if (!name.trim()) {
-      setNameError('Vui lòng nhập họ và tên!');
+      toast.error('Vui lòng nhập họ và tên!');
       return;
-    } else {
-      setNameError('');
     }
 
-    if(!email.trim()) {
-      setEmailError('Vui lòng nhập Email!');
+    if (!email.trim()) {
+      toast.error('Vui lòng nhập Email!');
       return;
     }
+    
     if (!validateEmail(email)) {
-      setEmailError('Email không hợp lệ!');
+      toast.error('Email không hợp lệ!');
       return;
     }
 
@@ -252,7 +250,7 @@ export default function Profile() {
       updateProfile({ name, phone, address, lat, lng });
       toast.success('Cập nhật thông tin cá nhân thành công!');
     } catch (err) {
-      console.error('Lỗi khi lưu profile thật lên DB:', err);
+      console.error('Lỗi khi lưu profile lên DB:', err);
       toast.error(err.response?.data?.message || 'Có lỗi xảy ra khi cập nhật thông tin cá nhân.');
     } finally {
       setUpdating(false);
@@ -352,10 +350,8 @@ export default function Profile() {
 
       </div>
 
-      {/* ─── CỘT PHẢI: form hồ sơ (mini-map tách xuống dưới full-width) ────────────
-          h-full + flex-col để form cao bằng cột trái; nút Lưu đẩy xuống đáy (mt-auto). */}
+      {/* ─── CỘT PHẢI: form hồ sơ ──────────────────────────── */}
       <form onSubmit={handleSave} className="bg-white rounded-radius-xl p-5 border border-md-outline-variant/20 shadow-sm space-y-5.5 animate-slide-up h-full flex flex-col">
-        {/* Mục "Hồ sơ" của sổ tay */}
         <div className="flex items-center gap-2 pb-1 border-b border-md-outline-variant/20">
           <User size={16} className="text-md-primary" />
           <h3 className="text-sm font-extrabold text-md-on-surface">Hồ Sơ Của Bạn</h3>
@@ -369,20 +365,10 @@ export default function Profile() {
             <input
               type="text"
               value={name}
-              onChange={(e) => {
-                setName(e.target.value);
-                if (nameError) setNameError(''); 
-              }}
-              className={`w-full pl-10 pr-4 py-2.5 bg-slate-50 border rounded-radius-lg text-xs focus:outline-none focus:bg-white transition-all font-semibold ${
-                nameError ? 'border-red-500 focus:border-red-500' : 'border-md-outline-variant focus:border-md-primary'
-              }`}
+              onChange={(e) => setName(e.target.value)}
+              className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-md-outline-variant focus:border-md-primary rounded-radius-lg text-xs focus:outline-none focus:bg-white transition-all font-semibold"
             />
           </div>
-          {nameError && (
-            <span className="text-[11px] text-red-500 font-bold mt-1 ml-1 flex items-start gap-1">
-              <AlertTriangle size={12} className="shrink-0 mt-0.5" /> <span>{nameError}</span>
-            </span>
-          )}
         </div>
 
         <div>
@@ -392,21 +378,11 @@ export default function Profile() {
           <div className="relative">
             <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 text-md-outline" size={16} />
             <input
-              type="text"              
+              type="text"             
               value={email}
-              onChange={(e) => {
-                setEmail(e.target.value);
-                if (emailError) setEmailError('');
-              }}
-              className={`w-full pl-10 pr-4 py-2.5 bg-slate-50 border rounded-radius-lg text-xs focus:outline-none focus:bg-white transition-all font-semibold ${
-                emailError ? 'border-red-500 focus:border-red-500' : 'border-md-outline-variant focus:border-md-primary'
-              }`}            />
+              onChange={(e) => setEmail(e.target.value)}
+              className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-md-outline-variant focus:border-md-primary rounded-radius-lg text-xs focus:outline-none focus:bg-white transition-all font-semibold"           />
           </div>
-          {emailError && (
-            <span className="text-[11px] text-red-500 font-bold mt-1.5 ml-1 flex items-start gap-1">
-              <AlertTriangle size={12} className="shrink-0 mt-0.5" /> <span>{emailError}</span>
-            </span>
-          )}
         </div>
 
         <div>
@@ -420,7 +396,7 @@ export default function Profile() {
               readOnly
               value={phone}
               onChange={(e) => { setPhone(e.target.value);}}
-              className={`w-full pl-10 pr-4 py-2.5 bg-slate-50 border rounded-radius-lg text-xs focus:outline-none focus:bg-white transition-all font-semibold`}
+              className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-md-outline-variant rounded-radius-lg text-xs focus:outline-none focus:bg-white transition-all font-semibold"
             />
           </div>
         </div>

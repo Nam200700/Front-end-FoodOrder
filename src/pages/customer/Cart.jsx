@@ -5,7 +5,7 @@ import { useAuthStore } from '../../stores/authStore';
 import { 
   ArrowLeft, MapPin, Map, Phone, Store, XCircle, X, 
   AlertTriangle, Clock, ShoppingBag, CheckSquare, Square, 
-  User, Truck, CreditCard, Coins, Trash2, FileText, Edit2
+  User, Truck, CreditCard, Coins, Trash2, FileText, Edit2, Plus
 } from 'lucide-react'; 
 import { formatCurrency } from '../../utils/format';
 import Button from '../../components/common/Button';
@@ -108,31 +108,6 @@ export default function Cart() {
     }
   }, [targetRestaurantId, carts, navigate, location.pathname]);
 
-  //Lưu cập nhật vị trí giao hàng
-  const handleConfirmLocation = async (lat, lng, addressName) => {
-    setDeliveryLat(lat); 
-    setDeliveryLng(lng); 
-    setAddress(addressName);
-    
-    setIsUpdatingLocation(true);
-    try {
-      await apiClient.put('/users/profile', {
-        fullName: fullname.trim() || user?.name,
-        address: addressName,
-        latitude: Number(lat), 
-        longitude: Number(lng)
-      });
-
-      updateProfile({ name: fullname.trim(), address, lat: deliveryLat, lng: deliveryLng });
-      toast.success('Đã cập nhật vị trí giao hàng!');
-    } catch (err) {
-      console.error('Lỗi cập nhật vị trí vị trí lên:', err);
-      toast.error('Cập nhật vị trí thất bại, vui lòng thử lại!');
-    } finally {
-      setIsUpdatingLocation(false);
-    }
-  };
-
   const handleBulkPlaceOrder = () => {
     if (!fullname.trim()) { 
       toast.warning('Vui lòng nhập họ và tên người nhận!'); 
@@ -140,7 +115,7 @@ export default function Cart() {
     }
 
     if (!address.trim() || !deliveryLat || !deliveryLng) { 
-      toast.warning('Vui lòng chọn địa chỉ giao hàng trên bản đồ!'); 
+      toast.warning('Vui lòng chọn địa chỉ giao hàng!'); 
       return; 
     }
 
@@ -709,13 +684,25 @@ export default function Cart() {
                   </p>
                 </div>
                 
-                <button
+                <Button
                   type="button"
-                  onClick={() => addressListModal.open()}
-                  className="text-xs font-bold text-[#ff6b35] hover:underline shrink-0 cursor-pointer"
+                  icon={address ? Edit2 : Plus}
+                  onClick={() => {
+                    if (!address) {
+                      setEditingAddressId(null);
+                      setNewAddressText('');
+                      setNewAddressLat(null);
+                      setNewAddressLng(null);
+                      setAddressLabel('Nhà riêng');
+                      addAddressModal.open();
+                    } else {
+                      addressListModal.open();
+                    }
+                  }}
+                  className="w-full !mt-0 !bg-orange-600 hover:!bg-orange-700 text-white font-bold py-3 rounded-xl flex items-center justify-center gap-2"
                 >
-                  Thay đổi
-                </button>
+                  {address ? 'Thay Đổi Địa Chỉ' : 'Thêm Mới Địa Chỉ'}
+                </Button>
               </div>
             </div>
           </Card>
@@ -735,27 +722,6 @@ export default function Cart() {
               <span>Tổng số món:</span>
               <span className="font-extrabold text-slate-800">{totalItems} món</span>
             </div>
-
-            {/* --- PHƯƠNG THỨC THANH TOÁN --- */}
-            {/* <div className="pt-2 border-t border-slate-100">
-              <span className="text-[11px] font-bold text-slate-400 uppercase block mb-2">
-                Phương thức thanh toán
-              </span>
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  onClick={() => setPaymentMethod('COD')}
-                  className={`flex items-center justify-center gap-1.5 py-2 px-1 border rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                    paymentMethod === 'COD'
-                      ? 'border-[#ff6b35] bg-orange-50 text-[#ff6b35]'
-                      : 'border-slate-200 text-slate-600 hover:bg-slate-50'
-                  }`}
-                >
-                  <Coins size={14} />
-                  Tiền mặt
-                </button>
-              </div>
-            </div> */}
 
             <div className="pt-2 border-t border-slate-100 mb-1">
               <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5 mb-1.5">

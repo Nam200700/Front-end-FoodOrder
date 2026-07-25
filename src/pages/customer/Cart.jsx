@@ -55,15 +55,16 @@ export default function Cart() {
   const addAddressModal = useModalState();  // Modal "Thêm địa chỉ mới"
   const mapModal = useModalState();         // Modal Bản đồ
 
-  // Danh sách địa chỉ từ API backend
+  // Danh sách địa chỉ 
   const [userAddresses, setUserAddresses] = useState([]);
   const [selectedAddressId, setSelectedAddressId] = useState(null);
 
-  // State tạm thời khi nhập form thêm địa chỉ mới
+  // State địa chỉ
   const [newAddressText, setNewAddressText] = useState('');
   const [newAddressLat, setNewAddressLat] = useState(null);
   const [newAddressLng, setNewAddressLng] = useState(null);
   const [addressLabel, setAddressLabel] = useState('Nhà riêng');
+  const [editingAddressId, setEditingAddressId] = useState(null);
 
   const restaurantIds = React.useMemo(() => {
     return carts.map(cart => cart.restaurantId);
@@ -305,11 +306,8 @@ export default function Cart() {
         .replace(/trường\s+thcs\s+/gi, '')
         .replace(/trường\s+tiểu học\s+/gi, '')
         .replace(/xã\s+/gi, '')
-        // Loại bỏ các định dạng số nhà / ấp (ví dụ: "5/10 ấp 5", "123/4 ấp 2", v.v.)
         .replace(/\d+\/\d+\s+ấp\s+\d+/gi, '')
-        // Loại bỏ các trường hợp chỉ có "ấp [số]" đứng độc lập nếu cần
         .replace(/ấp\s+\d+/gi, '')
-        // Loại bỏ số nhà dạng "5/10," hoặc "5/10" ở đầu câu
         .replace(/^\d+[\/\-]?\d*\s*,?/g, '')
         .trim();
 
@@ -357,30 +355,7 @@ export default function Cart() {
     }
   };
 
-  // Lưu địa chỉ
-  const handleMapConfirmAndSave = async (lat, lng, addressName) => {
-    try {
-      const payload = {
-        label: addressLabel || 'Nhà riêng',
-        address: newAddressText,
-        latitude: Number(lat),
-        longitude: Number(lng),
-        isDefault: userAddresses.length === 0
-      };
 
-      await apiClient.post('/addresses', payload);
-      
-      toast.success('Thêm địa chỉ mới thành công!');
-      mapModal.close();
-      addAddressModal.close();
-      
-      await fetchUserAddresses();
-      addressListModal.open();
-    } catch (err) {
-      console.error('Lỗi lưu địa chỉ:', err);
-      toast.error(err.response?.data?.message || 'Thêm địa chỉ thất bại!');
-    }
-  };
 
   if (loading && carts.length === 0) return <Spinner fullScreen />;
 
@@ -900,7 +875,13 @@ export default function Cart() {
                     icon={Edit2}
                     onClick={(e) => {
                       e.stopPropagation();
-                      // Xử lý logic cập nhật địa chỉ nếu cần tại đây
+                      setEditingAddressId(item.addressId);
+                      setNewAddressText(item.address);
+                      setNewAddressLat(item.latitude);
+                      setNewAddressLng(item.longitude);
+                      setAddressLabel(item.label || 'Nhà riêng');
+                      addressListModal.close();
+                      addAddressModal.open(); 
                     }}
                     className="absolute right-3.5 top-3 !inline-flex items-center gap-1 text-[11px] font-bold !text-[#ff6b35] hover:!bg-orange-50/75 !py-1 !px-2 !rounded-lg !shadow-none cursor-pointer"
                   >
@@ -918,10 +899,11 @@ export default function Cart() {
             <Button
               onClick={() => {
                 addressListModal.close();
+                setEditingAddressId(null); // <--- Reset ID chỉnh sửa
                 setNewAddressText('');
                 setNewAddressLat(null);
                 setNewAddressLng(null);
-                setAddressLabel('');
+                setAddressLabel('Nhà riêng');
                 addAddressModal.open(); 
               }}
               className="w-full !bg-[#ff6b35] hover:!bg-orange-600 text-white font-bold py-3.5 rounded-2xl text-xs uppercase tracking-wider shadow-md shadow-orange-500/20 cursor-pointer flex items-center justify-center gap-1.5"
@@ -932,11 +914,14 @@ export default function Cart() {
         </div>
       </Modal>
 
-      {/* ================= MODAL THÊM ĐỊA CHỈ MỚI ================= */}
+      {/* ================= MODAL THÊM / CẬP NHẬT ĐỊA CHỈ ================= */}
       <Modal 
         isOpen={addAddressModal.isOpen} 
-        onClose={addAddressModal.close}
-        title="Thêm Địa Chỉ Mới"
+        onClose={() => {
+          addAddressModal.close();
+          setEditingAddressId(null);
+        }}
+        title={editingAddressId ? "Cập Nhật Địa Chỉ" : "Thêm Địa Chỉ Mới"}
         size="md"
         className="!rounded-2xl"
       >
@@ -983,6 +968,7 @@ export default function Cart() {
               variant="outline"
               onClick={() => {
                 addAddressModal.close();
+                setEditingAddressId(null);
                 addressListModal.open(); 
               }}
               className="!rounded-2xl !text-xs !font-bold !py-2.5 !px-5 cursor-pointer border-slate-200 text-slate-600 hover:bg-slate-50"

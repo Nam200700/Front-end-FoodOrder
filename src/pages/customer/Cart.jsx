@@ -884,7 +884,7 @@ export default function Cart() {
         </div>
       </Modal>
 
-      {/* ================= MODAL: THÊM ĐỊA CHỈ MỚI ================= */}
+      {/* ================= MODAL THÊM ĐỊA CHỈ MỚI ================= */}
       <Modal 
         isOpen={addAddressModal.isOpen} 
         onClose={addAddressModal.close}
@@ -892,33 +892,22 @@ export default function Cart() {
         size="md"
         className="!rounded-2xl"
       >
-        <form onSubmit={handleSaveNewAddress} className="space-y-4 -mx-6 -my-6 px-6 py-4">
+        <form onSubmit={handleProceedToMap} className="space-y-4 -mx-6 -my-6 px-6 py-4">
           <div>
             <label className="text-xs font-bold text-slate-800 block mb-1.5">
               Địa chỉ cụ thể <span className="text-red-500">*</span>
             </label>
-            <div className="flex gap-2">
-              <div className="relative flex-1">
-                <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
-                  <MapPin size={15} />
-                </span>
-                <input 
-                  type="text"
-                  value={newAddressText}
-                  placeholder="Nhập địa chỉ nhà hoặc chọn bản đồ..."
-                  className="w-full pl-9 pr-3 py-3 text-xs border border-slate-200 rounded-2xl bg-slate-50/50 text-slate-800 font-semibold focus:outline-none"
-                />
-              </div>
-              <button
-                type="button"
-                onClick={() => {
-                  addAddressModal.close(); 
-                  mapModal.open(); 
-                }}
-                className="px-4 py-3 bg-slate-100/80 hover:bg-slate-200 text-slate-700 font-bold rounded-2xl text-xs flex items-center gap-1.5 shrink-0 cursor-pointer border border-slate-200 transition-colors"
-              >
-                <MapPin size={14} className="text-[#ff6b35]" fill="#ff6b35" stroke="white" /> Bản đồ
-              </button>
+            <div className="relative">
+              <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                <MapPin size={15} />
+              </span>
+              <input 
+                type="text"
+                value={newAddressText}
+                onChange={(e) => setNewAddressText(e.target.value)}
+                placeholder="Ví dụ: 123 Nguyễn Văn Linh, Quận 7, TP.HCM..."
+                className="w-full pl-9 pr-3 py-3 text-xs border border-slate-200 rounded-2xl bg-white text-slate-800 font-semibold focus:outline-none focus:border-[#ff6b35]"
+              />
             </div>
           </div>
 
@@ -940,7 +929,6 @@ export default function Cart() {
             </div>
           </div>
 
-          {/* Đường gân phân cách footer giống hình mẫu */}
           <div className="pt-4 -mx-6 px-6 border-t border-slate-100 flex items-center justify-end gap-3 mt-6 bg-white">
             <Button
               type="button"
@@ -955,13 +943,26 @@ export default function Cart() {
             </Button>
             <Button
               type="submit"
+              disabled={isUpdatingLocation}
               className="!rounded-2xl !text-xs !font-bold !py-2.5 !px-6 !bg-[#ff6b35] text-white hover:!bg-orange-600 cursor-pointer shadow-md shadow-orange-500/20"
             >
-              Hoàn Thành
+              {isUpdatingLocation ? 'Đang tìm tọa độ...' : 'Tiếp tục chọn bản đồ'}
             </Button>
           </div>
         </form>
       </Modal>
+
+      {/* ================= MAP MODAL ================= */}
+      <MapModal 
+        isOpen={mapModal.isOpen} 
+        onClose={() => {
+          mapModal.close();
+          addAddressModal.open(); // Nếu tắt map thì quay lại modal thêm
+        }} 
+        onConfirm={handleMapConfirmAndSave} // Nhận tọa độ chuẩn từ MapModal -> Lưu DB -> Mở modal danh sách
+        initialLat={newAddressLat || deliveryLat || 10.7769} 
+        initialLng={newAddressLng || deliveryLng || 106.7009} 
+      />
     </div>
   );
 }

@@ -250,9 +250,9 @@ export default function MerchantSettings() {
           </Card>
         </div>
 
-        {/* ─── FORM CẤU HÌNH CHÍNH ─────────────────────────── */}
+        {/* ─── FORM thông tin ─────────────────────────── */}
         <Card variant="elevated" className="lg:col-span-3 p-5 space-y-5 animate-slide-up">
-          <form onSubmit={handleSave} className="space-y-5">
+          <div className="space-y-5">
             <div className="relative h-32 rounded-radius-lg overflow-hidden border border-slate-100 bg-slate-100 flex items-center justify-center">
               <img 
                 src={getRestaurantBannerUrl(imageUrl)} 
@@ -260,11 +260,11 @@ export default function MerchantSettings() {
                 className="absolute inset-0 w-full h-full object-cover opacity-80"
               />
               <div className="absolute inset-0 bg-black/10" />
-              <button 
+              <Button 
                 type="button" 
                 onClick={handleBannerClick}
                 disabled={uploadingBanner}
-                className="relative z-10 px-4 py-2 bg-white/95 backdrop-blur-md rounded-radius-full text-xs font-bold text-slate-700 shadow-sm flex items-center gap-1.5 hover:scale-105 transition-all cursor-pointer"
+                className="relative z-10 !px-4 !py-2 !bg-white/95 backdrop-blur-md !rounded-radius-full !text-xs !font-bold !text-slate-700 shadow-sm !gap-1.5 hover:!scale-105"
               >
                 {uploadingBanner ? (
                   <span className="w-3.5 h-3.5 border-2 border-slate-700 border-t-transparent rounded-full animate-spin"></span>
@@ -272,7 +272,7 @@ export default function MerchantSettings() {
                   <Camera size={14} />
                 )}
                 Ảnh banner nhà hàng
-              </button>
+              </Button>
             </div>
 
             <div>
@@ -358,35 +358,33 @@ export default function MerchantSettings() {
                   value={address}
                   className="w-full flex-1 px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-radius-lg text-xs focus:outline-none focus:border-md-secondary focus:bg-white transition-all resize-none font-semibold cursor-pointer"
                 />
-                <button
+                <Button
                   type="button"
+                  variant="outline"
                   onClick={() => {
                     setNewAddressText(address);
                     addressModal.open();
                   }}
-                  className="px-4 bg-md-secondary/15 text-md-secondary border border-md-secondary/10 hover:bg-md-secondary/20 rounded-radius-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 hover:scale-[1.02] active:scale-[0.98] cursor-pointer shrink-0"
+                  className="!px-4 !bg-md-secondary/15 !text-md-secondary border border-md-secondary/10 hover:!bg-md-secondary/25 !rounded-radius-lg !text-xs !font-bold transition-all !gap-1.5 hover:!scale-[1.02] active:!scale-[0.98] shrink-0"
+                  icon={Map}
                 >
-                  <Map size={14} />
                   Thay đổi
-                </button>
+                </Button>
               </div>
             </div>
 
-            <button
-              type="submit"
+            <Button
+              type="button"
+              onClick={handleSave}
               disabled={saving}
-              className="w-full bg-md-secondary text-white font-bold py-3.5 px-4 rounded-radius-full shadow-shadow-2 hover:shadow-shadow-3 hover:translate-y-[-1.5px] active:translate-y-[0px] transition-all flex items-center justify-center gap-2 text-xs uppercase tracking-wider cursor-pointer"
+              loading={saving}
+              variant="secondary"
+              className="w-full !py-3.5 !px-4 !rounded-radius-full shadow-shadow-2 hover:shadow-shadow-3 hover:!translate-y-[-1.5px] active:!translate-y-[0px] transition-all !text-xs uppercase tracking-wider"
+              icon={Save}
             >
-              {saving ? (
-                <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
-              ) : (
-                <>
-                  {hasRestaurant ? 'Cập nhật thông tin' : 'Đăng ký & Tạo nhà hàng'}
-                  <Save size={14} />
-                </>
-              )}
-            </button>
-          </form>
+              {hasRestaurant ? 'Cập nhật thông tin' : 'Đăng ký & Tạo nhà hàng'}
+            </Button>
+          </div>
         </Card>
       </div>
 

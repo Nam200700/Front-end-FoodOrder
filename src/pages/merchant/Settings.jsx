@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Store, Camera, Save, Map, Clock, MapPin, Phone, Eye, AlertTriangle } from 'lucide-react';
+import { Store, Camera, Save, Map, Clock, MapPin, Phone, Eye } from 'lucide-react';
 import { useFetchData } from '../../hooks/useFetchData';
 import apiClient from '../../services/api';
 import Spinner from '../../components/common/Spinner';
@@ -17,8 +17,9 @@ export default function MerchantSettings() {
   const [resName, setResName] = useState('');
   const [phone, setPhone] = useState('');
   const [address, setAddress] = useState('');
-  const [openTime, setOpenTime] = useState('08:00');
-  const [closeTime, setCloseTime] = useState('22:00');
+  const [openTime, setOpenTime] = useState('');
+  const [closeTime, setCloseTime] = useState('');
+  const [description, setDescription] = useState('');
   
   // TOẠ ĐỘ VĨ ĐỘ/KINH ĐỘ THẬT CỦA QUÁN ĂN
   const [latitude, setLatitude] = useState(10.762622);
@@ -31,7 +32,6 @@ export default function MerchantSettings() {
   const [saving, setSaving] = useState(false);
   const [hasRestaurant, setHasRestaurant] = useState(false);
   const [restaurantId, setRestaurantId] = useState(null);
-  const [phoneError, setPhoneError] = useState('');
 
   // States phụ trợ cho form địa chỉ
   const [newAddressText, setNewAddressText] = useState('');
@@ -48,6 +48,7 @@ export default function MerchantSettings() {
       setResName(restaurant.restaurantName || '');
       setPhone(restaurant.phone || '');
       setAddress(restaurant.address || '');
+      setDescription(restaurant.description || '');
       setRestaurantId(restaurant.restaurantId || restaurant.id);
       setLatitude(restaurant.latitude ? Number(restaurant.latitude) : 10.762622);
       setLongitude(restaurant.longitude ? Number(restaurant.longitude) : 106.660172);
@@ -97,6 +98,7 @@ export default function MerchantSettings() {
       const newUrl = uploadRes.data?.data?.url;
       if (!newUrl) throw new Error("Không nhận được URL ảnh!");
       setImageUrl(newUrl);
+      toast.success("Tải ảnh banner thành công!");
     } catch (uploadErr) {
       console.error("Upload ảnh thất bại:", uploadErr);
       toast.error(uploadErr.response?.data?.message || "Lỗi khi upload ảnh lên Cloudinary!");
@@ -107,8 +109,7 @@ export default function MerchantSettings() {
   };
 
   // Nhập địa chỉ ở modal cập nhật -> Lấy kinh độ và vĩ độ -> Mở MapModal lên để xác nhận
-  const handleProceedToMap = async (e) => {
-    e.preventDefault();
+  const handleProceedToMap = async () => {
     if (!newAddressText.trim()) {
       toast.warning('Vui lòng nhập địa chỉ cụ thể!');
       return;
@@ -155,20 +156,30 @@ export default function MerchantSettings() {
     setLongitude(selectedLng);
     setAddress(addressName || newAddressText);
     mapModal.close();
+    toast.success("Đã cập nhật vị trí và địa chỉ mới thành công!");
   };
 
-  const handleSave = async (e) => {
-    e.preventDefault();
-    if (!resName.trim() || !address.trim() || !phone.trim()) {
-      toast.warning('Vui lòng nhập đầy đủ thông tin bắt buộc!');
+  const handleSave = async () => {
+    if (!resName.trim()) {
+      toast.warning('Vui lòng nhập tên quán!');
+      return;
+    }
+    if (!openTime || !closeTime) {
+      toast.warning('Vui lòng chọn đầy đủ giờ mở cửa và đóng cửa!');
+      return;
+    }
+    if (!phone.trim()) {
+      toast.warning('Vui lòng nhập số điện thoại liên hệ!');
       return;
     }
     if (!validatePhone(phone)) {
-      setPhoneError('Số điện thoại không hợp lệ (bắt đầu bằng số 0 và gồm 10 chữ số).');
-      toast.warning('Số điện thoại liên hệ không hợp lệ. Vui lòng kiểm tra lại!');
+      toast.warning('Số điện thoại không hợp lệ!');
       return;
     }
-    setPhoneError('');
+    if (!address.trim()) {
+      toast.warning('Vui lòng cập nhật địa chỉ chi tiết quán!');
+      return;
+    }
 
     setSaving(true);
     try {
@@ -178,19 +189,19 @@ export default function MerchantSettings() {
         latitude: latitude,
         longitude: longitude,
         phone: phone,
-        description: `Quán ăn chuyên phục vụ các món ăn ngon. Giờ mở cửa: ${openTime} - ${closeTime}`,
+        description: description,
         imageUrl: imageUrl
       };
 
       if (!hasRestaurant) {
         const response = await apiClient.post('/merchant/restaurants', requestData);
         const newRes = response.data?.data;
-        toast.success('Chúc mừng! Đã đăng ký và tạo nhà hàng thành công với tọa độ trên hệ thống.');
+        toast.success('Đã đăng ký và tạo nhà hàng thành công với tọa độ trên hệ thống.');
         setRestaurantId(newRes.restaurantId || newRes.id);
         setHasRestaurant(true);
       } else {
         await apiClient.put(`/merchant/restaurants/${restaurantId}`, requestData);
-        toast.success('Cập nhật cấu hình và tọa độ địa lý của nhà hàng thành công xuống DB!');
+        toast.success('Cập nhật thông tin quán thành công!');
       }
     } catch (err) {
       console.error(err);
@@ -218,6 +229,7 @@ export default function MerchantSettings() {
           <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
             <Eye size={13} /> Xem trước (như khách thấy)
           </span>
+
           <Card variant="elevated" className="overflow-hidden">
             <div className="relative h-28 bg-slate-100">
               <img src={getRestaurantBannerUrl(imageUrl)} alt="Banner xem trước" className="w-full h-full object-cover" />
@@ -277,14 +289,12 @@ export default function MerchantSettings() {
 
             <div>
               <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">
-                Tên cửa hàng / thương hiệu *
+                Tên quán / thương hiệu *
               </label>
               <div className="relative">
                 <Store className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
                 <input
                   type="text"
-                  required
-                  placeholder="Nhập tên nhà hàng của bạn..."
                   value={resName}
                   onChange={(e) => setResName(e.target.value)}
                   className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-radius-lg text-xs focus:outline-none focus:border-md-secondary focus:bg-white transition-all font-semibold"
@@ -295,11 +305,10 @@ export default function MerchantSettings() {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">
-                  Giờ mở cửa
+                  Giờ mở cửa *
                 </label>
                 <input
                   type="time"
-                  required
                   value={openTime}
                   onChange={(e) => setOpenTime(e.target.value)}
                   className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-radius-lg text-xs focus:outline-none focus:border-md-secondary focus:bg-white transition-all font-semibold"
@@ -307,11 +316,10 @@ export default function MerchantSettings() {
               </div>
               <div>
                 <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">
-                  Giờ đóng cửa
+                  Giờ đóng cửa *
                 </label>
                 <input
                   type="time"
-                  required
                   value={closeTime}
                   onChange={(e) => setCloseTime(e.target.value)}
                   className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-radius-lg text-xs focus:outline-none focus:border-md-secondary focus:bg-white transition-all font-semibold"
@@ -321,40 +329,42 @@ export default function MerchantSettings() {
 
             <div>
               <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">
-                Số điện thoại liên hệ *
+                Số điện thoại *
               </label>
               <input
                 type="tel"
-                required
-                placeholder="090xxxxxxx"
                 value={phone}
-                onChange={(e) => { setPhone(e.target.value); if (phoneError) setPhoneError(''); }}
-                onBlur={() => setPhoneError(validatePhone(phone) ? '' : 'Số điện thoại không hợp lệ (bắt đầu bằng số 0 và gồm 10 chữ số).')}
-                className={`w-full px-4 py-2.5 bg-slate-50 border rounded-radius-lg text-xs focus:outline-none focus:bg-white transition-all font-semibold ${
-                  phoneError ? 'border-red-500 focus:border-red-500' : 'border-slate-200 focus:border-md-secondary'
-                }`}
+                onChange={(e) => setPhone(e.target.value)}
+                className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-radius-lg text-xs focus:outline-none focus:border-md-secondary focus:bg-white transition-all font-semibold"
               />
-              {phoneError && (
-                <span className="text-[11px] text-red-500 font-bold mt-1.5 ml-1 flex items-start gap-1">
-                  <AlertTriangle size={12} className="shrink-0 mt-0.5" /> <span>{phoneError}</span>
-                </span>
-              )}
             </div>
 
             <div>
               <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">
-                Địa chỉ chi tiết quán *
+                Mô tả *
+              </label>
+              <div className="flex flex-col sm:flex-row gap-2.5 items-stretch">
+                <textarea
+                  rows={3}
+                  onChange={(e) => setDescription(e.target.value)}
+                  value={description}
+                  className="w-full flex-1 px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-radius-lg text-xs focus:outline-none focus:border-md-secondary focus:bg-white transition-all resize-none font-semibold cursor-pointer"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">
+                Địa chỉ *
               </label>
               <div className="flex flex-col sm:flex-row gap-2.5 items-stretch">
                 <textarea
                   rows={2}
-                  required
                   readOnly
                   onClick={() => {
                     setNewAddressText(address);
                     addressModal.open();
                   }}
-                  placeholder="Click vào đây để cập nhật địa chỉ quán..."
                   value={address}
                   className="w-full flex-1 px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-radius-lg text-xs focus:outline-none focus:border-md-secondary focus:bg-white transition-all resize-none font-semibold cursor-pointer"
                 />

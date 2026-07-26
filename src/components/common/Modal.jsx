@@ -43,11 +43,11 @@ export default function Modal({
       />
 
       {/* Modal Dialog Content */}
-      <div 
+      <div
         role="dialog"
         aria-modal="true"
         aria-labelledby={title ? "modal-title" : undefined}
-        className={`bg-white w-full rounded-radius-xl shadow-shadow-5 border border-md-outline-variant/30 flex flex-col overflow-hidden relative z-10 scale-100 transition-all duration-300 animate-slide-up ${sizes[size]} ${className}`}
+        className={`bg-white w-full rounded-radius-xl shadow-shadow-5 border border-md-outline-variant/30 flex flex-col overflow-hidden relative z-10 max-h-[90vh] scale-100 transition-all duration-300 animate-slide-up ${sizes[size]} ${className}`}
         {...props}
       >
         {/* Modal Header */}
@@ -66,8 +66,8 @@ export default function Modal({
           </button>
         </div>
 
-        {/* Modal Body */}
-        <div className="flex-1 p-6 overflow-y-auto no-scrollbar font-google-sans font-medium text-sm text-md-on-surface-variant">
+        {/* Modal Body — min-h-0 để cuộn được trong flex-col khi vượt max-h dialog */}
+        <div className="flex-1 min-h-0 p-6 overflow-y-auto no-scrollbar font-google-sans font-medium text-sm text-md-on-surface-variant">
           {children}
         </div>
       </div>

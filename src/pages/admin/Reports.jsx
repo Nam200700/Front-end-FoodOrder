@@ -117,7 +117,11 @@ export default function AdminReports() {
         <div className="text-center py-16 bg-slate-950 rounded-radius-xl border border-slate-800 text-slate-400 text-xs font-bold shadow-md flex flex-col items-center gap-3">
           {/* icon CheckCircle xanh thay emoji 🎉 cho trạng thái sạch báo cáo */}
           <CheckCircle2 size={40} className="text-emerald-500" strokeWidth={1.5} />
-          Tuyệt vời! Không còn báo cáo vi phạm nào chưa xử lý trên hệ thống.
+          {statusFilter === 'PENDING'
+            ? 'Tuyệt vời! Không còn báo cáo vi phạm nào chưa xử lý trên hệ thống.'
+            : statusFilter === 'RESOLVED'
+              ? 'Chưa có báo cáo nào đã được xử lý.'
+              : 'Chưa có báo cáo nào bị từ chối.'}
         </div>
       ) : (
         // Lưới 2 cột ở màn rộng để tận dụng không gian (trước đây 1 cột bị trống bên phải)
@@ -151,14 +155,22 @@ export default function AdminReports() {
                 </p>
               </div>
 
+              {/* Chỉ cho thao tác giải quyết ở tab PENDING; tab lịch sử hiển thị nhãn trạng thái */}
               <div className="flex justify-end gap-2 pt-1">
-                <button
-                  onClick={() => handleResolve(rep.id, rep.target)}
-                  className="px-4.5 py-2 bg-purple-650 hover:bg-purple-750 text-white font-bold text-xs rounded-radius-full shadow-md flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer"
-                >
-                  <ShieldCheck size={14} />
-                  Giải quyết xong
-                </button>
+                {statusFilter === 'PENDING' ? (
+                  <button
+                    onClick={() => handleResolve(rep.id, rep.target)}
+                    className="px-4.5 py-2 bg-purple-650 hover:bg-purple-750 text-white font-bold text-xs rounded-radius-full shadow-md flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer"
+                  >
+                    <ShieldCheck size={14} />
+                    Giải quyết xong
+                  </button>
+                ) : (
+                  <span className={`px-3 py-1.5 rounded-radius-full text-[11px] font-bold inline-flex items-center gap-1.5 ${statusFilter === 'RESOLVED' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-slate-800 text-slate-400 border border-slate-700'}`}>
+                    <ShieldCheck size={13} />
+                    {statusFilter === 'RESOLVED' ? 'Đã xử lý' : 'Đã từ chối'}
+                  </span>
+                )}
               </div>
             </div>
           ))}

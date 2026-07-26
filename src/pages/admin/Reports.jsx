@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { AlertTriangle, ShieldCheck, RefreshCw, CheckCircle2, User, Flag, Quote, ShieldAlert } from 'lucide-react';
 import { useFetchData } from '../../hooks/useFetchData';
 import apiClient from '../../services/api';
@@ -51,6 +51,22 @@ export default function AdminReports() {
     mapFn: mapReports,
   });
 
+  // Đếm số báo cáo theo trạng thái để hiện badge trên tab (một lần gọi lấy tất cả rồi đếm)
+  const [statusCounts, setStatusCounts] = useState({});
+  useEffect(() => {
+    let ignore = false;
+    apiClient.get('/admin/reports?size=500')
+      .then((res) => {
+        if (ignore) return;
+        const all = res.data?.data?.content || [];
+        const counts = {};
+        all.forEach((r) => { counts[r.status] = (counts[r.status] || 0) + 1; });
+        setStatusCounts(counts);
+      })
+      .catch((err) => console.error('Lỗi đếm báo cáo theo trạng thái:', err));
+    return () => { ignore = true; };
+  }, [reports]); // refresh sau khi giải quyết 1 báo cáo (danh sách đổi)
+
   const handleResolve = async (id, target) => {
     // BE dùng PATCH /admin/reports/{id}/resolve và ResolveReportRequest chỉ nhận { status }
     // (không có adminNote). Chỉ cần xác nhận trước khi đánh dấu đã xử lý.
@@ -96,6 +112,7 @@ export default function AdminReports() {
         tabs={REPORT_STATUS_TABS}
         activeTab={statusFilter}
         onTabChange={setStatusFilter}
+        counts={statusCounts}
         className="bg-slate-900 p-1 rounded-radius-lg border border-slate-800 w-max"
         activeClassName="bg-purple-650 text-white shadow-sm"
       />

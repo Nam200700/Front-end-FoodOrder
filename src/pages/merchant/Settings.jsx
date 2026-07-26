@@ -132,7 +132,7 @@ export default function MerchantSettings() {
     setLongitude(selectedLng);
     setAddress(addressName || newAddressText);
     mapModal.close();
-    toast.success("Đã cập nhật vị trí và địa chỉ mới thành công!");
+    // toast.success("Đã cập nhật vị trí và địa chỉ mới thành công!");
   };
 
   const handleSave = async () => {
@@ -197,7 +197,7 @@ export default function MerchantSettings() {
     <div className="flex-1 p-4 md:p-8 max-w-5xl mx-auto w-full font-google-sans space-y-6 pb-24">
       <h1 className="text-xl font-bold text-slate-800 flex items-center gap-2">
         <Store className="text-md-secondary" size={24} />
-        {hasRestaurant ? 'Thông tin quán ăn' : 'Đăng ký nhà hàng mới của bạn'}
+        {hasRestaurant ? 'Thông Tin Quán Ăn' : 'Đăng ký nhà hàng mới của bạn'}
       </h1>
 
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 items-start">
@@ -376,13 +376,13 @@ export default function MerchantSettings() {
         </Card>
       </div>
 
-      {/* ================= MODAL CẬP NHẬT ĐỊA CHỈ ================= */}
+      {/* ================= MODAL CẬP NHẬT ĐỊA CHỈ  ================= */}
       <Modal 
         isOpen={addressModal.isOpen} 
         onClose={addressModal.close}
-        title="Cập Nhật Địa Chỉ"
+        title="Cập Nhật Địa Chỉ Quán"
         size="md"
-        className="!rounded-2xl"
+        className="!rounded-3xl"
       >
         <div className="space-y-4 -mx-6 -my-6 px-6 py-4">
           <div>
@@ -390,34 +390,34 @@ export default function MerchantSettings() {
               Địa chỉ cụ thể <span className="text-red-500">*</span>
             </label>
             <div className="relative">
-              <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
-                <MapPin size={15} />
+              <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                <MapPin size={16} className="text-blue-500" />
               </span>
               <input 
                 type="text"
                 value={newAddressText}
                 onChange={(e) => setNewAddressText(e.target.value)}
-                placeholder="Ví dụ: Đường Tô Ký, Phường Trung Mỹ Tây, TP.HCM..."
-                className="w-full pl-9 pr-3 py-3 text-xs border border-slate-200 rounded-2xl bg-white text-slate-800 font-semibold focus:outline-none focus:border-[#ff6b35]"
+                placeholder="Ví dụ: 123 Đường Nguyễn Huệ, Phường Bến Nghé, Quận 1, TP.HCM"
+                className="w-full pl-10 pr-4 py-3 text-xs border border-slate-200 rounded-2xl bg-slate-50/50 text-slate-800 font-semibold focus:outline-none focus:border-blue-500 focus:bg-white transition-all"
               />
             </div>
           </div>
 
-          <div className="pt-4 -mx-6 px-6 border-t border-slate-100 flex items-center justify-end gap-3 mt-6 bg-white">
+          <div className="pt-4 -mx-6 px-6 border-t border-slate-100 flex items-center justify-end gap-3 mt-6 bg-slate-50/50 rounded-b-3xl py-4">
             <Button
               type="button"
               variant="outline"
               onClick={addressModal.close}
-              className="!rounded-2xl !text-xs !font-bold !py-2.5 !px-5 cursor-pointer border-slate-200 text-slate-600 hover:bg-slate-50"
+              className="!rounded-2xl !text-xs !font-bold !py-2.5 !px-5 cursor-pointer border-slate-200 text-slate-600 hover:bg-slate-100"
             >
-              Hủy
+              Hủy bỏ
             </Button>
             <Button
               type="button"
               onClick={handleProceedToMap}
               disabled={isUpdatingLocation}
               loading={isUpdatingLocation}
-              className="!rounded-2xl !text-xs !font-bold !py-2.5 !px-6 !bg-[#ff6b35] text-white hover:!bg-orange-600 cursor-pointer shadow-md shadow-orange-500/20"
+              className="!rounded-2xl !text-xs !font-bold !py-2.5 !px-6 !bg-blue-600 text-white hover:!bg-blue-700 cursor-pointer shadow-md shadow-blue-500/20"
             >
               Xác nhận
             </Button>

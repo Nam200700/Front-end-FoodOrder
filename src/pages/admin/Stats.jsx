@@ -430,6 +430,7 @@ export default function AdminStats() {
               })}
             </div>
           </div>
+          )}
         </div>
 
       </div>

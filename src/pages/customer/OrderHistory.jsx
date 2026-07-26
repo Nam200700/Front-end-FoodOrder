@@ -1,8 +1,12 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCartStore } from '../../stores/cartStore';
-import { ShoppingBag, RefreshCw, Ban, AlertCircle, MessageSquare, Star, FileText, MapPin, CreditCard, Eye } from 'lucide-react'; 
+import {
+  ShoppingBag, RefreshCw, Ban, AlertCircle, MessageSquare, Star, FileText, MapPin, CreditCard, Eye,
+  User, Phone, Bike, Wallet, StickyNote, CalendarClock, UtensilsCrossed, Package, BadgeCheck, Clock, Check
+} from 'lucide-react';
 import { formatCurrency } from '../../utils/format';
+import { getFoodImageUrl, DEFAULT_FOOD_IMAGE } from '../../utils/avatarHelper';
 import { SkeletonOrderCard } from '../../components/common/SkeletonCard';
 import EmptyState from '../../components/common/EmptyState';
 import ErrorState from '../../components/common/ErrorState';
@@ -19,10 +23,32 @@ const ORDER_STATUS_TABS = [
   { id: 'PENDING', label: 'Chờ xác nhận' },
   { id: 'CONFIRMED', label: 'Đã xác nhận' },
   { id: 'PREPARING', label: 'Đang chuẩn bị' },
-  { id: 'DELIVERING', label: 'Đang giao' }, 
+  { id: 'DELIVERING', label: 'Đang giao' },
   { id: 'COMPLETED', label: 'Thành công' },
   { id: 'CANCELLED', label: 'Đã hủy' },
 ];
+
+// Dải màu viền trái theo trạng thái để khách quét nhanh lịch sử đơn
+const STATUS_ACCENT = {
+  PENDING: 'border-l-amber-400',
+  CONFIRMED: 'border-l-blue-500',
+  PREPARING: 'border-l-indigo-500',
+  READY_FOR_PICKUP: 'border-l-sky-500',
+  DELIVERING: 'border-l-orange-500',
+  COMPLETED: 'border-l-emerald-500',
+  CANCELLED: 'border-l-rose-400',
+};
+
+// Icon trạng thái cho pill modal (màu nền/chữ tái dùng getStatusStyles)
+const STATUS_ICON = {
+  PENDING: Clock,
+  CONFIRMED: Check,
+  PREPARING: UtensilsCrossed,
+  READY_FOR_PICKUP: Package,
+  DELIVERING: Bike,
+  COMPLETED: BadgeCheck,
+  CANCELLED: Ban,
+};
 
 export default function OrderHistory() {
   const navigate = useNavigate();
@@ -65,7 +91,7 @@ export default function OrderHistory() {
           name: i.foodName,
           price: Number(i.priceAtOrder),
           quantity: i.quantity,
-          image: i.foodImageUrl || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=150&q=80',
+          image: getFoodImageUrl(i.foodImageUrl),
           note: i.note
         })),
         total: Number(order.totalAmount),
@@ -248,12 +274,13 @@ export default function OrderHistory() {
             </div>
           ) : (
             <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-              {list.map((order) => (
-                <Card 
+              {list.map((order, idx) => (
+                <Card
                   key={order.id}
-                  variant="flat" 
+                  variant="flat"
                   onClick={() => navigate(`/orders/${order.id}`)}
-                  className="!border-slate-100 shadow-sm p-4 md:p-5 flex flex-col gap-4 group transition-colors hover:border-slate-200 !rounded-2xl cursor-pointer"
+                  style={{ animationDelay: `${idx * 60}ms` }}
+                  className={`animate-rise-in !border-slate-100 border-l-4 ${STATUS_ACCENT[order.status] || 'border-l-slate-200'} shadow-sm p-4 md:p-5 flex flex-col gap-4 group hover:-translate-y-0.5 hover:shadow-md hover:border-slate-200 !rounded-2xl cursor-pointer`}
                 >
                   {/* Card Header */}
                   <div className="flex flex-row justify-between items-center gap-2 border-b border-slate-100 pb-3 flex-wrap sm:flex-nowrap">
@@ -288,7 +315,13 @@ export default function OrderHistory() {
                             className="flex gap-3 items-center border border-slate-100 rounded-lg p-3 bg-slate-50/50 w-[260px] sm:w-[280px] shrink-0 select-none"
                           >
                             <div className="w-16 h-16 rounded-md overflow-hidden shrink-0 border border-slate-200 bg-white">
-                              <img src={item.image} alt={item.name} className="w-full h-full object-cover" draggable="false" />
+                              <img
+                                src={item.image}
+                                alt={item.name}
+                                className="w-full h-full object-cover"
+                                draggable="false"
+                                onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = DEFAULT_FOOD_IMAGE; }}
+                              />
                             </div>
                             <div className="min-w-0 flex-1">
                               <h4 className="font-bold text-slate-800 text-sm truncate">{item.name}</h4>
@@ -393,109 +426,130 @@ export default function OrderHistory() {
         </div>
       </div>
 
-      {/* MODAL CHI TIẾT ĐƠN HÀNG */}
+      {/* MODAL CHI TIẾT ĐƠN HÀNG — phong cách customer (tông cam) */}
       <Modal
         isOpen={isDetailModalOpen}
         onClose={handleCloseDetailModal}
-        title={
-          <div className="flex flex-col text-left">
-            <h2 className="text-base md:text-lg font-bold text-slate-900 leading-tight">
-              Chi Tiết Đơn Hàng #{selectedOrder?.id}
-            </h2>
-            {selectedOrder && (
-              <p className="text-[10px] md:text-xs font-normal text-slate-400 pt-0.5">
-                Ngày đặt: <span className="font-medium text-slate-500">{selectedOrder.createdAt}</span>
-              </p>
-            )}
-          </div>
-        }
-        size="md"
-        className="[&_h2]:!text-slate-900 [&_h2]:!text-base [&_h2]:md:!text-lg [&_h2]:!font-bold [&>div]:border-slate-100 [&_div.flex.items-center.justify-between]:!pb-3"
+        title={`Chi Tiết Đơn Hàng #${selectedOrder?.id}`}
+        size="lg"
       >
-        {selectedOrder && (
-          <div className="space-y-4 text-slate-700 !-mt-4 !-mb-5">
-            <div className="text-xs flex flex-row justify-between items-center gap-3 pt-2">
-              <div className="space-y-1 flex-1 min-w-0">
-                <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Thông tin giao hàng</p>
-                
-                <div className="text-slate-700 text-[11px] sm:text-xs pt-0.5 space-y-0.5">
-                  <p className="font-bold text-slate-800">
-                    {selectedOrder.name} — {selectedOrder.phone}
-                  </p>
-                  
-                  {/* Địa chỉ */}
-                  <p className="text-slate-500 leading-tight">
-                    <span className="font-bold text-slate-700">Địa chỉ:</span> {selectedOrder.deliveryAddress}
-                  </p>
-                  
-                  {selectedOrder.note && (
-                    <p className="text-slate-500 leading-tight">
-                      <span className="font-bold text-slate-700">Ghi chú đơn hàng:</span>
-                      <span className="italic"> "{selectedOrder.note}"</span>
-                    </p>
-                  )}
+        {selectedOrder && (() => {
+          const o = selectedOrder;
+          const StatusIcon = STATUS_ICON[o.status] || Clock;
+          const payLabel = o.paymentMethod === 'VNPAY' ? 'Chuyển khoản VNPAY' : 'Thanh toán khi nhận hàng (COD)';
+          return (
+            <div className="space-y-4 text-slate-700 -mt-1">
+              {/* Hàng đầu: thời gian đặt + pill trạng thái */}
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <span className="inline-flex items-center gap-1.5 text-xs text-slate-400 font-medium">
+                  <CalendarClock size={14} /> Đặt lúc {o.createdAt}
+                </span>
+                <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-extrabold ${getStatusStyles(o.status)}`}>
+                  <StatusIcon size={13} /> {getStatusLabel(o.status)}
+                </span>
+              </div>
+
+              {/* Thông tin giao hàng — card tông cam, có icon */}
+              <div className="rounded-2xl border border-orange-100 bg-orange-50/40 p-4 space-y-2.5">
+                <h4 className="flex items-center gap-2 text-[11px] font-extrabold text-orange-600 uppercase tracking-wider">
+                  <MapPin size={14} /> Thông tin giao hàng
+                </h4>
+                <p className="flex items-center gap-2 text-sm text-slate-700"><User size={13} className="text-slate-400 shrink-0" /> {o.name}</p>
+                <p className="flex items-center gap-2 text-sm text-slate-700"><Phone size={13} className="text-slate-400 shrink-0" /> {o.phone}</p>
+                <p className="flex items-start gap-2 text-sm text-slate-700"><MapPin size={13} className="text-slate-400 shrink-0 mt-0.5" /> <span className="break-words">{o.deliveryAddress}</span></p>
+                {o.note && (
+                  <p className="flex items-start gap-2 text-sm text-amber-700"><StickyNote size={13} className="shrink-0 mt-0.5" /> <span className="italic">"{o.note}"</span></p>
+                )}
+              </div>
+
+              {/* Danh sách món ăn — ảnh to hơn, số lượng dạng badge, hiện lần lượt */}
+              <div>
+                <h4 className="flex items-center gap-2 text-[11px] font-extrabold text-slate-500 uppercase tracking-wider mb-2">
+                  <UtensilsCrossed size={14} className="text-orange-500" /> Danh sách món ăn ({o.items.length})
+                </h4>
+                <div className="space-y-2">
+                  {o.items.map((item, idx) => (
+                    <div
+                      key={idx}
+                      style={{ animationDelay: `${idx * 45}ms` }}
+                      className="animate-rise-in flex items-center justify-between gap-3 bg-white border border-slate-100 rounded-xl p-2.5 transition-colors hover:border-orange-200"
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <img
+                          src={item.image}
+                          alt={item.name}
+                          className="w-12 h-12 object-cover rounded-lg border border-slate-200 shrink-0"
+                          onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = DEFAULT_FOOD_IMAGE; }}
+                        />
+                        <div className="min-w-0">
+                          <p className="font-bold text-slate-800 text-sm leading-tight truncate">{item.name}</p>
+                          <div className="flex items-center gap-2 mt-1">
+                            <span className="text-orange-500 font-bold text-xs">{formatCurrency(item.price)}</span>
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 text-[11px] font-bold">×{item.quantity}</span>
+                          </div>
+                          {item.note && (
+                            <p className="text-[11px] text-slate-400 italic mt-1 flex items-center gap-1">
+                              <StickyNote size={11} className="shrink-0" /> "{item.note}"
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                      <p className="font-extrabold text-slate-900 shrink-0 text-sm">{formatCurrency(item.price * item.quantity)}</p>
+                    </div>
+                  ))}
                 </div>
               </div>
-            </div>
 
-            {/* Danh sách món ăn */}
-            <div className="space-y-1.5 !-mt-4">
-              <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Danh sách món ăn:</p>
-              <div className="space-y-1.5 max-h-[140px] overflow-y-auto pr-1 scrollbar-thin">
-                {selectedOrder.items.map((item, idx) => (
-                  <div key={idx} className="flex gap-2.5 items-center justify-between border border-slate-100/80 rounded-lg p-1.5 sm:p-2 bg-slate-50/30">
-                    <div className="flex gap-2.5 items-center min-w-0 flex-1">
-                      <div className="w-12 h-12 rounded md overflow-hidden shrink-0 border border-slate-200 bg-white">
-                        <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <h4 className="font-bold text-slate-800 text-xs sm:text-sm truncate leading-tight">{item.name}</h4>
-                        <p className="text-[11px] text-orange-500 font-bold mt-0.5">
-                          {formatCurrency(item.price)}
-                          <span className="text-slate-400 font-normal ml-1.5 text-[10px]">x{item.quantity}</span>
-                        </p>
-                        {item.note && (
-                          <p className="text-[10px] text-slate-400 truncate mt-0.5">
-                            <span className="font-medium mr-0.5 text-slate-400">Ghi chú:</span>
-                            <span className="italic">"{item.note}"</span>
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                    <div className="text-xs sm:text-sm font-bold text-slate-800 shrink-0 pl-2">
-                      {formatCurrency(item.price * item.quantity)}
-                    </div>
+              {/* Thanh toán (trái) · Tổng tiền dạng card cam (phải) */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="flex items-start gap-2.5 rounded-xl bg-slate-50 border border-slate-100 p-3 self-start">
+                  <Wallet size={16} className="text-orange-500 shrink-0 mt-0.5" />
+                  <div className="min-w-0">
+                    <span className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider block">Thanh toán</span>
+                    <span className="text-sm font-semibold text-slate-700">{payLabel}</span>
                   </div>
-                ))}
-              </div>
-            </div>
+                </div>
 
-            {/* Chi tiết dòng tiền tính toán */}
-            <div className="border-t border-slate-100 pt-2 text-xs">
-              <div className="flex justify-between items-center text-slate-500">
-                <span>Phương thức thanh toán:</span>
-                <span className="font-semibold text-slate-600">
-                  {selectedOrder.paymentMethod === 'COD' && 'Tiền mặt'}
-                  {selectedOrder.paymentMethod === 'VNPAY' && 'Chuyển khoản'}
-                </span>
+                <div className="rounded-2xl bg-orange-50/50 border border-orange-100 p-4 space-y-2 self-start">
+                  <div className="flex justify-between items-center text-sm text-slate-500 font-medium">
+                    <span>Tạm tính</span>
+                    <span className="text-slate-800 font-bold">{formatCurrency(o.subtotal)}</span>
+                  </div>
+                  <div className="flex justify-between items-center text-sm text-slate-500 font-medium">
+                    <span>Phí vận chuyển</span>
+                    <span className="text-slate-800 font-bold">{formatCurrency(o.shippingFee)}</span>
+                  </div>
+                  <div className="flex justify-between items-center pt-2 border-t border-dashed border-orange-200">
+                    <span className="text-sm font-extrabold text-slate-800">Tổng thanh toán</span>
+                    <span className="text-orange-500 text-xl font-extrabold">{formatCurrency(o.total)}</span>
+                  </div>
+                </div>
               </div>
-              <div className="flex justify-between items-center text-slate-500">
-                <span>Tạm tính:</span>
-                <span className="font-semibold text-slate-600">{formatCurrency(selectedOrder.subtotal)}</span>
-              </div>
-              <div className="flex justify-between items-center text-slate-500">
-                <span>Phí vận chuyển:</span>
-                <span className="font-semibold text-slate-700">{formatCurrency(selectedOrder.shippingFee)}</span>
-              </div>
-              <div className="flex justify-between items-center text-sm pt-2 border-t border-dashed border-slate-200 font-medium">
-                <span className="text-slate-700 font-bold">Tổng thanh toán:</span>
-                <span className="text-base font-extrabold text-orange-500">
-                  {formatCurrency(selectedOrder.total)}
-                </span>
+
+              {/* Hành động: Mua lại (đơn xong/huỷ) + Đóng */}
+              <div className="flex justify-end gap-2 pt-1">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleCloseDetailModal}
+                  className="rounded-lg text-xs !py-2 hover:!border-orange-500 hover:!text-orange-600"
+                >
+                  Đóng
+                </Button>
+                {(o.status === 'COMPLETED' || o.status === 'CANCELLED') && (
+                  <Button
+                    size="sm"
+                    icon={RefreshCw}
+                    onClick={(e) => handleReorder(e, o)}
+                    className="rounded-lg text-xs !py-2 !bg-orange-500 hover:!bg-orange-600 !text-white"
+                  >
+                    Mua lại
+                  </Button>
+                )}
               </div>
             </div>
-          </div>
-        )}
+          );
+        })()}
       </Modal>
 
       {/* MODAL HỦY ĐƠN HÀNG */}

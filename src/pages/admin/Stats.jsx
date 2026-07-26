@@ -139,12 +139,18 @@ export default function AdminStats() {
 
   // Phân tích cơ cấu vai trò người dùng (User Roles Distribution từ dữ liệu thật)
   const userRolesChartData = useMemo(() => {
+    // Ưu tiên số thật toàn hệ thống từ overview (không còn số giả 80/15/5, không giới hạn trang)
+    if (overviewStats) {
+      const arr = [
+        { name: 'Khách hàng', value: overviewStats.customerCount || 0 },
+        { name: 'Chủ quán', value: overviewStats.ownerCount || 0 },
+        { name: 'Tài xế', value: overviewStats.shipperCount || 0 },
+      ].filter(i => i.value > 0);
+      if (arr.length > 0) return arr;
+    }
+    // Fallback: đếm từ danh sách user đã tải (khi overview lỗi); rỗng thì trả mảng rỗng
     if (users.length === 0) {
-      return [
-        { name: 'Khách hàng', value: 80 },
-        { name: 'Chủ quán', value: 15 },
-        { name: 'Tài xế', value: 5 }
-      ];
+      return [];
     }
     const roleMap = {};
     users.forEach(u => {
@@ -344,9 +350,12 @@ export default function AdminStats() {
                   ? <><BarChart3 size={13} /> Dạng Cột</>
                   : <><AreaChart size={13} /> Dạng Miền</>}
               </button>
-              <span className="text-[9px] text-purple-400 bg-purple-950/40 border border-purple-900/40 px-2.5 py-1 rounded-full font-bold">
-                Live Database Data
-              </span>
+              {/* Badge chỉ hiện khi thực sự có dữ liệu giao dịch — tránh gây hiểu nhầm khi rỗng */}
+              {timelineChartData.length > 0 && (
+                <span className="text-[9px] text-purple-400 bg-purple-950/40 border border-purple-900/40 px-2.5 py-1 rounded-full font-bold">
+                  Dữ liệu thật (Live)
+                </span>
+              )}
             </div>
           </div>
 
@@ -382,6 +391,11 @@ export default function AdminStats() {
             </h3>
           </div>
 
+          {userRolesChartData.length === 0 ? (
+            <div className="flex-1 flex items-center justify-center text-xs font-bold text-slate-500">
+              Chưa có dữ liệu thành viên.
+            </div>
+          ) : (
           <div className="flex-1 flex flex-col items-center justify-around gap-4">
               <DonutChart
                 data={userRolesChartData}

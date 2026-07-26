@@ -205,7 +205,7 @@ export default function MerchantSettings() {
         {/* ─── LIVE PREVIEW ─────────────────────────── */}
         <div className="lg:col-span-2 lg:sticky lg:top-6 space-y-2.5">
           <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
-            <Eye size={13} /> Xem trước (như khách thấy)
+            <Eye size={13} /> Xem trước
           </span>
 
           <Card variant="elevated" className="overflow-hidden">
@@ -243,7 +243,7 @@ export default function MerchantSettings() {
         {/* ─── FORM thông tin ─────────────────────────── */}
         <Card variant="elevated" className="lg:col-span-3 p-5 space-y-5 animate-slide-up">
           <div className="space-y-5">
-            <div className="relative h-32 rounded-radius-lg overflow-hidden border border-slate-100 bg-slate-100 flex items-center justify-center">
+            <div className="relative h-70 rounded-radius-lg overflow-hidden border border-slate-100 bg-slate-100 flex items-center justify-center">
               <img 
                 src={getRestaurantBannerUrl(imageUrl)} 
                 alt="Store Cover" 
@@ -261,7 +261,7 @@ export default function MerchantSettings() {
                 ) : (
                   <Camera size={14} />
                 )}
-                Ảnh banner nhà hàng
+                Thay đổi
               </Button>
             </div>
 

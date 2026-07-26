@@ -75,6 +75,11 @@
   /* ─── Animation Tokens ───────────────────────────── */
   --animate-pulse-slow: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
   --animate-ripple: ripple 1.2s cubic-bezier(0.2, 0, 0, 1) infinite;
+  /* Widget FAB (RoleSwitcher): mở panel, xuất hiện, thả trôi nhẹ, item bung dần */
+  --animate-scale-up: scaleUp 0.28s cubic-bezier(0.16, 1, 0.3, 1) both;
+  --animate-fab-in: fabIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+  --animate-float: floatBob 3.5s ease-in-out infinite;
+  --animate-rise-in: riseIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
 /* ─── Custom Classes & Utilities ────────────────────── */

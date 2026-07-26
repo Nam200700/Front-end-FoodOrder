@@ -342,22 +342,22 @@ export default function MerchantStats() {
               <h3 className="text-xs font-bold text-slate-850 uppercase tracking-wider font-extrabold">
                 Phân Bổ Dòng Tiền Giao Dịch Động
               </h3>
-              <span className="text-[10px] text-slate-450 font-bold">
+              <span className="text-[10px] text-slate-500 font-bold">
                 Chu kỳ: {filterRange === '7days' ? '7 ngày qua' : filterRange === '30days' ? '30 ngày qua' : filterRange === 'thisMonth' ? 'Tháng này' : 'Tất cả'}
               </span>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs font-bold">
-              <div className="bg-white p-3.5 rounded-radius-lg border border-slate-150 shadow-sm flex flex-col justify-between h-18">
+              <div className="bg-white p-3.5 rounded-radius-lg border border-slate-200 shadow-sm flex flex-col justify-between h-18">
                 <span className="text-[9px] text-slate-400 font-extrabold uppercase tracking-wider">Tổng giá trị đơn hàng (GTV)</span>
                 <span className="text-sm font-extrabold text-slate-800 mt-1">{formatCurrency(statsSummary.gtv)}</span>
               </div>
-              <div className="bg-white p-3.5 rounded-radius-lg border border-slate-150 shadow-sm flex flex-col justify-between h-18">
+              <div className="bg-white p-3.5 rounded-radius-lg border border-slate-200 shadow-sm flex flex-col justify-between h-18">
                 <span className="text-[9px] text-slate-400 font-extrabold tracking-wider uppercase">Doanh thu món ăn (Subtotal)</span>
                 <span className="text-sm font-extrabold text-blue-600 mt-1">{formatCurrency(statsSummary.subtotal)}</span>
               </div>
-              <div className="bg-white p-3.5 rounded-radius-lg border border-slate-150 shadow-sm flex flex-col justify-between h-18">
+              <div className="bg-white p-3.5 rounded-radius-lg border border-slate-200 shadow-sm flex flex-col justify-between h-18">
                 <span className="text-[9px] text-slate-400 font-extrabold tracking-wider uppercase">Cước phí giao vận (Shipper)</span>
-                <span className="text-sm font-extrabold text-purple-605 mt-1">{formatCurrency(statsSummary.shipping)}</span>
+                <span className="text-sm font-extrabold text-purple-600 mt-1">{formatCurrency(statsSummary.shipping)}</span>
               </div>
             </div>
           </div>
@@ -506,7 +506,7 @@ export default function MerchantStats() {
                             <span className="text-slate-800 font-extrabold">{food.name}</span>
                           </div>
                           <div className="flex items-center gap-3">
-                            <span className="text-slate-400">Đã bán: <b className="text-slate-750 font-extrabold">{food.qty}</b></span>
+                            <span className="text-slate-400">Đã bán: <b className="text-slate-700 font-extrabold">{food.qty}</b></span>
                             <span className="text-md-secondary font-extrabold">{formatCurrency(food.revenue)}</span>
                           </div>
                         </div>

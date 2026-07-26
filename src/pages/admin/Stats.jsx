@@ -315,16 +315,16 @@ export default function AdminStats() {
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs font-semibold">
           <div className="bg-slate-900 p-3.5 rounded-radius-lg border border-slate-800 shadow-sm flex flex-col justify-between h-18">
-            <span className="text-[9px] text-slate-450 font-extrabold uppercase tracking-wider">Tổng giao dịch hệ thống (GTV)</span>
+            <span className="text-[9px] text-slate-400 font-extrabold uppercase tracking-wider">Tổng giao dịch hệ thống (GTV)</span>
             <span className="text-sm font-extrabold text-slate-100 mt-1">{formatCurrency(adminKPIs.gtv)}</span>
           </div>
           <div className="bg-slate-900 p-3.5 rounded-radius-lg border border-slate-800 shadow-sm flex flex-col justify-between h-18">
-            <span className="text-[9px] text-slate-450 font-extrabold tracking-wider uppercase">Tổng tiền món ăn đối tác</span>
+            <span className="text-[9px] text-slate-400 font-extrabold tracking-wider uppercase">Tổng tiền món ăn đối tác</span>
             <span className="text-sm font-extrabold text-blue-400 mt-1">{formatCurrency(adminKPIs.merchantGoods)}</span>
           </div>
           <div className="bg-slate-900 p-3.5 rounded-radius-lg border border-slate-800 shadow-sm flex flex-col justify-between h-18">
-            <span className="text-[9px] text-slate-450 font-extrabold tracking-wider uppercase">Tổng cước phí giao vận Shipper</span>
-            <span className="text-sm font-extrabold text-rose-450 mt-1">{formatCurrency(adminKPIs.shipperShare)}</span>
+            <span className="text-[9px] text-slate-400 font-extrabold tracking-wider uppercase">Tổng cước phí giao vận Shipper</span>
+            <span className="text-sm font-extrabold text-rose-400 mt-1">{formatCurrency(adminKPIs.shipperShare)}</span>
           </div>
         </div>
       </div>

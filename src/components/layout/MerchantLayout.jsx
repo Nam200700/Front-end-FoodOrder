@@ -152,7 +152,8 @@ export default function MerchantLayout() {
           {!sidebarCollapsed && (
             <div className="flex flex-col">
               <span className="font-bold text-md-secondary text-base leading-none">Merchant Hub</span>
-              <span className="text-[10px] text-md-outline font-semibold tracking-wider uppercase mt-1">Cơm Tấm Ngon</span>
+              {/* Tên quán thật thay cho chuỗi hardcode "Cơm Tấm Ngon" */}
+              <span className="text-[10px] text-md-outline font-semibold tracking-wider uppercase mt-1 truncate max-w-[140px]">{restaurant ? restaurant.restaurantName : 'Quán của bạn'}</span>
             </div>
           )}
         </div>

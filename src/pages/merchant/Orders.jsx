@@ -14,6 +14,7 @@ import Spinner from '../../components/common/Spinner';
 import Modal from '../../components/common/Modal'; 
 import OrderCancelModal from '../../components/common/OrderCancelModal';
 import { getStatusConfig } from '../../utils/orderStatusHelper';
+import { getFoodImageUrl } from '../../utils/avatarHelper';
 
 const ORDER_STATUS_TABS = [
   { id: 'ALL', label: 'Tất cả' },
@@ -109,8 +110,9 @@ export default function MerchantOrders() {
             quantity: i.quantity,
             price: Number(i.priceAtOrder || 0),
             note: i.note,
-            image: i.foodImageUrl || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=150&q=80'
-          })), 
+            // Ảnh món: dùng ảnh thật, thiếu thì fallback ảnh mặc định nội bộ (bỏ ảnh Unsplash hardcode)
+            image: getFoodImageUrl(i.foodImageUrl)
+          })),
           total: Number(ord.totalAmount),
           createdAt: formatOrderDate(ord.createdAt),
           phone: ord.customerPhone,
@@ -615,10 +617,10 @@ export default function MerchantOrders() {
               {(detailModal.data.items || []).map((item, index) => (
                 <div key={index} className="flex items-center justify-between bg-white border border-slate-100 p-2 rounded-lg text-sm shadow-2.5">
                   <div className="flex items-center gap-2.5 min-w-0">
-                    <img 
-                      src={item.foodImageUrl || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=150&q=80'} 
-                      alt={item.foodName} 
-                      className="w-9 h-9 object-cover rounded border border-slate-200" 
+                    <img
+                      src={getFoodImageUrl(item.foodImageUrl)}
+                      alt={item.foodName}
+                      className="w-9 h-9 object-cover rounded border border-slate-200"
                     />
                     <div className="min-w-0">
                       <p className="font-bold text-slate-800 truncate leading-tight">{item.foodName}</p>

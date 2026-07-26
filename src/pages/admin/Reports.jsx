@@ -1,9 +1,17 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { AlertTriangle, ShieldCheck, RefreshCw, CheckCircle2, User, Flag, Quote, ShieldAlert } from 'lucide-react';
 import { useFetchData } from '../../hooks/useFetchData';
 import apiClient from '../../services/api';
 import Spinner from '../../components/common/Spinner';
+import FilterTabs from '../../components/common/FilterTabs';
 import { toast } from 'react-toastify';
+
+// Các trạng thái báo cáo (khớp enum BE ReportStatus) — cho phép admin xem cả lịch sử đã xử lý
+const REPORT_STATUS_TABS = [
+  { id: 'PENDING', label: 'Chờ xử lý' },
+  { id: 'RESOLVED', label: 'Đã xử lý' },
+  { id: 'REJECTED', label: 'Đã từ chối' },
+];
 
 export default function AdminReports() {
   // Ghép nhãn đối tượng bị báo cáo theo targetType (BE ReportResponse chỉ trả targetType + targetId,
@@ -37,7 +45,9 @@ export default function AdminReports() {
     });
   };
 
-  const { data: reports, loading, refetch } = useFetchData('/admin/reports?status=PENDING&size=500', {
+  // Lọc theo trạng thái: PENDING mặc định; đổi tab sẽ đổi URL -> useFetchData tự refetch
+  const [statusFilter, setStatusFilter] = useState('PENDING');
+  const { data: reports, loading, refetch } = useFetchData(`/admin/reports?status=${statusFilter}&size=500`, {
     mapFn: mapReports,
   });
 
@@ -81,8 +91,17 @@ export default function AdminReports() {
         </button>
       </div>
 
-      {/* ─── Dải tổng quan: số báo cáo đang chờ xử lý ───────────────────────── */}
-      {list.length > 0 && (
+      {/* Bộ lọc trạng thái: xem báo cáo chờ xử lý / đã xử lý / đã từ chối (lịch sử) */}
+      <FilterTabs
+        tabs={REPORT_STATUS_TABS}
+        activeTab={statusFilter}
+        onTabChange={setStatusFilter}
+        className="bg-slate-900 p-1 rounded-radius-lg border border-slate-800 w-max"
+        activeClassName="bg-purple-650 text-white shadow-sm"
+      />
+
+      {/* ─── Dải tổng quan: số báo cáo đang chờ xử lý (chỉ ở tab PENDING) ─────── */}
+      {statusFilter === 'PENDING' && list.length > 0 && (
         <div className="flex items-center gap-3 bg-red-950/15 border border-red-900/30 rounded-radius-xl p-4">
           <div className="p-2.5 rounded-radius-lg bg-red-500/10 text-red-400 shrink-0">
             <ShieldAlert size={22} />

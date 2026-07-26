@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Plus, ToggleLeft, ToggleRight, Edit, Trash2, GripVertical, Check, X, ClipboardList, UtensilsCrossed, AlertTriangle  } from 'lucide-react';
+import { Plus, ToggleLeft, ToggleRight, Edit, Trash2, Check, X, ClipboardList, UtensilsCrossed, AlertTriangle  } from 'lucide-react';
 import { formatCurrency } from '../../utils/format';
 import apiClient from '../../services/api';
 import Spinner from '../../components/common/Spinner';
@@ -583,9 +583,8 @@ export default function MerchantMenu() {
                   !item.active ? 'opacity-65 bg-slate-50/50' : ''
                 }`}
               >
-                <div className="flex items-center text-slate-300 cursor-grab shrink-0">
-                  <GripVertical size={16} />
-                </div>
+                {/* Đã gỡ tay cầm kéo-thả: chưa có backend sắp xếp lại nên affordance này không hoạt động,
+                    tránh gây hiểu nhầm cho người dùng (có thể bổ sung DnD thật khi có endpoint reorder). */}
 
                 <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-radius-lg overflow-hidden shrink-0 border border-slate-100">
                   <img src={getFoodImageUrl(item.image)} alt={item.name} className="w-full h-full object-cover" />

@@ -12,16 +12,6 @@ import Button from '../../components/common/Button';
 import { useFetchData } from '../../hooks/useFetchData';
 import { useModalState } from '../../hooks/useModalState';
 
-const REVENUE_DATA = [
-  { day: 'T2', amount: 850000 },
-  { day: 'T3', amount: 1100000 },
-  { day: 'T4', amount: 950000 },
-  { day: 'T5', amount: 1200000 },
-  { day: 'T6', amount: 1450000 },
-  { day: 'T7', amount: 2100000 },
-  { day: 'CN', amount: 2450000 },
-];
-
 export default function MerchantDashboard() {
   const navigate = useNavigate();
 
@@ -93,6 +83,7 @@ export default function MerchantDashboard() {
       subtotal: Number(statsData.subtotal || 0),
       commission: Number(statsData.commission || 0),
       commissionRate: Number(statsData.commissionRate || 0.10),
+      avgOrderValue: Number(statsData.avgOrderValue || 0), // AOV do BE tính trên đơn hoàn tất
       totalOrders: allOrders.length,
       completedOrders: completedOrders.length,
       cancelledOrders: allOrders.filter(ord => ord.orderStatus === 'CANCELLED').length
@@ -153,12 +144,15 @@ export default function MerchantDashboard() {
   }, [completedOrders]);
 
   const reviews = useMemo(() => reviewsData?.content || reviewsData || [], [reviewsData]);
-  const reviewsCount = reviews.length;
+  // Rating & số đánh giá lấy TOÀN CỤC từ /merchant/stats (BE tính trên toàn bộ review),
+  // không còn tính trên trang review đầu tiên; fallback trang cũ khi stats chưa có.
+  const reviewsCount = statsData?.reviewsCount ?? reviews.length;
   const averageRating = useMemo(() => {
+    if (statsData && statsData.avgRating != null) return Number(statsData.avgRating).toFixed(1);
     return reviews.length > 0
       ? (reviews.reduce((sum, r) => sum + (r.restaurantRating || 0), 0) / reviews.length).toFixed(1)
       : '0.0';
-  }, [reviews]);
+  }, [statsData, reviews]);
 
   // Modal states dùng useModalState
   const rejectModal = useModalState();
@@ -311,8 +305,8 @@ export default function MerchantDashboard() {
       {/* THỐNG KÊ HÔM NAY */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[
-          // Doanh thu: đổi cam #FF6B35 (màu Customer) → emerald (tiền/tăng trưởng).
-          { title: 'Doanh thu món ăn', value: formatCurrency(displayRevenue), change: `Thực nhận: ${formatCurrency(stats?.revenue || 0)} (đã trừ ${stats ? Math.round(stats.commissionRate * 100) : 10}% hoa hồng)`, icon: DollarSign, color: 'bg-emerald-100 text-emerald-600' },
+          // Doanh thu: đổi cam #FF6B35 (màu Customer) → emerald (tiền/tăng trưởng). Kèm AOV (giá trị đơn TB) — KPI Sales chuẩn.
+          { title: 'Doanh thu món ăn', value: formatCurrency(displayRevenue), change: `Thực nhận ${formatCurrency(stats?.revenue || 0)} (−${stats ? Math.round(stats.commissionRate * 100) : 10}% HH) · AOV ${formatCurrency(stats?.avgOrderValue || 0)}`, icon: DollarSign, color: 'bg-emerald-100 text-emerald-600' },
           { title: 'Đơn mới chờ duyệt', value: pendingOrders.length + ' đơn', change: 'Đang đợi bạn bấm nhận', icon: ClipboardList, color: 'bg-md-secondary/10 text-md-secondary' },
           // Mini-bar tỉ lệ hoàn tất THẬT (completed/total); kèm tỉ lệ huỷ.
           { title: 'Tổng đơn hoàn tất', value: displayCompletedOrders + ' đơn', change: `Hoàn tất ${completionRate}% · Huỷ ${cancelRate}% / ${displayTotalOrders} đơn`, icon: PackageOpen, color: 'bg-md-tertiary/10 text-md-tertiary', bar: { pct: completionRate, color: 'bg-md-tertiary' } },
@@ -450,11 +444,12 @@ export default function MerchantDashboard() {
           </div>
 
           <div className="h-64 w-full text-xs">
+            {/* Màu doanh thu đồng bộ emerald với card "Doanh thu món ăn" (trước lệch xanh vs emerald) */}
             <RevenueAreaChart
               data={revenueData}
               dataKey="amount"
               xKey="day"
-              color="#1A73E8"
+              color="#10B981"
               height={256}
               yTickFormatter={(v) => `${v/1000}k`}
             />

@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { useAuthStore } from '../../stores/authStore';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { 
-  Shield, User, Store, Bike, ChevronLeft, 
+import {
+  Shield, User, Store, Bike, ChevronLeft,
   Home, ClipboardList, Map, Settings, ArrowRight,
   Search, ShoppingBag, Heart, MessageSquare, BookOpen, BarChart3, Star, Wallet, Users, AlertTriangle,
   Eye, EyeOff, LogOut
@@ -138,11 +138,11 @@ export default function RoleSwitcher() {
 
   return (
     <div className="fixed bottom-20 right-4 md:bottom-24 md:right-6 z-[9999] flex flex-col items-end gap-3 font-google-sans select-none">
-      
+
       {/* Expanded Panel */}
       {expanded && (
-        <div className="w-[280px] backdrop-blur-xl bg-white/90 border border-slate-200/60 rounded-3xl p-5 shadow-[0_20px_50px_rgba(0,0,0,0.12)] flex flex-col gap-4 animate-scale-up origin-bottom-right transition-all duration-300">
-          
+        <div className="w-[280px] backdrop-blur-xl bg-white/90 border border-slate-200/60 rounded-3xl p-5 shadow-[0_20px_50px_rgba(0,0,0,0.12)] flex flex-col gap-4 animate-scale-up origin-bottom-right">
+
           {/* Header */}
           <div className="flex items-center justify-between pb-3 border-b border-slate-100">
             <div className="flex items-center gap-3">
@@ -158,7 +158,7 @@ export default function RoleSwitcher() {
                 </p>
               </div>
             </div>
-            
+
             {/* Nút ẩn widget */}
             <button
               onClick={handleDismiss}
@@ -203,7 +203,8 @@ export default function RoleSwitcher() {
                         navigate(link.path);
                         setExpanded(false);
                       }}
-                      className="w-full flex items-center justify-between text-left px-3 py-2 rounded-xl hover:bg-white hover:shadow-sm text-xs font-semibold text-slate-700 hover:text-slate-900 border border-transparent hover:border-slate-100 transition-all duration-200 group cursor-pointer"
+                      style={{ animationDelay: `${idx * 40}ms` }}
+                      className="animate-rise-in w-full flex items-center justify-between text-left px-3 py-2 rounded-xl hover:bg-white hover:shadow-sm text-xs font-semibold text-slate-700 hover:text-slate-900 border border-transparent hover:border-slate-100 transition-all duration-200 group cursor-pointer"
                     >
                       <div className="flex items-center gap-2">
                         <LinkIcon size={14} className="text-slate-400 group-hover:text-slate-600" />
@@ -233,21 +234,38 @@ export default function RoleSwitcher() {
         </div>
       )}
 
-      {/* Floating Action Button (FAB) */}
-      <button
-        onClick={() => setExpanded(!expanded)}
-        className={`flex items-center justify-center md:justify-start gap-2.5 w-11 h-11 md:w-auto md:h-auto md:px-4.5 md:py-3 rounded-full shadow-[0_8px_30px_rgb(0,0,0,0.15)] text-white transition-all duration-300 hover:scale-105 active:scale-95 cursor-pointer border border-white/10 ${currentRoleObj.color}`}
-        title={currentRoleObj.name}
-      >
-        <div className="relative shrink-0">
-          <CurrentIcon size={18} className={expanded ? 'animate-spin-slow' : ''} />
-          <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-emerald-400 border border-white animate-pulse" />
+      {/* Floating Action Button (FAB) — gọn dạng tròn, chỉ bung nhãn khi hover/mở để
+          không đè nội dung phía sau. Entrance 1 lần + thả trôi nhẹ (pause khi hover). */}
+      <div className="animate-fab-in">
+        <div className="animate-float hover:[animation-play-state:paused]">
+          <button
+            onClick={() => setExpanded(!expanded)}
+            aria-expanded={expanded}
+            aria-label={currentRoleObj.name}
+            className={`group flex items-center h-14 min-w-14 pl-4 pr-4 rounded-full shadow-[0_8px_30px_rgb(0,0,0,0.18)] text-white transition-all duration-300 hover:shadow-[0_10px_34px_rgb(0,0,0,0.24)] active:scale-95 cursor-pointer border border-white/15 ${currentRoleObj.color}`}
+            title={currentRoleObj.name}
+          >
+            <div className="relative shrink-0 transition-transform duration-300 group-hover:scale-110">
+              <CurrentIcon size={20} className={`transition-transform duration-500 ${expanded ? 'rotate-[360deg]' : ''}`} />
+              <span className="absolute -top-1.5 -right-1.5 w-2.5 h-2.5 rounded-full bg-emerald-400 border-2 border-white animate-pulse" />
+            </div>
+            {/* Nhãn ẩn mặc định (max-w-0) → bung khi hover hoặc khi panel mở */}
+            <span
+              className={`text-xs font-black uppercase tracking-wider whitespace-nowrap overflow-hidden transition-all duration-300 ${
+                expanded ? 'max-w-[170px] opacity-100 ml-2' : 'max-w-0 opacity-0 group-hover:max-w-[170px] group-hover:opacity-100 group-hover:ml-2'
+              }`}
+            >
+              {currentRoleObj.name}
+            </span>
+            <ChevronLeft
+              size={14}
+              className={`shrink-0 overflow-hidden transition-all duration-300 ${
+                expanded ? 'max-w-[14px] opacity-100 ml-1 rotate-180' : 'max-w-0 opacity-0 group-hover:max-w-[14px] group-hover:opacity-100 group-hover:ml-1'
+              }`}
+            />
+          </button>
         </div>
-        <span className="text-xs font-black uppercase tracking-wider hidden md:inline">
-          {currentRoleObj.name}
-        </span>
-        <ChevronLeft size={14} className={`hidden md:inline transition-transform duration-300 ${expanded ? 'rotate-180' : ''}`} />
-      </button>
+      </div>
 
     </div>
   );

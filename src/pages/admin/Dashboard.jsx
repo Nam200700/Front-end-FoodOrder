@@ -9,27 +9,19 @@ import { useFetchData } from '../../hooks/useFetchData';
 export default function AdminDashboard() {
   const navigate = useNavigate();
 
-  // Fetch dữ liệu bằng useFetchData
+  // Fetch dữ liệu bằng useFetchData — overview cung cấp sẵn số thật, orders dùng để dựng biểu đồ theo ngày
   const { data: overviewStats, loading: loadingOverview, error: overviewError, refetch: refetchOverview } = useFetchData('/admin/stats/overview');
-  const { data: usersData, loading: loadingUsers, error: usersError, refetch: refetchUsers } = useFetchData('/admin/users?size=100');
-  const { data: reportsData, loading: loadingReports, error: reportsError, refetch: refetchReports } = useFetchData('/admin/reports?status=PENDING');
   const { data: ordersData, loading: loadingOrders, error: ordersError, refetch: refetchOrders } = useFetchData('/admin/orders?size=2000');
 
-  const loading = loadingOverview || loadingUsers || loadingReports || loadingOrders;
-  const hasError = overviewError || usersError || reportsError || ordersError;
+  const loading = loadingOverview || loadingOrders;
+  const hasError = overviewError || ordersError;
 
-  // Tính số tài khoản đang chờ phê duyệt (status === false)
-  const pendingAccountsCount = useMemo(() => {
-    const allUsers = usersData?.content || [];
-    const pendingOwners = allUsers.filter(u => (u.role === 'OWNER' || u.role === 'MERCHANT') && !u.status).length;
-    const pendingShippers = allUsers.filter(u => u.role === 'SHIPPER' && !u.status).length;
-    return { owners: pendingOwners, shippers: pendingShippers };
-  }, [usersData]);
-
-  // Lấy số lượng báo cáo vi phạm đang chờ xử lý
-  const reportsCount = useMemo(() => {
-    return reportsData?.totalElements || 0;
-  }, [reportsData]);
+  // Số hồ sơ/báo cáo chờ xử lý — lấy trực tiếp từ overview (số thật, không còn lọc client-side trên trang size=100)
+  const pendingAccountsCount = {
+    owners: overviewStats?.pendingRestaurantRegisters || 0,
+    shippers: overviewStats?.pendingShipperRegisters || 0,
+  };
+  const reportsCount = overviewStats?.pendingReports || 0;
 
   // Tính toán biểu đồ doanh thu thực tế từ database (loại trừ đơn bị refund)
   const revenueChartData = useMemo(() => {
@@ -54,14 +46,7 @@ export default function AdminDashboard() {
       return dayA - dayB;
     });
     
-    if (chartData.length === 0) {
-      // Fallback mockup nếu chưa có đơn completed nào
-      return [
-        { day: '05-05', amount: 150000 },
-        { day: '10-05', amount: 280000 },
-        { day: '15-05', amount: 340000 }
-      ];
-    }
+    // Không dùng số giả: nếu chưa có đơn hoàn tất thì trả mảng rỗng để render empty-state trung thực
     return chartData;
   }, [ordersData]);
 
@@ -73,8 +58,6 @@ export default function AdminDashboard() {
   if (hasError) {
     const handleRetry = () => {
       if (overviewError) refetchOverview();
-      if (usersError) refetchUsers();
-      if (reportsError) refetchReports();
       if (ordersError) refetchOrders();
     };
 
@@ -87,8 +70,6 @@ export default function AdminDashboard() {
           </div>
           <div className="text-slate-300 text-sm space-y-1">
             {overviewError && <div>• Không thể tải thống kê tổng quan</div>}
-            {usersError && <div>• Không thể tải dữ liệu người dùng</div>}
-            {reportsError && <div>• Không thể tải báo cáo vi phạm</div>}
             {ordersError && <div>• Không thể tải dữ liệu đơn hàng</div>}
           </div>
           <button
@@ -107,7 +88,12 @@ export default function AdminDashboard() {
   const totalRestaurants = overviewStats ? overviewStats.totalRestaurants : 0;
   const totalOrders = overviewStats ? overviewStats.totalOrders : 0;
   const completedOrders = overviewStats ? overviewStats.completedOrders : 0;
+  const cancelledOrders = overviewStats ? overviewStats.cancelledOrders : 0;
   const totalRevenue = overviewStats ? Number(overviewStats.totalRevenue) : 0;
+  const activeShippers = overviewStats ? overviewStats.activeShippers : 0;
+  // AOV (giá trị đơn trung bình) và tỷ lệ huỷ — KPI nghiệp vụ chuẩn cho sàn giao dịch
+  const avgOrderValue = overviewStats ? Number(overviewStats.avgOrderValue ?? 0) : 0;
+  const cancelRate = totalOrders > 0 ? ((cancelledOrders / totalOrders) * 100).toFixed(1) : 0;
 
   return (
     <div className="flex-1 p-4 md:p-8 max-w-7xl mx-auto w-full font-google-sans space-y-6 text-slate-100 pb-24">
@@ -126,7 +112,7 @@ export default function AdminDashboard() {
         {[
           { title: 'Tổng người dùng', value: `${totalUsers} thành viên`, desc: 'Đăng ký thực tế', icon: Users, color: 'border-blue-500/25 bg-blue-950/10 text-blue-400' },
           { title: 'Quán ăn đối tác', value: `${totalRestaurants} quán`, desc: `${pendingAccountsCount.owners} quán đang chờ duyệt`, icon: Store, color: 'border-emerald-500/25 bg-emerald-950/10 text-emerald-400' },
-          { title: 'Tài xế shipper', value: 'Đang hoạt động', desc: `${pendingAccountsCount.shippers} xế đang chờ duyệt`, icon: Bike, color: 'border-cyan-500/25 bg-cyan-950/10 text-cyan-400' },
+          { title: 'Tài xế shipper', value: `${activeShippers} đang online`, desc: `${pendingAccountsCount.shippers} xế đang chờ duyệt`, icon: Bike, color: 'border-cyan-500/25 bg-cyan-950/10 text-cyan-400' },
           { title: 'Tổng đơn hàng', value: `${totalOrders} đơn`, desc: `Thành công: ${completedOrders} đơn`, icon: Package, color: 'border-purple-500/25 bg-purple-950/10 text-purple-400' },
         ].map((item, idx) => {
           const Icon = item.icon;
@@ -196,19 +182,28 @@ export default function AdminDashboard() {
               Tổng giao dịch hệ thống (GTV): {formatCurrency(totalRevenue)}
             </h3>
             <span className="text-[10px] text-purple-400 bg-purple-950/20 px-2.5 py-1 rounded-full border border-purple-900/30 font-bold">
-              Hoa hồng sàn ({Math.round((overviewStats?.commissionRate ?? 0.1) * 100)}%): {formatCurrency(overviewStats?.totalCommission ?? ((overviewStats?.totalRevenue ?? 0) * 0.1))}
+              {/* Hoa hồng sàn: đọc thẳng từ overview (BE luôn trả), bỏ giả định 10% ngầm */}
+              Hoa hồng sàn ({Math.round((overviewStats?.commissionRate ?? 0) * 100)}%): {formatCurrency(overviewStats?.totalCommission ?? 0)}
             </span>
           </div>
 
           <div className="h-60 w-full text-xs">
-            <RevenueAreaChart
-              data={revenueChartData}
-              dataKey="amount"
-              xKey="day"
-              color="#9334E6"
-              height={240}
-              yTickFormatter={(v) => v >= 1000000 ? `${v/1000000}M` : `${v/1000}k`}
-            />
+            {revenueChartData.length > 0 ? (
+              <RevenueAreaChart
+                data={revenueChartData}
+                dataKey="amount"
+                xKey="day"
+                color="#9334E6"
+                height={240}
+                yTickFormatter={(v) => v >= 1000000 ? `${v/1000000}M` : `${v/1000}k`}
+              />
+            ) : (
+              // Empty-state trung thực khi chưa có đơn hoàn tất (không bịa số giả)
+              <div className="h-full flex flex-col items-center justify-center text-slate-500 gap-2">
+                <TrendingUp size={28} className="opacity-40" />
+                <span className="text-xs">Chưa có đơn hoàn tất để thống kê doanh thu</span>
+              </div>
+            )}
           </div>
         </div>
 
@@ -227,10 +222,20 @@ export default function AdminDashboard() {
                   {totalOrders > 0 ? ((completedOrders / totalOrders) * 100).toFixed(1) : 0}%
                 </span>
               </div>
+              {/* AOV: giá trị đơn trung bình — chỉ số nghiệp vụ chuẩn của sàn giao dịch */}
               <div className="flex justify-between items-center py-2 border-b border-slate-850">
-                <span className="text-slate-400">Đơn hàng đã hủy:</span>
-                <span className="text-red-400 font-bold">
-                  {overviewStats ? overviewStats.cancelledOrders : 0} đơn
+                <span className="text-slate-400">Giá trị đơn trung bình:</span>
+                <span className="text-blue-400 font-bold">{formatCurrency(avgOrderValue)}</span>
+              </div>
+              <div className="flex justify-between items-center py-2 border-b border-slate-850">
+                <span className="text-slate-400">Tỷ lệ huỷ đơn:</span>
+                <span className="text-red-400 font-bold">{cancelRate}% ({cancelledOrders} đơn)</span>
+              </div>
+              {/* Phân bố đơn đang xử lý — số thật từ overview */}
+              <div className="flex justify-between items-center py-2 border-b border-slate-850">
+                <span className="text-slate-400">Đơn đang xử lý:</span>
+                <span className="text-cyan-400 font-bold text-[11px]">
+                  chờ {overviewStats?.pendingOrders ?? 0} · nấu {overviewStats?.preparingOrders ?? 0} · giao {overviewStats?.deliveringOrders ?? 0}
                 </span>
               </div>
               <div className="flex justify-between items-center py-2">

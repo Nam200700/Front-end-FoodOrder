@@ -72,10 +72,15 @@ export default function MerchantReviews() {
   const loading = loadingRestaurant || loadingReviews || submitting;
   const reviewsList = reviews || [];
 
-  const totalReviews = pageData.totalElements;
+  const totalReviews = restaurant?.reviewsCount ?? pageData.totalElements;
   const totalPages = pageData.totalPages || 0;
-  
-  const avgRating = totalReviews ? reviewsList.reduce((s, r) => s + (r.rating || 0), 0) / reviewsList.length : 0;
+
+  // Điểm trung bình lấy TOÀN CỤC từ restaurant.rating (BE tính trên toàn bộ review),
+  // không còn tính trên trang hiện tại; fallback trang cũ khi thiếu.
+  const avgRating = restaurant?.rating != null
+    ? Number(restaurant.rating)
+    : (reviewsList.length ? reviewsList.reduce((s, r) => s + (r.rating || 0), 0) / reviewsList.length : 0);
+  // Phân bố sao vẫn theo trang hiện tại (BE chưa có breakdown toàn cục) — dùng để tham khảo trong trang.
   const ratingDist = [5, 4, 3, 2, 1].map((star) => {
     const count = reviewsList.filter((r) => Math.round(r.rating) === star).length;
     return { star, count, pct: reviewsList.length ? (count / reviewsList.length) * 100 : 0 };

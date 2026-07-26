@@ -1,5 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { ClipboardList, ShoppingBag, Check, X, Ban, Eye, Clock, AlertCircle } from 'lucide-react';
+import {
+  ClipboardList, ShoppingBag, Check, X, Ban, Eye, Clock, AlertCircle,
+  User, Phone, MapPin, Bike, Wallet, StickyNote, CalendarClock, UtensilsCrossed, Package, BadgeCheck
+} from 'lucide-react';
 import { formatCurrency } from '../../utils/format';
 import apiClient from '../../services/api';
 import { useWebSocketContext } from '../../contexts/WebSocketContext';
@@ -14,6 +17,31 @@ import Spinner from '../../components/common/Spinner';
 import Modal from '../../components/common/Modal'; 
 import OrderCancelModal from '../../components/common/OrderCancelModal';
 import { getStatusConfig } from '../../utils/orderStatusHelper';
+import { getFoodImageUrl, DEFAULT_FOOD_IMAGE } from '../../utils/avatarHelper';
+
+// Dải màu viền trái theo trạng thái đơn để owner quét nhanh (giảm tải nhận thức)
+const STATUS_ACCENT = {
+  PENDING: 'border-l-amber-400',
+  CONFIRMED: 'border-l-blue-500',
+  PREPARING: 'border-l-indigo-500',
+  READY_FOR_PICKUP: 'border-l-teal-500',
+  PICKED_UP: 'border-l-cyan-500',
+  DELIVERING: 'border-l-sky-500',
+  COMPLETED: 'border-l-emerald-500',
+  CANCELLED: 'border-l-rose-400',
+};
+
+// Pill trạng thái cho modal chi tiết (màu + icon) — làm nổi bật trạng thái đơn
+const STATUS_PILL = {
+  PENDING: { bg: 'bg-amber-100', text: 'text-amber-700', icon: Clock },
+  CONFIRMED: { bg: 'bg-blue-100', text: 'text-blue-700', icon: Check },
+  PREPARING: { bg: 'bg-indigo-100', text: 'text-indigo-700', icon: UtensilsCrossed },
+  READY_FOR_PICKUP: { bg: 'bg-teal-100', text: 'text-teal-700', icon: Package },
+  PICKED_UP: { bg: 'bg-cyan-100', text: 'text-cyan-700', icon: Bike },
+  DELIVERING: { bg: 'bg-sky-100', text: 'text-sky-700', icon: Bike },
+  COMPLETED: { bg: 'bg-emerald-100', text: 'text-emerald-700', icon: BadgeCheck },
+  CANCELLED: { bg: 'bg-rose-100', text: 'text-rose-700', icon: Ban },
+};
 
 const ORDER_STATUS_TABS = [
   { id: 'ALL', label: 'Tất cả' },
@@ -26,10 +54,14 @@ const ORDER_STATUS_TABS = [
 ];
 
 export default function MerchantOrders() {
-  const [activeTab, setActiveTab] = useState('ALL'); 
+  const [activeTab, setActiveTab] = useState('ALL');
   const [orders, setOrders] = useState([]);
   const [restaurantId, setRestaurantId] = useState(null);
   const [loading, setLoading] = useState(true);
+  // Đếm số đơn theo từng trạng thái để hiện badge trên tab (dễ quản lý, không cần bấm vào từng tab)
+  const [statusCounts, setStatusCounts] = useState({});
+  // Đơn đang xử lý thao tác (nhận/chuẩn bị/sẵn sàng) → disable + spinner, tránh double-click
+  const [actionLoadingId, setActionLoadingId] = useState(null);
 
   // STATE PHÂN TRANG
   const [currentPage, setCurrentPage] = useState(1);
@@ -109,8 +141,9 @@ export default function MerchantOrders() {
             quantity: i.quantity,
             price: Number(i.priceAtOrder || 0),
             note: i.note,
-            image: i.foodImageUrl || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=150&q=80'
-          })), 
+            // Ảnh món: dùng ảnh thật, thiếu thì fallback ảnh mặc định nội bộ (bỏ ảnh Unsplash hardcode)
+            image: getFoodImageUrl(i.foodImageUrl)
+          })),
           total: Number(ord.totalAmount),
           createdAt: formatOrderDate(ord.createdAt),
           phone: ord.customerPhone,
@@ -131,6 +164,25 @@ export default function MerchantOrders() {
   useEffect(() => {
     fetchOrders();
   }, [fetchOrders]);
+
+  // Đếm số đơn theo trạng thái (lấy toàn bộ đơn của quán, không phân trang) để hiện badge trên tab
+  const fetchStatusCounts = useCallback(async () => {
+    if (!restaurantId) return;
+    try {
+      const res = await apiClient.get('/merchant/orders', { params: { restaurantId, size: 1000 } });
+      const all = res.data?.data?.content || [];
+      const counts = { ALL: all.length };
+      all.forEach((o) => { counts[o.orderStatus] = (counts[o.orderStatus] || 0) + 1; });
+      setStatusCounts(counts);
+    } catch (err) {
+      console.error('Lỗi đếm số đơn theo trạng thái:', err);
+    }
+  }, [restaurantId]);
+
+  // Refresh badge mỗi khi danh sách đơn thay đổi (sau xác nhận/từ chối/WS) để số luôn khớp thực tế
+  useEffect(() => {
+    fetchStatusCounts();
+  }, [orders, fetchStatusCounts]);
 
   // Lắng nghe thông báo Đơn hàng mới qua WebSocket 
   useEffect(() => {
@@ -155,6 +207,7 @@ export default function MerchantOrders() {
   // Xác nhận đơn hàng
   const handleConfirm = async (e, orderId) => {
     e.stopPropagation();
+    setActionLoadingId(orderId);
     try {
       await apiClient.patch(`/merchant/orders/${orderId}/confirm`);
       toast.success(`Đã xác nhận thành công đơn hàng #${orderId}`);
@@ -165,12 +218,15 @@ export default function MerchantOrders() {
     } catch (err) {
       console.error('Lỗi khi xác nhận đơn hàng:', err);
       toast.error(err.response?.data?.message);
+    } finally {
+      setActionLoadingId(null);
     }
   };
 
   // xác nhận đang chuẩn bị món ăn
   const handlePreparing = async (e, orderId) => {
     e.stopPropagation();
+    setActionLoadingId(orderId);
     try {
       await apiClient.patch(`/merchant/orders/${orderId}/preparing`);
       toast.success(`Đã xác nhận đang chuẩn bị món thành công đơn hàng #${orderId}`);
@@ -181,12 +237,15 @@ export default function MerchantOrders() {
     } catch (err) {
       console.error('Lỗi khi xác nhận đang chuẩn bị món:', err);
       toast.error(err.response?.data?.message);
+    } finally {
+      setActionLoadingId(null);
     }
   };
 
   //Xác nhận đã sẵn sàng giao đơn
   const handleReady = async (e, orderId) => {
     e.stopPropagation();
+    setActionLoadingId(orderId);
     try {
       await apiClient.patch(`/merchant/orders/${orderId}/ready`);
       toast.success(`Đã xác nhận sẵn sàng giao thành công đơn hàng #${orderId}!`);
@@ -197,6 +256,8 @@ export default function MerchantOrders() {
     } catch (err) {
       console.error('Lỗi khi xác nhận đã sẵn sàng giao đơn:', err);
       toast.error(err.response?.data?.message);
+    } finally {
+      setActionLoadingId(null);
     }
   };
 
@@ -307,11 +368,12 @@ export default function MerchantOrders() {
         <h1 className="text-xl md:text-2xl font-bold mb-4 md:mb-6 text-gray-900">Quản Lý Đơn Hàng</h1>
         
         <div className="mb-6 border-b border-slate-200 pb-3 overflow-x-auto scrollbar-none w-full">
-          <FilterTabs 
-            tabs={ORDER_STATUS_TABS} 
-            activeTab={activeTab} 
+          <FilterTabs
+            tabs={ORDER_STATUS_TABS}
+            activeTab={activeTab}
             onTabChange={setActiveTab}
-            className="flex flex-row !flex-nowrap whitespace-nowrap [&_div]:flex [&_div]:flex-row [&_div]:flex-nowrap [&_button]:shrink-0 [&_button.bg-md-primary]:!bg-blue-600 [&_button.bg-md-primary]:!text-white [&_button.bg-md-primary]:!shadow-blue-100" 
+            counts={statusCounts}
+            className="flex flex-row !flex-nowrap whitespace-nowrap [&_div]:flex [&_div]:flex-row [&_div]:flex-nowrap [&_button]:shrink-0 [&_button.bg-md-primary]:!bg-blue-600 [&_button.bg-md-primary]:!text-white [&_button.bg-md-primary]:!shadow-blue-100"
           />
         </div>
 
@@ -335,11 +397,12 @@ export default function MerchantOrders() {
             </div>
           ) : (
             <div className="space-y-4">
-              {orders.map((order) => (
-                <div 
+              {orders.map((order, idx) => (
+                <div
                   key={order.id}
                   onClick={() => handleViewDetails(order.id)}
-                  className="bg-white rounded-xl border border-slate-100 shadow-sm p-4 md:p-5 flex flex-col gap-4 cursor-pointer group transition-colors hover:border-slate-200"
+                  style={{ animationDelay: `${idx * 60}ms` }}
+                  className={`animate-rise-in bg-white rounded-xl border border-slate-100 border-l-4 ${STATUS_ACCENT[order.status] || 'border-l-slate-200'} shadow-sm p-4 md:p-5 flex flex-col gap-4 cursor-pointer group transition-all duration-200 hover:shadow-md hover:-translate-y-0.5 hover:border-slate-200`}
                 >
                   <div className="flex flex-row justify-between items-center gap-2 border-b border-slate-100 pb-3 flex-wrap sm:flex-nowrap">
                     <div className="text-[11px] sm:text-sm font-bold text-slate-800 uppercase tracking-wide whitespace-nowrap shrink-0">
@@ -365,7 +428,13 @@ export default function MerchantOrders() {
                             className="flex gap-3 items-center border border-slate-100 rounded-lg p-3 bg-slate-50/50 w-[260px] sm:w-[280px] shrink-0 select-none relative"
                           >
                             <div className="w-14 h-14 rounded-md overflow-hidden shrink-0 border border-slate-200 bg-white">
-                              <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
+                              {/* onError: ảnh link hỏng thì thay bằng ảnh mặc định (khỏi hiện icon vỡ) */}
+                              <img
+                                src={item.image}
+                                alt={item.name}
+                                className="w-full h-full object-cover"
+                                onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = DEFAULT_FOOD_IMAGE; }}
+                              />
                             </div>
                             <div className="min-w-0 flex-1">
                               <h4 className="font-bold text-slate-800 text-sm truncate">{item.name}</h4>
@@ -413,6 +482,7 @@ export default function MerchantOrders() {
                             variant="danger"
                             size="sm"
                             icon={Ban}
+                            disabled={actionLoadingId === order.id}
                             onClick={(e) => handleOpenCancelModal(e, order.id)}
                             className="w-full sm:w-auto !py-2.5 rounded-lg text-xs"
                           >
@@ -422,6 +492,8 @@ export default function MerchantOrders() {
                             variant="primary"
                             size="sm"
                             icon={Check}
+                            loading={actionLoadingId === order.id}
+                            disabled={actionLoadingId === order.id}
                             onClick={(e) => handleConfirm(e, order.id)}
                             className="w-full sm:w-auto !py-2.5 rounded-lg text-xs !bg-emerald-600"
                           >
@@ -434,6 +506,8 @@ export default function MerchantOrders() {
                         <Button
                           variant="primary"
                           size="sm"
+                          loading={actionLoadingId === order.id}
+                          disabled={actionLoadingId === order.id}
                           onClick={(e) => handlePreparing(e, order.id)}
                           className="w-full sm:w-auto !py-2.5 rounded-lg text-xs !bg-blue-600"
                         >
@@ -445,6 +519,8 @@ export default function MerchantOrders() {
                         <Button
                           variant="secondary"
                           size="sm"
+                          loading={actionLoadingId === order.id}
+                          disabled={actionLoadingId === order.id}
                           onClick={(e) => handleReady(e, order.id)}
                           className="w-full sm:w-auto !py-2.5 rounded-lg text-xs !bg-[#34A853] hover:!bg-[#2E8B49]"
                         >
@@ -584,128 +660,181 @@ export default function MerchantOrders() {
         title={detailModal.data ? `Chi Tiết Đơn Hàng #${detailModal.data.orderId}` : ''}
         size="lg"
       >
-        {detailModal.data && (
-          <>
-            <p className="text-xs text-slate-400 -mt-3 mb-3">Thời gian đặt: {formatOrderDate(detailModal.data.createdAt)}</p>
-            
-            <div className="mb-3 text-xs bg-slate-50 p-2.5 rounded-lg border border-slate-100">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pb-2 border-b border-slate-200/60">
-                <div>
-                  <h4 className="font-bold text-slate-500 uppercase tracking-wide mb-0.5">Thông tin khách hàng</h4>
-                  <p className="text-slate-600"><span className="font-medium">Họ và tên:</span> {detailModal.data.customerName}</p>
-                  <p className="text-slate-600 mt-0.5"><span className="font-medium">SĐT:</span> {maskPhone(detailModal.data?.customerPhone)}</p>
-                </div>
-                <div>
-                  <h4 className="font-bold text-slate-500 uppercase tracking-wide mb-0.5">Thông tin giao hàng</h4>
-                  <p className="text-slate-600">Trạng thái: {getStatus(detailModal.data?.orderStatus)}</p>
-                  <p className="text-slate-600 mt-0.5">Người giao hàng: {detailModal.data.shipperName ? `${detailModal.data.shipperName} - ${detailModal.data.shipperPhone}` : 'Chưa có tài xế nhận'}</p>
-                </div>
+        {detailModal.data && (() => {
+          const d = detailModal.data;
+          const status = d.orderStatus;
+          const pill = STATUS_PILL[status] || STATUS_PILL.PENDING;
+          const PillIcon = pill.icon;
+          const orderId = d.orderId;
+          const busy = actionLoadingId === orderId;
+          const subtotal = d.subtotalAmount || d.totalAmount - (d.shippingFee || 0);
+          return (
+            <div className="space-y-4 -mt-1">
+              {/* Hàng đầu: thời gian đặt + pill trạng thái nổi bật */}
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <span className="inline-flex items-center gap-1.5 text-xs text-slate-400 font-medium">
+                  <CalendarClock size={14} /> Đặt lúc {formatOrderDate(d.createdAt)}
+                </span>
+                <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-extrabold ${pill.bg} ${pill.text}`}>
+                  <PillIcon size={13} /> {getStatus(status)}
+                </span>
               </div>
-              
-              <div className="pt-2">
-                <p className="text-slate-600 break-words" title={detailModal.data.deliveryAddress}>
-                  <span className="font-medium text-slate-700">Địa chỉ giao hàng:</span> {detailModal.data.deliveryAddress}
-                </p>
-              </div>
-            </div>
 
-            {/* Chi tiết danh sách món ăn */}
-            <div className="space-y-1.5 max-h-[200px] overflow-y-auto pr-1 border-b pb-3 mb-3 scrollbar-thin">
-              <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wide mb-1">Danh sách món ăn</h4>
-              {(detailModal.data.items || []).map((item, index) => (
-                <div key={index} className="flex items-center justify-between bg-white border border-slate-100 p-2 rounded-lg text-sm shadow-2.5">
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    <img 
-                      src={item.foodImageUrl || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=150&q=80'} 
-                      alt={item.foodName} 
-                      className="w-9 h-9 object-cover rounded border border-slate-200" 
-                    />
-                    <div className="min-w-0">
-                      <p className="font-bold text-slate-800 truncate leading-tight">{item.foodName}</p>
-                      <p className="text-xs text-slate-400 mt-0.5">Số lượng: {item.quantity}</p>
-                      {item.note && <p className="text-[11px] text-amber-600 italic">Ghi chú: "{item.note}"</p>}
-                    </div>
-                  </div>
-                  <p className="font-bold text-slate-900 shrink-0 text-xs text-right">
-                    {formatCurrency((item.priceAtOrder) * item.quantity)}
+              {/* 2 thẻ thông tin: khách hàng & giao hàng (có icon, thoáng hơn) */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div className="rounded-2xl border border-slate-100 bg-slate-50/60 p-4 space-y-2.5">
+                  <h4 className="flex items-center gap-2 text-[11px] font-extrabold text-slate-500 uppercase tracking-wider">
+                    <User size={14} className="text-blue-500" /> Khách hàng
+                  </h4>
+                  <p className="flex items-center gap-2 text-sm text-slate-700"><User size={13} className="text-slate-400 shrink-0" /> {d.customerName}</p>
+                  <p className="flex items-center gap-2 text-sm text-slate-700"><Phone size={13} className="text-slate-400 shrink-0" /> {maskPhone(d.customerPhone)}</p>
+                </div>
+                <div className="rounded-2xl border border-slate-100 bg-slate-50/60 p-4 space-y-2.5">
+                  <h4 className="flex items-center gap-2 text-[11px] font-extrabold text-slate-500 uppercase tracking-wider">
+                    <Bike size={14} className="text-emerald-500" /> Giao hàng
+                  </h4>
+                  <p className="flex items-center gap-2 text-sm text-slate-700">
+                    <BadgeCheck size={13} className="text-slate-400 shrink-0" /> {getStatus(status)}
+                  </p>
+                  <p className="flex items-center gap-2 text-sm text-slate-700">
+                    <Bike size={13} className="text-slate-400 shrink-0" /> {d.shipperName ? `${d.shipperName} - ${d.shipperPhone}` : 'Chưa có tài xế nhận'}
                   </p>
                 </div>
-              ))}
-            </div>
+              </div>
 
-            <div className="flex flex-col sm:flex-row justify-between items-start gap-4 border-b pb-3 mb-4 text-xs">
-              {/* Phương thức thanh toán & Ghi chú đơn hàng */}
-              <div className="flex-1 space-y-2 w-full sm:w-auto">
-                <div className="p-2 bg-blue-50/50 border border-blue-100 rounded-lg text-slate-700">
-                  <span className="font-bold text-slate-600">Phương thức thanh toán:</span>
-                  <p className="font-medium mt-0.5">{getPaymentMethodLabel(detailModal.data?.paymentMethod)}</p>
+              {/* Địa chỉ giao hàng — dòng riêng có icon */}
+              <div className="flex items-start gap-2.5 rounded-2xl border border-slate-100 bg-white p-3.5 text-sm text-slate-600">
+                <MapPin size={16} className="text-rose-500 shrink-0 mt-0.5" />
+                <span className="break-words"><span className="font-semibold text-slate-700">Địa chỉ giao:</span> {d.deliveryAddress}</span>
+              </div>
+
+              {/* Danh sách món ăn — thoáng hơn, ảnh to hơn, số lượng dạng badge */}
+              <div>
+                <h4 className="flex items-center gap-2 text-[11px] font-extrabold text-slate-500 uppercase tracking-wider mb-2">
+                  <UtensilsCrossed size={14} className="text-amber-500" /> Danh sách món ăn ({(d.items || []).length})
+                </h4>
+                <div className="space-y-2">
+                  {(d.items || []).map((item, index) => (
+                    <div
+                      key={index}
+                      style={{ animationDelay: `${index * 45}ms` }}
+                      className="animate-rise-in flex items-center justify-between gap-3 bg-white border border-slate-100 rounded-xl p-2.5 transition-colors hover:border-slate-200"
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <img
+                          src={getFoodImageUrl(item.foodImageUrl)}
+                          alt={item.foodName}
+                          className="w-12 h-12 object-cover rounded-lg border border-slate-200 shrink-0"
+                          onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = DEFAULT_FOOD_IMAGE; }}
+                        />
+                        <div className="min-w-0">
+                          <p className="font-bold text-slate-800 text-sm leading-tight truncate">{item.foodName}</p>
+                          <span className="inline-flex items-center mt-1 px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 text-[11px] font-bold">
+                            ×{item.quantity}
+                          </span>
+                          {item.note && (
+                            <p className="text-[11px] text-amber-600 italic mt-1 flex items-center gap-1">
+                              <StickyNote size={11} className="shrink-0" /> "{item.note}"
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                      <p className="font-extrabold text-slate-900 shrink-0 text-sm text-right">
+                        {formatCurrency((item.priceAtOrder) * item.quantity)}
+                      </p>
+                    </div>
+                  ))}
                 </div>
-                {detailModal.data.note && (
-                  <div className="p-2 bg-amber-50/60 border border-amber-100 text-amber-800 rounded-lg italic">
-                    <span className="font-bold not-italic">Ghi chú đơn hàng:</span> "{detailModal.data.note}"
+              </div>
+
+              {/* Thanh toán + ghi chú (trái) · Tổng tiền dạng card (phải) */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-2">
+                  <div className="flex items-start gap-2.5 rounded-xl bg-blue-50/60 border border-blue-100 p-3">
+                    <Wallet size={16} className="text-blue-600 shrink-0 mt-0.5" />
+                    <div className="min-w-0">
+                      <span className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider block">Thanh toán</span>
+                      <span className="text-sm font-semibold text-slate-700">{getPaymentMethodLabel(d.paymentMethod)}</span>
+                    </div>
                   </div>
-                )}
+                  {d.note && (
+                    <div className="flex items-start gap-2.5 rounded-xl bg-amber-50/60 border border-amber-100 p-3 text-amber-800">
+                      <StickyNote size={16} className="shrink-0 mt-0.5" />
+                      <div className="min-w-0">
+                        <span className="text-[10px] font-extrabold uppercase tracking-wider block">Ghi chú đơn hàng</span>
+                        <span className="text-sm italic">"{d.note}"</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <div className="rounded-2xl bg-slate-50 border border-slate-100 p-4 space-y-2 self-start">
+                  <div className="flex justify-between items-center text-sm text-slate-500 font-medium">
+                    <span>Tạm tính</span>
+                    <span className="text-slate-800 font-bold">{formatCurrency(subtotal)}</span>
+                  </div>
+                  <div className="flex justify-between items-center text-sm text-slate-500 font-medium">
+                    <span>Phí giao hàng</span>
+                    <span className="text-slate-800 font-bold">{formatCurrency(d.shippingFee || 0)}</span>
+                  </div>
+                  <div className="flex justify-between items-center pt-2 border-t border-dashed border-slate-300">
+                    <span className="text-sm font-extrabold text-slate-800">Tổng cộng</span>
+                    <span className="text-blue-600 text-xl font-extrabold">{formatCurrency(d.totalAmount)}</span>
+                  </div>
+                </div>
               </div>
 
-              {/* tổng tiền */}
-              <div className="w-full sm:max-w-[260px] shrink-0 space-y-1.5 self-end sm:self-auto">
-                <div className="flex justify-between items-center text-slate-500 font-medium">
-                  <span>Tạm tính</span>
-                  <span className="text-slate-800 font-bold">{formatCurrency(detailModal.data.subtotalAmount || detailModal.data.totalAmount - (detailModal.data.shippingFee || 0))}</span>
-                </div>
-                <div className="flex justify-between items-center text-slate-500 font-medium">
-                  <span>Phí giao hàng</span>
-                  <span className="text-slate-800 font-bold">{formatCurrency(detailModal.data.shippingFee || 0)}</span>
-                </div>
-                <div className="flex justify-between items-center pt-1 border-t border-dashed border-slate-200">
-                  <span className="text-sm font-bold text-slate-800">Tổng cộng</span>
-                  <span className="text-blue-600 text-base font-extrabold">{formatCurrency(detailModal.data.totalAmount)}</span>
-                </div>
-              </div>
-            </div>
+              {/* Khối điều hướng các Button (có loading/disabled theo đơn) */}
+              <div className="flex justify-end gap-2 pt-1">
+                <Button variant="outline" size="sm" onClick={detailModal.close} className="rounded-lg text-xs !py-2 hover:border-blue-600 hover:text-blue-600">
+                  Đóng
+                </Button>
 
-            {/* Khối điều hướng các Button */}
-            <div className="flex justify-end gap-2">
-              <Button variant="outline" size="sm" onClick={detailModal.close} className="rounded-lg text-xs !py-1.5 hover:border-blue-600 hover:text-blue-600">
-                Đóng
-              </Button>
-              
-              {(detailModal.data.orderStatus === 'PENDING') && (
-                <Button 
-                    variant="primary" 
-                    size="sm" 
+                {status === 'PENDING' && (
+                  <Button
+                    variant="primary"
+                    size="sm"
                     icon={Check}
-                    onClick={(e) => handleConfirm(e, detailModal.data.orderId)}
-                    className="rounded-lg text-xs !py-1.5 !bg-emerald-600"
+                    loading={busy}
+                    disabled={busy}
+                    onClick={(e) => handleConfirm(e, orderId)}
+                    className="rounded-lg text-xs !py-2 !bg-emerald-600"
                   >
                     Nhận đơn
-                </Button>
-              )}
+                  </Button>
+                )}
 
-              {(detailModal.data.orderStatus === 'CONFIRMED') && (
-                <Button 
-                  variant="primary" 
-                  size="sm" 
-                  onClick={(e) => handlePreparing(e, detailModal.data.orderId)}
-                  className="rounded-lg text-xs !py-1.5 !bg-blue-600"
-                >
-                  Chuẩn bị món
-                </Button>
-              )}
+                {status === 'CONFIRMED' && (
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    icon={UtensilsCrossed}
+                    loading={busy}
+                    disabled={busy}
+                    onClick={(e) => handlePreparing(e, orderId)}
+                    className="rounded-lg text-xs !py-2 !bg-blue-600"
+                  >
+                    Chuẩn bị món
+                  </Button>
+                )}
 
-              {(detailModal.data.orderStatus === 'PREPARING') && (
-                <Button 
-                  variant="secondary" 
-                  size="sm" 
-                  onClick={(e) => handleReady(e, detailModal.data.orderId)}
-                  className="rounded-lg text-xs !py-1.5 !bg-[#34A853] hover:!bg-[#2E8B49]"
-                >
-                  Sẵn sàng giao
-                </Button>
-              )}
+                {status === 'PREPARING' && (
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    icon={Package}
+                    loading={busy}
+                    disabled={busy}
+                    onClick={(e) => handleReady(e, orderId)}
+                    className="rounded-lg text-xs !py-2 !bg-[#34A853] hover:!bg-[#2E8B49]"
+                  >
+                    Sẵn sàng giao
+                  </Button>
+                )}
+              </div>
             </div>
-          </>
-        )}
+          );
+        })()}
       </Modal>
     </div>
   );

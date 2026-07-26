@@ -59,6 +59,8 @@ export default function OrderHistory() {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  // Đếm số đơn theo trạng thái để hiện badge số trên tab (dễ theo dõi)
+  const [statusCounts, setStatusCounts] = useState({});
 
   // Các States xử lý nghiệp vụ hủy đơn hàng
   const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
@@ -129,6 +131,24 @@ export default function OrderHistory() {
   useEffect(() => {
     fetchOrderHistory();
   }, [fetchOrderHistory]);
+
+  // Đếm số đơn theo trạng thái (lấy toàn bộ đơn, không lọc) để hiện badge trên tab
+  const fetchStatusCounts = useCallback(async () => {
+    try {
+      const res = await apiClient.get('/orders', { params: { size: 1000 } });
+      const all = res.data?.data?.content || res.data?.data || [];
+      const counts = { ALL: all.length };
+      all.forEach((o) => { counts[o.orderStatus] = (counts[o.orderStatus] || 0) + 1; });
+      setStatusCounts(counts);
+    } catch (err) {
+      console.error('Lỗi đếm số đơn theo trạng thái:', err);
+    }
+  }, []);
+
+  // Refresh badge mỗi khi danh sách đơn thay đổi (sau huỷ đơn/tải lại)
+  useEffect(() => {
+    fetchStatusCounts();
+  }, [orders, fetchStatusCounts]);
 
   // hiển thị modal hủy đơn
   const handleOpenCancelModal = (e, orderId) => {
@@ -245,6 +265,7 @@ export default function OrderHistory() {
             tabs={ORDER_STATUS_TABS}
             activeTab={activeTab}
             onTabChange={setActiveTab}
+            counts={statusCounts}
             className="min-w-max pb-3 gap-2.5 !flex-nowrap [&_button]:text-center [&_button]:!py-2 [&_button]:!px-4 [&_button]:text-xs [&_button]:md:text-sm [&_button]:font-bold [&_button]:!rounded-lg [&_button]:whitespace-nowrap [&_button]:!border-transparent [&_button]:cursor-pointer"
             activeClassName="!bg-orange-500 !text-white !border-orange-500 shadow-sm"
           />

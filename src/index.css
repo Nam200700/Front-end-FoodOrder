@@ -218,6 +218,29 @@
   }
 }
 
+/* Widget FAB keyframes */
+@keyframes scaleUp {
+  0% { opacity: 0; transform: scale(0.9) translateY(6px); }
+  100% { opacity: 1; transform: scale(1) translateY(0); }
+}
+@keyframes fabIn {
+  0% { opacity: 0; transform: scale(0.4) translateY(20px); }
+  60% { opacity: 1; transform: scale(1.06) translateY(-2px); }
+  100% { opacity: 1; transform: scale(1) translateY(0); }
+}
+@keyframes floatBob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-5px); }
+}
+@keyframes riseIn {
+  0% { opacity: 0; transform: translateY(8px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+/* Tôn trọng người dùng tắt hiệu ứng chuyển động */
+@media (prefers-reduced-motion: reduce) {
+  .animate-float, .animate-fab-in, .animate-scale-up, .animate-rise-in { animation: none !important; }
+}
+
 /* ─── Parallax Effect ────────────────────────────── */
 .parallax-bg {
   transform: translateY(var(--scroll-offset, 0px));

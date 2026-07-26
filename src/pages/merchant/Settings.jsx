@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Store, Camera, Save, Map, Clock, MapPin, Phone, Eye } from 'lucide-react';
 import { useFetchData } from '../../hooks/useFetchData';
+import { useImageUpload } from '../../hooks/useImageUpload'; // Import hook upload ảnh
 import apiClient from '../../services/api';
 import Spinner from '../../components/common/Spinner';
 import MapModal from '../../components/common/MapModal';
@@ -22,18 +23,20 @@ export default function MerchantSettings() {
   const [description, setDescription] = useState('');
   
   // TOẠ ĐỘ VĨ ĐỘ/KINH ĐỘ THẬT CỦA QUÁN ĂN
-  const [latitude, setLatitude] = useState(10.762622);
-  const [longitude, setLongitude] = useState(106.660172);
+  const [latitude, setLatitude] = useState(null);
+  const [longitude, setLongitude] = useState(null);
 
   const [imageUrl, setImageUrl] = useState('');
   const fileInputRef = useRef(null);
-  const [uploadingBanner, setUploadingBanner] = useState(false);
+
+  // Sử dụng hook useImageUpload
+  const { uploading: uploadingBanner, uploadImage } = useImageUpload();
 
   const [saving, setSaving] = useState(false);
   const [hasRestaurant, setHasRestaurant] = useState(false);
   const [restaurantId, setRestaurantId] = useState(null);
 
-  // States phụ trợ cho form địa chỉ
+  // States form địa chỉ
   const [newAddressText, setNewAddressText] = useState('');
   const [isUpdatingLocation, setIsUpdatingLocation] = useState(false);
 
@@ -53,17 +56,9 @@ export default function MerchantSettings() {
       setLatitude(restaurant.latitude ? Number(restaurant.latitude) : 10.762622);
       setLongitude(restaurant.longitude ? Number(restaurant.longitude) : 106.660172);
       setImageUrl(restaurant.imageUrl || '');
+      setOpenTime(restaurant.opensAt || '');
+      setCloseTime(restaurant.closesAt || '');
       setHasRestaurant(true);
-
-      // Extract times from description if present
-      if (restaurant.description) {
-        const timePattern = /Giờ mở cửa:\s*(\d{2}:\d{2})\s*-\s*(\d{2}:\d{2})/;
-        const match = restaurant.description.match(timePattern);
-        if (match) {
-          setOpenTime(match[1]);
-          setCloseTime(match[2]);
-        }
-      }
     }
   }, [restaurant]);
 
@@ -77,34 +72,15 @@ export default function MerchantSettings() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (file.size > 5 * 1024 * 1024) {
-      toast.warning("Kích thước file tối đa là 5MB!");
-      return;
-    }
-    const allowedTypes = ["image/jpeg", "image/png", "image/webp", "image/heic", "image/heif"];
-    const ext = file.name.split('.').pop().toLowerCase();
-    if (!allowedTypes.includes(file.type.toLowerCase()) && ext !== 'heic' && ext !== 'heif') {
-      toast.warning("Chỉ chấp nhận các định dạng hình ảnh JPEG, PNG, WEBP, HEIC, HEIF!");
-      return;
-    }
-
-    setUploadingBanner(true);
-    try {
-      const formData = new FormData();
-      formData.append('file', file);
-      const uploadRes = await apiClient.post('/images/upload', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
-      });
-      const newUrl = uploadRes.data?.data?.url;
-      if (!newUrl) throw new Error("Không nhận được URL ảnh!");
+    // Gọi hàm uploadImage từ hook useImageUpload
+    const newUrl = await uploadImage(file);
+    if (newUrl) {
       setImageUrl(newUrl);
       toast.success("Tải ảnh banner thành công!");
-    } catch (uploadErr) {
-      console.error("Upload ảnh thất bại:", uploadErr);
-      toast.error(uploadErr.response?.data?.message || "Lỗi khi upload ảnh lên Cloudinary!");
-    } finally {
-      setUploadingBanner(false);
-      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
     }
   };
 
@@ -190,7 +166,9 @@ export default function MerchantSettings() {
         longitude: longitude,
         phone: phone,
         description: description,
-        imageUrl: imageUrl
+        imageUrl: imageUrl,
+        opensAt: openTime,
+        closesAt: closeTime
       };
 
       if (!hasRestaurant) {
@@ -249,7 +227,7 @@ export default function MerchantSettings() {
                 {resName || 'Tên quán của bạn'}
               </h3>
               <div className="flex items-center gap-1.5 text-xs text-slate-500 font-semibold mt-2">
-                <Clock size={13} className="text-md-secondary shrink-0" /> {openTime} – {closeTime}
+                <Clock size={13} className="text-md-secondary shrink-0" /> {openTime || '--:--'} – {closeTime || '--:--'}
               </div>
               <div className="flex items-start gap-1.5 text-xs text-slate-500 font-semibold mt-2">
                 <MapPin size={13} className="text-md-secondary mt-0.5 shrink-0" />

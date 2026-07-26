@@ -12,16 +12,6 @@ import Button from '../../components/common/Button';
 import { useFetchData } from '../../hooks/useFetchData';
 import { useModalState } from '../../hooks/useModalState';
 
-const REVENUE_DATA = [
-  { day: 'T2', amount: 850000 },
-  { day: 'T3', amount: 1100000 },
-  { day: 'T4', amount: 950000 },
-  { day: 'T5', amount: 1200000 },
-  { day: 'T6', amount: 1450000 },
-  { day: 'T7', amount: 2100000 },
-  { day: 'CN', amount: 2450000 },
-];
-
 export default function MerchantDashboard() {
   const navigate = useNavigate();
 
@@ -93,6 +83,7 @@ export default function MerchantDashboard() {
       subtotal: Number(statsData.subtotal || 0),
       commission: Number(statsData.commission || 0),
       commissionRate: Number(statsData.commissionRate || 0.10),
+      avgOrderValue: Number(statsData.avgOrderValue || 0), // AOV do BE tính trên đơn hoàn tất
       totalOrders: allOrders.length,
       completedOrders: completedOrders.length,
       cancelledOrders: allOrders.filter(ord => ord.orderStatus === 'CANCELLED').length

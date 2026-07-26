@@ -27,10 +27,12 @@ const ORDER_STATUS_TABS = [
 ];
 
 export default function MerchantOrders() {
-  const [activeTab, setActiveTab] = useState('ALL'); 
+  const [activeTab, setActiveTab] = useState('ALL');
   const [orders, setOrders] = useState([]);
   const [restaurantId, setRestaurantId] = useState(null);
   const [loading, setLoading] = useState(true);
+  // Đếm số đơn theo từng trạng thái để hiện badge trên tab (dễ quản lý, không cần bấm vào từng tab)
+  const [statusCounts, setStatusCounts] = useState({});
 
   // STATE PHÂN TRANG
   const [currentPage, setCurrentPage] = useState(1);
@@ -133,6 +135,25 @@ export default function MerchantOrders() {
   useEffect(() => {
     fetchOrders();
   }, [fetchOrders]);
+
+  // Đếm số đơn theo trạng thái (lấy toàn bộ đơn của quán, không phân trang) để hiện badge trên tab
+  const fetchStatusCounts = useCallback(async () => {
+    if (!restaurantId) return;
+    try {
+      const res = await apiClient.get('/merchant/orders', { params: { restaurantId, size: 1000 } });
+      const all = res.data?.data?.content || [];
+      const counts = { ALL: all.length };
+      all.forEach((o) => { counts[o.orderStatus] = (counts[o.orderStatus] || 0) + 1; });
+      setStatusCounts(counts);
+    } catch (err) {
+      console.error('Lỗi đếm số đơn theo trạng thái:', err);
+    }
+  }, [restaurantId]);
+
+  // Refresh badge mỗi khi danh sách đơn thay đổi (sau xác nhận/từ chối/WS) để số luôn khớp thực tế
+  useEffect(() => {
+    fetchStatusCounts();
+  }, [orders, fetchStatusCounts]);
 
   // Lắng nghe thông báo Đơn hàng mới qua WebSocket 
   useEffect(() => {
@@ -309,11 +330,12 @@ export default function MerchantOrders() {
         <h1 className="text-xl md:text-2xl font-bold mb-4 md:mb-6 text-gray-900">Quản Lý Đơn Hàng</h1>
         
         <div className="mb-6 border-b border-slate-200 pb-3 overflow-x-auto scrollbar-none w-full">
-          <FilterTabs 
-            tabs={ORDER_STATUS_TABS} 
-            activeTab={activeTab} 
+          <FilterTabs
+            tabs={ORDER_STATUS_TABS}
+            activeTab={activeTab}
             onTabChange={setActiveTab}
-            className="flex flex-row !flex-nowrap whitespace-nowrap [&_div]:flex [&_div]:flex-row [&_div]:flex-nowrap [&_button]:shrink-0 [&_button.bg-md-primary]:!bg-blue-600 [&_button.bg-md-primary]:!text-white [&_button.bg-md-primary]:!shadow-blue-100" 
+            counts={statusCounts}
+            className="flex flex-row !flex-nowrap whitespace-nowrap [&_div]:flex [&_div]:flex-row [&_div]:flex-nowrap [&_button]:shrink-0 [&_button.bg-md-primary]:!bg-blue-600 [&_button.bg-md-primary]:!text-white [&_button.bg-md-primary]:!shadow-blue-100"
           />
         </div>
 

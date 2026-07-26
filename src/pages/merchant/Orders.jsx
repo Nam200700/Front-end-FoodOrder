@@ -14,7 +14,19 @@ import Spinner from '../../components/common/Spinner';
 import Modal from '../../components/common/Modal'; 
 import OrderCancelModal from '../../components/common/OrderCancelModal';
 import { getStatusConfig } from '../../utils/orderStatusHelper';
-import { getFoodImageUrl } from '../../utils/avatarHelper';
+import { getFoodImageUrl, DEFAULT_FOOD_IMAGE } from '../../utils/avatarHelper';
+
+// Dải màu viền trái theo trạng thái đơn để owner quét nhanh (giảm tải nhận thức)
+const STATUS_ACCENT = {
+  PENDING: 'border-l-amber-400',
+  CONFIRMED: 'border-l-blue-500',
+  PREPARING: 'border-l-indigo-500',
+  READY_FOR_PICKUP: 'border-l-teal-500',
+  PICKED_UP: 'border-l-cyan-500',
+  DELIVERING: 'border-l-sky-500',
+  COMPLETED: 'border-l-emerald-500',
+  CANCELLED: 'border-l-rose-400',
+};
 
 const ORDER_STATUS_TABS = [
   { id: 'ALL', label: 'Tất cả' },
@@ -33,6 +45,8 @@ export default function MerchantOrders() {
   const [loading, setLoading] = useState(true);
   // Đếm số đơn theo từng trạng thái để hiện badge trên tab (dễ quản lý, không cần bấm vào từng tab)
   const [statusCounts, setStatusCounts] = useState({});
+  // Đơn đang xử lý thao tác (nhận/chuẩn bị/sẵn sàng) → disable + spinner, tránh double-click
+  const [actionLoadingId, setActionLoadingId] = useState(null);
 
   // STATE PHÂN TRANG
   const [currentPage, setCurrentPage] = useState(1);
@@ -178,6 +192,7 @@ export default function MerchantOrders() {
   // Xác nhận đơn hàng
   const handleConfirm = async (e, orderId) => {
     e.stopPropagation();
+    setActionLoadingId(orderId);
     try {
       await apiClient.patch(`/merchant/orders/${orderId}/confirm`);
       toast.success(`Đã xác nhận thành công đơn hàng #${orderId}`);
@@ -188,12 +203,15 @@ export default function MerchantOrders() {
     } catch (err) {
       console.error('Lỗi khi xác nhận đơn hàng:', err);
       toast.error(err.response?.data?.message);
+    } finally {
+      setActionLoadingId(null);
     }
   };
 
   // xác nhận đang chuẩn bị món ăn
   const handlePreparing = async (e, orderId) => {
     e.stopPropagation();
+    setActionLoadingId(orderId);
     try {
       await apiClient.patch(`/merchant/orders/${orderId}/preparing`);
       toast.success(`Đã xác nhận đang chuẩn bị món thành công đơn hàng #${orderId}`);
@@ -204,12 +222,15 @@ export default function MerchantOrders() {
     } catch (err) {
       console.error('Lỗi khi xác nhận đang chuẩn bị món:', err);
       toast.error(err.response?.data?.message);
+    } finally {
+      setActionLoadingId(null);
     }
   };
 
   //Xác nhận đã sẵn sàng giao đơn
   const handleReady = async (e, orderId) => {
     e.stopPropagation();
+    setActionLoadingId(orderId);
     try {
       await apiClient.patch(`/merchant/orders/${orderId}/ready`);
       toast.success(`Đã xác nhận sẵn sàng giao thành công đơn hàng #${orderId}!`);
@@ -220,6 +241,8 @@ export default function MerchantOrders() {
     } catch (err) {
       console.error('Lỗi khi xác nhận đã sẵn sàng giao đơn:', err);
       toast.error(err.response?.data?.message);
+    } finally {
+      setActionLoadingId(null);
     }
   };
 
@@ -359,11 +382,12 @@ export default function MerchantOrders() {
             </div>
           ) : (
             <div className="space-y-4">
-              {orders.map((order) => (
-                <div 
+              {orders.map((order, idx) => (
+                <div
                   key={order.id}
                   onClick={() => handleViewDetails(order.id)}
-                  className="bg-white rounded-xl border border-slate-100 shadow-sm p-4 md:p-5 flex flex-col gap-4 cursor-pointer group transition-colors hover:border-slate-200"
+                  style={{ animationDelay: `${idx * 60}ms` }}
+                  className={`animate-rise-in bg-white rounded-xl border border-slate-100 border-l-4 ${STATUS_ACCENT[order.status] || 'border-l-slate-200'} shadow-sm p-4 md:p-5 flex flex-col gap-4 cursor-pointer group transition-all duration-200 hover:shadow-md hover:-translate-y-0.5 hover:border-slate-200`}
                 >
                   <div className="flex flex-row justify-between items-center gap-2 border-b border-slate-100 pb-3 flex-wrap sm:flex-nowrap">
                     <div className="text-[11px] sm:text-sm font-bold text-slate-800 uppercase tracking-wide whitespace-nowrap shrink-0">
@@ -389,7 +413,13 @@ export default function MerchantOrders() {
                             className="flex gap-3 items-center border border-slate-100 rounded-lg p-3 bg-slate-50/50 w-[260px] sm:w-[280px] shrink-0 select-none relative"
                           >
                             <div className="w-14 h-14 rounded-md overflow-hidden shrink-0 border border-slate-200 bg-white">
-                              <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
+                              {/* onError: ảnh link hỏng thì thay bằng ảnh mặc định (khỏi hiện icon vỡ) */}
+                              <img
+                                src={item.image}
+                                alt={item.name}
+                                className="w-full h-full object-cover"
+                                onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = DEFAULT_FOOD_IMAGE; }}
+                              />
                             </div>
                             <div className="min-w-0 flex-1">
                               <h4 className="font-bold text-slate-800 text-sm truncate">{item.name}</h4>
@@ -437,6 +467,7 @@ export default function MerchantOrders() {
                             variant="danger"
                             size="sm"
                             icon={Ban}
+                            disabled={actionLoadingId === order.id}
                             onClick={(e) => handleOpenCancelModal(e, order.id)}
                             className="w-full sm:w-auto !py-2.5 rounded-lg text-xs"
                           >
@@ -446,6 +477,8 @@ export default function MerchantOrders() {
                             variant="primary"
                             size="sm"
                             icon={Check}
+                            loading={actionLoadingId === order.id}
+                            disabled={actionLoadingId === order.id}
                             onClick={(e) => handleConfirm(e, order.id)}
                             className="w-full sm:w-auto !py-2.5 rounded-lg text-xs !bg-emerald-600"
                           >
@@ -458,6 +491,8 @@ export default function MerchantOrders() {
                         <Button
                           variant="primary"
                           size="sm"
+                          loading={actionLoadingId === order.id}
+                          disabled={actionLoadingId === order.id}
                           onClick={(e) => handlePreparing(e, order.id)}
                           className="w-full sm:w-auto !py-2.5 rounded-lg text-xs !bg-blue-600"
                         >
@@ -469,6 +504,8 @@ export default function MerchantOrders() {
                         <Button
                           variant="secondary"
                           size="sm"
+                          loading={actionLoadingId === order.id}
+                          disabled={actionLoadingId === order.id}
                           onClick={(e) => handleReady(e, order.id)}
                           className="w-full sm:w-auto !py-2.5 rounded-lg text-xs !bg-[#34A853] hover:!bg-[#2E8B49]"
                         >
@@ -643,6 +680,7 @@ export default function MerchantOrders() {
                       src={getFoodImageUrl(item.foodImageUrl)}
                       alt={item.foodName}
                       className="w-9 h-9 object-cover rounded border border-slate-200"
+                      onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = DEFAULT_FOOD_IMAGE; }}
                     />
                     <div className="min-w-0">
                       <p className="font-bold text-slate-800 truncate leading-tight">{item.foodName}</p>

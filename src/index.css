@@ -80,6 +80,12 @@
   --animate-fab-in: fabIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
   --animate-float: floatBob 3.5s ease-in-out infinite;
   --animate-rise-in: riseIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) both;
+  /* Trang trí hero Login: trôi chậm, đảo nhẹ, vệt sáng quét, lấp lánh, gradient chuyển động */
+  --animate-float-slow: floatBob 5s ease-in-out infinite;
+  --animate-drift: drift 7s ease-in-out infinite;
+  --animate-shine: shine 7s ease-in-out infinite;
+  --animate-twinkle: twinkle 2.6s ease-in-out infinite;
+  --animate-gradient-pan: gradientPan 14s ease infinite;
 }
 
 /* ─── Custom Classes & Utilities ────────────────────── */

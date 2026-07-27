@@ -72,6 +72,7 @@ export default function MapModal2({
     }
   }, [isOpen]);
 
+  //Reverse Geocoding (chuyển đổi ngược từ tọa độ vĩ độ/kinh độ thành tên địa chỉ
   const fetchAddress = async (lat, lng) => {
     setLoadingAddress(true);
     try {
@@ -96,6 +97,7 @@ export default function MapModal2({
     }
   };
 
+  //khởi tạo bản đồ
   useEffect(() => {
     if (!isOpen) return;
 
@@ -103,7 +105,9 @@ export default function MapModal2({
       if (!mapContainerRef.current) return;
       if (mapRef.current) return;
 
-      const map = L.map(mapContainerRef.current).setView([initialLat, initialLng], 15);
+      const map = L.map(mapContainerRef.current, {
+        attributionControl: false 
+      }).setView([initialLat, initialLng], 15);
       mapRef.current = map;
 
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -144,6 +148,7 @@ export default function MapModal2({
     };
   }, [isOpen]);
 
+  //tìm kiếm
   const handleSearchAddress = async (e) => {
     e.preventDefault();
     if (!searchText.trim()) return;
@@ -224,7 +229,7 @@ export default function MapModal2({
           <div className="flex items-center gap-2 text-md-primary">
             <MapPin size={22} className="stroke-[2.5px]" />
             <h3 className="font-extrabold text-base md:text-lg text-slate-800">
-              {isEditMode ? 'Cập Nhật Vị Trí Địa Chỉ' : 'Thêm Địa Chỉ Mới Trên Bản Đồ'}
+              {isEditMode ? 'Cập Nhật Địa Chỉ' : 'Thêm Địa Chỉ Mới Trên Bản Đồ'}
             </h3>
           </div>
           <button 
@@ -244,7 +249,7 @@ export default function MapModal2({
                 type="text"
                 value={searchText}
                 onChange={(e) => setSearchText(e.target.value)}
-                placeholder="Nhập địa chỉ (ví dụ: Số 1 Nguyễn Huệ, Quận 1)..."
+                placeholder="Nhập địa chỉ..."
                 className="w-full pl-10 pr-4 py-2 border border-slate-200 focus:border-md-primary rounded-lg text-xs font-semibold bg-white outline-none transition-all"
               />
             </div>
@@ -304,27 +309,29 @@ export default function MapModal2({
           </button>
         </div>
 
-        {/* Footer hiển thị địa chỉ đã chọn */}
+        {/* Footer hiển thị và cho phép nhập lại địa chỉ đã chọn */}
         <div className="p-4 md:p-5 bg-slate-50 border-t border-slate-150/60 flex flex-col justify-between gap-3 shrink-0">
-          <div className="bg-white p-3.5 rounded-radius-lg border border-slate-200 shadow-sm flex items-start justify-between gap-3">
-            <div>
-              <span className="text-[10px] text-md-outline font-extrabold uppercase tracking-wider block flex items-center gap-1">
-                📍 Địa chỉ đã chọn 
-              </span>
-              <p className="text-xs md:text-sm text-slate-800 font-extrabold mt-1.5 leading-relaxed min-h-[36px] flex items-center">
-                {loadingAddress || locating ? (
-                  <span className="text-slate-400 font-bold flex items-center gap-2 animate-pulse">
-                    <span className="w-4 h-4 border-2 border-md-primary border-t-transparent rounded-full animate-spin"></span>
-                    {locating ? 'Đang lấy vị trí của bạn...' : 'Đang phân tích tọa độ...'}
-                  </span>
-                ) : (
-                  addressName
-                )}
-              </p>
-            </div>
+          <div className="bg-white p-3.5 rounded-radius-lg border border-slate-200 shadow-sm flex flex-col gap-1">
+            <span className="text-[10px] text-md-outline font-extrabold uppercase tracking-wider block flex items-center gap-1">
+              📍 Địa chỉ đã chọn 
+            </span>
+            
+            {loadingAddress || locating ? (
+              <div className="text-xs text-slate-400 font-bold flex items-center gap-2 py-2 animate-pulse min-h-[36px]">
+                <span className="w-4 h-4 border-2 border-md-primary border-t-transparent rounded-full animate-spin"></span>
+                {locating ? 'Đang lấy vị trí của bạn...' : 'Đang phân tích tọa độ...'}
+              </div>
+            ) : (
+              <textarea
+                value={addressName}
+                onChange={(e) => setAddressName(e.target.value)}
+                placeholder="Nhập địa chỉ chi tiết..."
+                rows={2}
+                className="w-full text-xs md:text-sm text-slate-800 font-extrabold mt-1 py-1.5 px-2.5 border border-slate-200 focus:border-md-primary rounded-lg outline-none bg-slate-50/50 transition-all resize-none"
+              />
+            )}
           </div>
 
-          
           <div className="flex items-center justify-end gap-2.5">
             <Button variant="outline" onClick={onClose} size="sm" className="px-4 py-2 text-xs font-bold">
               Hủy

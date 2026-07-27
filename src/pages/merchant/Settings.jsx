@@ -4,15 +4,13 @@ import { useFetchData } from '../../hooks/useFetchData';
 import { useImageUpload } from '../../hooks/useImageUpload'; // Import hook upload ảnh
 import apiClient from '../../services/api';
 import Spinner from '../../components/common/Spinner';
-import MapModal from '../../components/common/MapModal';
-import Modal from '../../components/common/Modal';
 import Button from '../../components/common/Button';
 import Card from '../../components/common/Card';
 import { getRestaurantBannerUrl } from '../../utils/avatarHelper';
 import { validatePhone } from '../../utils/validation';
 import { toast } from 'react-toastify';
-import axios from 'axios';
 import { useModalState } from '../../hooks/useModalState';
+import MapModal2 from '../../components/common/Map'; // Import MapModal2
 
 export default function MerchantSettings() {
   const [resName, setResName] = useState('');
@@ -36,13 +34,8 @@ export default function MerchantSettings() {
   const [hasRestaurant, setHasRestaurant] = useState(false);
   const [restaurantId, setRestaurantId] = useState(null);
 
-  // States form địa chỉ
-  const [newAddressText, setNewAddressText] = useState('');
-  const [isUpdatingLocation, setIsUpdatingLocation] = useState(false);
-
-  // Sử dụng useModalState cho Modal cập nhật địa chỉ và MapModal
-  const addressModal = useModalState();
-  const mapModal = useModalState();
+  // Sử dụng useModalState cho MapModal2
+  const mapModal2 = useModalState();
 
   const { data: restaurant, loading } = useFetchData('/merchant/restaurant');
 
@@ -72,7 +65,6 @@ export default function MerchantSettings() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Gọi hàm uploadImage từ hook useImageUpload
     const newUrl = await uploadImage(file);
     if (newUrl) {
       setImageUrl(newUrl);
@@ -84,55 +76,20 @@ export default function MerchantSettings() {
     }
   };
 
-  // Nhập địa chỉ ở modal cập nhật -> Lấy kinh độ và vĩ độ -> Mở MapModal lên để xác nhận
-  const handleProceedToMap = async () => {
-    if (!newAddressText.trim()) {
-      toast.warning('Vui lòng nhập địa chỉ cụ thể!');
-      return;
-    }
-
-    setIsUpdatingLocation(true);
-    try {
-      let cleanQuery = newAddressText
-        .replace(/trường\s+thcs\s+/gi, '')
-        .replace(/trường\s+tiểu học\s+/gi, '')
-        .replace(/xã\s+/gi, '')
-        .replace(/\d+\/\d+\s+ấp\s+\d+/gi, '')
-        .replace(/ấp\s+\d+/gi, '')
-        .replace(/^\d+[\/\-]?\d*\s*,?/g, '')
-        .trim();
-
-      const response = await axios.get(`https://nominatim.openstreetmap.org/search`, {
-        params: { format: 'json', q: cleanQuery, limit: 1, 'accept-language': 'vi' }
-      });
-
-      if (response.data && response.data.length > 0) {
-        const lat = parseFloat(response.data[0].lat);
-        const lon = parseFloat(response.data[0].lon);
-        setLatitude(lat);
-        setLongitude(lon);
-      } else {
-        toast.info("Không tìm thấy tọa độ chính xác tự động, vui lòng chọn vị trí trên bản đồ.");
-      }
-      addressModal.close();
-      mapModal.open();
-    } catch (err) {
-      console.error("Lỗi lấy tọa độ:", err);
-      toast.error("Không thể lấy tọa độ từ địa chỉ đã nhập. Vui lòng chọn trực tiếp trên bản đồ.");
-      addressModal.close();
-      mapModal.open();
-    } finally {
-      setIsUpdatingLocation(false);
-    }
-  };
-
-  // xử lý Xác nhận từ MapModal 
+    // Xử lý xác nhận vị trí mới từ MapModal2
   const handleMapConfirmAndSave = (selectedLat, selectedLng, addressName) => {
     setLatitude(selectedLat);
     setLongitude(selectedLng);
-    setAddress(addressName || newAddressText);
-    mapModal.close();
-    // toast.success("Đã cập nhật vị trí và địa chỉ mới thành công!");
+    if (addressName) {
+      setAddress(addressName);
+    }
+    mapModal2.close();
+    toast.success("Đã cập nhật vị trí quán trên bản đồ!");
+  };
+
+  // Mở trực tiếp MapModal2  vào thay đổi địa chỉ
+  const handleOpenMapModal = () => {
+    mapModal2.open();
   };
 
   const handleSave = async () => {
@@ -339,20 +296,14 @@ export default function MerchantSettings() {
                 <textarea
                   rows={2}
                   readOnly
-                  onClick={() => {
-                    setNewAddressText(address);
-                    addressModal.open();
-                  }}
+                  onClick={handleOpenMapModal}
                   value={address}
                   className="w-full flex-1 px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-radius-lg text-xs focus:outline-none focus:border-md-secondary focus:bg-white transition-all resize-none font-semibold cursor-pointer"
                 />
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={() => {
-                    setNewAddressText(address);
-                    addressModal.open();
-                  }}
+                  onClick={handleOpenMapModal}
                   className="!px-4 !bg-md-secondary/15 !text-md-secondary border border-md-secondary/10 hover:!bg-md-secondary/25 !rounded-radius-lg !text-xs !font-bold transition-all !gap-1.5 hover:!scale-[1.02] active:!scale-[0.98] shrink-0"
                   icon={Map}
                 >
@@ -376,68 +327,17 @@ export default function MerchantSettings() {
         </Card>
       </div>
 
-      {/* ================= MODAL CẬP NHẬT ĐỊA CHỈ  ================= */}
-      <Modal 
-        isOpen={addressModal.isOpen} 
-        onClose={addressModal.close}
-        title="Cập Nhật Địa Chỉ Quán"
-        size="md"
-        className="!rounded-3xl"
-      >
-        <div className="space-y-4 -mx-6 -my-6 px-6 py-4">
-          <div>
-            <label className="text-xs font-bold text-slate-800 block mb-1.5">
-              Địa chỉ cụ thể <span className="text-red-500">*</span>
-            </label>
-            <div className="relative">
-              <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
-                <MapPin size={16} className="text-blue-500" />
-              </span>
-              <input 
-                type="text"
-                value={newAddressText}
-                onChange={(e) => setNewAddressText(e.target.value)}
-                placeholder="Ví dụ: 123 Đường Nguyễn Huệ, Phường Bến Nghé, Quận 1, TP.HCM"
-                className="w-full pl-10 pr-4 py-3 text-xs border border-slate-200 rounded-2xl bg-slate-50/50 text-slate-800 font-semibold focus:outline-none focus:border-blue-500 focus:bg-white transition-all"
-              />
-            </div>
-          </div>
-
-          <div className="pt-4 -mx-6 px-6 border-t border-slate-100 flex items-center justify-end gap-3 mt-6 bg-slate-50/50 rounded-b-3xl py-4">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={addressModal.close}
-              className="!rounded-2xl !text-xs !font-bold !py-2.5 !px-5 cursor-pointer border-slate-200 text-slate-600 hover:bg-slate-100"
-            >
-              Hủy bỏ
-            </Button>
-            <Button
-              type="button"
-              onClick={handleProceedToMap}
-              disabled={isUpdatingLocation}
-              loading={isUpdatingLocation}
-              className="!rounded-2xl !text-xs !font-bold !py-2.5 !px-6 !bg-blue-600 text-white hover:!bg-blue-700 cursor-pointer shadow-md shadow-blue-500/20"
-            >
-              Xác nhận
-            </Button>
-          </div>
-        </div>
-      </Modal>
-
-      {/* ================= MAP MODAL XÁC NHẬN LẠI VỊ TRÍ ================= */}
-      {mapModal.isOpen && (
-        <MapModal 
-          key={`${latitude}_${longitude}_${mapModal.isOpen}`}
-          isOpen={mapModal.isOpen} 
-          onClose={() => {
-            mapModal.close();
-          }} 
-          onConfirm={handleMapConfirmAndSave} 
-          initialLat={latitude || 10.7769} 
-          initialLng={longitude || 106.7009} 
-        />
-      )}
+      {/* ================= MAP MODAL2 ================= */}
+      <MapModal2 
+        key={`${latitude}-${longitude}`} 
+        isOpen={mapModal2.isOpen} 
+        onClose={mapModal2.close} 
+        onConfirm={handleMapConfirmAndSave} 
+        isEditMode={Boolean(restaurantId)}
+        initialLat={latitude || 10.762622} 
+        initialLng={longitude || 106.660172} 
+        showLabelSelector={false} 
+      />
 
       <input 
         type="file" 

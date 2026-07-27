@@ -86,6 +86,11 @@
   --animate-shine: shine 7s ease-in-out infinite;
   --animate-twinkle: twinkle 2.6s ease-in-out infinite;
   --animate-gradient-pan: gradientPan 14s ease infinite;
+  /* Chuyển động "như thật" cho hero Register: shipper chạy xe, xóc nhẹ, khói bốc, tay vẫy */
+  --animate-ride: ride 7s linear infinite;
+  --animate-bob: bob 0.5s ease-in-out infinite;
+  --animate-steam: steam 2.6s ease-out infinite;
+  --animate-wiggle: wiggle 2.2s ease-in-out infinite;
 }
 
 /* ─── Custom Classes & Utilities ────────────────────── */
@@ -260,10 +265,31 @@
   50% { background-position: 100% 50%; }
   100% { background-position: 0% 50%; }
 }
+/* Shipper chạy ngang màn (ride) + thân xe xóc nhẹ như đi qua đường gồ ghề (bob) */
+@keyframes ride {
+  0% { transform: translateX(-15%); }
+  100% { transform: translateX(115%); }
+}
+@keyframes bob {
+  0%, 100% { transform: translateY(0) rotate(-1.5deg); }
+  50% { transform: translateY(-3px) rotate(1.5deg); }
+}
+/* Khói/hơi nóng bốc lên từ tô đồ ăn */
+@keyframes steam {
+  0% { opacity: 0; transform: translateY(2px) scaleX(1); }
+  30% { opacity: 0.7; }
+  100% { opacity: 0; transform: translateY(-16px) scaleX(1.5); }
+}
+/* Tay vẫy / lắc nhẹ */
+@keyframes wiggle {
+  0%, 100% { transform: rotate(-8deg); }
+  50% { transform: rotate(10deg); }
+}
 /* Tôn trọng người dùng tắt hiệu ứng chuyển động */
 @media (prefers-reduced-motion: reduce) {
   .animate-float, .animate-fab-in, .animate-scale-up, .animate-rise-in,
-  .animate-float-slow, .animate-drift, .animate-shine, .animate-twinkle, .animate-gradient-pan { animation: none !important; }
+  .animate-float-slow, .animate-drift, .animate-shine, .animate-twinkle, .animate-gradient-pan,
+  .animate-ride, .animate-bob, .animate-steam, .animate-wiggle { animation: none !important; }
 }
 
 /* ─── Parallax Effect ────────────────────────────── */

@@ -7,14 +7,22 @@ import 'react-toastify/dist/ReactToastify.css';
 import apiClient from '../../services/api';
 import { validatePassword } from '../../utils/validation';
 
-// Món ăn trang trí bay lơ lửng ở panel hero (phong cách quán ăn) — vị trí + độ trễ float lệch nhau
+// Món ăn trang trí bay lơ lửng ở panel hero (phong cách quán ăn) — vị trí, độ trễ & kiểu trôi lệch nhau
 const FOOD_DECOR = [
-  { Icon: Pizza, wrap: 'top-[13%] right-[12%]', size: 30, delay: '0ms' },
-  { Icon: IceCream, wrap: 'top-[40%] right-[22%]', size: 22, delay: '600ms' },
-  { Icon: Croissant, wrap: 'bottom-[24%] right-[13%]', size: 26, delay: '1200ms' },
-  { Icon: Soup, wrap: 'top-[22%] left-[14%]', size: 24, delay: '400ms' },
-  { Icon: Sandwich, wrap: 'bottom-[30%] left-[9%]', size: 22, delay: '900ms' },
-  { Icon: CupSoda, wrap: 'bottom-[13%] left-[26%]', size: 20, delay: '1500ms' },
+  { Icon: Pizza, wrap: 'top-[12%] right-[11%]', size: 30, delay: '0ms', anim: 'animate-drift' },
+  { Icon: IceCream, wrap: 'top-[40%] right-[20%]', size: 22, delay: '600ms', anim: 'animate-float' },
+  { Icon: Croissant, wrap: 'bottom-[22%] right-[12%]', size: 26, delay: '1200ms', anim: 'animate-float-slow' },
+  { Icon: Soup, wrap: 'top-[20%] left-[13%]', size: 24, delay: '400ms', anim: 'animate-float-slow' },
+  { Icon: Sandwich, wrap: 'bottom-[33%] left-[8%]', size: 22, delay: '900ms', anim: 'animate-drift' },
+  { Icon: CupSoda, wrap: 'bottom-[12%] left-[24%]', size: 20, delay: '1500ms', anim: 'animate-float' },
+];
+
+// Đốm lấp lánh (twinkle) rải trên nền hero cho sinh động
+const SPARKLES = [
+  { wrap: 'top-[18%] right-[30%]', size: 14, delay: '0ms' },
+  { wrap: 'top-[54%] right-[14%]', size: 11, delay: '700ms' },
+  { wrap: 'bottom-[20%] left-[31%]', size: 13, delay: '1100ms' },
+  { wrap: 'top-[30%] left-[27%]', size: 10, delay: '1600ms' },
 ];
 
 // Điểm nổi bật hiển thị ở đáy panel hero

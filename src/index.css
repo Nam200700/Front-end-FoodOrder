@@ -96,6 +96,8 @@
   --animate-vroom: vroom 0.32s ease-in-out infinite;
   --animate-wheel: wheelSpin 0.5s linear infinite;
   --animate-speed: speedline 0.7s ease-out infinite;
+  /* Vòng halo lan toả quanh bước đang active của stepper */
+  --animate-halo: haloPulse 1.8s ease-out infinite;
 }
 
 /* ─── Custom Classes & Utilities ────────────────────── */
@@ -312,12 +314,18 @@
   40% { opacity: 0.85; }
   100% { opacity: 0; transform: translateX(-16px) scaleX(1.4); }
 }
+/* Vòng halo lan toả quanh bước active của stepper */
+@keyframes haloPulse {
+  0% { transform: scale(0.9); opacity: 0.5; }
+  70% { opacity: 0; }
+  100% { transform: scale(1.75); opacity: 0; }
+}
 /* Tôn trọng người dùng tắt hiệu ứng chuyển động */
 @media (prefers-reduced-motion: reduce) {
   .animate-float, .animate-fab-in, .animate-scale-up, .animate-rise-in,
   .animate-float-slow, .animate-drift, .animate-shine, .animate-twinkle, .animate-gradient-pan,
   .animate-ride, .animate-bob, .animate-steam, .animate-wiggle,
-  .animate-courier, .animate-vroom, .animate-wheel, .animate-speed { animation: none !important; }
+  .animate-courier, .animate-vroom, .animate-wheel, .animate-speed, .animate-halo { animation: none !important; }
 }
 
 /* ─── Parallax Effect ────────────────────────────── */

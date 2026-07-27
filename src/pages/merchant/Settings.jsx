@@ -75,7 +75,7 @@ export default function MerchantSettings() {
       fileInputRef.current.value = "";
     }
   };
-  
+
     // Xử lý xác nhận vị trí mới từ MapModal2
   const handleMapConfirmAndSave = (selectedLat, selectedLng, addressName) => {
     setLatitude(selectedLat);
@@ -328,16 +328,16 @@ export default function MerchantSettings() {
       </div>
 
       {/* ================= MAP MODAL2 ================= */}
-        <MapModal2 
-          key={`${latitude}-${longitude}`} 
-          isOpen={mapModal2.isOpen} 
-          onClose={mapModal2.close} 
-          onConfirm={handleMapConfirmAndSave} 
-          isEditMode={Boolean(restaurantId)}
-          initialLat={latitude || 10.762622} 
-          initialLng={longitude || 106.660172} 
-          showLabelSelector={false} 
-        />
+      <MapModal2 
+        key={`${latitude}-${longitude}`} 
+        isOpen={mapModal2.isOpen} 
+        onClose={mapModal2.close} 
+        onConfirm={handleMapConfirmAndSave} 
+        isEditMode={Boolean(restaurantId)}
+        initialLat={latitude || 10.762622} 
+        initialLng={longitude || 106.660172} 
+        showLabelSelector={false} 
+      />
 
       <input 
         type="file" 

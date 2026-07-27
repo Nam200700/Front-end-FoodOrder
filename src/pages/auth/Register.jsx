@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../stores/authStore';
-import { Mail, Lock, User, Phone, ChevronRight, Store, Bike, FileText, MapPin, Lightbulb } from 'lucide-react';
+import { Mail, Lock, User, Phone, ChevronRight, ChevronLeft, Store, Bike, FileText, MapPin, Lightbulb, Users, Check, ShieldCheck } from 'lucide-react';
 import { validatePhone, validatePassword, validateName, validateEmail, validateIdCard } from '../../utils/validation';
 import Button from '../../components/common/Button';
 import Input from '../../components/common/Input';
@@ -32,6 +32,7 @@ export default function Register() {
   const [licensePlate, setLicensePlate] = useState('');
 
   const [loading, setLoading] = useState(false);
+  const [step, setStep] = useState(1); // Chia form thành 3 bước để tránh cảm giác "ngộp" khi nhập một lượt
 
   const handleConfirmLocation = (lat, lng, address) => {
     setRestaurantAddress(address);

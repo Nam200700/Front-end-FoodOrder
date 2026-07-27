@@ -17,6 +17,7 @@ import Modal from '../../components/common/Modal';
 import Card from '../../components/common/Card'; 
 import { useModalState } from '../../hooks/useModalState';
 import axios from 'axios';
+import MapModal2 from '../../components/common/Map';
 
 export default function Cart() {
   const navigate = useNavigate();
@@ -50,21 +51,18 @@ export default function Cart() {
   //id truyền từ RestaurantDetail.jsx
   const targetRestaurantId = location.state?.targetRestaurantId;
 
-  // Modal quản lý địa chỉ giao hàng
-  const addressListModal = useModalState(); // Modal "Địa chỉ của tôi"
-  const addAddressModal = useModalState();  // Modal "Thêm địa chỉ mới"
-  const mapModal = useModalState();         // Modal Bản đồ
+  // Các state và modal quản lý địa chỉ 
+  const addressListModal = useModalState(); 
+  const mapModal2 = useModalState(); 
 
-  // Danh sách địa chỉ 
   const [userAddresses, setUserAddresses] = useState([]);
   const [selectedAddressId, setSelectedAddressId] = useState(null);
-
-  // State địa chỉ
-  const [newAddressText, setNewAddressText] = useState('');
-  const [newAddressLat, setNewAddressLat] = useState(null);
-  const [newAddressLng, setNewAddressLng] = useState(null);
+  const [editingAddressId, setEditingAddressId] = useState(null); 
   const [addressLabel, setAddressLabel] = useState('Nhà riêng');
-  const [editingAddressId, setEditingAddressId] = useState(null);
+  const [mapInitialCoords, setMapInitialCoords] = useState({ 
+    lat: user?.lat || 10.762622, 
+    lng: user?.lng || 106.660172 
+  });
 
   const restaurantIds = React.useMemo(() => {
     return carts.map(cart => cart.restaurantId);
@@ -267,78 +265,36 @@ export default function Cart() {
     }
   };
 
-  // Nhập địa chỉ ở modal thêm mới -> Lấy kinh độ và vĩ độ -> Mở MapModal lên để xác nhận
-  const handleProceedToMap = async (e) => {
-    e.preventDefault();
-    if (!newAddressText.trim()) {
-      toast.warning('Vui lòng nhập địa chỉ cụ thể!');
-      return;
-    }
-
-    setIsUpdatingLocation(true);
-    try {
-      let cleanQuery = newAddressText
-        .replace(/trường\s+thcs\s+/gi, '')
-        .replace(/trường\s+tiểu học\s+/gi, '')
-        .replace(/xã\s+/gi, '')
-        .replace(/\d+\/\d+\s+ấp\s+\d+/gi, '')
-        .replace(/ấp\s+\d+/gi, '')
-        .replace(/^\d+[\/\-]?\d*\s*,?/g, '')
-        .trim();
-
-      const response = await axios.get(
-        `https://nominatim.openstreetmap.org/search`, 
-        {
-          params: {
-            format: 'json',
-            q: cleanQuery,
-            limit: 1,
-            'accept-language': 'vi'
-          },
-          headers: {
-            'User-Agent': 'FoodDeliveryApp/1.0'
-          }
-        }
-      );
-
-      // Tọa độ mặc định TP.HCM 
-      let lat = 10.7769; 
-      let lng = 106.7009;
-
-      if (response.data && response.data.length > 0) {
-        lat = parseFloat(response.data[0].lat);
-        lng = parseFloat(response.data[0].lon);
-      } else {
-        toast.info('Không tìm thấy tọa độ chính xác, vui lòng kiểm tra và ghim vị trí trên bản đồ.');
-      }
-
-      setNewAddressLat(lat);
-      setNewAddressLng(lng);
-
-      addAddressModal.close();
-      mapModal.open();
-    } catch (err) {
-      console.warn('Lỗi lấy tọa độ, chuyển sang ghim thủ công:', err);
-      setNewAddressLat(10.7769);
-      setNewAddressLng(106.7009);
-
-      toast.info('Vui lòng chọn hoặc di chuyển ghim trực tiếp trên bản đồ.');
-      addAddressModal.close();
-      mapModal.open();
-    } finally {
-      setIsUpdatingLocation(false);
-    }
+  const handleOpenAddModal = () => {
+    setEditingAddressId(null);
+    setAddressLabel('Nhà riêng');
+    setMapInitialCoords({ 
+      lat: deliveryLat || user?.lat || 10.762622, 
+      lng: deliveryLng || user?.lng || 106.660172 
+    });
+    addressListModal.close();
+    mapModal2.open();
   };
 
-  // xử lý thêm mới và cập nhật địa chỉ
-  const handleMapConfirmAndSave = async (lat, lng, addressName) => {
+  const handleOpenEditModal = (item) => {
+    setEditingAddressId(item.addressId);
+    setAddressLabel(item.label || 'Nhà riêng');
+    setMapInitialCoords({
+      lat: Number(item.latitude) || 10.762622,
+      lng: Number(item.longitude) || 106.660172
+    });
+    addressListModal.close();
+    mapModal2.open();
+  };
+
+  const handleMapConfirmAndSave = async (latVal, lngVal, addressNameVal) => {
     try {
       const payload = {
         label: addressLabel || 'Nhà riêng',
-        address: newAddressText,
-        latitude: Number(lat),
-        longitude: Number(lng),
-        isDefault: userAddresses.length === 0
+        address: addressNameVal,
+        latitude: Number(latVal),
+        longitude: Number(lngVal),
+        isDefault: userAddresses.length === 0 || editingAddressId === selectedAddressId
       };
 
       if (editingAddressId) {
@@ -348,13 +304,15 @@ export default function Cart() {
         await apiClient.post('/addresses', payload);
         toast.success('Thêm địa chỉ mới thành công!');
       }
+
+      setAddress(addressNameVal);
+      setDeliveryLat(Number(latVal));
+      setDeliveryLng(Number(lngVal));
       
-      mapModal.close();
-      addAddressModal.close();
+      mapModal2.close();
       setEditingAddressId(null);
-      
       await fetchUserAddresses();
-      addressListModal.open();
+      addressListModal.open(); 
     } catch (err) {
       console.error('Lỗi lưu địa chỉ:', err);
       toast.error(err.response?.data?.message || 'Lưu địa chỉ thất bại!');
@@ -820,7 +778,7 @@ export default function Cart() {
         </div>
       </Modal>
 
-      {/* ================= MODAl ĐỊA CHỈ CỦA TÔI ================= */}
+      {/* ================= MODAL DANH SÁCH ĐỊA CHỈ ================= */}
       <Modal 
         isOpen={addressListModal.isOpen} 
         onClose={addressListModal.close}
@@ -849,7 +807,7 @@ export default function Cart() {
                   <div className="flex-1 text-xs space-y-1">
                     <div className="flex flex-wrap justify-between items-center gap-y-1 pr-20">
                       <span className="font-extrabold text-slate-900 text-sm flex items-center gap-2 flex-wrap">
-                        {fullname} 
+                        {fullname || 'Người nhận'} 
                         <span className="text-slate-500 font-medium text-xs">
                           | {phone}
                         </span>
@@ -870,13 +828,7 @@ export default function Cart() {
                     icon={Edit2}
                     onClick={(e) => {
                       e.stopPropagation();
-                      setEditingAddressId(item.addressId);
-                      setNewAddressText(item.address);
-                      setNewAddressLat(item.latitude);
-                      setNewAddressLng(item.longitude);
-                      setAddressLabel(item.label || 'Nhà riêng');
-                      addressListModal.close();
-                      addAddressModal.open(); 
+                      handleOpenEditModal(item);
                     }}
                     className="absolute right-3.5 top-3 !inline-flex items-center gap-1 text-[11px] font-bold !text-[#ff6b35] hover:!bg-orange-50/75 !py-1 !px-2 !rounded-lg !shadow-none cursor-pointer"
                   >
@@ -892,15 +844,7 @@ export default function Cart() {
 
           <div className="px-6 pt-3 pb-4 border-t border-slate-100 bg-white mt-auto">
             <Button
-              onClick={() => {
-                addressListModal.close();
-                setEditingAddressId(null); // <--- Reset ID chỉnh sửa
-                setNewAddressText('');
-                setNewAddressLat(null);
-                setNewAddressLng(null);
-                setAddressLabel('Nhà riêng');
-                addAddressModal.open(); 
-              }}
+              onClick={handleOpenAddModal}
               className="w-full !bg-[#ff6b35] hover:!bg-orange-600 text-white font-bold py-3.5 rounded-2xl text-xs uppercase tracking-wider shadow-md shadow-orange-500/20 cursor-pointer flex items-center justify-center gap-1.5"
             >
               <span className="text-base font-black">+</span> Thêm Địa Chỉ Mới
@@ -909,93 +853,19 @@ export default function Cart() {
         </div>
       </Modal>
 
-      {/* ================= MODAL THÊM / CẬP NHẬT ĐỊA CHỈ ================= */}
-      <Modal 
-        isOpen={addAddressModal.isOpen} 
-        onClose={() => {
-          addAddressModal.close();
-          setEditingAddressId(null);
-        }}
-        title={editingAddressId ? "Cập Nhật Địa Chỉ" : "Thêm Địa Chỉ Mới"}
-        size="md"
-        className="!rounded-2xl"
-      >
-        <div className="space-y-4 -mx-6 -my-6 px-6 py-4">
-          <div>
-            <label className="text-xs font-bold text-slate-800 block mb-1.5">
-              Địa chỉ cụ thể <span className="text-red-500">*</span>
-            </label>
-            <div className="relative">
-              <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
-                <MapPin size={15} />
-              </span>
-              <input 
-                type="text"
-                value={newAddressText}
-                onChange={(e) => setNewAddressText(e.target.value)}
-                placeholder="Ví dụ: Đường Tô Ký, Phường Trung Mỹ Tây, Thành Phố Hồ Chí Minh..."
-                className="w-full pl-9 pr-3 py-3 text-xs border border-slate-200 rounded-2xl bg-white text-slate-800 font-semibold focus:outline-none focus:border-[#ff6b35]"
-              />
-            </div>
-          </div>
-
-          <div>
-            <label className="text-xs font-bold text-slate-800 block mb-2">Loại địa chỉ:</label>
-            <div className="flex gap-3">
-              {['Nhà riêng', 'Văn phòng'].map((lbl) => (
-                <button
-                  key={lbl}
-                  type="button"
-                  onClick={() => setAddressLabel(lbl)}
-                  className={`px-5 py-2.5 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
-                    addressLabel === lbl ? 'border-[#ff6b35] bg-orange-50/40 text-[#ff6b35] shadow-sm' : 'border-slate-200 text-slate-600 hover:bg-slate-50'
-                  }`}
-                >
-                  {lbl}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="pt-4 -mx-6 px-6 border-t border-slate-100 flex items-center justify-end gap-3 mt-6 bg-white">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => {
-                addAddressModal.close();
-                setEditingAddressId(null);
-                addressListModal.open(); 
-              }}
-              className="!rounded-2xl !text-xs !font-bold !py-2.5 !px-5 cursor-pointer border-slate-200 text-slate-600 hover:bg-slate-50"
-            >
-              Quay Lại
-            </Button>
-            <Button
-              type="button"
-              onClick={handleProceedToMap}
-              disabled={isUpdatingLocation}
-              className="!rounded-2xl !text-xs !font-bold !py-2.5 !px-6 !bg-[#ff6b35] text-white hover:!bg-orange-600 cursor-pointer shadow-md shadow-orange-500/20"
-            >
-              {isUpdatingLocation ? 'Đang xử lý...' : 'Xác nhận'}
-            </Button>
-          </div>
-        </div>
-      </Modal>
-
-      {/* ================= MAP MODAL ================= */}
-      {mapModal.isOpen && (
-        <MapModal 
-          key={`${newAddressLat}_${newAddressLng}_${mapModal.isOpen}`}
-          isOpen={mapModal.isOpen} 
-          onClose={() => {
-            mapModal.close();
-            addAddressModal.open(); 
-          }} 
-          onConfirm={handleMapConfirmAndSave} 
-          initialLat={newAddressLat || 10.7769} 
-          initialLng={newAddressLng || 106.7009} 
-        />
-      )}
+      {/* ================= MODAL BẢN ĐỒ ================= */}
+      <MapModal2
+        key={`${editingAddressId || 'new'}-${mapInitialCoords.lat}-${mapInitialCoords.lng}`} 
+        isOpen={mapModal2.isOpen}
+        onClose={mapModal2.close}
+        onConfirm={handleMapConfirmAndSave}
+        isEditMode={Boolean(editingAddressId)}
+        initialLat={mapInitialCoords.lat}
+        initialLng={mapInitialCoords.lng}
+        addressLabel={addressLabel}
+        setAddressLabel={setAddressLabel}
+        showLabelSelector={true} 
+      />
     </div>
   );
 }

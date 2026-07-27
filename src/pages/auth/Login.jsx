@@ -212,7 +212,7 @@ export default function Login() {
           {/* Tagline + thẻ kính đánh giá nổi */}
           <div className="relative z-10 my-8">
             <h1 className="text-3xl xl:text-4xl font-extrabold leading-tight tracking-tight animate-rise-in drop-shadow-sm">
-              Ngon từ bếp,<br />nhanh tới cửa 🍜
+              Ngon từ bếp,<br />nhanh tới cửa <Soup size={30} className="inline-block align-middle -mt-1.5 text-amber-200" />
             </h1>
             <p className="text-sm text-white/85 font-semibold mt-3 max-w-xs leading-relaxed animate-rise-in" style={{ animationDelay: '90ms' }}>
               Đặt món từ quán yêu thích, giao tận nơi nhanh chóng — tất cả trên một nền tảng.

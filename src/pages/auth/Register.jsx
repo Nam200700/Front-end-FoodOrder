@@ -9,6 +9,55 @@ import Card from '../../components/common/Card';
 import MapModal from '../../components/common/MapModal';
 import { toast } from 'react-toastify';
 
+// Panel hero ĐỔI THEO VAI TRÒ (màu + tiêu đề + icon + lợi ích) → hero "sống", ăn khớp bước chọn role.
+// Gradient để tông sâu, bớt chói (bài học chống chói ở Login); lợi ích là MÔ TẢ TÍNH NĂNG thật, không số bịa.
+const ROLE_HERO = {
+  CUSTOMER: {
+    tag: 'Khách hàng', Icon: User, ride: Bike, hi: Soup,
+    grad: 'linear-gradient(135deg,#EF6C33 0%,#D9491C 45%,#A62D14 100%)',
+    head: ['Đặt món ngon,', 'giao tận cửa'],
+    sub: 'Khám phá món yêu thích từ nhiều quán và đặt hàng chỉ trong vài chạm.',
+    benefits: [
+      { Icon: UtensilsCrossed, label: 'Kho món đa dạng từ nhiều quán' },
+      { Icon: MapPin, label: 'Theo dõi đơn hàng trực quan' },
+      { Icon: ShieldCheck, label: 'Thanh toán an toàn, minh bạch' },
+    ],
+  },
+  OWNER: {
+    tag: 'Quán ăn', Icon: Store, ride: Bike, hi: TrendingUp,
+    grad: 'linear-gradient(135deg,#3B82F6 0%,#1D66D6 45%,#124A9E 100%)',
+    head: ['Bán hàng &', 'tăng doanh thu'],
+    sub: 'Đưa quán của bạn lên nền tảng, tiếp cận thêm nhiều thực khách mới.',
+    benefits: [
+      { Icon: Store, label: 'Quản lý thực đơn & đơn hàng' },
+      { Icon: TrendingUp, label: 'Theo dõi doanh thu & thống kê' },
+      { Icon: Users, label: 'Tiếp cận nhiều khách hàng hơn' },
+    ],
+  },
+  SHIPPER: {
+    tag: 'Tài xế', Icon: Bike, ride: Bike, hi: Bike,
+    grad: 'linear-gradient(135deg,#3DBE6A 0%,#2A9D54 45%,#1C7A3F 100%)',
+    head: ['Chạy đơn,', 'kiếm thu nhập'],
+    sub: 'Nhận đơn linh hoạt theo thời gian của bạn, chủ động nguồn thu nhập.',
+    benefits: [
+      { Icon: Bike, label: 'Nhận đơn linh hoạt' },
+      { Icon: Route, label: 'Lộ trình giao hàng rõ ràng' },
+      { Icon: Wallet, label: 'Chủ động thu nhập mỗi ngày' },
+    ],
+  },
+};
+
+// Món ăn + đốm lấp lánh trang trí nền hero
+const REG_DECOR = [
+  { Icon: Pizza, wrap: 'top-[14%] right-[10%]', size: 26, delay: '0ms', anim: 'animate-drift' },
+  { Icon: IceCream, wrap: 'top-[46%] left-[9%]', size: 22, delay: '500ms', anim: 'animate-float-slow' },
+];
+const REG_SPARKLES = [
+  { wrap: 'top-[22%] left-[16%]', size: 13, delay: '0ms' },
+  { wrap: 'top-[58%] right-[16%]', size: 11, delay: '800ms' },
+  { wrap: 'bottom-[34%] right-[30%]', size: 12, delay: '1300ms' },
+];
+
 export default function Register() {
   const navigate = useNavigate();
   const [role, setRole] = useState('CUSTOMER'); // CUSTOMER, OWNER, SHIPPER
@@ -191,6 +240,7 @@ export default function Register() {
   // Màu nhấn của wizard đổi theo vai trò đang chọn (đồng bộ nhận diện role)
   const ROLE_THEME = { CUSTOMER: '#FF6B35', OWNER: '#1A73E8', SHIPPER: '#34A853' };
   const accent = ROLE_THEME[role];
+  const hero = ROLE_HERO[role]; // dữ liệu panel hero theo vai trò đang chọn
   const roleLabel = roles.find((r) => r.id === role)?.label || '';
   const STEPS = [
     { id: 1, label: 'Vai trò', icon: Users },
@@ -216,26 +266,95 @@ export default function Register() {
   const goBack = () => setStep((s) => Math.max(1, s - 1));
 
   return (
-    <div className="min-h-screen bg-slate-50/50 flex items-center justify-center p-4 sm:p-6 font-google-sans relative overflow-hidden">
-      
-      {/* ─── PREMIUM MESH ORBS DECOR (Aesthetic Glow) ─────────────────────────── */}
-      <div className="absolute -top-40 -left-40 w-[30rem] h-[30rem] bg-gradient-to-tr from-[#FF6B35]/25 to-[#FF6B35]/5 rounded-full blur-3xl opacity-60 animate-pulse-slow"></div>
-      <div className="absolute -bottom-48 -right-48 w-[32rem] h-[32rem] bg-gradient-to-tr from-[#1A73E8]/15 to-[#1A73E8]/5 rounded-full blur-3xl opacity-50"></div>
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[40rem] h-[40rem] bg-slate-100/30 rounded-full blur-3xl opacity-30 pointer-events-none"></div>
+    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4 sm:p-6 font-google-sans relative overflow-hidden">
 
-      {/* ─── DOUBLE-BEZEL CARD CONTAINER (Doppelrand Architecture) ───────────────── */}
-      <div className="w-full max-w-2xl p-2.5 bg-slate-100/70 border border-slate-200/50 rounded-[2.25rem] shadow-shadow-2 relative overflow-hidden animate-slide-up z-10">
-        
-        {/* Core Inner Container */}
-        <div className="bg-white rounded-[calc(2.25rem-0.625rem)] p-8 sm:p-10 relative overflow-hidden shadow-sm border border-slate-100/50 flex flex-col">
-          
+      {/* Soft ambient orbs nền */}
+      <div className="absolute -top-40 -left-40 w-[30rem] h-[30rem] bg-gradient-to-tr from-[#FF6B35]/20 to-[#FF6B35]/5 rounded-full blur-3xl opacity-60 animate-pulse-slow"></div>
+      <div className="absolute -bottom-48 -right-48 w-[32rem] h-[32rem] bg-gradient-to-tr from-[#1A73E8]/15 to-[#1A73E8]/5 rounded-full blur-3xl opacity-50"></div>
+
+      {/* ═══ CARD 2 CỘT (hero trái đổi theo role + form phải) ═══ */}
+      <div className="w-full max-w-5xl bg-white rounded-[2rem] shadow-shadow-4 border border-slate-200/60 overflow-hidden grid lg:grid-cols-2 relative z-10 animate-slide-up">
+
+        {/* ───── PANEL HERO SỐNG ĐỘNG (đổi màu/nội dung theo vai trò, chỉ desktop) ───── */}
+        <div className="hidden lg:flex flex-col justify-between relative overflow-hidden p-10 text-white transition-all duration-500" style={{ backgroundImage: hero.grad }}>
+
+          {/* Lớp dịu chống chói + hoạ tiết + vệt sáng */}
+          <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(120%_120%_at_50%_0%,transparent_38%,rgba(0,0,0,0.30)_100%)]"></div>
+          <div className="absolute inset-0 pointer-events-none opacity-[0.13] bg-[radial-gradient(rgba(255,255,255,0.7)_1px,transparent_1px)] bg-[length:18px_18px]"></div>
+          <div className="absolute inset-y-0 -left-1/3 w-1/4 bg-gradient-to-r from-transparent via-white/12 to-transparent animate-shine pointer-events-none"></div>
+          {REG_DECOR.map(({ Icon, wrap, size, delay, anim }, i) => (
+            <Icon key={i} size={size} style={{ animationDelay: delay }} className={`absolute ${wrap} text-white/20 ${anim} pointer-events-none`} />
+          ))}
+          {REG_SPARKLES.map(({ wrap, size, delay }, i) => (
+            <Sparkles key={`s${i}`} size={size} style={{ animationDelay: delay }} className={`absolute ${wrap} text-white/70 animate-twinkle pointer-events-none`} />
+          ))}
+
+          {/* Tô đồ ăn bốc khói (chuyển động hơi nóng như thật) */}
+          <div className="absolute top-[24%] right-[16%] z-0 pointer-events-none">
+            <div className="relative">
+              <span className="absolute -top-3 left-1.5 w-[3px] h-3 rounded-full bg-white/60 animate-steam" style={{ animationDelay: '0ms' }}></span>
+              <span className="absolute -top-3.5 left-3 w-[3px] h-3.5 rounded-full bg-white/50 animate-steam" style={{ animationDelay: '700ms' }}></span>
+              <span className="absolute -top-3 left-[18px] w-[3px] h-3 rounded-full bg-white/60 animate-steam" style={{ animationDelay: '1300ms' }}></span>
+              <Soup size={30} className="text-white/35" />
+            </div>
+          </div>
+
+          {/* Brand + tay vẫy */}
+          <div className="relative z-10 flex items-center gap-2.5">
+            <div className="w-11 h-11 rounded-2xl bg-white/15 backdrop-blur-sm border border-white/20 flex items-center justify-center shadow-lg animate-float">
+              <ChefHat size={22} />
+            </div>
+            <span className="text-xl font-extrabold tracking-tight">MealDash</span>
+            <Hand size={18} className="text-amber-200 animate-wiggle origin-bottom ml-0.5" />
+          </div>
+
+          {/* Tiêu đề + icon vai trò (đổi theo role, re-animate nhờ key) */}
+          <div className="relative z-10 my-8" key={role}>
+            <span className="inline-flex items-center gap-1.5 text-[10px] font-extrabold uppercase tracking-[0.18em] bg-white/15 border border-white/25 px-3 py-1 rounded-full animate-rise-in">
+              <hero.Icon size={12} /> Đăng ký · {hero.tag}
+            </span>
+            <h1 className="text-3xl xl:text-4xl font-extrabold leading-tight tracking-tight mt-4 drop-shadow-sm animate-rise-in" style={{ animationDelay: '70ms' }}>
+              {hero.head[0]}<br />{hero.head[1]} <hero.hi size={30} className="inline-block align-middle -mt-1.5 text-white/80" />
+            </h1>
+            <p className="text-sm text-white/85 font-semibold mt-3 max-w-xs leading-relaxed animate-rise-in" style={{ animationDelay: '140ms' }}>
+              {hero.sub}
+            </p>
+          </div>
+
+          {/* Lợi ích theo vai trò */}
+          <div className="relative z-10 space-y-3" key={`b-${role}`}>
+            {hero.benefits.map(({ Icon, label }, i) => (
+              <div key={i} className="group flex items-center gap-3 animate-rise-in" style={{ animationDelay: `${210 + i * 80}ms` }}>
+                <div className="w-9 h-9 rounded-xl bg-white/15 backdrop-blur-sm border border-white/15 flex items-center justify-center shrink-0 transition-all group-hover:bg-white/25 group-hover:scale-110">
+                  <Icon size={17} />
+                </div>
+                <span className="text-sm font-bold text-white/95">{label}</span>
+              </div>
+            ))}
+
+            {/* Lộ trình giao hàng: shipper chạy ngang + xóc nhẹ như thật */}
+            <div className="relative h-14 mt-4">
+              <div className="absolute bottom-4 left-1 right-6 border-t-2 border-dashed border-white/30"></div>
+              <MapPin size={20} className="absolute bottom-2 right-0 text-white/85" />
+              <div className="absolute bottom-3.5 left-0 animate-ride">
+                <div className="animate-bob">
+                  <hero.ride size={30} className="text-white drop-shadow-md -scale-x-100" />
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* ───── PANEL FORM (phải) ───── */}
+        <div className="p-8 sm:p-10 relative overflow-hidden flex flex-col">
           {/* Decorative highlight */}
-          <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-white to-transparent shadow-[inset_0_1px_0_rgba(255,255,255,0.8)]"></div>
+          <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-white to-transparent"></div>
 
           {/* ─── BRAND LOGO & HEADER ──────────────────────────────────────────────── */}
-          <div className="flex flex-col items-center mb-6 relative z-10">
-            <div className="w-16 h-16 bg-gradient-to-tr from-[#FF6B35] to-[#1A73E8] rounded-2xl flex items-center justify-center text-white text-2xl font-extrabold shadow-shadow-3 mb-4.5 hover:scale-105 active:scale-95 transition-all cursor-pointer">
-              MD
+          <div className="flex flex-col items-center lg:items-start mb-6 relative z-10">
+            {/* Logo chỉ hiện ở mobile (desktop đã có ở hero) */}
+            <div className="lg:hidden w-14 h-14 bg-gradient-to-tr from-[#FF6B35] to-[#1A73E8] rounded-2xl flex items-center justify-center text-white shadow-shadow-3 mb-4 animate-float">
+              <ChefHat size={26} />
             </div>
 
             {/* Eyebrow Tag */}
@@ -243,11 +362,11 @@ export default function Register() {
               Hệ thống MealDash
             </span>
 
-            <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-800 mt-4.5 tracking-tight text-center">
+            <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-800 mt-4 tracking-tight text-center lg:text-left">
               Tạo tài khoản mới
             </h2>
             {/* Phụ đề đổi theo từng bước để dẫn dắt, tránh dồn thông tin */}
-            <p className="text-xs sm:text-sm text-slate-400 mt-2 text-center font-semibold max-w-sm leading-relaxed">
+            <p className="text-xs sm:text-sm text-slate-400 mt-2 text-center lg:text-left font-semibold max-w-sm leading-relaxed">
               {step === 1 && <>Chọn vai trò để tham gia <span className="text-[#FF6B35] font-extrabold">Meal</span><span className="text-[#1A73E8] font-extrabold">Dash</span></>}
               {step === 2 && 'Điền thông tin đăng nhập cơ bản của bạn'}
               {step === 3 && (role === 'CUSTOMER' ? 'Kiểm tra lại thông tin và hoàn tất đăng ký' : 'Bổ sung hồ sơ đối tác để gửi Admin duyệt')}

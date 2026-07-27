@@ -91,6 +91,11 @@
   --animate-bob: bob 0.5s ease-in-out infinite;
   --animate-steam: steam 2.6s ease-out infinite;
   --animate-wiggle: wiggle 2.2s ease-in-out infinite;
+  /* Shipper "chân thật": đi có gia tốc, thân xe rung theo đường, bánh quay, vạch tốc độ */
+  --animate-courier: courier 7s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+  --animate-vroom: vroom 0.32s ease-in-out infinite;
+  --animate-wheel: wheelSpin 0.5s linear infinite;
+  --animate-speed: speedline 0.7s ease-out infinite;
 }
 
 /* ─── Custom Classes & Utilities ────────────────────── */
@@ -285,11 +290,34 @@
   0%, 100% { transform: rotate(-8deg); }
   50% { transform: rotate(10deg); }
 }
+/* Shipper đi có gia tốc, dừng nhẹ ở đích rồi lặp lại (chân thật hơn linear) */
+@keyframes courier {
+  0% { transform: translateX(-16%); }
+  6% { transform: translateX(-16%); }
+  88% { transform: translateX(112%); }
+  100% { transform: translateX(112%); }
+}
+/* Thân xe rung + chồm nhẹ theo mặt đường */
+@keyframes vroom {
+  0%, 100% { transform: translateY(0) rotate(-1.4deg); }
+  50% { transform: translateY(-1.6px) rotate(1.4deg); }
+}
+/* Bánh xe quay */
+@keyframes wheelSpin {
+  to { transform: rotate(360deg); }
+}
+/* Vạch tốc độ loé sau đuôi xe */
+@keyframes speedline {
+  0% { opacity: 0; transform: translateX(8px) scaleX(0.5); }
+  40% { opacity: 0.85; }
+  100% { opacity: 0; transform: translateX(-16px) scaleX(1.4); }
+}
 /* Tôn trọng người dùng tắt hiệu ứng chuyển động */
 @media (prefers-reduced-motion: reduce) {
   .animate-float, .animate-fab-in, .animate-scale-up, .animate-rise-in,
   .animate-float-slow, .animate-drift, .animate-shine, .animate-twinkle, .animate-gradient-pan,
-  .animate-ride, .animate-bob, .animate-steam, .animate-wiggle { animation: none !important; }
+  .animate-ride, .animate-bob, .animate-steam, .animate-wiggle,
+  .animate-courier, .animate-vroom, .animate-wheel, .animate-speed { animation: none !important; }
 }
 
 /* ─── Parallax Effect ────────────────────────────── */

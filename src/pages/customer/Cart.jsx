@@ -853,7 +853,7 @@ export default function Cart() {
         </div>
       </Modal>
 
-      {/* ================= MODAL BẢN ĐỒ MAPMODAL2 ================= */}
+      {/* ================= MODAL BẢN ĐỒ ================= */}
       <MapModal2
         key={`${editingAddressId || 'new'}-${mapInitialCoords.lat}-${mapInitialCoords.lng}`} 
         isOpen={mapModal2.isOpen}

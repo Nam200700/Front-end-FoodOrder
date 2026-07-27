@@ -162,35 +162,75 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50/50 flex items-center justify-center p-4 sm:p-6 font-google-sans relative overflow-hidden">
-      
-      {/* Mesh Orbs Decor */}
+    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4 sm:p-6 font-google-sans relative overflow-hidden">
+
+      {/* Soft ambient orbs nền */}
       <div className="absolute -top-40 -left-40 w-96 h-96 bg-gradient-to-tr from-[#FF6B35]/20 to-[#FF6B35]/5 rounded-full blur-3xl opacity-60 animate-pulse-slow"></div>
       <div className="absolute -bottom-48 -right-48 w-[28rem] h-[28rem] bg-gradient-to-tr from-[#1A73E8]/15 to-[#1A73E8]/5 rounded-full blur-3xl opacity-50"></div>
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[35rem] h-[35rem] bg-slate-100/30 rounded-full blur-3xl opacity-30 pointer-events-none"></div>
- 
-      {/* Card container */}
-      <div className="w-full max-w-lg p-2.5 bg-slate-100/70 border border-slate-200/50 rounded-[2.25rem] shadow-shadow-2 relative overflow-hidden animate-slide-up z-10">
-        
-        {/* Core Inner Container */}
-        <div className="bg-white rounded-[calc(2.25rem-0.625rem)] p-8 sm:p-10 relative overflow-hidden shadow-sm border border-slate-100/50 flex flex-col">
-          
-          <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-white to-transparent shadow-[inset_0_1px_0_rgba(255,255,255,0.8)]"></div>
- 
-          {/* Header */}
-          <div className="flex flex-col items-center mb-8 relative z-10">
-            <div className="w-16 h-16 bg-gradient-to-tr from-[#FF6B35] to-[#1A73E8] rounded-2xl flex items-center justify-center text-white text-2xl font-extrabold shadow-shadow-3 mb-4.5 transition-transform hover:scale-105 active:scale-95 cursor-pointer">
-              MD
+
+      {/* ═══ CARD 2 CỘT (hero trái + form phải) ═══ */}
+      <div className="w-full max-w-4xl bg-white rounded-[2rem] shadow-shadow-4 border border-slate-200/60 overflow-hidden grid lg:grid-cols-2 relative z-10 animate-slide-up">
+
+        {/* ───── PANEL HERO PHONG CÁCH QUÁN ĂN (chỉ desktop) ───── */}
+        <div className="hidden lg:flex flex-col justify-between relative overflow-hidden p-10 bg-gradient-to-br from-[#FF6B35] via-[#FF7A45] to-[#F7481F] text-white">
+
+          {/* Ánh sáng + món ăn bay lơ lửng trang trí */}
+          <div className="absolute -top-16 -right-16 w-56 h-56 bg-white/10 rounded-full blur-2xl pointer-events-none"></div>
+          <div className="absolute -bottom-20 -left-10 w-64 h-64 bg-black/10 rounded-full blur-3xl pointer-events-none"></div>
+          {FOOD_DECOR.map(({ Icon, wrap, size, delay }, i) => (
+            <Icon key={i} size={size} style={{ animationDelay: delay }} className={`absolute ${wrap} text-white/15 animate-float pointer-events-none`} />
+          ))}
+
+          {/* Brand */}
+          <div className="relative z-10 flex items-center gap-2.5">
+            <div className="w-11 h-11 rounded-2xl bg-white/15 backdrop-blur-sm flex items-center justify-center shadow-lg animate-float">
+              <ChefHat size={22} />
             </div>
-            
-            <span className="text-[10px] bg-slate-100 text-slate-500 font-extrabold px-3 py-1 rounded-full uppercase tracking-[0.2em] shadow-sm border border-slate-200/40">
-              Hệ thống MealDash
+            <span className="text-xl font-extrabold tracking-tight">MealDash</span>
+          </div>
+
+          {/* Tagline */}
+          <div className="relative z-10 my-8">
+            <h1 className="text-3xl xl:text-4xl font-extrabold leading-tight tracking-tight animate-rise-in">
+              Ngon từ bếp,<br />nhanh tới cửa 🍜
+            </h1>
+            <p className="text-sm text-white/85 font-semibold mt-3 max-w-xs leading-relaxed animate-rise-in" style={{ animationDelay: '90ms' }}>
+              Hàng nghìn món ngon từ quán yêu thích, giao tận nơi chỉ trong ít phút.
+            </p>
+          </div>
+
+          {/* Điểm nổi bật */}
+          <div className="relative z-10 space-y-3">
+            {FEATURES.map(({ Icon, label }, i) => (
+              <div key={i} className="flex items-center gap-3 animate-rise-in" style={{ animationDelay: `${140 + i * 80}ms` }}>
+                <div className="w-9 h-9 rounded-xl bg-white/15 backdrop-blur-sm flex items-center justify-center shrink-0">
+                  <Icon size={17} />
+                </div>
+                <span className="text-sm font-bold text-white/95">{label}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* ───── PANEL FORM (phải) ───── */}
+        <div className="p-8 sm:p-10 flex flex-col relative">
+          <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-white to-transparent"></div>
+
+          {/* Header form */}
+          <div className="flex flex-col items-center lg:items-start mb-8 relative z-10">
+            {/* Logo chỉ hiện ở mobile (desktop đã có ở panel hero) */}
+            <div className="lg:hidden w-14 h-14 bg-gradient-to-tr from-[#FF6B35] to-[#1A73E8] rounded-2xl flex items-center justify-center text-white shadow-shadow-3 mb-4 animate-float">
+              <ChefHat size={26} />
+            </div>
+
+            <span className="text-[10px] bg-orange-50 text-[#FF6B35] font-extrabold px-3 py-1 rounded-full uppercase tracking-[0.2em] border border-orange-100">
+              {mode === 'login' ? 'Đăng nhập' : 'Khôi phục mật khẩu'}
             </span>
- 
-            <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-800 mt-4.5 tracking-tight text-center">
+
+            <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-800 mt-3.5 tracking-tight text-center lg:text-left">
               {mode === 'login' ? 'Chào mừng trở lại!' : 'Khôi phục mật khẩu'}
             </h2>
-            <p className="text-xs sm:text-sm text-slate-400 mt-2 text-center font-semibold max-w-xs leading-relaxed">
+            <p className="text-xs sm:text-sm text-slate-400 mt-2 text-center lg:text-left font-semibold max-w-xs leading-relaxed">
               {mode === 'login' ? (
                 <>Đặt đồ ăn online siêu tốc với triết lý <span className="text-[#FF6B35] font-extrabold">Meal</span><span className="text-[#1A73E8] font-extrabold">Dash</span></>
               ) : (

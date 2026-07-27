@@ -405,40 +405,61 @@ export default function Register() {
             </p>
           </div>
 
-          {/* ─── STEPPER (thanh tiến trình 3 bước, đổi màu theo vai trò) ───────────── */}
-          <div className="flex items-center justify-center mb-8 px-1 relative z-10">
-            {STEPS.map((s, i) => {
-              const Icon = s.icon;
-              const done = step > s.id;
-              const active = step === s.id;
-              const on = done || active;
-              return (
-                <React.Fragment key={s.id}>
-                  <div className="flex flex-col items-center gap-1.5 shrink-0">
-                    <div
-                      className="w-9 h-9 rounded-full flex items-center justify-center text-xs font-extrabold shadow-sm transition-all duration-300"
-                      style={{
-                        backgroundColor: on ? accent : '#e2e8f0',
-                        color: on ? '#fff' : '#94a3b8',
-                        transform: active ? 'scale(1.12)' : 'scale(1)',
-                        boxShadow: active ? `0 0 0 4px ${accent}22` : undefined,
-                      }}
-                    >
-                      {done ? <Check size={16} className="stroke-[3px]" /> : <Icon size={16} />}
+          {/* ─── STEPPER NÂNG CẤP (thanh nối chạy fill, halo nhấp nháy, tích bật ra) ─── */}
+          <div className="mb-8 relative z-10">
+            {/* Nhãn tiến trình + bộ đếm bước */}
+            <div className="flex items-center justify-between mb-3 px-1">
+              <span className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Tiến trình đăng ký</span>
+              <span className="text-[10px] font-extrabold tabular-nums" style={{ color: accent }}>Bước {step}/{STEPS.length}</span>
+            </div>
+
+            <div className="flex items-center px-1">
+              {STEPS.map((s, i) => {
+                const Icon = s.icon;
+                const done = step > s.id;
+                const active = step === s.id;
+                const on = done || active;
+                return (
+                  <React.Fragment key={s.id}>
+                    <div className="flex flex-col items-center gap-1.5 shrink-0">
+                      {/* Vòng tròn bước + halo lan toả khi active */}
+                      <div className="relative w-9 h-9">
+                        {active && (
+                          <span className="absolute inset-0 rounded-full border-2 animate-halo pointer-events-none" style={{ borderColor: accent }}></span>
+                        )}
+                        <div
+                          className="relative w-9 h-9 rounded-full flex items-center justify-center shadow-sm transition-all duration-300"
+                          style={{
+                            backgroundColor: on ? accent : '#e2e8f0',
+                            color: on ? '#fff' : '#94a3b8',
+                            transform: active ? 'scale(1.14)' : 'scale(1)',
+                            boxShadow: active ? `0 6px 16px ${accent}55` : undefined,
+                          }}
+                        >
+                          {/* Đổi icon↔tích có key để bật ra (pop) khi trạng thái đổi */}
+                          <span key={done ? 'check' : 'icon'} className="flex animate-scale-up">
+                            {done ? <Check size={16} className="stroke-[3px]" /> : <Icon size={16} />}
+                          </span>
+                        </div>
+                      </div>
+                      <span className="text-[10px] font-extrabold uppercase tracking-wide transition-colors duration-300" style={{ color: on ? accent : '#94a3b8' }}>
+                        {s.label}
+                      </span>
                     </div>
-                    <span className="text-[10px] font-extrabold uppercase tracking-wide" style={{ color: on ? accent : '#94a3b8' }}>
-                      {s.label}
-                    </span>
-                  </div>
-                  {i < STEPS.length - 1 && (
-                    <div
-                      className="flex-1 h-0.5 mx-2 rounded-full -mt-5 transition-all duration-300"
-                      style={{ backgroundColor: step > s.id ? accent : '#e2e8f0' }}
-                    />
-                  )}
-                </React.Fragment>
-              );
-            })}
+
+                    {/* Thanh nối: track xám + lớp fill chạy 0→100% mượt khi bước hoàn thành */}
+                    {i < STEPS.length - 1 && (
+                      <div className="flex-1 h-1 mx-2 -mt-5 rounded-full bg-slate-200 overflow-hidden">
+                        <div
+                          className="h-full rounded-full transition-all duration-500 ease-out"
+                          style={{ width: step > s.id ? '100%' : '0%', backgroundColor: accent }}
+                        ></div>
+                      </div>
+                    )}
+                  </React.Fragment>
+                );
+              })}
+            </div>
           </div>
 
           {/* ─── REGISTER FORM (theo bước) ────────────────────────────────────────── */}

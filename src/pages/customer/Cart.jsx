@@ -51,7 +51,7 @@ export default function Cart() {
   //id truyền từ RestaurantDetail.jsx
   const targetRestaurantId = location.state?.targetRestaurantId;
 
-  // Các state và modal quản lý địa chỉ đồng bộ với Profile
+  // Các state và modal quản lý địa chỉ 
   const addressListModal = useModalState(); 
   const mapModal2 = useModalState(); 
 

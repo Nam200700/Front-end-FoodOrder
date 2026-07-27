@@ -14,7 +14,7 @@ import Spinner from '../../components/common/Spinner';
 import Button from '../../components/common/Button';
 import Card from '../../components/common/Card'; 
 import Modal from '../../components/common/Modal';
-import MapModal2 from '../../components/common/MapModal2';
+import MapModal2 from '../../components/common/Map';
 
 export default function Profile() {
   const navigate = useNavigate();
@@ -548,9 +548,12 @@ export default function Profile() {
         isOpen={mapModal2.isOpen}
         onClose={mapModal2.close}
         onConfirm={handleMapConfirmAndSave}
-        isEditMode={Boolean(editingAddressId)} 
+        isEditMode={Boolean(editingAddressId)}
         initialLat={mapInitialCoords.lat}
         initialLng={mapInitialCoords.lng}
+        addressLabel={addressLabel}
+        setAddressLabel={setAddressLabel}
+        showLabelSelector={true} 
       />
     </div>  
   );

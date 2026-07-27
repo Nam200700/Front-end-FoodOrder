@@ -215,20 +215,15 @@ export default function Login() {
               Ngon từ bếp,<br />nhanh tới cửa 🍜
             </h1>
             <p className="text-sm text-white/85 font-semibold mt-3 max-w-xs leading-relaxed animate-rise-in" style={{ animationDelay: '90ms' }}>
-              Hàng nghìn món ngon từ quán yêu thích, giao tận nơi chỉ trong ít phút.
+              Đặt món từ quán yêu thích, giao tận nơi nhanh chóng — tất cả trên một nền tảng.
             </p>
 
-            {/* Thẻ kính: rating + thời gian giao (giống thông báo app đồ ăn thật) */}
-            <div className="flex items-center gap-2.5 mt-5">
-              <div className="inline-flex items-center gap-2 rounded-2xl bg-white/15 backdrop-blur-md border border-white/25 px-3.5 py-2 shadow-lg animate-rise-in" style={{ animationDelay: '200ms' }}>
-                <Star size={16} className="text-amber-300 fill-amber-300" />
-                <span className="text-sm font-extrabold leading-none">4.9</span>
-                <span className="text-[11px] font-semibold text-white/75 leading-none">/ 12k+ đánh giá</span>
-              </div>
-              <div className="inline-flex items-center gap-2 rounded-2xl bg-white/15 backdrop-blur-md border border-white/25 px-3.5 py-2 shadow-lg animate-rise-in" style={{ animationDelay: '280ms' }}>
-                <Timer size={16} className="text-white" />
-                <span className="text-[11px] font-bold text-white/90 leading-none">~30 phút</span>
-              </div>
+            {/* Thẻ kính điểm nhấn CÓ THẬT: mô hình 3-in-1 đúng kiến trúc hệ thống (Khách/Quán/Tài xế) */}
+            <div className="inline-flex items-center gap-2.5 rounded-2xl bg-white/15 backdrop-blur-md border border-white/25 px-4 py-2.5 shadow-lg mt-5 animate-rise-in" style={{ animationDelay: '200ms' }}>
+              <Users size={16} className="text-amber-200 shrink-0" />
+              <span className="text-[13px] font-bold text-white/95 leading-none">
+                Nền tảng 3 trong 1: Khách · Quán · Tài xế
+              </span>
             </div>
           </div>
 

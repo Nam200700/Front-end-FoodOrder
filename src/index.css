@@ -242,9 +242,28 @@
   0% { opacity: 0; transform: translateY(8px); }
   100% { opacity: 1; transform: translateY(0); }
 }
+/* Hero Login: đảo nhẹ khi trôi, vệt sáng quét ngang, đốm lấp lánh, gradient nền chuyển động */
+@keyframes drift {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50% { transform: translateY(-8px) rotate(6deg); }
+}
+@keyframes shine {
+  0% { transform: translateX(-130%) skewX(-14deg); }
+  55%, 100% { transform: translateX(240%) skewX(-14deg); }
+}
+@keyframes twinkle {
+  0%, 100% { opacity: 0.2; transform: scale(0.8); }
+  50% { opacity: 1; transform: scale(1.15); }
+}
+@keyframes gradientPan {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
 /* Tôn trọng người dùng tắt hiệu ứng chuyển động */
 @media (prefers-reduced-motion: reduce) {
-  .animate-float, .animate-fab-in, .animate-scale-up, .animate-rise-in { animation: none !important; }
+  .animate-float, .animate-fab-in, .animate-scale-up, .animate-rise-in,
+  .animate-float-slow, .animate-drift, .animate-shine, .animate-twinkle, .animate-gradient-pan { animation: none !important; }
 }
 
 /* ─── Parallax Effect ────────────────────────────── */

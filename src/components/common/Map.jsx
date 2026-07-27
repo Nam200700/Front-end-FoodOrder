@@ -234,12 +234,11 @@ export default function MapModal2({
             <X size={20} />
           </button>
         </div>
-
-        {/* Thanh tìm kiếm và Tùy chọn Nhãn */}
+        
+        {/* tìm kiếm địa chỉ */}
         <div className="p-4 bg-slate-50 border-b border-slate-150 space-y-3">
           <form onSubmit={handleSearchAddress} className="flex gap-2">
             <div className="relative flex-1">
-              {/* Đảm bảo icon Search nằm chuẩn giữa ô input */}
               <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={16} />
               <input
                 type="text"
@@ -249,10 +248,9 @@ export default function MapModal2({
                 className="w-full pl-10 pr-4 py-2 border border-slate-200 focus:border-md-primary rounded-lg text-xs font-semibold bg-white outline-none transition-all"
               />
             </div>
-            {/* Nút Tìm kiếm màu cam, thu nhỏ gọn hơn (size sm hoặc chỉnh padding) */}
             <Button 
               type="submit" 
-              variant="secondary" 
+              variant="primary" 
               size="sm" 
               disabled={searching} 
               className="bg-md-primary hover:bg-opacity-95 text-white px-4 py-2 text-xs font-bold shrink-0"
@@ -311,7 +309,7 @@ export default function MapModal2({
           <div className="bg-white p-3.5 rounded-radius-lg border border-slate-200 shadow-sm flex items-start justify-between gap-3">
             <div>
               <span className="text-[10px] text-md-outline font-extrabold uppercase tracking-wider block flex items-center gap-1">
-                📍 Địa chỉ đã chọn {showLabelSelector && `(${addressLabel})`}
+                📍 Địa chỉ đã chọn 
               </span>
               <p className="text-xs md:text-sm text-slate-800 font-extrabold mt-1.5 leading-relaxed min-h-[36px] flex items-center">
                 {loadingAddress || locating ? (
@@ -326,13 +324,13 @@ export default function MapModal2({
             </div>
           </div>
 
-          {/* Các nút bấm ở footer được thu nhỏ lại */}
+          
           <div className="flex items-center justify-end gap-2.5">
             <Button variant="outline" onClick={onClose} size="sm" className="px-4 py-2 text-xs font-bold">
               Hủy
             </Button>
             <Button 
-              variant="secondary" 
+              variant="primary" 
               onClick={handleConfirmLocation}
               disabled={loadingAddress || searching || locating}
               icon={Check}

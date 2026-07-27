@@ -75,13 +75,8 @@ export default function MerchantSettings() {
       fileInputRef.current.value = "";
     }
   };
-
-  // Mở trực tiếp MapModal2  vào thay đổi địa chỉ
-  const handleOpenMapModal = () => {
-    mapModal2.open();
-  };
-
-  // Xử lý xác nhận vị trí mới từ MapModal2
+  
+    // Xử lý xác nhận vị trí mới từ MapModal2
   const handleMapConfirmAndSave = (selectedLat, selectedLng, addressName) => {
     setLatitude(selectedLat);
     setLongitude(selectedLng);
@@ -90,6 +85,11 @@ export default function MerchantSettings() {
     }
     mapModal2.close();
     toast.success("Đã cập nhật vị trí quán trên bản đồ!");
+  };
+
+  // Mở trực tiếp MapModal2  vào thay đổi địa chỉ
+  const handleOpenMapModal = () => {
+    mapModal2.open();
   };
 
   const handleSave = async () => {

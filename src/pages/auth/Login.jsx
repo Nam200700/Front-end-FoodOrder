@@ -180,38 +180,63 @@ export default function Login() {
       <div className="w-full max-w-4xl bg-white rounded-[2rem] shadow-shadow-4 border border-slate-200/60 overflow-hidden grid lg:grid-cols-2 relative z-10 animate-slide-up">
 
         {/* ───── PANEL HERO PHONG CÁCH QUÁN ĂN (chỉ desktop) ───── */}
-        <div className="hidden lg:flex flex-col justify-between relative overflow-hidden p-10 bg-gradient-to-br from-[#FF6B35] via-[#FF7A45] to-[#F7481F] text-white">
+        <div className="hidden lg:flex flex-col justify-between relative overflow-hidden p-10 text-white bg-gradient-to-br from-[#EF6C33] via-[#D9491C] to-[#A62D14] bg-[length:180%_180%] animate-gradient-pan">
 
-          {/* Ánh sáng + món ăn bay lơ lửng trang trí */}
-          <div className="absolute -top-16 -right-16 w-56 h-56 bg-white/10 rounded-full blur-2xl pointer-events-none"></div>
-          <div className="absolute -bottom-20 -left-10 w-64 h-64 bg-black/10 rounded-full blur-3xl pointer-events-none"></div>
-          {FOOD_DECOR.map(({ Icon, wrap, size, delay }, i) => (
-            <Icon key={i} size={size} style={{ animationDelay: delay }} className={`absolute ${wrap} text-white/15 animate-float pointer-events-none`} />
+          {/* Lớp làm dịu (vignette tối ở rìa) chống chói + tăng độ tương phản chữ */}
+          <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(120%_120%_at_50%_0%,transparent_38%,rgba(0,0,0,0.30)_100%)]"></div>
+          {/* Hoạ tiết chấm bi mờ tạo chất liệu */}
+          <div className="absolute inset-0 pointer-events-none opacity-[0.13] bg-[radial-gradient(rgba(255,255,255,0.7)_1px,transparent_1px)] bg-[length:18px_18px]"></div>
+          {/* Quầng sáng dịu */}
+          <div className="absolute -top-16 -right-16 w-56 h-56 bg-amber-200/15 rounded-full blur-3xl pointer-events-none"></div>
+          <div className="absolute -bottom-24 -left-12 w-72 h-72 bg-black/15 rounded-full blur-3xl pointer-events-none"></div>
+          {/* Vệt sáng quét ngang định kỳ */}
+          <div className="absolute inset-y-0 -left-1/3 w-1/4 bg-gradient-to-r from-transparent via-white/12 to-transparent animate-shine pointer-events-none"></div>
+
+          {/* Món ăn bay lơ lửng */}
+          {FOOD_DECOR.map(({ Icon, wrap, size, delay, anim }, i) => (
+            <Icon key={i} size={size} style={{ animationDelay: delay }} className={`absolute ${wrap} text-white/20 ${anim} pointer-events-none`} />
+          ))}
+          {/* Đốm lấp lánh */}
+          {SPARKLES.map(({ wrap, size, delay }, i) => (
+            <Sparkles key={`s${i}`} size={size} style={{ animationDelay: delay }} className={`absolute ${wrap} text-white/70 animate-twinkle pointer-events-none`} />
           ))}
 
           {/* Brand */}
           <div className="relative z-10 flex items-center gap-2.5">
-            <div className="w-11 h-11 rounded-2xl bg-white/15 backdrop-blur-sm flex items-center justify-center shadow-lg animate-float">
+            <div className="w-11 h-11 rounded-2xl bg-white/15 backdrop-blur-sm border border-white/20 flex items-center justify-center shadow-lg animate-float">
               <ChefHat size={22} />
             </div>
             <span className="text-xl font-extrabold tracking-tight">MealDash</span>
           </div>
 
-          {/* Tagline */}
+          {/* Tagline + thẻ kính đánh giá nổi */}
           <div className="relative z-10 my-8">
-            <h1 className="text-3xl xl:text-4xl font-extrabold leading-tight tracking-tight animate-rise-in">
+            <h1 className="text-3xl xl:text-4xl font-extrabold leading-tight tracking-tight animate-rise-in drop-shadow-sm">
               Ngon từ bếp,<br />nhanh tới cửa 🍜
             </h1>
             <p className="text-sm text-white/85 font-semibold mt-3 max-w-xs leading-relaxed animate-rise-in" style={{ animationDelay: '90ms' }}>
               Hàng nghìn món ngon từ quán yêu thích, giao tận nơi chỉ trong ít phút.
             </p>
+
+            {/* Thẻ kính: rating + thời gian giao (giống thông báo app đồ ăn thật) */}
+            <div className="flex items-center gap-2.5 mt-5">
+              <div className="inline-flex items-center gap-2 rounded-2xl bg-white/15 backdrop-blur-md border border-white/25 px-3.5 py-2 shadow-lg animate-rise-in" style={{ animationDelay: '200ms' }}>
+                <Star size={16} className="text-amber-300 fill-amber-300" />
+                <span className="text-sm font-extrabold leading-none">4.9</span>
+                <span className="text-[11px] font-semibold text-white/75 leading-none">/ 12k+ đánh giá</span>
+              </div>
+              <div className="inline-flex items-center gap-2 rounded-2xl bg-white/15 backdrop-blur-md border border-white/25 px-3.5 py-2 shadow-lg animate-rise-in" style={{ animationDelay: '280ms' }}>
+                <Timer size={16} className="text-white" />
+                <span className="text-[11px] font-bold text-white/90 leading-none">~30 phút</span>
+              </div>
+            </div>
           </div>
 
           {/* Điểm nổi bật */}
           <div className="relative z-10 space-y-3">
             {FEATURES.map(({ Icon, label }, i) => (
-              <div key={i} className="flex items-center gap-3 animate-rise-in" style={{ animationDelay: `${140 + i * 80}ms` }}>
-                <div className="w-9 h-9 rounded-xl bg-white/15 backdrop-blur-sm flex items-center justify-center shrink-0">
+              <div key={i} className="group flex items-center gap-3 animate-rise-in" style={{ animationDelay: `${340 + i * 80}ms` }}>
+                <div className="w-9 h-9 rounded-xl bg-white/15 backdrop-blur-sm border border-white/15 flex items-center justify-center shrink-0 transition-all group-hover:bg-white/25 group-hover:scale-110">
                   <Icon size={17} />
                 </div>
                 <span className="text-sm font-bold text-white/95">{label}</span>

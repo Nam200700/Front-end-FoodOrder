@@ -1,11 +1,28 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../stores/authStore';
-import { Lock, Phone, ChevronRight, User, Store, Bike, Shield, KeyRound, Mail, MessageSquare, AlertTriangle, CheckCircle2, Eye, EyeOff } from 'lucide-react';
+import { Lock, Phone, ChevronRight, User, Store, Bike, Shield, KeyRound, Mail, MessageSquare, AlertTriangle, CheckCircle2, Eye, EyeOff, ChefHat, Star, ShieldCheck, Pizza, Soup, IceCream, Croissant, Sandwich, CupSoda } from 'lucide-react';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import apiClient from '../../services/api';
 import { validatePassword } from '../../utils/validation';
+
+// Món ăn trang trí bay lơ lửng ở panel hero (phong cách quán ăn) — vị trí + độ trễ float lệch nhau
+const FOOD_DECOR = [
+  { Icon: Pizza, wrap: 'top-[13%] right-[12%]', size: 30, delay: '0ms' },
+  { Icon: IceCream, wrap: 'top-[40%] right-[22%]', size: 22, delay: '600ms' },
+  { Icon: Croissant, wrap: 'bottom-[24%] right-[13%]', size: 26, delay: '1200ms' },
+  { Icon: Soup, wrap: 'top-[22%] left-[14%]', size: 24, delay: '400ms' },
+  { Icon: Sandwich, wrap: 'bottom-[30%] left-[9%]', size: 22, delay: '900ms' },
+  { Icon: CupSoda, wrap: 'bottom-[13%] left-[26%]', size: 20, delay: '1500ms' },
+];
+
+// Điểm nổi bật hiển thị ở đáy panel hero
+const FEATURES = [
+  { Icon: Bike, label: 'Giao siêu tốc chỉ trong ~30 phút' },
+  { Icon: Star, label: 'Hàng nghìn quán ăn chất lượng' },
+  { Icon: ShieldCheck, label: 'Thanh toán an toàn, minh bạch' },
+];
 
 export default function Login() {
   const navigate = useNavigate();
@@ -173,7 +190,7 @@ export default function Login() {
             <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-800 mt-4.5 tracking-tight text-center">
               {mode === 'login' ? 'Chào mừng trở lại!' : 'Khôi phục mật khẩu'}
             </h2>
-            <p className="text-xs sm:text-sm text-slate-450 mt-2 text-center font-semibold max-w-xs leading-relaxed">
+            <p className="text-xs sm:text-sm text-slate-400 mt-2 text-center font-semibold max-w-xs leading-relaxed">
               {mode === 'login' ? (
                 <>Đặt đồ ăn online siêu tốc với triết lý <span className="text-[#FF6B35] font-extrabold">Meal</span><span className="text-[#1A73E8] font-extrabold">Dash</span></>
               ) : (
@@ -184,7 +201,7 @@ export default function Login() {
 
           {/* Error message banner */}
           {errorMsg && (
-            <div className="p-3.5 bg-red-50 border border-red-200 text-red-650 rounded-radius-md text-[11px] font-bold mb-4 flex items-start gap-2 leading-relaxed shrink-0">
+            <div className="p-3.5 bg-red-50 border border-red-200 text-red-600 rounded-radius-md text-[11px] font-bold mb-4 flex items-start gap-2 leading-relaxed shrink-0">
               <AlertTriangle size={14} className="shrink-0 mt-0.5" />
               <div className="flex-1">
                 <span className="font-extrabold block mb-0.5 text-red-700">Lỗi xử lý:</span>
@@ -198,7 +215,7 @@ export default function Login() {
             <form onSubmit={handleSubmit} className="space-y-5.5 relative z-10">
               
               {/* SĐT */}
-              <div className="space-y-2">
+              <div className="space-y-2 animate-rise-in" style={{ animationDelay: '40ms' }}>
                 <label className="block text-[10px] font-extrabold text-slate-400 uppercase tracking-wider pl-1">
                   Số điện thoại
                 </label>
@@ -210,13 +227,13 @@ export default function Login() {
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
                     placeholder="0901234567..."
-                    className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-radius-lg text-xs font-semibold focus:outline-none focus:border-[#FF6B35] focus:bg-white transition-all shadow-sm text-slate-700 placeholder-slate-350"
+                    className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-radius-lg text-xs font-semibold focus:outline-none focus:border-[#FF6B35] focus:bg-white transition-all shadow-sm text-slate-700 placeholder-slate-400"
                   />
                 </div>
               </div>
  
               {/* Mật khẩu */}
-              <div className="space-y-2">
+              <div className="space-y-2 animate-rise-in" style={{ animationDelay: '120ms' }}>
                 <label className="block text-[10px] font-extrabold text-slate-400 uppercase tracking-wider pl-1">
                   Mật khẩu
                 </label>
@@ -228,7 +245,7 @@ export default function Login() {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="••••••••"
-                    className="w-full pl-11 pr-11 py-3 bg-slate-50 border border-slate-200 rounded-radius-lg text-xs font-semibold focus:outline-none focus:border-[#FF6B35] focus:bg-white transition-all shadow-sm text-slate-700 placeholder-slate-350"
+                    className="w-full pl-11 pr-11 py-3 bg-slate-50 border border-slate-200 rounded-radius-lg text-xs font-semibold focus:outline-none focus:border-[#FF6B35] focus:bg-white transition-all shadow-sm text-slate-700 placeholder-slate-400"
                   />
                   {/* Nút xem/ẩn mật khẩu */}
                   <button
@@ -243,7 +260,7 @@ export default function Login() {
               </div>
  
               {/* Option Bar */}
-              <div className="flex items-center justify-between text-xs font-bold pt-1">
+              <div className="flex items-center justify-between text-xs font-bold pt-1 animate-rise-in" style={{ animationDelay: '200ms' }}>
                 <label className="flex items-center gap-2 text-slate-500 cursor-pointer">
                   <input 
                     type="checkbox" 
@@ -264,7 +281,8 @@ export default function Login() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full bg-gradient-to-r from-[#FF6B35] to-[#FF6B35]/95 hover:from-[#ff7947] hover:to-[#FF6B35] text-white font-extrabold py-3.5 px-3.5 pl-6 rounded-full flex items-center justify-between shadow-shadow-2 hover:scale-[1.01] active:scale-[0.98] transition-all cursor-pointer group"
+                style={{ animationDelay: '280ms' }}
+                className="w-full bg-gradient-to-r from-[#FF6B35] to-[#FF6B35]/95 hover:from-[#ff7947] hover:to-[#FF6B35] text-white font-extrabold py-3.5 px-3.5 pl-6 rounded-full flex items-center justify-between shadow-shadow-2 hover:scale-[1.01] active:scale-[0.98] transition-all cursor-pointer group animate-rise-in disabled:opacity-70"
               >
                 <span className="uppercase tracking-wider text-xs">
                   {loading ? 'Đang xử lý...' : 'Đăng Nhập'}
@@ -295,7 +313,7 @@ export default function Login() {
                       value={phoneOrEmail}
                       onChange={(e) => setPhoneOrEmail(e.target.value)}
                       placeholder="Nhập SĐT (09...) hoặc Email..."
-                      className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-radius-lg text-xs font-semibold focus:outline-none focus:border-[#FF6B35] focus:bg-white transition-all shadow-sm text-slate-700 placeholder-slate-350 disabled:bg-slate-100 disabled:text-slate-450"
+                      className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-radius-lg text-xs font-semibold focus:outline-none focus:border-[#FF6B35] focus:bg-white transition-all shadow-sm text-slate-700 placeholder-slate-400 disabled:bg-slate-100 disabled:text-slate-400"
                     />
                   </div>
                 </div>
@@ -349,7 +367,7 @@ export default function Login() {
               {otpSent && (
                 <form onSubmit={handleResetPassword} className="space-y-4 pt-4 border-t border-slate-100 animate-fade-in">
                   
-                  <div className="p-3 bg-emerald-50 border border-emerald-250 text-emerald-700 rounded-radius-lg text-[11px] font-bold leading-normal flex items-start gap-2">
+                  <div className="p-3 bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-radius-lg text-[11px] font-bold leading-normal flex items-start gap-2">
                     <CheckCircle2 size={14} className="shrink-0 mt-0.5" />
                     <div>
                       Mã OTP đã được gửi đến {phoneOrEmail} qua {otpMethod === 'SMS' ? 'tin nhắn SMS' : 'Email'}. 
@@ -384,7 +402,7 @@ export default function Login() {
                       value={otpCode}
                       onChange={(e) => setOtpCode(e.target.value)}
                       placeholder="Nhập 6 chữ số..."
-                      className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-radius-lg text-xs font-semibold focus:outline-none focus:border-[#FF6B35] focus:bg-white transition-all shadow-sm text-slate-700 placeholder-slate-350 text-center tracking-[0.5em] font-mono text-base"
+                      className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-radius-lg text-xs font-semibold focus:outline-none focus:border-[#FF6B35] focus:bg-white transition-all shadow-sm text-slate-700 placeholder-slate-400 text-center tracking-[0.5em] font-mono text-base"
                     />
                   </div>
 
@@ -401,7 +419,7 @@ export default function Login() {
                         value={newPassword}
                         onChange={(e) => setNewPassword(e.target.value)}
                         placeholder="Nhập mật khẩu mới..."
-                        className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-radius-lg text-xs font-semibold focus:outline-none focus:border-[#FF6B35] focus:bg-white transition-all shadow-sm text-slate-700 placeholder-slate-350"
+                        className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-radius-lg text-xs font-semibold focus:outline-none focus:border-[#FF6B35] focus:bg-white transition-all shadow-sm text-slate-700 placeholder-slate-400"
                       />
                     </div>
                   </div>
@@ -419,7 +437,7 @@ export default function Login() {
                         value={confirmPassword}
                         onChange={(e) => setConfirmPassword(e.target.value)}
                         placeholder="Nhập lại mật khẩu..."
-                        className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-radius-lg text-xs font-semibold focus:outline-none focus:border-[#FF6B35] focus:bg-white transition-all shadow-sm text-slate-700 placeholder-slate-350"
+                        className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-radius-lg text-xs font-semibold focus:outline-none focus:border-[#FF6B35] focus:bg-white transition-all shadow-sm text-slate-700 placeholder-slate-400"
                       />
                     </div>
                   </div>

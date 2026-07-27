@@ -558,6 +558,7 @@ export default function Register() {
 
               {step < 3 ? (
                 <button
+                  key="btn-next"
                   type="button"
                   onClick={goNext}
                   className="flex-1 text-white font-extrabold py-3.5 px-3.5 pl-6 rounded-full flex items-center justify-between shadow-shadow-2 hover:brightness-105 active:scale-[0.98] transition-all cursor-pointer group"
@@ -570,6 +571,7 @@ export default function Register() {
                 </button>
               ) : (
                 <button
+                  key="btn-submit"
                   type="submit"
                   disabled={loading}
                   className="flex-1 text-white font-extrabold py-3.5 px-3.5 pl-6 rounded-full flex items-center justify-between shadow-shadow-2 hover:brightness-105 active:scale-[0.98] transition-all cursor-pointer group disabled:opacity-70"

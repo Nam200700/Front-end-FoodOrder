@@ -182,6 +182,33 @@ export default function Register() {
     { id: 'SHIPPER', label: 'Tài Xế', desc: 'Giao đồ ăn kiếm thu nhập', icon: Bike, color: 'border-md-tertiary text-md-tertiary bg-md-tertiary-container/10' },
   ];
 
+  // Màu nhấn của wizard đổi theo vai trò đang chọn (đồng bộ nhận diện role)
+  const ROLE_THEME = { CUSTOMER: '#FF6B35', OWNER: '#1A73E8', SHIPPER: '#34A853' };
+  const accent = ROLE_THEME[role];
+  const roleLabel = roles.find((r) => r.id === role)?.label || '';
+  const STEPS = [
+    { id: 1, label: 'Vai trò', icon: Users },
+    { id: 2, label: 'Tài khoản', icon: User },
+    { id: 3, label: 'Hoàn tất', icon: ShieldCheck },
+  ];
+
+  // Kiểm tra 4 field cơ bản trước khi cho qua bước tiếp theo (chặn đi tiếp khi còn lỗi)
+  const validateStep2 = () => {
+    const le = {};
+    if (!validateName(name)) le.fullName = 'Vui lòng nhập họ tên (tối thiểu 2 ký tự).';
+    if (!validateEmail(email)) le.email = 'Email không hợp lệ (ví dụ: ten@example.com).';
+    if (!validatePhone(phone)) le.phone = 'Số điện thoại không hợp lệ (phải bắt đầu bằng số 0 và gồm 10 chữ số).';
+    if (!validatePassword(password)) le.password = 'Mật khẩu phải chứa ít nhất 8 ký tự.';
+    setErrors(le);
+    return Object.keys(le).length === 0;
+  };
+
+  const goNext = () => {
+    if (step === 2 && !validateStep2()) return; // ở bước Tài khoản phải hợp lệ mới qua bước cuối
+    setStep((s) => Math.min(3, s + 1));
+  };
+  const goBack = () => setStep((s) => Math.max(1, s - 1));
+
   return (
     <div className="min-h-screen bg-slate-50/50 flex items-center justify-center p-4 sm:p-6 font-google-sans relative overflow-hidden">
       

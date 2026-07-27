@@ -99,6 +99,8 @@ export default function Register() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    // Enter/submit khi chưa ở bước cuối thì chỉ đi tiếp, không gửi đăng ký sớm
+    if (step !== 3) { goNext(); return; }
     setLoading(true);
     setErrors({});
 
@@ -158,13 +160,17 @@ export default function Register() {
     } else {
       if (res.validationErrors) {
         setErrors(res.validationErrors);
+        // Nếu lỗi rơi vào field cơ bản (bước 2) thì đưa người dùng về đúng bước để sửa
+        if (['fullName', 'email', 'phone', 'password'].some((k) => res.validationErrors[k])) setStep(2);
       } else {
         const msg = res.error || '';
         const code = res.errorCode;
         if (code === 'PHONE_EXISTS' || msg.includes('Số điện thoại') || msg.toLowerCase().includes('phone')) {
           setErrors({ phone: 'Số điện thoại này đã được đăng ký trên hệ thống!' });
+          setStep(2);
         } else if (code === 'EMAIL_EXISTS' || msg.includes('Email') || msg.toLowerCase().includes('email')) {
           setErrors({ email: 'Email này đã được sử dụng bởi một tài khoản khác!' });
+          setStep(2);
         } else if (code === 'ID_CARD_EXISTS' || msg.includes('CCCD')) {
           setErrors({ idCard: 'Số CCCD/CMND này đã được sử dụng để đăng ký tài khoản khác!' });
         } else if (code === 'LICENSE_PLATE_EXISTS' || msg.includes('Biển số xe')) {

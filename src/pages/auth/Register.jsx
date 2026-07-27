@@ -332,13 +332,45 @@ export default function Register() {
               </div>
             ))}
 
-            {/* Lộ trình giao hàng: shipper chạy ngang + xóc nhẹ như thật */}
-            <div className="relative h-14 mt-4">
+            {/* Lộ trình giao hàng: shipper đạp xe CHÂN THẬT (bánh quay + thân rung + gia tốc + vạch tốc độ) */}
+            <div className="relative h-16 mt-4">
+              {/* Mặt đường + đích đến */}
               <div className="absolute bottom-4 left-1 right-6 border-t-2 border-dashed border-white/30"></div>
-              <MapPin size={20} className="absolute bottom-2 right-0 text-white/85" />
-              <div className="absolute bottom-3.5 left-0 animate-ride">
-                <div className="animate-bob">
-                  <hero.ride size={30} className="text-white drop-shadow-md -scale-x-100" />
+              <MapPin size={20} className="absolute bottom-2.5 right-0 text-white/85" />
+
+              {/* Shipper di chuyển theo gia tốc */}
+              <div className="absolute bottom-3 left-0 animate-courier">
+                <div className="relative animate-vroom">
+                  {/* Vạch tốc độ loé sau đuôi */}
+                  <span className="absolute top-2 -left-3 h-[2px] w-4 rounded-full bg-white/50 animate-speed" style={{ animationDelay: '0ms' }}></span>
+                  <span className="absolute top-4 -left-4 h-[2px] w-5 rounded-full bg-white/40 animate-speed" style={{ animationDelay: '200ms' }}></span>
+                  <span className="absolute top-6 -left-3 h-[2px] w-4 rounded-full bg-white/50 animate-speed" style={{ animationDelay: '420ms' }}></span>
+
+                  {/* SVG shipper đạp xe (tự vẽ để tách được bánh xe cho quay) */}
+                  <svg width="46" height="29" viewBox="0 0 64 40" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className="text-white drop-shadow-md">
+                    {/* Hộp giao hàng trên giá sau */}
+                    <rect x="13.5" y="9" width="11" height="10" rx="2" fill="rgba(255,255,255,0.18)" />
+                    <path d="M13.5 13 H24.5 M18 9 V7 H21 V9" strokeWidth="1.6" />
+
+                    {/* Khung xe đạp */}
+                    <path d="M13 30 L30 30 L24 17 Z M30 30 L44 15 L51 30 M24 17 L44 15 M42 15 H47.5 M21 17 H26.5" />
+
+                    {/* Người giao (nghiêng về trước) */}
+                    <path d="M24 17 L30 30 M24 17 L36 8 L44 15" />
+                    <circle cx="39" cy="5.4" r="3.2" />
+
+                    {/* Bánh sau: vành cố định + nan hoa quay */}
+                    <circle cx="13" cy="30" r="6" />
+                    <g style={{ transformBox: 'fill-box', transformOrigin: 'center' }} className="animate-wheel">
+                      <path d="M13 25.4 V34.6 M8.4 30 H17.6 M9.7 26.7 L16.3 33.3 M16.3 26.7 L9.7 33.3" strokeWidth="1.3" />
+                    </g>
+
+                    {/* Bánh trước */}
+                    <circle cx="51" cy="30" r="6" />
+                    <g style={{ transformBox: 'fill-box', transformOrigin: 'center' }} className="animate-wheel">
+                      <path d="M51 25.4 V34.6 M46.4 30 H55.6 M47.7 26.7 L54.3 33.3 M54.3 26.7 L47.7 33.3" strokeWidth="1.3" />
+                    </g>
+                  </svg>
                 </div>
               </div>
             </div>

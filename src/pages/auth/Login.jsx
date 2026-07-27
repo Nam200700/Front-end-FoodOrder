@@ -25,10 +25,10 @@ const SPARKLES = [
   { wrap: 'top-[30%] left-[27%]', size: 10, delay: '1600ms' },
 ];
 
-// Điểm nổi bật hiển thị ở đáy panel hero
+// Điểm nổi bật ở đáy hero — MÔ TẢ TÍNH NĂNG (không dùng số liệu bịa để tránh bị hội đồng chất vấn)
 const FEATURES = [
-  { Icon: Bike, label: 'Giao siêu tốc chỉ trong ~30 phút' },
-  { Icon: Star, label: 'Hàng nghìn quán ăn chất lượng' },
+  { Icon: Bike, label: 'Giao hàng tận nơi tiện lợi' },
+  { Icon: Star, label: 'Đa dạng quán ăn & món ngon' },
   { Icon: ShieldCheck, label: 'Thanh toán an toàn, minh bạch' },
 ];
 

@@ -8,6 +8,9 @@ const apiClient = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
+  // withCredentials để trình duyệt gửi kèm cookie HttpOnly (refresh token) tới BE.
+  // Cần CORS allowCredentials(true) + allowedOrigins cụ thể (đã cấu hình ở SecurityConfig).
+  withCredentials: true,
   timeout: 10000, // 10 giây
 });
 
@@ -66,10 +69,10 @@ apiClient.interceptors.response.use(
 
       try {
         const { useAuthStore } = await import('../stores/authStore');
-        const refreshToken = useAuthStore.getState().refreshToken;
-        // Gọi API refresh token lên Spring Boot Backend
-        const response = await axios.post(`${API_BASE_URL}/auth/refresh`, {
-          refreshToken: refreshToken
+        // Refresh token nằm trong cookie HttpOnly -> KHÔNG gửi trong body, chỉ cần
+        // withCredentials để trình duyệt tự đính kèm cookie.
+        const response = await axios.post(`${API_BASE_URL}/auth/refresh`, {}, {
+          withCredentials: true,
         });
 
         // Bóc tách token từ ApiResponse<RefreshResponse> envelope

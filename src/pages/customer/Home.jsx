@@ -66,7 +66,7 @@ export default function Home() {
         setHasMore(true);
         const response = await apiClient.get('/restaurants?page=0&size=6');
         const realData = response.data?.data?.content || [];
-        const isLast = response.data?.data?.last || (realData.length < 6);
+        const isLast = (realData.length < 6);
         setHasMore(!isLast);
         if (realData.length > 0) {
           const mapped = realData.map(mapRestaurant).filter(Boolean);
@@ -81,7 +81,6 @@ export default function Home() {
         setLoading(false);
       }
     };
-    
     fetchRestaurants();
 
     const fetchFavorites = async () => {
@@ -117,6 +116,7 @@ export default function Home() {
     fetchPastOrders();
   }, [user?.userId]);
 
+  // Tải thêm quán ăn cho "Khám Phá Quán Ăn" KHI NGƯỜI DÙNG BẤM NÚT XEM THÊM (Không tự động khi cuộn)
   const loadMoreRestaurants = async () => {
     if (loadingMore || !hasMore) return;
     try {
@@ -124,7 +124,7 @@ export default function Home() {
       const nextPage = page + 1;
       const response = await apiClient.get(`/restaurants?page=${nextPage}&size=6`);
       const realData = response.data?.data?.content || [];
-      const isLast = response.data?.data?.last || (realData.length < 6);
+      const isLast = (realData.length < 6);
       setHasMore(!isLast);
       if (realData.length > 0) {
         const mapped = realData.map(mapRestaurant).filter(Boolean);
@@ -141,18 +141,6 @@ export default function Home() {
       setLoadingMore(false);
     }
   };
-
-  useEffect(() => {
-    const handleScroll = () => {
-      if (window.innerHeight + document.documentElement.scrollTop >= document.documentElement.offsetHeight - 150) {
-        if (hasMore && !loadingMore && !loading) {
-          loadMoreRestaurants();
-        }
-      }
-    };
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, [page, hasMore, loadingMore, loading]);
 
   const toggleFavorite = async (resId, e) => {
     e.stopPropagation();
@@ -295,24 +283,28 @@ export default function Home() {
     return unique;
   }, [restaurantsWithDistance]);
 
-  // ĐẶT LẠI QUÁN CỦ: Lọc dựa trên lịch sử order đã từng mua hàng thành công
+  // ĐẶT LẠI QUÁN CỦ: Lọc dựa trên lịch sử đơn hàng đã từng mua từ OrderResponse (/orders)
   const orderAgainRestaurants = useMemo(() => {
     if (pastOrders.length === 0) return [];
-    const orderedResIds = [...new Set(pastOrders.map(ord => ord.restaurantId?.toString()).filter(Boolean))];
+    const orderedResIds = [...new Set(pastOrders.map(ord => {
+      const id = ord.restaurantId || ord.restaurant?.restaurantId;
+      return id ? id.toString() : null;
+    }).filter(Boolean))];
+    
     return restaurantsWithDistance.filter(res => orderedResIds.includes(res.id)).slice(0, 8);
   }, [pastOrders, restaurantsWithDistance]);
 
-  // DÀNH RIÊNG CHO BẠN: Lọc thông minh dựa trên phân tích tần suất món ăn đã mua
+  // DÀNH RIÊNG CHO BẠN: Phân tích danh sách món ăn từ OrderResponse để gợi ý quán tương ứng
   const { recommendedRestaurants, favCuisineName } = useMemo(() => {
     const allOrderedFoods = [];
     pastOrders.forEach(ord => {
-      if (ord.items) {
-        ord.items.forEach(item => {
-          if (item.foodName) {
-            allOrderedFoods.push(item.foodName);
-          }
-        });
-      }
+      const itemsList = ord.items || ord.orderItems || [];
+      itemsList.forEach(item => {
+        const name = item.foodName || item.name;
+        if (name) {
+          allOrderedFoods.push(name);
+        }
+      });
     });
 
     const keywords = [
@@ -356,8 +348,8 @@ export default function Home() {
     let recommended = [];
     if (maxCount > 0) {
       recommended = restaurantsWithDistance.filter(res => {
-        const nameNorm = removeVietnameseTones(res.name);
-        const tagsNorm = res.tags.map(t => removeVietnameseTones(t));
+        const nameNorm = removeVietnameseTones(res.name || '');
+        const tagsNorm = (res.tags || []).map(t => removeVietnameseTones(t));
         
         return nameNorm.includes(maxKey) || tagsNorm.some(t => t.includes(maxKey)) || 
                nameNorm.includes(favNorm) || tagsNorm.some(t => t.includes(favNorm)) ||
@@ -702,7 +694,7 @@ export default function Home() {
                 </div>
               )}
               
-              {/* Nút Tải Thêm Quán Ăn Khác */}
+              {/* Nút Tải Thêm Quán Ăn Khác - CHỈ TẢI KHI KHÁCH CLICK VÀO NÚT (Không tự động khi cuộn) */}
               {hasMore && (
                 <div className="flex justify-center mt-6 sm:mt-8">
                   <button
@@ -725,7 +717,7 @@ export default function Home() {
           </div>
 
           {/* ════════════════════════════════════════════════════════════════════
-              🟠 SECTION 2: HERO CAROUSEL & QUÁN NỔI BẬT (ĐÃ BỎ NÚT XEM TẤT CẢ Ở ĐẦU)
+              🟠 SECTION 2: HERO CAROUSEL & QUÁN NỔI BẬT
              ════════════════════════════════════════════════════════════════════ */}
           {featuredRestaurants.length > 0 && (
             <div className="space-y-5 sm:space-y-6">
@@ -778,13 +770,13 @@ export default function Home() {
                         <div className="p-3.5 sm:p-4">
                           <h3 className="font-bold text-xs sm:text-sm text-slate-800 truncate group-hover:text-[#FF6B35] transition-colors">{res.name}</h3>
                           
-                          <div className="flex flex-wrap gap-1 mt-1.5">
+                          {/* <div className="flex flex-wrap gap-1 mt-1.5">
                             {res.tags.slice(0, 2).map((tag, i) => (
                               <span key={i} className="text-[10px] sm:text-[11px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded-md font-semibold">
                                 {tag}
                               </span>
                             ))}
-                          </div>
+                          </div> */}
 
                           <div className="flex items-center justify-between text-xs text-slate-500 mt-2 font-medium">
                             <span className="flex items-center gap-1">
@@ -826,7 +818,7 @@ export default function Home() {
           )}
 
           {/* ════════════════════════════════════════════════════════════════════
-              🟡 SECTION 3: DÀNH RIÊNG CHO BẠN (ĐÃ BỎ NÚT XEM THÊM Ở ĐẦU)
+              🟡 SECTION 3: DÀNH RIÊNG CHO BẠN
              ════════════════════════════════════════════════════════════════════ */}
           {recommendedRestaurants.length > 0 && (
             <div>
@@ -969,7 +961,7 @@ export default function Home() {
             )}
           </div>
 
-          {/* Panel Thông tin & Cam kết giao hàng */}
+          {/* Panel Thông tin & Cam kết giao hàng 
           <div className="bg-gradient-to-br from-orange-50 to-amber-50 rounded-2xl p-4 border border-orange-100 shadow-sm">
             <div className="flex items-center gap-2 text-xs font-bold text-[#FF6B35] mb-1.5">
               <ShieldCheck size={16} /> Giao hàng uy tín
@@ -977,7 +969,7 @@ export default function Home() {
             <p className="text-[11px] text-slate-600 leading-relaxed">
               Món ăn được chế biến tươi nóng từ các nhà hàng uy tín, giao tận tay trong 15-30 phút.
             </p>
-          </div>
+          </div>*/}
         </aside>
       </div>
 

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Plus, ToggleLeft, ToggleRight, Edit, Trash2, Check, X, ClipboardList, UtensilsCrossed, AlertTriangle, Tags, Tag, FolderPlus, Pencil, Flame } from 'lucide-react';
+import { Plus, ToggleLeft, ToggleRight, Edit, Trash2, Check, X, ClipboardList, UtensilsCrossed, AlertTriangle, Tags, Tag, FolderPlus, Pencil } from 'lucide-react';
 import { formatCurrency } from '../../utils/format';
 import apiClient from '../../services/api';
 import Spinner from '../../components/common/Spinner';
@@ -45,8 +45,7 @@ export default function MerchantMenu() {
         price: Number(item.price),
         active: item.isAvailable ?? true,
         image: item.imageUrl || '',
-        desc: item.description,
-        sold: item.orderCount ?? 0 // số lượt đã bán (BE trả sẵn trong FoodResponse) để card đỡ trống + có thông tin thật
+        desc: item.description
       }))
     }
   );

@@ -276,7 +276,9 @@ export default function Register() {
       <div className="w-full max-w-5xl bg-white rounded-[2rem] shadow-shadow-4 border border-slate-200/60 overflow-hidden grid lg:grid-cols-2 relative z-10 animate-slide-up">
 
         {/* ───── PANEL HERO SỐNG ĐỘNG (đổi màu/nội dung theo vai trò, chỉ desktop) ───── */}
-        <div className="hidden lg:flex flex-col justify-between relative overflow-hidden p-10 text-white transition-all duration-500" style={{ backgroundImage: hero.grad }}>
+        {/* Bỏ justify-between: brand ghim trên, phần còn lại (title+lợi ích) gom 1 khối canh giữa
+            để không bị hở lỗ hổng lớn giữa hero khi form cao (bước 3 owner/shipper). */}
+        <div className="hidden lg:flex flex-col relative overflow-hidden p-10 text-white transition-all duration-500" style={{ backgroundImage: hero.grad }}>
 
           {/* Lớp dịu chống chói + hoạ tiết + vệt sáng */}
           <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(120%_120%_at_50%_0%,transparent_38%,rgba(0,0,0,0.30)_100%)]"></div>
@@ -308,8 +310,11 @@ export default function Register() {
             <Hand size={18} className="text-amber-200 animate-wiggle origin-bottom ml-0.5" />
           </div>
 
+          {/* Khối giữa gom title + lợi ích, chiếm hết chiều cao còn lại và canh giữa dọc */}
+          <div className="relative z-10 flex-1 flex flex-col justify-center gap-8 py-8">
+
           {/* Tiêu đề + icon vai trò (đổi theo role, re-animate nhờ key) */}
-          <div className="relative z-10 my-8" key={role}>
+          <div key={role}>
             <span className="inline-flex items-center gap-1.5 text-[10px] font-extrabold uppercase tracking-[0.18em] bg-white/15 border border-white/25 px-3 py-1 rounded-full animate-rise-in">
               <hero.Icon size={12} /> Đăng ký · {hero.tag}
             </span>
@@ -375,10 +380,12 @@ export default function Register() {
               </div>
             </div>
           </div>
+          </div>
         </div>
 
         {/* ───── PANEL FORM (phải) ───── */}
-        <div className="p-8 sm:p-10 relative overflow-hidden flex flex-col">
+        {/* lg:justify-center: canh giữa dọc để lấp khoảng trống khi form thấp hơn hero (bước 2/3) → cân đối 2 cột */}
+        <div className="p-8 sm:p-10 relative overflow-hidden flex flex-col lg:justify-center">
           {/* Decorative highlight */}
           <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-white to-transparent"></div>
 
@@ -636,7 +643,7 @@ export default function Register() {
 
                       <div className="cursor-pointer" onClick={() => setOpenMap(true)}>
                         <Input
-                          label="Địa Chi Quán Ăn (Nhấn để chọn bản đồ)"
+                          label="Địa chỉ quán ăn"
                           type="text"
                           required
                           readOnly
@@ -644,6 +651,7 @@ export default function Register() {
                           placeholder="Chọn vị trí quán ăn trên bản đồ..."
                           icon={MapPin}
                           error={errors.restaurantAddress}
+                          helperText={!errors.restaurantAddress ? 'Nhấn để chọn trên bản đồ' : ''}
                           className="cursor-pointer bg-slate-50"
                         />
                       </div>

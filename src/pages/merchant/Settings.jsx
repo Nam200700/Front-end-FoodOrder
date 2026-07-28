@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Store, Camera, Save, Map, Clock, MapPin, Phone, Eye } from 'lucide-react';
+import { Store, Camera, Save, Map, Clock, MapPin, Phone, Eye, CheckCircle2, Circle, Image as ImageIcon, Lightbulb, FileText, Sparkles } from 'lucide-react';
 import { useFetchData } from '../../hooks/useFetchData';
 import { useImageUpload } from '../../hooks/useImageUpload'; // Import hook upload ảnh
 import apiClient from '../../services/api';
@@ -150,6 +150,24 @@ export default function MerchantSettings() {
     return <Spinner fullScreen />;
   }
 
+  // Checklist hoàn thiện hồ sơ (tính từ dữ liệu đang nhập — lấp khoảng trống cột trái + nhắc chủ quán điền đủ)
+  const profileChecks = [
+    { label: 'Tên quán / thương hiệu', done: !!resName.trim() },
+    { label: 'Ảnh bìa quán', done: !!imageUrl },
+    { label: 'Giờ mở & đóng cửa', done: !!(openTime && closeTime) },
+    { label: 'Số điện thoại', done: !!phone.trim() },
+    { label: 'Mô tả quán', done: !!description.trim() },
+    { label: 'Địa chỉ trên bản đồ', done: !!address.trim() },
+  ];
+  const profileDone = profileChecks.filter(c => c.done).length;
+  const profilePct = Math.round((profileDone / profileChecks.length) * 100);
+
+  const tips = [
+    { icon: ImageIcon, text: 'Dùng ảnh bìa sắc nét, đủ sáng để thu hút khách ngay từ cái nhìn đầu tiên.' },
+    { icon: Clock, text: 'Cập nhật giờ mở/đóng chính xác để quán hiện đúng lúc và không lỡ đơn.' },
+    { icon: FileText, text: 'Mô tả ngắn gọn, nêu bật món đặc trưng để khách dễ nhớ quán của bạn.' },
+  ];
+
   return (
     <div className="flex-1 p-4 md:p-8 max-w-5xl mx-auto w-full font-google-sans space-y-6 pb-24">
       <h1 className="text-xl font-bold text-slate-800 flex items-center gap-2">
@@ -159,8 +177,8 @@ export default function MerchantSettings() {
 
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 items-start">
 
-        {/* ─── LIVE PREVIEW ─────────────────────────── */}
-        <div className="lg:col-span-2 lg:sticky lg:top-6 space-y-2.5">
+        {/* ─── LIVE PREVIEW + phụ trợ (lấp khoảng trống cột trái) ─────────────── */}
+        <div className="lg:col-span-2 lg:sticky lg:top-6 space-y-4">
           <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
             <Eye size={13} /> Xem trước
           </span>
@@ -194,6 +212,49 @@ export default function MerchantSettings() {
                 <Phone size={13} className="text-md-secondary shrink-0" /> {phone || 'Số điện thoại liên hệ...'}
               </div>
             </div>
+          </Card>
+
+          {/* Hoàn thiện hồ sơ */}
+          <Card variant="elevated" className="p-4">
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-xs font-extrabold text-slate-700 flex items-center gap-1.5">
+                <Sparkles size={14} className="text-md-secondary" /> Hoàn thiện hồ sơ
+              </span>
+              <span className="text-xs font-extrabold text-md-secondary tabular-nums">{profilePct}%</span>
+            </div>
+            <div className="h-2 bg-slate-100 rounded-full overflow-hidden mb-3.5">
+              <div className="h-full rounded-full bg-md-secondary transition-all duration-500" style={{ width: `${profilePct}%` }} />
+            </div>
+            <ul className="space-y-2">
+              {profileChecks.map((c, i) => (
+                <li key={i} className="flex items-center gap-2 text-[11px] font-semibold">
+                  {c.done
+                    ? <CheckCircle2 size={14} className="text-emerald-500 shrink-0" />
+                    : <Circle size={14} className="text-slate-300 shrink-0" />}
+                  <span className={c.done ? 'text-slate-600' : 'text-slate-400'}>{c.label}</span>
+                </li>
+              ))}
+            </ul>
+          </Card>
+
+          {/* Mẹo cho quán nổi bật */}
+          <Card variant="elevated" className="p-4">
+            <span className="text-xs font-extrabold text-slate-700 flex items-center gap-1.5 mb-3">
+              <Lightbulb size={14} className="text-amber-500" /> Mẹo cho quán nổi bật
+            </span>
+            <ul className="space-y-3">
+              {tips.map((t, i) => {
+                const Icon = t.icon;
+                return (
+                  <li key={i} className="flex items-start gap-2.5">
+                    <span className="p-1.5 rounded-radius-md bg-md-secondary/10 text-md-secondary shrink-0">
+                      <Icon size={13} />
+                    </span>
+                    <span className="text-[11px] text-slate-500 font-medium leading-relaxed">{t.text}</span>
+                  </li>
+                );
+              })}
+            </ul>
           </Card>
         </div>
 

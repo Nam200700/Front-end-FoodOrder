@@ -261,7 +261,7 @@ export default function MerchantSettings() {
         {/* ─── FORM thông tin ─────────────────────────── */}
         <Card variant="elevated" className="lg:col-span-3 p-5 space-y-5 animate-slide-up">
           <div className="space-y-5">
-            <div className="relative h-70 rounded-radius-lg overflow-hidden border border-slate-100 bg-slate-100 flex items-center justify-center">
+            <div className="relative h-44 sm:h-52 rounded-radius-lg overflow-hidden border border-slate-100 bg-slate-100 flex items-center justify-center">
               <img 
                 src={getRestaurantBannerUrl(imageUrl)} 
                 alt="Store Cover" 

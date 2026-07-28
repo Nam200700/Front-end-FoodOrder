@@ -2,6 +2,12 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import apiClient from '../services/api';
 
+// BUG-SEC-02 (nâng cấp): dọn sạch token cũ còn sót trong sessionStorage từ phiên bản
+// trước — kể từ nay token KHÔNG bao giờ được lưu vào web storage nữa (refresh token nằm
+// trong cookie HttpOnly do BE set, access token chỉ giữ trong bộ nhớ). Xoá ngay khi nạp
+// module để mọi token đã lộ trước đó bị xoá khỏi máy người dùng.
+try { sessionStorage.removeItem('auth-storage'); } catch { /* ignore */ }
+
 const mapUserFromApi = (user) => {
   if (!user) return null;
   return {

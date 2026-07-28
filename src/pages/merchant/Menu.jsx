@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Plus, ToggleLeft, ToggleRight, Edit, Trash2, Check, X, ClipboardList, UtensilsCrossed, AlertTriangle  } from 'lucide-react';
+import { Plus, ToggleLeft, ToggleRight, Edit, Trash2, Check, X, ClipboardList, UtensilsCrossed, AlertTriangle, Tags, Tag, FolderPlus, Pencil } from 'lucide-react';
 import { formatCurrency } from '../../utils/format';
 import apiClient from '../../services/api';
 import Spinner from '../../components/common/Spinner';
@@ -401,9 +401,12 @@ export default function MerchantMenu() {
     );
   }
 
-  const hasUncategorized = menuItems.some(item => 
+  const hasUncategorized = menuItems.some(item =>
     !item.catId || !categories.some(c => Number(c.id) === Number(item.catId))
   );
+
+  // Tên danh mục đang chọn (cho thanh thao tác Sửa/Xóa rõ ràng)
+  const activeCatName = categories.find(c => Number(c.id) === Number(activeCategory))?.name || '';
 
   const displayedItems = menuItems.filter(item => {
     const matchCat = activeCategory === 'UNCATEGORIZED'

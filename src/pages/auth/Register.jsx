@@ -599,10 +599,11 @@ export default function Register() {
                       Chỉnh sửa
                     </button>
                   </div>
+                  {/* Lưới 2×2 cân đối: Họ tên | SĐT  /  Email | Vai trò (vai trò song song email, không để ô trống) */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-2 gap-x-4 text-xs font-bold text-slate-600">
                     <span className="flex items-center gap-1.5 truncate"><User size={13} className="text-slate-400 shrink-0" /> {name || '—'}</span>
                     <span className="flex items-center gap-1.5 truncate"><Phone size={13} className="text-slate-400 shrink-0" /> {phone || '—'}</span>
-                    <span className="flex items-center gap-1.5 truncate sm:col-span-2"><Mail size={13} className="text-slate-400 shrink-0" /> {email || '—'}</span>
+                    <span className="flex items-center gap-1.5 truncate"><Mail size={13} className="text-slate-400 shrink-0" /> {email || '—'}</span>
                     <span className="flex items-center gap-1.5 truncate">
                       <ShieldCheck size={13} className="shrink-0" style={{ color: accent }} /> Vai trò: <span style={{ color: accent }}>{roleLabel}</span>
                     </span>

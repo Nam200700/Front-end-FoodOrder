@@ -45,7 +45,8 @@ export default function MerchantMenu() {
         price: Number(item.price),
         active: item.isAvailable ?? true,
         image: item.imageUrl || '',
-        desc: item.description
+        desc: item.description,
+        sold: item.orderCount ?? 0 // số lượt đã bán (BE trả sẵn trong FoodResponse) để card đỡ trống + có thông tin thật
       }))
     }
   );

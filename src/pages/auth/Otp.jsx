@@ -74,10 +74,10 @@ export default function Otp() {
     setLoading(true);
     try {
       const result = await apiClient.post('/auth/verify-otp', { email, otp: otpString });
-      const { token, refreshToken, user } = result.data.data;
+      const { token, user } = result.data.data;
 
-      // Đăng nhập bằng token và user thực từ API
-      useAuthStore.getState().setAuth({ token, refreshToken, user });
+      // Đăng nhập bằng access token thực từ API (refresh token đã nằm trong cookie HttpOnly)
+      useAuthStore.getState().setAuth({ token, user });
 
       toast.success('Xác thực tài khoản thành công!');
 

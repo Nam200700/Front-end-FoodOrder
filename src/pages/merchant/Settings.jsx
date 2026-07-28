@@ -390,7 +390,8 @@ export default function MerchantSettings() {
               {hasRestaurant ? 'Cập nhật thông tin' : 'Đăng ký & Tạo nhà hàng'}
             </Button>
           </div>
-        </Card>
+          </Card>
+        </div>
       </div>
 
       {/* ================= MAP MODAL2 ================= */}

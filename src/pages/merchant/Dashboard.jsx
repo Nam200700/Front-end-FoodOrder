@@ -347,7 +347,7 @@ export default function MerchantDashboard() {
         <div className="bg-white rounded-radius-xl p-5 border border-slate-200/60 shadow-sm flex flex-col">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
-              <UtensilsCrossed className="text-md-secondary" size={18} /> Sức khoẻ thực đơn
+              <UtensilsCrossed className="text-md-secondary" size={18} /> Tình trạng thực đơn
             </h3>
             <span className="text-[10px] font-bold text-slate-400">{menuTotal} món</span>
           </div>

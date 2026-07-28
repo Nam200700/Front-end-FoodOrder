@@ -5,8 +5,15 @@ import apiClient from '../../services/api';
 import Spinner from '../../components/common/Spinner';
 import StarRating from '../../components/common/StarRating';
 import { toast } from 'react-toastify';
-import Card from '../../components/common/Card'; 
-import Button from '../../components/common/Button'; 
+import Card from '../../components/common/Card';
+import Button from '../../components/common/Button';
+
+// Màu avatar theo chữ cái đầu (đa dạng cho sinh động, không dùng 1 màu duy nhất)
+const AVATAR_COLORS = [
+  'bg-blue-100 text-blue-700', 'bg-emerald-100 text-emerald-700', 'bg-amber-100 text-amber-800',
+  'bg-purple-100 text-purple-700', 'bg-rose-100 text-rose-700', 'bg-teal-100 text-teal-700',
+];
+const colorFor = (name) => AVATAR_COLORS[((name || '?').charCodeAt(0) || 0) % AVATAR_COLORS.length];
 
 export default function MerchantReviews() {
   const [activeReplyId, setActiveReplyId] = useState(null);
@@ -130,6 +137,9 @@ export default function MerchantReviews() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-xl md:text-2xl font-black text-slate-800 tracking-tight flex items-center gap-2.5">
+            <span className="p-2 rounded-radius-lg bg-amber-100 text-amber-500">
+              <Star size={20} className="fill-amber-400" />
+            </span>
             Quản Lý Đánh Giá
           </h1>
         </div>
@@ -221,128 +231,117 @@ export default function MerchantReviews() {
       ) : (
         <div className="space-y-6">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 items-start">
-            {filteredReviews.map((rev) => (
-              <Card 
-                key={rev.id} 
-                variant="elevated" 
-                className="bg-white rounded-xl border border-slate-100 shadow-sm p-4 md:p-5 flex flex-col justify-between cursor-pointer transition-colors hover:border-slate-200 min-h-[380px]"
+            {filteredReviews.map((rev, idx) => (
+              <Card
+                key={rev.id}
+                variant="elevated"
+                style={{ animationDelay: `${idx * 55}ms` }}
+                className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 md:p-5 flex flex-col transition-all hover:shadow-md hover:-translate-y-0.5 animate-rise-in"
               >
-                <div className="space-y-3 shrink-0">
-                  <div className="flex justify-between items-start gap-3">
-                    <div className="flex items-center gap-3">
-                      <div className="w-9 h-9 rounded-full bg-amber-100 text-amber-800 font-bold flex items-center justify-center text-xs shrink-0 shadow-inner">
-                        {rev.author.charAt(0).toUpperCase()}
-                      </div>
-                      <div>
-                        <h3 className="font-bold text-xs sm:text-sm text-slate-800 leading-tight">{rev.author}</h3>
-                        <span className="text-[11px] text-slate-400 mt-0.5 block font-medium">{rev.date}</span>
-                      </div>
+                {/* Header: avatar màu + tên + ngày + số sao */}
+                <div className="flex justify-between items-start gap-3">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className={`w-10 h-10 rounded-full font-bold flex items-center justify-center text-sm shrink-0 shadow-inner ${colorFor(rev.author)}`}>
+                      {rev.author.charAt(0).toUpperCase()}
                     </div>
-                    <StarRating rating={rev.rating} size={13} />
+                    <div className="min-w-0">
+                      <h3 className="font-bold text-sm text-slate-800 leading-tight truncate">{rev.author}</h3>
+                      <span className="text-[11px] text-slate-400 mt-0.5 block font-medium">{rev.date}</span>
+                    </div>
                   </div>
+                  <StarRating rating={rev.rating} size={14} />
                 </div>
 
-                <div className="flex-1 my-3.5 pr-1.5 flex flex-col justify-between max-h-[260px] overflow-y-auto custom-scrollbar">
-                  <div className="space-y-3">
-                    <textarea
-                      readOnly
-                      value={rev.comment}
-                      className="w-full text-xs font-medium text-slate-700 leading-relaxed bg-slate-50/80 p-3.5 rounded-xl border border-slate-100 focus:outline-none resize-none custom-scrollbar"
-                      rows={2}
-                    />
+                {/* Nội dung nhận xét */}
+                <div className="mt-3.5">
+                  {rev.comment ? (
+                    <p className="text-xs font-medium text-slate-700 leading-relaxed bg-slate-50 p-3.5 rounded-xl border border-slate-100">
+                      {rev.comment}
+                    </p>
+                  ) : (
+                    <p className="text-xs italic text-slate-400 px-1">Khách không để lại nhận xét.</p>
+                  )}
 
-                    {rev.images && rev.images.length > 0 && (
-                      <div className="flex flex-wrap gap-2 pt-1">
-                        {rev.images.map((imgUrl, index) => (
-                          <div 
-                            key={index} 
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setSelectedImage(imgUrl);
-                            }}
-                            className="relative group block w-16 h-16 rounded-xl overflow-hidden border border-slate-200 hover:border-amber-500 transition-all cursor-pointer shadow-sm"
-                          >
-                            <img 
-                              src={imgUrl} 
-                              alt={`Review img ${index + 1}`} 
-                              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                            />
-                            <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white">
-                              <ZoomIn size={16} />
-                            </div>
+                  {rev.images && rev.images.length > 0 && (
+                    <div className="flex flex-wrap gap-2 mt-2.5">
+                      {rev.images.map((imgUrl, index) => (
+                        <div
+                          key={index}
+                          onClick={() => setSelectedImage(imgUrl)}
+                          className="relative group w-16 h-16 rounded-xl overflow-hidden border border-slate-200 hover:border-amber-400 transition-all cursor-pointer shadow-sm"
+                        >
+                          <img
+                            src={imgUrl}
+                            alt={`Ảnh đánh giá ${index + 1}`}
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                          />
+                          <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white">
+                            <ZoomIn size={16} />
                           </div>
-                        ))}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Phản hồi của quán / khu vực trả lời */}
+                {rev.reply ? (
+                  <div className="bg-amber-50/60 p-3.5 rounded-xl border border-amber-100 mt-3.5">
+                    <span className="font-bold text-amber-900 flex items-center gap-1.5 text-xs mb-1">
+                      <Store size={14} className="text-amber-600" /> Phản hồi từ quán
+                    </span>
+                    <p className="text-xs text-slate-700 leading-relaxed">{rev.reply}</p>
+                  </div>
+                ) : (
+                  <div className="mt-3.5 pt-3 border-t border-slate-100">
+                    {activeReplyId === rev.id ? (
+                      <div className="w-full flex flex-col gap-2.5 animate-rise-in">
+                        <textarea
+                          rows={2}
+                          value={replyText}
+                          onChange={(e) => setReplyText(e.target.value)}
+                          placeholder="Viết phản hồi để gửi đến khách hàng..."
+                          className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs font-medium focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 resize-none custom-scrollbar"
+                        />
+                        <div className="flex justify-end gap-2">
+                          <Button
+                            onClick={() => setActiveReplyId(null)}
+                            variant="outline"
+                            size="sm"
+                            className="bg-slate-100 text-slate-500 border-transparent hover:bg-slate-200"
+                            icon={X}
+                          >
+                            Hủy
+                          </Button>
+                          <Button
+                            onClick={() => handleSendReply(rev.id)}
+                            variant="secondary"
+                            size="sm"
+                            icon={Send}
+                            className="bg-amber-600 text-white"
+                          >
+                            Gửi
+                          </Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-[10px] font-bold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full inline-flex items-center gap-1 shrink-0">
+                          <Reply size={11} /> Chưa phản hồi
+                        </span>
+                        <Button
+                          onClick={() => { setActiveReplyId(rev.id); setReplyText(''); }}
+                          variant="text"
+                          size="sm"
+                          icon={Reply}
+                          className="text-amber-600 hover:text-amber-700 hover:bg-amber-50/50 font-semibold"
+                        >
+                          Phản hồi khách hàng
+                        </Button>
                       </div>
                     )}
                   </div>
-
-                  {rev.reply && (
-                    <div className="bg-amber-50/50 p-3.5 rounded-xl border border-amber-100/60 text-xs font-medium space-y-1.5 mt-3">
-                      <span className="font-bold text-amber-900 flex items-center gap-1.5">
-                        <Store size={14} className="text-amber-600" /> Phản hồi từ quán:
-                      </span>
-                      <textarea
-                        readOnly
-                        value={rev.reply}
-                        className="w-full bg-transparent text-slate-700 leading-relaxed pl-1 focus:outline-none resize-none custom-scrollbar border-0 p-0"
-                        rows={2}
-                      />
-                    </div>
-                  )}
-                </div>
-
-                <div className="shrink-0 pt-3 border-t border-slate-100 mt-auto" onClick={(e) => e.stopPropagation()}>
-                  {!rev.reply && (
-                    <>
-                      {activeReplyId === rev.id ? (
-                        <div className="w-full flex flex-col gap-2.5 animate-fadeIn">
-                          <textarea
-                            rows={2}
-                            value={replyText}
-                            onChange={(e) => setReplyText(e.target.value)}
-                            placeholder="Viết phản hồi để gửi đến khách hàng..."
-                            className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs font-medium focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 resize-none custom-scrollbar"
-                          />
-                          <div className="flex justify-end gap-2">
-                            <Button
-                              onClick={() => setActiveReplyId(null)}
-                              variant="outline"
-                              size="sm"
-                              className="bg-slate-100 text-slate-500 border-transparent hover:bg-slate-200"
-                              icon={X}
-                            >
-                              Hủy
-                            </Button>
-                            <Button
-                              onClick={() => handleSendReply(rev.id)}
-                              variant="secondary"
-                              size="sm"
-                              icon={Send}
-                              className="bg-amber-600 text-white"
-                            >
-                              Gửi
-                            </Button>
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="flex justify-end">
-                          <Button
-                            onClick={() => {
-                              setActiveReplyId(rev.id);
-                              setReplyText('');
-                            }}
-                            variant="text"
-                            size="sm"
-                            icon={Reply}
-                            className="text-amber-600 hover:text-amber-700 hover:bg-amber-50/50 font-semibold"
-                          >
-                            Phản hồi khách hàng
-                          </Button>
-                        </div>
-                      )}
-                    </>
-                  )}
-                </div>
+                )}
               </Card>
             ))}
           </div>

@@ -197,13 +197,16 @@ export const useAuthStore = create(
         }
       },
 
-      logout: () => set({
-        user: null,
-        token: null,
-        refreshToken: null,
-        role: null,
-        isLoggedIn: false,
-      }),
+      logout: () => {
+        // Yêu cầu BE xoá cookie refresh token (fire-and-forget). Không chặn UI nếu lỗi mạng.
+        apiClient.post('/auth/logout').catch(() => {});
+        set({
+          user: null,
+          token: null,
+          role: null,
+          isLoggedIn: false,
+        });
+      },
 
       updateProfile: (updatedFields) => set((state) => ({
         user: state.user ? { ...state.user, ...updatedFields } : null

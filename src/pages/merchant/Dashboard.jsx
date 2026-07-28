@@ -1,223 +1,149 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ClipboardList, Check, X, ShieldAlert, Sparkles, TrendingUp, Star, DollarSign, PackageOpen, Clock } from 'lucide-react';
+import {
+  ClipboardList, TrendingUp, TrendingDown, Star, DollarSign, PackageOpen,
+  Users, UserPlus, Repeat, UtensilsCrossed, AlertTriangle, CheckCircle2,
+  PackageX, EyeOff, ArrowRight, Sparkles, Clock, BarChart3,
+} from 'lucide-react';
 import RevenueAreaChart from '../../components/common/RevenueAreaChart';
 import { formatCurrency } from '../../utils/format';
 import apiClient from '../../services/api';
 import Spinner from '../../components/common/Spinner';
 import { toast } from 'react-toastify';
 import ConfirmDialog from '../../components/common/ConfirmDialog';
-import Modal from '../../components/common/Modal';
-import Button from '../../components/common/Button';
 import { useFetchData } from '../../hooks/useFetchData';
-import { useModalState } from '../../hooks/useModalState';
 
 export default function MerchantDashboard() {
   const navigate = useNavigate();
 
-  // Fetch thông tin nhà hàng qua useFetchData
+  // Thông tin nhà hàng
   const { data: restaurant, loading: loadingRes, refetch: refetchRes, error: resError } = useFetchData('/merchant/restaurant');
   const restaurantId = restaurant ? (restaurant.restaurantId || restaurant.id) : null;
   const noRestaurant = resError?.response?.status === 404;
 
-  // Fetch các dữ liệu liên quan qua useFetchData
-  const { data: pendingOrdersData, loading: loadingPending, refetch: refetchPending } = useFetchData(
-    restaurantId ? `/merchant/orders?restaurantId=${restaurantId}&status=PENDING` : null,
-    {
-      mapFn: (data) => (data?.content || []).map(ord => {
-        const createdAtTime = new Date(ord.createdAt).getTime();
-        const tenMinutesMs = 10 * 60 * 1000;
-        const diffMs = (createdAtTime + tenMinutesMs) - Date.now();
-        const timeLeftSec = Math.max(0, Math.floor(diffMs / 1000));
-        return {
-          id: ord.orderId.toString(),
-          name: ord.customerName || 'Khách hàng',
-          itemsCount: (ord.items || []).reduce((sum, item) => sum + item.quantity, 0),
-          total: Number(ord.totalAmount),
-          time: new Date(ord.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          timeLeft: timeLeftSec
-        };
-      })
-    }
-  );
-
-  const { data: allOrdersData, loading: loadingAll, refetch: refetchAll } = useFetchData(
+  // Danh sách đơn (cho biểu đồ doanh thu tuần rút gọn + top món + tỉ lệ huỷ)
+  const { data: allOrdersData, loading: loadingAll } = useFetchData(
     restaurantId ? `/merchant/orders?restaurantId=${restaurantId}&size=2000` : null
   );
-
-  const { data: reviewsData, loading: loadingReviews, refetch: refetchReviews } = useFetchData(
+  // Đánh giá (fallback rating khi stats chưa có)
+  const { data: reviewsData, loading: loadingReviews } = useFetchData(
     restaurantId ? `/restaurants/${restaurantId}/reviews` : null
   );
-
-  const { data: statsData, loading: loadingStats, refetch: refetchStats } = useFetchData(
+  // Báo cáo tài chính (revenue/AOV/rating toàn cục/tỉ lệ...)
+  const { data: statsData, loading: loadingStats } = useFetchData(
     restaurantId ? `/merchant/stats?restaurantId=${restaurantId}` : null
   );
+  // Tổng quan nghiệp vụ MỚI: xu hướng 7 ngày, giờ cao điểm, khách, sức khoẻ thực đơn
+  const { data: insightsData, loading: loadingInsights } = useFetchData(
+    restaurantId ? `/merchant/stats/insights?restaurantId=${restaurantId}` : null
+  );
 
-  const loading = loadingRes || (restaurantId && (loadingPending || loadingAll || loadingReviews || loadingStats));
+  const loading = loadingRes || (restaurantId && (loadingAll || loadingReviews || loadingStats || loadingInsights));
 
-  const refetchAllData = useCallback(() => {
-    refetchRes();
-    refetchPending();
-    refetchAll();
-    refetchReviews();
-    refetchStats();
-  }, [refetchRes, refetchPending, refetchAll, refetchReviews, refetchStats]);
-
-  const [pendingOrders, setPendingOrders] = useState([]);
-
-  // Đồng bộ pendingOrdersData sang local state để quản lý countdown
-  useEffect(() => {
-    if (pendingOrdersData) {
-      setPendingOrders(pendingOrdersData);
-    }
-  }, [pendingOrdersData]);
-
-  const allOrders = useMemo(() => allOrdersData?.content || allOrdersData || [], [allOrdersData]);
-  const completedOrders = useMemo(() => allOrders.filter(ord => ord.orderStatus === 'COMPLETED' && ord.paymentStatus !== 'REFUNDED'), [allOrders]);
-
-  // Tính toán thống kê động qua useMemo
-  const stats = useMemo(() => {
-    if (!statsData) return null;
-    return {
-      revenue: Number(statsData.revenue || 0),
-      subtotal: Number(statsData.subtotal || 0),
-      commission: Number(statsData.commission || 0),
-      commissionRate: Number(statsData.commissionRate || 0.10),
-      avgOrderValue: Number(statsData.avgOrderValue || 0), // AOV do BE tính trên đơn hoàn tất
-      totalOrders: allOrders.length,
-      completedOrders: completedOrders.length,
-      cancelledOrders: allOrders.filter(ord => ord.orderStatus === 'CANCELLED').length
-    };
-  }, [statsData, allOrders, completedOrders]);
-
-  const revenueData = useMemo(() => {
-    const daysMap = { 'Monday': 'T2', 'Tuesday': 'T3', 'Wednesday': 'T4', 'Thursday': 'T5', 'Friday': 'T6', 'Saturday': 'T7', 'Sunday': 'CN' };
-    const daysOfWeek = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
-    const tempRevenue = { 'T2': 0, 'T3': 0, 'T4': 0, 'T5': 0, 'T6': 0, 'T7': 0, 'CN': 0 };
-
-    completedOrders.forEach(ord => {
-      const date = new Date(ord.createdAt);
-      const dayName = date.toLocaleDateString('en-US', { weekday: 'long' });
-      const mappedDay = daysMap[dayName];
-      if (mappedDay) {
-        const sub = ord.subtotalAmount !== undefined && ord.subtotalAmount !== null
-          ? Number(ord.subtotalAmount)
-          : Number(ord.totalAmount || 0) - Number(ord.shippingFee || 0);
-        tempRevenue[mappedDay] += sub;
-      }
-    });
-
-    return daysOfWeek.map(day => ({
-      day,
-      amount: tempRevenue[day]
-    }));
-  }, [completedOrders]);
-
-  const topFoods = useMemo(() => {
-    const foodSalesMap = {};
-    completedOrders.forEach(ord => {
-      const items = ord.items || [];
-      items.forEach(item => {
-        const foodName = item.foodName;
-        const quantity = Number(item.quantity || 0);
-        foodSalesMap[foodName] = (foodSalesMap[foodName] || 0) + quantity;
-      });
-    });
-
-    const sortedFoods = Object.keys(foodSalesMap)
-      .map(name => ({
-        name,
-        count: foodSalesMap[name]
-      }))
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 4);
-
-    const maxCount = sortedFoods.length > 0 ? sortedFoods[0].count : 1;
-    // Màu thanh top-món: dẫn đầu xanh merchant, không dùng cam Customer.
-    const colorClasses = ['bg-md-secondary', 'bg-emerald-500', 'bg-amber-500', 'bg-purple-500'];
-    return sortedFoods.map((f, idx) => ({
-      name: f.name,
-      count: `${f.count} phần`,
-      pct: `${Math.round((f.count / maxCount) * 100)}%`,
-      color: colorClasses[idx % colorClasses.length]
-    }));
-  }, [completedOrders]);
-
-  const reviews = useMemo(() => reviewsData?.content || reviewsData || [], [reviewsData]);
-  // Rating & số đánh giá lấy TOÀN CỤC từ /merchant/stats (BE tính trên toàn bộ review),
-  // không còn tính trên trang review đầu tiên; fallback trang cũ khi stats chưa có.
-  const reviewsCount = statsData?.reviewsCount ?? reviews.length;
-  const averageRating = useMemo(() => {
-    if (statsData && statsData.avgRating != null) return Number(statsData.avgRating).toFixed(1);
-    return reviews.length > 0
-      ? (reviews.reduce((sum, r) => sum + (r.restaurantRating || 0), 0) / reviews.length).toFixed(1)
-      : '0.0';
-  }, [statsData, reviews]);
-
-  // Modal states dùng useModalState
-  const rejectModal = useModalState();
-  const [rejectReason, setRejectReason] = useState('');
   const [confirmToggleStatus, setConfirmToggleStatus] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
-  // Countdown timer cho các đơn hàng đang hiển thị
-  useEffect(() => {
-    if (pendingOrders.length === 0) return;
-    const timer = setInterval(() => {
-      setPendingOrders((prev) =>
-        prev
-          .map((order) => ({ ...order, timeLeft: order.timeLeft > 0 ? order.timeLeft - 1 : 0 }))
-          .filter((order) => order.timeLeft > 0)
-      );
-    }, 1000);
-    return () => clearInterval(timer);
-  }, [pendingOrders]);
+  // ── Dữ liệu dẫn xuất ──────────────────────────────────────────────
+  const allOrders = useMemo(() => allOrdersData?.content || allOrdersData || [], [allOrdersData]);
+  const completedOrders = useMemo(
+    () => allOrders.filter(o => o.orderStatus === 'COMPLETED' && o.paymentStatus !== 'REFUNDED'),
+    [allOrders]
+  );
 
-  const handleAccept = async (orderId) => {
-    try {
-      setSubmitting(true);
-      await apiClient.patch(`/merchant/orders/${orderId}/confirm`);
-      toast.success(`Đã xác nhận chuẩn bị đơn hàng #${orderId}!`);
-      refetchPending();
-      refetchAll();
-    } catch (err) {
-      console.error(err);
-      toast.error('Không thể xác nhận đơn hàng này.');
-    } finally {
-      setSubmitting(false);
+  // Biểu đồ doanh thu tuần (rút gọn) — subtotal đơn hoàn tất theo thứ trong tuần
+  const revenueData = useMemo(() => {
+    const daysMap = { Monday: 'T2', Tuesday: 'T3', Wednesday: 'T4', Thursday: 'T5', Friday: 'T6', Saturday: 'T7', Sunday: 'CN' };
+    const daysOfWeek = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
+    const temp = { T2: 0, T3: 0, T4: 0, T5: 0, T6: 0, T7: 0, CN: 0 };
+    completedOrders.forEach(o => {
+      const mapped = daysMap[new Date(o.createdAt).toLocaleDateString('en-US', { weekday: 'long' })];
+      if (mapped) {
+        const sub = o.subtotalAmount != null ? Number(o.subtotalAmount) : Number(o.totalAmount || 0) - Number(o.shippingFee || 0);
+        temp[mapped] += sub;
+      }
+    });
+    return daysOfWeek.map(d => ({ day: d, amount: temp[d] }));
+  }, [completedOrders]);
+
+  // Top 3 món bán chạy (rút gọn — bản đầy đủ ở trang Thống kê)
+  const topFoods = useMemo(() => {
+    const map = {};
+    completedOrders.forEach(o => (o.items || []).forEach(it => {
+      map[it.foodName] = (map[it.foodName] || 0) + Number(it.quantity || 0);
+    }));
+    const sorted = Object.keys(map).map(name => ({ name, count: map[name] })).sort((a, b) => b.count - a.count).slice(0, 3);
+    const max = sorted.length ? sorted[0].count : 1;
+    const colors = ['bg-md-secondary', 'bg-emerald-500', 'bg-amber-500'];
+    return sorted.map((f, i) => ({ name: f.name, count: `${f.count} phần`, pct: `${Math.round((f.count / max) * 100)}%`, color: colors[i % colors.length] }));
+  }, [completedOrders]);
+
+  const reviews = useMemo(() => reviewsData?.content || reviewsData || [], [reviewsData]);
+  const reviewsCount = statsData?.reviewsCount ?? reviews.length;
+  const averageRating = useMemo(() => {
+    if (statsData && statsData.avgRating != null) return Number(statsData.avgRating).toFixed(1);
+    return reviews.length > 0 ? (reviews.reduce((s, r) => s + (r.restaurantRating || 0), 0) / reviews.length).toFixed(1) : '0.0';
+  }, [statsData, reviews]);
+
+  // Số liệu tổng quan
+  const s = statsData || {};
+  const ins = insightsData || {};
+  const totalOrders = s.totalOrders ?? allOrders.length;
+  const cancelledOrders = s.cancelledOrders ?? allOrders.filter(o => o.orderStatus === 'CANCELLED').length;
+  const cancelRate = totalOrders > 0 ? Math.round((cancelledOrders / totalOrders) * 100) : 0;
+  const pendingCount = s.pendingOrders ?? 0;
+
+  // Xu hướng 7 ngày qua vs 7 ngày trước
+  const revenue7d = Number(ins.revenue7d || 0);
+  const revenuePrev7d = Number(ins.revenuePrev7d || 0);
+  const orders7d = Number(ins.orders7d || 0);
+  const ordersPrev7d = Number(ins.ordersPrev7d || 0);
+
+  // Xu hướng 7 ngày so với 7 ngày trước — chỉ quy ra % khi kỳ trước có dữ liệu (tránh +100% ảo)
+  const trend = (cur, prev) => {
+    if (prev > 0) {
+      const pct = Math.round(((cur - prev) / prev) * 100);
+      return { has: true, pct, dir: pct >= 0 ? 'up' : 'down' };
     }
+    return { has: false, pct: 0, dir: 'flat' };
   };
+  const revT = trend(revenue7d, revenuePrev7d);
+  const ordT = trend(orders7d, ordersPrev7d);
 
-  const handleRejectClick = (orderId) => {
-    setRejectReason('');
-    rejectModal.open(orderId);
-  };
+  // Giờ cao điểm
+  const peakData = useMemo(
+    () => (ins.peakHours || []).slice().sort((a, b) => a.hour - b.hour).map(h => ({ label: `${h.hour}h`, count: h.count })),
+    [ins.peakHours]
+  );
+  const peakHour = useMemo(
+    () => (ins.peakHours || []).reduce((m, h) => (h.count > (m?.count || 0) ? h : m), null),
+    [ins.peakHours]
+  );
 
-  const handleRejectConfirm = async () => {
-    const orderId = rejectModal.data;
-    if (!orderId || !rejectReason.trim()) {
-      toast.warning('Vui lòng nhập lý do từ chối!');
-      return;
-    }
-    try {
-      setSubmitting(true);
-      // BE RejectOrderRequest yêu cầu field 'rejectReason' (@NotBlank), không phải 'cancelReason' -> tránh lỗi 400.
-      await apiClient.patch(`/merchant/orders/${orderId}/reject`, { rejectReason: rejectReason.trim() });
-      toast.success(`Đã từ chối đơn hàng #${orderId} với lý do: "${rejectReason.trim()}"`);
-      rejectModal.close();
-      refetchPending();
-      refetchAll();
-    } catch (err) {
-      console.error(err);
-      toast.error('Không thể từ chối đơn hàng này.');
-    } finally {
-      setSubmitting(false);
-    }
-  };
+  // Khách hàng
+  const uniqueCustomers = ins.uniqueCustomers || 0;
+  const returningCustomers = ins.returningCustomers || 0;
+  const newCustomers30d = ins.newCustomers30d || 0;
+  const repeatRate = uniqueCustomers > 0 ? Math.round((returningCustomers / uniqueCustomers) * 100) : 0;
 
-  const handleToggleClick = () => {
-    setConfirmToggleStatus(true);
-  };
+  // Sức khoẻ thực đơn
+  const menuTotal = ins.menuTotal || 0;
+  const menuAvailable = ins.menuAvailable || 0;
+  const menuOutOfStock = ins.menuOutOfStock || 0;
+  const menuHidden = ins.menuHidden || 0;
+  const menuNoSales = ins.menuNoSales || 0;
+
+  // Cảnh báo kinh doanh (chỉ hiện cái đáng lưu ý)
+  const alerts = [];
+  if (totalOrders >= 10 && cancelRate > 15)
+    alerts.push({ type: 'warn', icon: AlertTriangle, text: `Tỷ lệ huỷ đơn đang cao (${cancelRate}%). Nên rà soát quy trình nhận đơn.` });
+  if (reviewsCount > 0 && Number(averageRating) < 4)
+    alerts.push({ type: 'warn', icon: Star, text: `Đánh giá trung bình đang thấp (${averageRating}★). Cần cải thiện chất lượng phục vụ.` });
+  if (menuOutOfStock > 0)
+    alerts.push({ type: 'info', icon: PackageX, text: `${menuOutOfStock} món đang tạm hết hàng.`, to: '/merchant/menu', action: 'Cập nhật thực đơn' });
+  if (pendingCount > 0)
+    alerts.push({ type: 'info', icon: ClipboardList, text: `${pendingCount} đơn đang chờ bạn xác nhận.`, to: '/merchant/orders', action: 'Xử lý ở Quản lý đơn' });
+
+  const refetchAllData = useCallback(() => { refetchRes(); }, [refetchRes]);
 
   const handleToggleRestaurantStatus = async () => {
     setConfirmToggleStatus(false);
@@ -227,7 +153,7 @@ export default function MerchantDashboard() {
       const res = await apiClient.patch(`/merchant/restaurant/status?status=${nextStatus}`);
       if (res.data?.data) {
         toast.success('Cập nhật trạng thái hoạt động của quán thành công!');
-        refetchRes();
+        refetchAllData();
       }
     } catch (err) {
       console.error(err);
@@ -237,15 +163,7 @@ export default function MerchantDashboard() {
     }
   };
 
-  const formatTimeLeft = (seconds) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
-  };
-
-  if (loading && !restaurant && !noRestaurant) {
-    return <Spinner fullScreen />;
-  }
+  if (loading && !restaurant && !noRestaurant) return <Spinner fullScreen />;
 
   if (noRestaurant) {
     return (
@@ -263,32 +181,26 @@ export default function MerchantDashboard() {
     );
   }
 
-  // Thống kê động
-  const displayRevenue = stats ? stats.subtotal : 0;
-  const displayTotalOrders = stats ? stats.totalOrders : 0;
-  const displayCompletedOrders = stats ? stats.completedOrders : 0;
-
-  // Tỉ lệ THẬT (dùng cho KPI mini-bar) — hoàn tất & huỷ trên tổng đơn.
-  const completionRate = displayTotalOrders > 0 ? Math.round((displayCompletedOrders / displayTotalOrders) * 100) : 0;
-  const cancelRate = displayTotalOrders > 0 ? Math.round(((stats?.cancelledOrders || 0) / displayTotalOrders) * 100) : 0;
-
-  // Sắp xếp đơn chờ: đơn GẤP (timeLeft nhỏ) lên đầu — CHỈ sắp xếp hiển thị, không
-  // đụng state/logic countdown bên trên.
-  const sortedPendingOrders = [...pendingOrders].sort((a, b) => a.timeLeft - b.timeLeft);
+  // KPI: số lớn = TỔNG THỂ (luôn có nghĩa), dòng phụ = xu hướng 7 ngày (kèm % khi có kỳ trước)
+  const kpis = [
+    { title: 'Doanh thu món', value: formatCurrency(Number(s.subtotal || 0)), icon: DollarSign, color: 'bg-emerald-100 text-emerald-600',
+      foot: `7 ngày: ${formatCurrency(revenue7d)}`, pct: revT.has ? revT.pct : null, dir: revT.dir },
+    { title: 'Đơn hoàn tất', value: `${s.completedOrders ?? 0} đơn`, icon: PackageOpen, color: 'bg-md-secondary/10 text-md-secondary',
+      foot: `7 ngày: ${orders7d} đơn`, pct: ordT.has ? ordT.pct : null, dir: ordT.dir },
+    { title: 'Giá trị đơn TB (AOV)', value: formatCurrency(Number(s.avgOrderValue || 0)), icon: BarChart3, color: 'bg-indigo-100 text-indigo-600',
+      foot: 'Trung bình mỗi đơn hoàn tất', pct: null },
+    { title: 'Đánh giá trung bình', value: `${averageRating} ★`, icon: Star, color: 'bg-amber-100 text-amber-600',
+      foot: `Từ ${reviewsCount} đánh giá`, pct: null },
+  ];
 
   return (
     <div className="flex-1 p-4 md:p-8 max-w-7xl mx-auto w-full font-google-sans space-y-6">
-      
+
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-xl md:text-2xl font-bold text-slate-800 flex items-center gap-2">
-            Xin chào, {restaurant.restaurantName}
-          </h1>
-        </div>
-        
+        <h1 className="text-xl md:text-2xl font-bold text-slate-800">Xin chào, {restaurant.restaurantName}</h1>
         <button
-          onClick={handleToggleClick}
+          onClick={() => setConfirmToggleStatus(true)}
           disabled={loading}
           className={`flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-bold w-max self-start sm:self-center shadow-sm transition-all duration-200 cursor-pointer ${
             restaurant.status
@@ -302,16 +214,40 @@ export default function MerchantDashboard() {
         </button>
       </div>
 
-      {/* THỐNG KÊ HÔM NAY */}
+      {/* ─── CẢNH BÁO KINH DOANH ─── */}
+      <div className="space-y-2.5">
+        {alerts.length === 0 ? (
+          <div className="flex items-center gap-2.5 rounded-radius-xl border border-emerald-200/70 bg-emerald-50 px-4 py-3 text-xs font-bold text-emerald-700">
+            <CheckCircle2 size={16} className="shrink-0" />
+            Hoạt động ổn định — không có cảnh báo nào cần xử lý.
+          </div>
+        ) : (
+          alerts.map((a, i) => {
+            const Icon = a.icon;
+            const warn = a.type === 'warn';
+            return (
+              <div
+                key={i}
+                className={`flex items-center gap-2.5 rounded-radius-xl border px-4 py-3 text-xs font-bold ${
+                  warn ? 'border-rose-200/70 bg-rose-50 text-rose-700' : 'border-amber-200/70 bg-amber-50 text-amber-700'
+                }`}
+              >
+                <Icon size={16} className="shrink-0" />
+                <span className="flex-1">{a.text}</span>
+                {a.to && (
+                  <button onClick={() => navigate(a.to)} className="shrink-0 inline-flex items-center gap-1 font-extrabold hover:underline cursor-pointer">
+                    {a.action} <ArrowRight size={13} />
+                  </button>
+                )}
+              </div>
+            );
+          })
+        )}
+      </div>
+
+      {/* ─── KPI (xu hướng 7 ngày) ─── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {[
-          // Doanh thu: đổi cam #FF6B35 (màu Customer) → emerald (tiền/tăng trưởng). Kèm AOV (giá trị đơn TB) — KPI Sales chuẩn.
-          { title: 'Doanh thu món ăn', value: formatCurrency(displayRevenue), change: `Thực nhận ${formatCurrency(stats?.revenue || 0)} (−${stats ? Math.round(stats.commissionRate * 100) : 10}% HH) · AOV ${formatCurrency(stats?.avgOrderValue || 0)}`, icon: DollarSign, color: 'bg-emerald-100 text-emerald-600' },
-          { title: 'Đơn mới chờ duyệt', value: pendingOrders.length + ' đơn', change: 'Đang đợi bạn bấm nhận', icon: ClipboardList, color: 'bg-md-secondary/10 text-md-secondary' },
-          // Mini-bar tỉ lệ hoàn tất THẬT (completed/total); kèm tỉ lệ huỷ.
-          { title: 'Tổng đơn hoàn tất', value: displayCompletedOrders + ' đơn', change: `Hoàn tất ${completionRate}% · Huỷ ${cancelRate}% / ${displayTotalOrders} đơn`, icon: PackageOpen, color: 'bg-md-tertiary/10 text-md-tertiary', bar: { pct: completionRate, color: 'bg-md-tertiary' } },
-          { title: 'Đánh giá trung bình', value: `${averageRating} ★`, change: `Từ ${reviewsCount} đánh giá`, icon: Star, color: 'bg-amber-100 text-amber-600' },
-        ].map((item, idx) => {
+        {kpis.map((item, idx) => {
           const Icon = item.icon;
           return (
             <div key={idx} className="bg-white rounded-radius-xl p-4 border border-slate-200/60 shadow-sm flex items-center gap-3">
@@ -321,238 +257,180 @@ export default function MerchantDashboard() {
               <div className="min-w-0 flex-1">
                 <span className="text-[10px] text-slate-400 font-bold block truncate uppercase tracking-wider">{item.title}</span>
                 <span className="text-sm sm:text-base font-bold text-slate-800 block mt-0.5">{item.value}</span>
-                <span className="text-[9px] text-slate-500 font-medium block mt-0.5">{item.change}</span>
-                {/* Mini-bar tỉ lệ (chỉ render khi KPI có field bar) */}
-                {item.bar && (
-                  <div className="mt-1.5 h-1 bg-slate-100 rounded-full overflow-hidden">
-                    <div className={`h-full rounded-full ${item.bar.color}`} style={{ width: `${item.bar.pct}%` }} />
-                  </div>
-                )}
+                <span className="text-[10px] font-medium mt-0.5 flex items-center gap-1">
+                  {item.pct != null && (
+                    <span className={`inline-flex items-center gap-0.5 font-bold ${item.dir === 'up' ? 'text-emerald-600' : 'text-rose-500'}`}>
+                      {item.dir === 'up' ? <TrendingUp size={11} /> : <TrendingDown size={11} />}
+                      {item.pct >= 0 ? '+' : ''}{item.pct}%
+                    </span>
+                  )}
+                  <span className="text-slate-500 truncate">{item.foot}</span>
+                </span>
               </div>
             </div>
           );
         })}
       </div>
 
-      {/* ĐƠN ĐANG CHỜ XỬ LÝ (Countdown Timer) */}
-      <div className="bg-white rounded-radius-xl p-5 border border-slate-200/60 shadow-sm">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-sm font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5 font-extrabold">
-            <ClipboardList className="text-md-secondary" size={18} />
-            Đơn đang chờ xác nhận ({pendingOrders.length})
-          </h2>
-          <button 
-            onClick={() => navigate('/merchant/orders')}
-            className="text-xs font-bold text-md-secondary hover:underline"
-          >
-            Quản lý đơn →
-          </button>
+      {/* ─── DOANH THU (rút gọn) + GIỜ CAO ĐIỂM ─── */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Doanh thu tuần rút gọn */}
+        <div className="bg-white rounded-radius-xl p-5 border border-slate-200/60 shadow-sm lg:col-span-2">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+              <TrendingUp className="text-md-secondary" size={18} /> Doanh thu theo ngày trong tuần
+            </h3>
+            <button onClick={() => navigate('/merchant/stats')} className="text-[11px] font-bold text-md-secondary hover:underline inline-flex items-center gap-1">
+              Xem chi tiết ở Thống kê <ArrowRight size={12} />
+            </button>
+          </div>
+          <div className="h-64 w-full text-xs">
+            <RevenueAreaChart data={revenueData} dataKey="amount" xKey="day" color="#10B981" height={256} yTickFormatter={(v) => `${v / 1000}k`} />
+          </div>
         </div>
 
-        {pendingOrders.length === 0 ? (
-          <div className="text-center py-8 text-slate-400 text-xs font-semibold flex flex-col items-center gap-2">
-            <Check size={28} className="text-emerald-400" />
-            Tuyệt vời! Không còn đơn hàng nào đang chờ duyệt.
+        {/* Giờ cao điểm */}
+        <div className="bg-white rounded-radius-xl p-5 border border-slate-200/60 shadow-sm flex flex-col">
+          <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider mb-1 flex items-center gap-1.5">
+            <Clock className="text-md-secondary" size={18} /> Giờ cao điểm
+          </h3>
+          <p className="text-[10px] text-slate-400 font-semibold mb-3">
+            {peakHour ? <>Đông nhất lúc <span className="text-md-secondary font-extrabold">{peakHour.hour}h–{peakHour.hour + 1}h</span> ({peakHour.count} đơn)</> : 'Theo số đơn hoàn tất trong ngày'}
+          </p>
+          <div className="flex-1 min-h-[190px] text-xs">
+            {peakData.length === 0 ? (
+              <div className="h-full flex items-center justify-center text-center text-slate-400 text-xs font-semibold">
+                Chưa có đủ dữ liệu giờ cao điểm.
+              </div>
+            ) : (
+              <RevenueAreaChart data={peakData} dataKey="count" xKey="label" color="#1A73E8" height={200} chartType="bar" yTickFormatter={(v) => `${v}`} />
+            )}
           </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Dùng danh sách ĐÃ SẮP XẾP (đơn gấp lên đầu) */}
-            {sortedPendingOrders.map((order) => {
-              const isUrgent = order.timeLeft < 120; // Dưới 2 phút thì gấp (chuyển đỏ)
-              // % thời gian còn lại trên tổng 600s (10 phút) cho thanh countdown.
-              const timePct = Math.max(0, Math.min(100, Math.round((order.timeLeft / 600) * 100)));
+        </div>
+      </div>
+
+      {/* ─── KHÁCH HÀNG + THỰC ĐƠN + TOP MÓN ─── */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+        {/* Khách hàng: mới vs quay lại */}
+        <div className="bg-white rounded-radius-xl p-5 border border-slate-200/60 shadow-sm">
+          <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider mb-4 flex items-center gap-1.5">
+            <Users className="text-md-secondary" size={18} /> Khách hàng
+          </h3>
+          <div className="grid grid-cols-3 gap-2 mb-4">
+            {[
+              { label: 'Đã mua', value: uniqueCustomers, icon: Users, color: 'text-slate-700' },
+              { label: 'Quay lại', value: returningCustomers, icon: Repeat, color: 'text-md-secondary' },
+              { label: 'Mới 30 ngày', value: newCustomers30d, icon: UserPlus, color: 'text-emerald-600' },
+            ].map((c, i) => {
+              const Icon = c.icon;
               return (
-                <div 
-                  key={order.id}
-                  className={`rounded-radius-xl p-4 border transition-all flex flex-col justify-between ${
-                    isUrgent 
-                      ? 'border-md-error bg-md-error-container/10 ring-1 ring-md-error/5' 
-                      : 'border-slate-200/60 bg-white'
-                  }`}
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className="font-bold text-xs sm:text-sm text-slate-800">
-                          #{order.id} • {order.name}
-                        </span>
-                      </div>
-                      <span className="text-[10px] text-slate-400 block mt-1">
-                        Đặt lúc: {order.time} • {order.itemsCount} phần ăn
-                      </span>
-                    </div>
-
-                    <div className={`px-2.5 py-1 rounded-full text-[10px] font-bold shadow-sm inline-flex items-center gap-1 ${
-                      isUrgent
-                        ? 'bg-md-error text-white animate-pulse'
-                        : 'bg-amber-100 text-amber-700'
-                    }`}>
-                      <Clock size={11} /> Còn {formatTimeLeft(order.timeLeft)}
-                    </div>
-                  </div>
-
-                  {/* Thanh đếm ngược trực quan: cạn dần theo timeLeft, đỏ khi gấp */}
-                  <div className="mt-3 h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                    <div
-                      className={`h-full rounded-full transition-all duration-1000 ease-linear ${isUrgent ? 'bg-md-error' : 'bg-amber-400'}`}
-                      style={{ width: `${timePct}%` }}
-                    />
-                  </div>
-
-                  <div className="flex items-center justify-between border-t border-slate-100 pt-3 mt-4">
-                    <span className="text-xs font-bold text-slate-800">
-                      Tổng tiền: {formatCurrency(order.total)}
-                    </span>
-                    
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => handleRejectClick(order.id)}
-                        className="p-1.5 rounded-radius-full border border-md-error/30 text-md-error hover:bg-md-error/10 transition-colors"
-                        title="Từ chối đơn"
-                      >
-                        <X size={15} />
-                      </button>
-                      <button
-                        onClick={() => handleAccept(order.id)}
-                        className="px-3.5 py-1.5 rounded-radius-full bg-md-secondary text-white font-bold text-xs shadow-sm hover:scale-105 transition-all flex items-center gap-1"
-                      >
-                        <Check size={12} className="stroke-[3px]" />
-                        Xác nhận
-                      </button>
-                    </div>
-                  </div>
+                <div key={i} className="rounded-radius-lg bg-slate-50 border border-slate-100 p-2.5 text-center">
+                  <Icon size={15} className={`mx-auto mb-1 ${c.color}`} />
+                  <div className={`text-base font-extrabold ${c.color}`}>{c.value}</div>
+                  <div className="text-[9px] text-slate-400 font-bold uppercase tracking-wide">{c.label}</div>
                 </div>
               );
             })}
           </div>
-        )}
-      </div>
-
-      {/* BIỂU ĐỒ DOANH THU & TOP MÓN BÁN CHẠY */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        
-        {/* Line Chart Doanh thu 7 ngày */}
-        <div className="bg-white rounded-radius-xl p-5 border border-slate-200/60 shadow-sm lg:col-span-2">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
-              <TrendingUp className="text-md-secondary" size={18} />
-              Biểu đồ doanh thu tuần này (Thống kê thực tế)
-            </h3>
-            <span className="text-[10px] text-slate-500 font-bold bg-slate-100 px-2.5 py-1 rounded-full">
-              Doanh thu ẩm thực tuần này
-            </span>
+          <div className="flex items-center justify-between text-[11px] font-bold text-slate-500 mb-1">
+            <span>Tỷ lệ khách quay lại</span>
+            <span className="text-md-secondary font-extrabold">{repeatRate}%</span>
           </div>
-
-          <div className="h-64 w-full text-xs">
-            {/* Màu doanh thu đồng bộ emerald với card "Doanh thu món ăn" (trước lệch xanh vs emerald) */}
-            <RevenueAreaChart
-              data={revenueData}
-              dataKey="amount"
-              xKey="day"
-              color="#10B981"
-              height={256}
-              yTickFormatter={(v) => `${v/1000}k`}
-            />
+          <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+            <div className="h-full rounded-full bg-md-secondary transition-all duration-500" style={{ width: `${repeatRate}%` }} />
           </div>
+          <p className="text-[10px] text-slate-400 font-medium mt-2 leading-relaxed">
+            Khách quay lại = từng mua ≥ 2 lần. Tỷ lệ cao cho thấy quán giữ chân khách tốt.
+          </p>
         </div>
 
-        {/* Top Món Ăn Bán Chạy */}
-        <div className="bg-white rounded-radius-xl p-5 border border-slate-200/60 shadow-sm flex flex-col justify-between">
-          <div>
-            <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider mb-4 flex items-center gap-1.5">
-              <Sparkles className="text-amber-500" size={18} />
-              Top món bán chạy nhất
+        {/* Sức khoẻ thực đơn */}
+        <div className="bg-white rounded-radius-xl p-5 border border-slate-200/60 shadow-sm flex flex-col">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+              <UtensilsCrossed className="text-md-secondary" size={18} /> Tình trạng thực đơn
             </h3>
-            
-            <div className="space-y-4">
-              {topFoods.length === 0 ? (
-                <div className="text-center py-8 text-slate-400 text-xs font-semibold">
-                  Chưa bán được món ăn nào trong tuần này.
-                </div>
-              ) : (
-                topFoods.map((item, idx) => (
-                  <div key={idx} className="text-xs font-bold">
-                    <div className="flex justify-between items-center font-bold mb-1">
-                      <span className="text-slate-700">{item.name}</span>
-                      <span className="text-slate-500 font-extrabold">{item.count}</span>
-                    </div>
-                    <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
-                      <div className={`h-full rounded-full ${item.color}`} style={{ width: item.pct }} />
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
+            <span className="text-[10px] font-bold text-slate-400">{menuTotal} món</span>
           </div>
-
-          <button 
-            onClick={() => navigate('/merchant/menu')}
-            className="w-full border border-slate-200 hover:bg-slate-50 text-slate-600 font-bold py-2.5 rounded-radius-lg text-xs transition-colors mt-6 text-center"
-          >
+          <div className="space-y-2.5 flex-1">
+            {[
+              { label: 'Đang bán', value: menuAvailable, icon: CheckCircle2, color: 'text-emerald-600', bg: 'bg-emerald-50' },
+              { label: 'Tạm hết hàng', value: menuOutOfStock, icon: PackageX, color: 'text-rose-500', bg: 'bg-rose-50' },
+              { label: 'Đang ẩn', value: menuHidden, icon: EyeOff, color: 'text-slate-500', bg: 'bg-slate-50' },
+              { label: 'Chưa có lượt bán', value: menuNoSales, icon: AlertTriangle, color: 'text-amber-600', bg: 'bg-amber-50' },
+            ].map((m, i) => {
+              const Icon = m.icon;
+              return (
+                <div key={i} className={`flex items-center gap-2.5 rounded-radius-lg ${m.bg} px-3 py-2`}>
+                  <Icon size={15} className={`${m.color} shrink-0`} />
+                  <span className="text-[11px] font-bold text-slate-600 flex-1">{m.label}</span>
+                  <span className={`text-sm font-extrabold ${m.color}`}>{m.value}</span>
+                </div>
+              );
+            })}
+          </div>
+          <button onClick={() => navigate('/merchant/menu')} className="w-full border border-slate-200 hover:bg-slate-50 text-slate-600 font-bold py-2 rounded-radius-lg text-[11px] transition-colors mt-4">
             Quản lý thực đơn
           </button>
         </div>
 
+        {/* Top món (rút gọn) */}
+        <div className="bg-white rounded-radius-xl p-5 border border-slate-200/60 shadow-sm flex flex-col">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+              <Sparkles className="text-amber-500" size={18} /> Top món bán chạy
+            </h3>
+            <button onClick={() => navigate('/merchant/stats')} className="text-[10px] font-bold text-md-secondary hover:underline inline-flex items-center gap-1">
+              Đầy đủ <ArrowRight size={11} />
+            </button>
+          </div>
+          <div className="space-y-4 flex-1">
+            {topFoods.length === 0 ? (
+              <div className="text-center py-8 text-slate-400 text-xs font-semibold">Chưa bán được món ăn nào.</div>
+            ) : (
+              topFoods.map((item, idx) => (
+                <div key={idx} className="text-xs font-bold">
+                  <div className="flex justify-between items-center mb-1">
+                    <span className="text-slate-700 truncate">{item.name}</span>
+                    <span className="text-slate-500 font-extrabold shrink-0 ml-2">{item.count}</span>
+                  </div>
+                  <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
+                    <div className={`h-full rounded-full ${item.color}`} style={{ width: item.pct }} />
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
       </div>
 
-      {/* Confirm đóng/mở cửa hàng */}
+      {/* ─── CTA sang báo cáo chi tiết ─── */}
+      <button
+        onClick={() => navigate('/merchant/stats')}
+        className="w-full flex items-center justify-center gap-2 bg-md-secondary/5 border border-md-secondary/20 text-md-secondary font-extrabold py-3.5 rounded-radius-xl text-sm hover:bg-md-secondary/10 transition-colors"
+      >
+        <BarChart3 size={18} /> Xem báo cáo tài chính chi tiết
+        <ArrowRight size={16} />
+      </button>
+
+      {/* Confirm đóng/mở cửa */}
       {restaurant && (
         <ConfirmDialog
           isOpen={confirmToggleStatus}
           onClose={() => setConfirmToggleStatus(false)}
           onConfirm={handleToggleRestaurantStatus}
-          title={restaurant.status ? "Tạm đóng cửa quán" : "Mở cửa quán trở lại"}
+          title={restaurant.status ? 'Tạm đóng cửa quán' : 'Mở cửa quán trở lại'}
           message={
-            restaurant.status 
-              ? "Bạn có chắc chắn muốn TẠM ĐÓNG CỬA quán ăn không? Khách hàng sẽ không thể tìm thấy và đặt món từ quán của bạn."
-              : "Bạn có muốn MỞ CỬA quán ăn trở lại để tiếp tục đón khách không?"
+            restaurant.status
+              ? 'Bạn có chắc chắn muốn TẠM ĐÓNG CỬA quán ăn không? Khách hàng sẽ không thể tìm thấy và đặt món từ quán của bạn.'
+              : 'Bạn có muốn MỞ CỬA quán ăn trở lại để tiếp tục đón khách không?'
           }
-          confirmLabel={restaurant.status ? "Tạm đóng cửa" : "Mở cửa"}
+          confirmLabel={restaurant.status ? 'Tạm đóng cửa' : 'Mở cửa'}
           danger={restaurant.status}
           loading={submitting}
         />
       )}
-
-      {/* Modal từ chối đơn hàng (thay window.prompt) */}
-      <Modal
-        isOpen={rejectModal.isOpen}
-        onClose={() => rejectModal.close()}
-        title={`Từ chối đơn hàng #${rejectModal.data}`}
-        size="sm"
-      >
-        <div className="space-y-4 font-google-sans">
-          <div>
-            <label className="block text-xs font-semibold text-slate-500 mb-1.5 uppercase">Lý do từ chối (Bắt buộc)</label>
-            <textarea
-              value={rejectReason}
-              onChange={(e) => setRejectReason(e.target.value)}
-              className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-md-secondary text-slate-800"
-              rows={3}
-              placeholder="Nhập lý do từ chối..."
-            />
-          </div>
-          <div className="flex justify-end gap-3 pt-2">
-            <Button
-              variant="outline"
-              onClick={() => rejectModal.close()}
-              disabled={submitting}
-              size="sm"
-            >
-              Hủy
-            </Button>
-            <Button
-              variant="danger"
-              onClick={handleRejectConfirm}
-              loading={submitting}
-              disabled={!rejectReason.trim()}
-              size="sm"
-            >
-              Từ chối đơn
-            </Button>
-          </div>
-        </div>
-      </Modal>
-
     </div>
   );
 }

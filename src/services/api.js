@@ -8,6 +8,9 @@ const apiClient = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
+  // withCredentials để trình duyệt gửi kèm cookie HttpOnly (refresh token) tới BE.
+  // Cần CORS allowCredentials(true) + allowedOrigins cụ thể (đã cấu hình ở SecurityConfig).
+  withCredentials: true,
   timeout: 10000, // 10 giây
 });
 
@@ -47,8 +50,13 @@ apiClient.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config;
 
-    // Lỗi 401 Unauthorized và chưa từng thử refresh cho request này, đồng thời KHÔNG phải là request login
-    if (error.response?.status === 401 && !originalRequest._retry && !originalRequest.url?.includes('/auth/login')) {
+    // Lỗi 401 và chưa thử refresh cho request này. Bỏ qua chính các endpoint auth
+    // (login/refresh/logout) — 401 ở /auth/refresh nghĩa là phiên đã hết, không refresh vòng lặp;
+    // hydrateSession sẽ tự xử lý mềm (đăng xuất, không ép chuyển trang).
+    const isAuthFlow = originalRequest.url?.includes('/auth/login')
+      || originalRequest.url?.includes('/auth/refresh')
+      || originalRequest.url?.includes('/auth/logout');
+    if (error.response?.status === 401 && !originalRequest._retry && !isAuthFlow) {
       if (isRefreshing) {
         // Đang có request refresh token khác chạy, xếp hàng chờ
         return new Promise((resolve, reject) => {
@@ -66,10 +74,10 @@ apiClient.interceptors.response.use(
 
       try {
         const { useAuthStore } = await import('../stores/authStore');
-        const refreshToken = useAuthStore.getState().refreshToken;
-        // Gọi API refresh token lên Spring Boot Backend
-        const response = await axios.post(`${API_BASE_URL}/auth/refresh`, {
-          refreshToken: refreshToken
+        // Refresh token nằm trong cookie HttpOnly -> KHÔNG gửi trong body, chỉ cần
+        // withCredentials để trình duyệt tự đính kèm cookie.
+        const response = await axios.post(`${API_BASE_URL}/auth/refresh`, {}, {
+          withCredentials: true,
         });
 
         // Bóc tách token từ ApiResponse<RefreshResponse> envelope

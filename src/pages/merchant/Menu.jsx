@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Plus, ToggleLeft, ToggleRight, Edit, Trash2, Check, X, ClipboardList, UtensilsCrossed, AlertTriangle  } from 'lucide-react';
+import { Plus, ToggleLeft, ToggleRight, Edit, Trash2, Check, X, ClipboardList, UtensilsCrossed, AlertTriangle, Tags, Tag, FolderPlus, Pencil } from 'lucide-react';
 import { formatCurrency } from '../../utils/format';
 import apiClient from '../../services/api';
 import Spinner from '../../components/common/Spinner';
 import { useNavigate } from 'react-router-dom';
-import { getFoodImageUrl } from '../../utils/avatarHelper';
+import { getFoodImageUrl, DEFAULT_FOOD_IMAGE } from '../../utils/avatarHelper';
 import { toast } from 'react-toastify';
 import ConfirmDialog from '../../components/common/ConfirmDialog';
 import Modal from '../../components/common/Modal';
@@ -401,9 +401,12 @@ export default function MerchantMenu() {
     );
   }
 
-  const hasUncategorized = menuItems.some(item => 
+  const hasUncategorized = menuItems.some(item =>
     !item.catId || !categories.some(c => Number(c.id) === Number(item.catId))
   );
+
+  // Tên danh mục đang chọn (cho thanh thao tác Sửa/Xóa rõ ràng)
+  const activeCatName = categories.find(c => Number(c.id) === Number(activeCategory))?.name || '';
 
   const displayedItems = menuItems.filter(item => {
     const matchCat = activeCategory === 'UNCATEGORIZED'
@@ -433,7 +436,12 @@ export default function MerchantMenu() {
 
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-xl font-bold text-slate-800">Quản Lý Thực Đơn</h1>
+        <h1 className="text-xl font-bold text-slate-800 flex items-center gap-2.5">
+          <span className="p-2 rounded-radius-lg bg-md-secondary/10 text-md-secondary">
+            <UtensilsCrossed size={20} />
+          </span>
+          Quản Lý Thực Đơn
+        </h1>
         <button
           onClick={handleOpenAddModal}
           className="bg-md-secondary text-white font-bold px-4 py-2 rounded-radius-full text-xs shadow-sm hover:scale-105 transition-all flex items-center gap-1.5 cursor-pointer"
@@ -465,44 +473,30 @@ export default function MerchantMenu() {
         })}
       </div>
 
-      {/* Category List Row */}
-      <div className="mb-6 bg-white p-4 rounded-radius-xl border border-slate-200/60 shadow-sm">
-        <div className="flex items-center justify-between mb-3 border-b border-slate-100 pb-2">
-          <div className="flex items-center gap-2">
-            <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">
-              Danh mục thực phẩm
-            </h3>
-            {activeCategory && (
-              <div className="flex items-center gap-1.5 ml-2">
-                <button
-                  type="button"
-                  onClick={handleEditCategoryClick}
-                  className="text-[10px] text-blue-600 hover:underline font-bold cursor-pointer"
-                  title="Sửa tên danh mục đang chọn"
-                >
-                  Sửa tên
-                </button>
-                <span className="text-[10px] text-slate-300">|</span>
-                <button
-                  type="button"
-                  onClick={handleDeleteCategoryClick}
-                  className="text-[10px] text-red-600 hover:underline font-bold cursor-pointer"
-                  title="Xóa danh mục đang chọn"
-                >
-                  Xóa
-                </button>
-              </div>
-            )}
+      {/* ─── DANH MỤC THỰC PHẨM ─── */}
+      <div className="mb-6 bg-white p-4 sm:p-5 rounded-radius-xl border border-slate-200/60 shadow-sm">
+        {/* Header: tiêu đề có icon + nút Thêm danh mục rõ ràng */}
+        <div className="flex items-center justify-between gap-3 mb-4">
+          <div className="flex items-center gap-2 min-w-0">
+            <span className="p-1.5 rounded-radius-md bg-md-secondary/10 text-md-secondary shrink-0">
+              <Tags size={16} />
+            </span>
+            <h3 className="text-sm font-extrabold text-slate-700">Danh mục thực phẩm</h3>
+            <span className="text-[10px] font-bold text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full shrink-0">
+              {categories.length}
+            </span>
           </div>
           <button
             type="button"
             onClick={handleAddCategoryClick}
-            className="text-xs text-md-secondary font-bold hover:underline cursor-pointer"
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-radius-lg bg-md-secondary/10 text-md-secondary font-bold text-xs border border-md-secondary/20 hover:bg-md-secondary hover:text-white transition-all cursor-pointer shrink-0"
+            title="Tạo danh mục mới"
           >
-            + Thêm danh mục
+            <FolderPlus size={15} /> <span className="hidden sm:inline">Thêm danh mục</span>
           </button>
         </div>
 
+        {/* Chips danh mục (mỗi chip có icon nhận diện) */}
         <div className="flex gap-2.5 overflow-x-auto no-scrollbar py-1">
           {categories.map((cat) => {
             const isActive = Number(activeCategory) === Number(cat.id);
@@ -510,12 +504,13 @@ export default function MerchantMenu() {
               <button
                 key={cat.id}
                 onClick={() => setActiveCategory(cat.id)}
-                className={`flex items-center gap-1.5 px-4 py-2 rounded-radius-lg text-xs font-bold transition-all border ${
+                className={`flex items-center gap-1.5 px-4 py-2 rounded-radius-lg text-xs font-bold transition-all border shrink-0 ${
                   isActive
                     ? 'bg-md-secondary text-white border-md-secondary shadow-sm'
                     : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
                 }`}
               >
+                <Tag size={12} className={isActive ? 'text-white/80' : 'text-slate-400'} />
                 <span>{cat.name}</span>
                 <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${
                   isActive ? 'bg-white/20 text-white' : 'bg-slate-200/70 text-slate-500'
@@ -536,6 +531,7 @@ export default function MerchantMenu() {
                   : 'bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100'
               }`}
             >
+              <AlertTriangle size={12} className={activeCategory === 'UNCATEGORIZED' ? 'text-white/80' : 'text-amber-500'} />
               <span>Chưa phân loại</span>
               <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${
                 activeCategory === 'UNCATEGORIZED' ? 'bg-white/20 text-white' : 'bg-amber-200/70 text-amber-800'
@@ -545,6 +541,34 @@ export default function MerchantMenu() {
             </button>
           )}
         </div>
+
+        {/* Thanh thao tác cho danh mục đang chọn — nút rõ ràng, dễ bấm (thay link chữ tí xíu) */}
+        {activeCategory && activeCategory !== 'UNCATEGORIZED' && activeCatName && (
+          <div className="flex items-center justify-between gap-3 mt-4 pt-3 border-t border-slate-100">
+            <span className="text-[11px] text-slate-500 font-semibold inline-flex items-center gap-1.5 min-w-0">
+              <span className="w-2 h-2 rounded-full bg-md-secondary shrink-0"></span>
+              Đang quản lý: <b className="text-slate-700 truncate">{activeCatName}</b>
+            </span>
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={handleEditCategoryClick}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-radius-lg text-xs font-bold text-blue-600 bg-blue-50 border border-blue-100 hover:bg-blue-100 transition-colors cursor-pointer"
+                title="Sửa tên danh mục đang chọn"
+              >
+                <Pencil size={13} /> Sửa tên
+              </button>
+              <button
+                type="button"
+                onClick={handleDeleteCategoryClick}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-radius-lg text-xs font-bold text-red-600 bg-red-50 border border-red-100 hover:bg-red-100 transition-colors cursor-pointer"
+                title="Xóa danh mục đang chọn"
+              >
+                <Trash2 size={13} /> Xóa
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Bộ lọc trạng thái món ăn */}
@@ -576,72 +600,80 @@ export default function MerchantMenu() {
       ) : (
         // Lưới 2 cột trên màn rộng (xl) để tận dụng không gian, 1 cột ở màn hẹp.
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-          {displayedItems.map((item) => (
+          {displayedItems.map((item, idx) => (
               <div
                 key={item.id}
-                className={`bg-white rounded-radius-xl p-3 border border-slate-200/60 shadow-sm flex gap-4 transition-all hover:shadow-md ${
-                  !item.active ? 'opacity-65 bg-slate-50/50' : ''
+                style={{ animationDelay: `${idx * 45}ms` }}
+                className={`bg-white rounded-radius-xl p-3.5 border border-slate-200/60 shadow-sm flex gap-3.5 transition-all hover:shadow-md hover:-translate-y-0.5 animate-rise-in ${
+                  !item.active ? 'opacity-70 bg-slate-50/50' : ''
                 }`}
               >
-                {/* Đã gỡ tay cầm kéo-thả: chưa có backend sắp xếp lại nên affordance này không hoạt động,
-                    tránh gây hiểu nhầm cho người dùng (có thể bổ sung DnD thật khi có endpoint reorder). */}
-
-                <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-radius-lg overflow-hidden shrink-0 border border-slate-100">
-                  <img src={getFoodImageUrl(item.image)} alt={item.name} className="w-full h-full object-cover" />
+                {/* Ảnh món (to hơn) + nhãn trạng thái đè lên ảnh */}
+                <div className="relative w-20 h-20 sm:w-24 sm:h-24 rounded-radius-lg overflow-hidden shrink-0 border border-slate-100">
+                  <img
+                    src={getFoodImageUrl(item.image)}
+                    alt={item.name}
+                    onError={(e) => { e.currentTarget.src = DEFAULT_FOOD_IMAGE; }}
+                    className="w-full h-full object-cover"
+                  />
+                  {!item.active && (
+                    <span className="absolute top-1 left-1 bg-rose-500 text-white text-[8px] font-extrabold px-1.5 py-0.5 rounded-full shadow-sm">
+                      Tạm hết
+                    </span>
+                  )}
                 </div>
 
-                <div className="flex-1 min-w-0 flex flex-col justify-between py-1">
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <h3 className="font-bold text-xs sm:text-sm text-slate-800 truncate">
-                        {item.name}
-                      </h3>
-                      {!item.active && (
-                        <span className="bg-red-50 text-red-600 text-[9px] font-extrabold px-2 py-0.5 rounded-radius-full shrink-0 border border-red-150">
-                          Tạm hết
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-[10px] text-slate-400 leading-tight truncate mt-1">
-                      {item.desc}
-                    </p>
+                {/* Thông tin món — dồn giá + lượt bán xuống đáy để lấp khoảng trống */}
+                <div className="flex-1 min-w-0 flex flex-col">
+                  <h3 className="font-bold text-sm text-slate-800 truncate">{item.name}</h3>
+                  <p className="text-[11px] text-slate-400 leading-snug line-clamp-2 mt-0.5">
+                    {item.desc || 'Chưa có mô tả cho món này'}
+                  </p>
+                  <div className="mt-auto flex items-center gap-2 pt-2 flex-wrap">
+                    {/* Pill trạng thái (trang trí + chỉ báo, không phải chỉ số nghiệp vụ) */}
+                    <span className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                      item.active ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-500'
+                    }`}>
+                      <span className={`w-1.5 h-1.5 rounded-full ${item.active ? 'bg-emerald-500' : 'bg-rose-500'}`}></span>
+                      {item.active ? 'Đang bán' : 'Tạm hết'}
+                    </span>
+                    <span className="font-extrabold text-sm sm:text-base text-md-secondary">
+                      {formatCurrency(item.price)}
+                    </span>
                   </div>
-                  <span className="font-bold text-xs sm:text-sm text-md-secondary mt-1">
-                    {formatCurrency(item.price)}
-                  </span>
                 </div>
 
-                <div className="flex flex-col sm:flex-row items-center justify-center gap-3 shrink-0 px-2">
-                  <div className="flex items-center gap-1">
-                    <span className="text-[9px] font-bold text-slate-400">
+                {/* Thao tác — cột gọn bên phải, toggle trên / sửa-xóa dưới */}
+                <div className="flex flex-col items-end justify-between shrink-0 pl-3 border-l border-slate-100">
+                  <button
+                    onClick={() => toggleItemActive(item)}
+                    className="inline-flex items-center gap-1 focus:outline-none active:scale-95 transition-transform cursor-pointer"
+                    title={item.active ? 'Đang mở bán — bấm để chuyển tạm hết' : 'Đang hết — bấm để mở bán lại'}
+                  >
+                    <span className={`text-[9px] font-bold hidden sm:inline ${item.active ? 'text-md-secondary' : 'text-slate-400'}`}>
                       {item.active ? 'Mở bán' : 'Hết hàng'}
                     </span>
-                    <button 
-                      onClick={() => toggleItemActive(item)}
-                      className="focus:outline-none transition-transform active:scale-95 cursor-pointer"
-                    >
-                      {item.active ? (
-                        <ToggleRight size={24} className="text-md-secondary" />
-                      ) : (
-                        <ToggleLeft size={24} className="text-slate-300" />
-                      )}
-                    </button>
-                  </div>
+                    {item.active ? (
+                      <ToggleRight size={26} className="text-md-secondary" />
+                    ) : (
+                      <ToggleLeft size={26} className="text-slate-300" />
+                    )}
+                  </button>
 
-                  <div className="flex gap-2 border-t sm:border-t-0 sm:border-l border-slate-100 pt-2 sm:pt-0 sm:pl-3">
-                    <button 
+                  <div className="flex gap-1.5">
+                    <button
                       onClick={() => handleOpenEditModal(item)}
-                      className="p-1.5 rounded-full hover:bg-blue-50 text-slate-500 hover:text-blue-600 transition-colors cursor-pointer"
+                      className="p-1.5 rounded-radius-md hover:bg-blue-50 text-slate-500 hover:text-blue-600 transition-colors cursor-pointer"
                       title="Sửa món"
                     >
-                      <Edit size={16} />
+                      <Pencil size={15} />
                     </button>
-                    <button 
+                    <button
                       onClick={() => handleDeleteClick(item.id, item.name)}
-                      className="p-1.5 rounded-full hover:bg-red-50 text-slate-500 hover:text-red-600 transition-colors cursor-pointer"
+                      className="p-1.5 rounded-radius-md hover:bg-red-50 text-slate-500 hover:text-red-600 transition-colors cursor-pointer"
                       title="Xóa món"
                     >
-                      <Trash2 size={16} />
+                      <Trash2 size={15} />
                     </button>
                   </div>
                 </div>

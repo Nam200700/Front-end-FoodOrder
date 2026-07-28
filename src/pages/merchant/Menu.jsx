@@ -436,7 +436,12 @@ export default function MerchantMenu() {
 
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-xl font-bold text-slate-800">Quản Lý Thực Đơn</h1>
+        <h1 className="text-xl font-bold text-slate-800 flex items-center gap-2.5">
+          <span className="p-2 rounded-radius-lg bg-md-secondary/10 text-md-secondary">
+            <UtensilsCrossed size={20} />
+          </span>
+          Quản Lý Thực Đơn
+        </h1>
         <button
           onClick={handleOpenAddModal}
           className="bg-md-secondary text-white font-bold px-4 py-2 rounded-radius-full text-xs shadow-sm hover:scale-105 transition-all flex items-center gap-1.5 cursor-pointer"

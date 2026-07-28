@@ -259,7 +259,12 @@ export default function MerchantSettings() {
         </div>
 
         {/* ─── FORM thông tin ─────────────────────────── */}
-        <Card variant="elevated" className="lg:col-span-3 p-5 space-y-5 animate-slide-up">
+        <div className="lg:col-span-3 space-y-4">
+          {/* Nhãn cân với "Xem trước" bên trái để 2 cột thẳng hàng đầu */}
+          <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+            <FileText size={13} /> Chỉnh sửa thông tin
+          </span>
+          <Card variant="elevated" className="p-5 space-y-5 animate-slide-up">
           <div className="space-y-5">
             <div className="relative h-44 sm:h-52 rounded-radius-lg overflow-hidden border border-slate-100 bg-slate-100 flex items-center justify-center">
               <img 

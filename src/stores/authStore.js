@@ -39,28 +39,49 @@ export const useAuthStore = create(
   persist(
     (set, get) => ({
       user: null,
-      token: null,
-      refreshToken: null,
+      token: null,       // access token — CHỈ giữ trong bộ nhớ, không persist
       role: null,
       isLoggedIn: false,
       hasHydrated: false, // Cờ kiểm tra xem Zustand đã rehydrate dữ liệu xong chưa
+      authReady: false,   // Cờ đã thử khôi phục access token (silent refresh) khi mở app xong chưa
 
       setHasHydrated: (state) => set({ hasHydrated: state }),
+      setAuthReady: (state) => set({ authReady: state }),
 
-      setAuth: ({ token, refreshToken, user }) => set({
+      // Refresh token KHÔNG còn nhận ở FE — nó nằm trong cookie HttpOnly do BE set.
+      setAuth: ({ token, user }) => set({
         token,
-        refreshToken,
         user: mapUserFromApi(user),
         role: user ? user.role : null,
         isLoggedIn: !!token,
       }),
 
+      // Khôi phục phiên khi mở lại app/F5: access token trong bộ nhớ đã mất, gọi refresh
+      // (cookie HttpOnly tự đính kèm) để lấy access token mới. Thất bại -> coi như hết phiên.
+      hydrateSession: async () => {
+        // Chỉ thử khi localStorage còn đánh dấu đã đăng nhập (tránh gọi refresh vô ích cho khách vãng lai).
+        if (!get().isLoggedIn) {
+          set({ authReady: true });
+          return false;
+        }
+        try {
+          const res = await apiClient.post('/auth/refresh');
+          const newToken = res.data.data.token;
+          set({ token: newToken, isLoggedIn: true, authReady: true });
+          return true;
+        } catch {
+          // Refresh token hết hạn/không hợp lệ -> đăng xuất mềm (không gọi lại BE logout để tránh lặp).
+          set({ user: null, token: null, role: null, isLoggedIn: false, authReady: true });
+          return false;
+        }
+      },
+
       login: async (phone, password) => {
         try {
           const response = await apiClient.post('/auth/login', { phone, password });
-          const { token, refreshToken, user } = response.data.data;
-          
-          get().setAuth({ token, refreshToken, user });
+          const { token, user } = response.data.data;
+
+          get().setAuth({ token, user });
           return { success: true };
         } catch (error) {
           console.error('[Auth Store]: Login error', error.response?.data || error);
@@ -92,12 +113,12 @@ export const useAuthStore = create(
             role,
             ...additionalData
           });
-          const { token, refreshToken, user } = response.data.data;
-          
+          const { token, user } = response.data.data;
+
           if (token) {
-            get().setAuth({ token, refreshToken, user });
+            get().setAuth({ token, user });
           }
-          
+
           return { success: true, pendingApproval: user ? (user.registerStatus === 'PENDING' || !user.status) : false };
         } catch (error) {
           console.error('[Auth Store]: Register error', error.response?.data || error);

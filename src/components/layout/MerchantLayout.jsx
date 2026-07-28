@@ -144,23 +144,24 @@ export default function MerchantLayout() {
           {sidebarCollapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
         </button>
 
-        {/* Brand / Logo */}
-        <div className="p-5 flex items-center gap-3 border-b border-md-outline-variant">
-          <div className="w-10 h-10 bg-md-secondary rounded-radius-md flex items-center justify-center text-white shadow-shadow-2">
+        {/* Brand / Logo — banner gradient xanh tạo nhận diện riêng cho khu Merchant */}
+        <div className="p-5 flex items-center gap-3 bg-gradient-to-br from-md-secondary to-blue-700 text-white relative overflow-hidden">
+          <div className="absolute -top-8 -right-8 w-24 h-24 bg-white/10 rounded-full blur-2xl pointer-events-none"></div>
+          <div className="w-10 h-10 bg-white/15 backdrop-blur-sm rounded-radius-md flex items-center justify-center text-white shadow-shadow-2 border border-white/20 shrink-0">
             <Store size={20} />
           </div>
           {!sidebarCollapsed && (
-            <div className="flex flex-col">
-              <span className="font-bold text-md-secondary text-base leading-none">Merchant Hub</span>
+            <div className="flex flex-col min-w-0 relative z-10">
+              <span className="font-extrabold text-white text-base leading-none">Merchant Hub</span>
               {/* Tên quán thật thay cho chuỗi hardcode "Cơm Tấm Ngon" */}
-              <span className="text-[10px] text-md-outline font-semibold tracking-wider uppercase mt-1 truncate max-w-[140px]">{restaurant ? restaurant.restaurantName : 'Quán của bạn'}</span>
+              <span className="text-[10px] text-white/70 font-semibold tracking-wider uppercase mt-1 truncate max-w-[140px]">{restaurant ? restaurant.restaurantName : 'Quán của bạn'}</span>
             </div>
           )}
         </div>
 
         {/* Store Profile Quick Card */}
         {!sidebarCollapsed && user && (
-          <div className="p-4 mx-3 my-4 bg-md-secondary-container/20 rounded-radius-lg border border-md-secondary/10 flex items-center gap-3">
+          <div className="p-4 mx-3 my-4 bg-md-secondary-container/20 rounded-radius-lg border border-md-secondary/10 flex items-center gap-3 animate-rise-in">
             <div 
               onClick={handleLogoClick}
               className="relative cursor-pointer group shrink-0"
@@ -196,11 +197,14 @@ export default function MerchantLayout() {
 
 
         {/* Menu Items */}
-        <div className="flex-1 px-3 py-4 space-y-1 overflow-y-auto no-scrollbar">
+        <div className="flex-1 px-3 py-4 overflow-y-auto no-scrollbar">
+          {!sidebarCollapsed && (
+            <span className="block px-4 mb-2 text-[9px] font-extrabold text-slate-400 uppercase tracking-widest">Điều hành quán</span>
+          )}
           <NavMenuList
             items={menuItems}
             collapsed={sidebarCollapsed}
-            itemClass="flex items-center gap-4 w-full px-4 py-3 rounded-radius-xl transition-all duration-200 group relative cursor-pointer"
+            itemClass="flex items-center gap-4 w-full px-4 py-3 rounded-radius-xl transition-all duration-200 group relative cursor-pointer hover:translate-x-0.5"
             activeClass="bg-md-secondary-container text-md-secondary font-bold shadow-shadow-1"
             inactiveClass="text-md-on-surface-variant hover:bg-slate-100 hover:text-md-on-surface"
             iconSize={20}

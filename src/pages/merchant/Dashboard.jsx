@@ -98,17 +98,16 @@ export default function MerchantDashboard() {
   const orders7d = Number(ins.orders7d || 0);
   const ordersPrev7d = Number(ins.ordersPrev7d || 0);
 
-  // Trả về nhãn xu hướng: {pct, dir} — prev=0 thì không quy ra % (tránh +100% ảo)
+  // Xu hướng 7 ngày so với 7 ngày trước — chỉ quy ra % khi kỳ trước có dữ liệu (tránh +100% ảo)
   const trend = (cur, prev) => {
     if (prev > 0) {
       const pct = Math.round(((cur - prev) / prev) * 100);
-      return { text: `${pct >= 0 ? '+' : ''}${pct}% vs tuần trước`, dir: pct >= 0 ? 'up' : 'down' };
+      return { has: true, pct, dir: pct >= 0 ? 'up' : 'down' };
     }
-    if (cur > 0) return { text: 'Mới có đơn tuần này', dir: 'up' };
-    return { text: 'Chưa có dữ liệu tuần trước', dir: 'flat' };
+    return { has: false, pct: 0, dir: 'flat' };
   };
-  const revenueTrend = trend(revenue7d, revenuePrev7d);
-  const ordersTrend = trend(orders7d, ordersPrev7d);
+  const revT = trend(revenue7d, revenuePrev7d);
+  const ordT = trend(orders7d, ordersPrev7d);
 
   // Giờ cao điểm
   const peakData = useMemo(
@@ -182,12 +181,16 @@ export default function MerchantDashboard() {
     );
   }
 
-  // KPI row (xu hướng 7 ngày + chỉ số toàn cục)
+  // KPI: số lớn = TỔNG THỂ (luôn có nghĩa), dòng phụ = xu hướng 7 ngày (kèm % khi có kỳ trước)
   const kpis = [
-    { title: 'Doanh thu món (7 ngày)', value: formatCurrency(revenue7d), trend: revenueTrend, icon: DollarSign, color: 'bg-emerald-100 text-emerald-600' },
-    { title: 'Đơn hoàn tất (7 ngày)', value: `${orders7d} đơn`, trend: ordersTrend, icon: PackageOpen, color: 'bg-md-secondary/10 text-md-secondary' },
-    { title: 'Giá trị đơn TB (AOV)', value: formatCurrency(Number(s.avgOrderValue || 0)), sub: 'Trung bình mỗi đơn hoàn tất', icon: BarChart3, color: 'bg-indigo-100 text-indigo-600' },
-    { title: 'Đánh giá trung bình', value: `${averageRating} ★`, sub: `Từ ${reviewsCount} đánh giá`, icon: Star, color: 'bg-amber-100 text-amber-600' },
+    { title: 'Doanh thu món', value: formatCurrency(Number(s.subtotal || 0)), icon: DollarSign, color: 'bg-emerald-100 text-emerald-600',
+      foot: `7 ngày: ${formatCurrency(revenue7d)}`, pct: revT.has ? revT.pct : null, dir: revT.dir },
+    { title: 'Đơn hoàn tất', value: `${s.completedOrders ?? 0} đơn`, icon: PackageOpen, color: 'bg-md-secondary/10 text-md-secondary',
+      foot: `7 ngày: ${orders7d} đơn`, pct: ordT.has ? ordT.pct : null, dir: ordT.dir },
+    { title: 'Giá trị đơn TB (AOV)', value: formatCurrency(Number(s.avgOrderValue || 0)), icon: BarChart3, color: 'bg-indigo-100 text-indigo-600',
+      foot: 'Trung bình mỗi đơn hoàn tất', pct: null },
+    { title: 'Đánh giá trung bình', value: `${averageRating} ★`, icon: Star, color: 'bg-amber-100 text-amber-600',
+      foot: `Từ ${reviewsCount} đánh giá`, pct: null },
   ];
 
   return (
@@ -246,9 +249,6 @@ export default function MerchantDashboard() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {kpis.map((item, idx) => {
           const Icon = item.icon;
-          const up = item.trend?.dir === 'up';
-          const down = item.trend?.dir === 'down';
-          const TrendIcon = down ? TrendingDown : TrendingUp;
           return (
             <div key={idx} className="bg-white rounded-radius-xl p-4 border border-slate-200/60 shadow-sm flex items-center gap-3">
               <div className={`p-2.5 rounded-radius-md shrink-0 ${item.color}`}>
@@ -257,13 +257,15 @@ export default function MerchantDashboard() {
               <div className="min-w-0 flex-1">
                 <span className="text-[10px] text-slate-400 font-bold block truncate uppercase tracking-wider">{item.title}</span>
                 <span className="text-sm sm:text-base font-bold text-slate-800 block mt-0.5">{item.value}</span>
-                {item.trend ? (
-                  <span className={`text-[10px] font-bold mt-0.5 inline-flex items-center gap-1 ${up ? 'text-emerald-600' : down ? 'text-rose-500' : 'text-slate-400'}`}>
-                    {item.trend.dir !== 'flat' && <TrendIcon size={11} />} {item.trend.text}
-                  </span>
-                ) : (
-                  <span className="text-[9px] text-slate-500 font-medium block mt-0.5">{item.sub}</span>
-                )}
+                <span className="text-[10px] font-medium mt-0.5 flex items-center gap-1">
+                  {item.pct != null && (
+                    <span className={`inline-flex items-center gap-0.5 font-bold ${item.dir === 'up' ? 'text-emerald-600' : 'text-rose-500'}`}>
+                      {item.dir === 'up' ? <TrendingUp size={11} /> : <TrendingDown size={11} />}
+                      {item.pct >= 0 ? '+' : ''}{item.pct}%
+                    </span>
+                  )}
+                  <span className="text-slate-500 truncate">{item.foot}</span>
+                </span>
               </div>
             </div>
           );
@@ -276,7 +278,7 @@ export default function MerchantDashboard() {
         <div className="bg-white rounded-radius-xl p-5 border border-slate-200/60 shadow-sm lg:col-span-2">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
-              <TrendingUp className="text-md-secondary" size={18} /> Doanh thu tuần này
+              <TrendingUp className="text-md-secondary" size={18} /> Doanh thu theo ngày trong tuần
             </h3>
             <button onClick={() => navigate('/merchant/stats')} className="text-[11px] font-bold text-md-secondary hover:underline inline-flex items-center gap-1">
               Xem chi tiết ở Thống kê <ArrowRight size={12} />

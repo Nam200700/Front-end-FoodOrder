@@ -24,8 +24,8 @@ export default function MobileDrawer({ isOpen, onClose, children, drawerClass = 
         className="absolute inset-0 bg-black/50 backdrop-blur-sm transition-opacity duration-300 animate-fade-in"
         onClick={onClose}
       />
-      {/* Drawer panel */}
-      <div className={`relative flex flex-col h-full overflow-y-auto shadow-2xl transition-all duration-300 ${drawerClass}`}>
+      {/* Drawer panel — trượt vào từ phải cho mượt (mobile) thay vì hiện đột ngột */}
+      <div className={`relative flex flex-col h-full overflow-y-auto shadow-2xl animate-slide-in-right ${drawerClass}`}>
         {children}
       </div>
     </div>

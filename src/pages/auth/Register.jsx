@@ -447,13 +447,17 @@ export default function Register() {
                       </span>
                     </div>
 
-                    {/* Thanh nối: track xám + lớp fill chạy 0→100% mượt khi bước hoàn thành */}
+                    {/* Thanh nối: track xám + fill chạy 0→100%; khi hoàn thành có VỆT SÁNG CHẢY như dòng nước */}
                     {i < STEPS.length - 1 && (
-                      <div className="flex-1 h-1 mx-2 -mt-5 rounded-full bg-slate-200 overflow-hidden">
+                      <div className="flex-1 h-1.5 mx-2 -mt-5 rounded-full bg-slate-200 overflow-hidden">
                         <div
-                          className="h-full rounded-full transition-all duration-500 ease-out"
+                          className="relative h-full rounded-full overflow-hidden transition-all duration-500 ease-out"
                           style={{ width: step > s.id ? '100%' : '0%', backgroundColor: accent }}
-                        ></div>
+                        >
+                          {step > s.id && (
+                            <span className="absolute inset-y-0 left-0 w-1/2 bg-gradient-to-r from-transparent via-white/60 to-transparent animate-flow" />
+                          )}
+                        </div>
                       </div>
                     )}
                   </React.Fragment>

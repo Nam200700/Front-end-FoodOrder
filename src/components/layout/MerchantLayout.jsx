@@ -137,9 +137,10 @@ export default function MerchantLayout() {
           sidebarCollapsed ? 'w-20' : 'w-64'
         }`}
       >
-        <button 
+        <button
           onClick={toggleSidebar}
-          className="absolute -right-3 top-8 bg-white border border-md-outline-variant rounded-full p-1 text-md-outline hover:text-md-secondary shadow-shadow-1 hover:scale-115 transition-transform"
+          title={sidebarCollapsed ? 'Mở rộng thanh điều hướng' : 'Thu gọn thanh điều hướng'}
+          className="absolute -right-3 top-1/2 -translate-y-1/2 z-40 bg-white border border-md-outline-variant rounded-full p-1.5 text-md-outline hover:text-md-secondary hover:border-md-secondary/40 shadow-shadow-2 hover:scale-110 transition-all"
         >
           {sidebarCollapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
         </button>

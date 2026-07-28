@@ -468,44 +468,30 @@ export default function MerchantMenu() {
         })}
       </div>
 
-      {/* Category List Row */}
-      <div className="mb-6 bg-white p-4 rounded-radius-xl border border-slate-200/60 shadow-sm">
-        <div className="flex items-center justify-between mb-3 border-b border-slate-100 pb-2">
-          <div className="flex items-center gap-2">
-            <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">
-              Danh mục thực phẩm
-            </h3>
-            {activeCategory && (
-              <div className="flex items-center gap-1.5 ml-2">
-                <button
-                  type="button"
-                  onClick={handleEditCategoryClick}
-                  className="text-[10px] text-blue-600 hover:underline font-bold cursor-pointer"
-                  title="Sửa tên danh mục đang chọn"
-                >
-                  Sửa tên
-                </button>
-                <span className="text-[10px] text-slate-300">|</span>
-                <button
-                  type="button"
-                  onClick={handleDeleteCategoryClick}
-                  className="text-[10px] text-red-600 hover:underline font-bold cursor-pointer"
-                  title="Xóa danh mục đang chọn"
-                >
-                  Xóa
-                </button>
-              </div>
-            )}
+      {/* ─── DANH MỤC THỰC PHẨM ─── */}
+      <div className="mb-6 bg-white p-4 sm:p-5 rounded-radius-xl border border-slate-200/60 shadow-sm">
+        {/* Header: tiêu đề có icon + nút Thêm danh mục rõ ràng */}
+        <div className="flex items-center justify-between gap-3 mb-4">
+          <div className="flex items-center gap-2 min-w-0">
+            <span className="p-1.5 rounded-radius-md bg-md-secondary/10 text-md-secondary shrink-0">
+              <Tags size={16} />
+            </span>
+            <h3 className="text-sm font-extrabold text-slate-700">Danh mục thực phẩm</h3>
+            <span className="text-[10px] font-bold text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full shrink-0">
+              {categories.length}
+            </span>
           </div>
           <button
             type="button"
             onClick={handleAddCategoryClick}
-            className="text-xs text-md-secondary font-bold hover:underline cursor-pointer"
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-radius-lg bg-md-secondary/10 text-md-secondary font-bold text-xs border border-md-secondary/20 hover:bg-md-secondary hover:text-white transition-all cursor-pointer shrink-0"
+            title="Tạo danh mục mới"
           >
-            + Thêm danh mục
+            <FolderPlus size={15} /> <span className="hidden sm:inline">Thêm danh mục</span>
           </button>
         </div>
 
+        {/* Chips danh mục (mỗi chip có icon nhận diện) */}
         <div className="flex gap-2.5 overflow-x-auto no-scrollbar py-1">
           {categories.map((cat) => {
             const isActive = Number(activeCategory) === Number(cat.id);
@@ -513,12 +499,13 @@ export default function MerchantMenu() {
               <button
                 key={cat.id}
                 onClick={() => setActiveCategory(cat.id)}
-                className={`flex items-center gap-1.5 px-4 py-2 rounded-radius-lg text-xs font-bold transition-all border ${
+                className={`flex items-center gap-1.5 px-4 py-2 rounded-radius-lg text-xs font-bold transition-all border shrink-0 ${
                   isActive
                     ? 'bg-md-secondary text-white border-md-secondary shadow-sm'
                     : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
                 }`}
               >
+                <Tag size={12} className={isActive ? 'text-white/80' : 'text-slate-400'} />
                 <span>{cat.name}</span>
                 <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${
                   isActive ? 'bg-white/20 text-white' : 'bg-slate-200/70 text-slate-500'
@@ -539,6 +526,7 @@ export default function MerchantMenu() {
                   : 'bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100'
               }`}
             >
+              <AlertTriangle size={12} className={activeCategory === 'UNCATEGORIZED' ? 'text-white/80' : 'text-amber-500'} />
               <span>Chưa phân loại</span>
               <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${
                 activeCategory === 'UNCATEGORIZED' ? 'bg-white/20 text-white' : 'bg-amber-200/70 text-amber-800'
@@ -548,6 +536,34 @@ export default function MerchantMenu() {
             </button>
           )}
         </div>
+
+        {/* Thanh thao tác cho danh mục đang chọn — nút rõ ràng, dễ bấm (thay link chữ tí xíu) */}
+        {activeCategory && activeCategory !== 'UNCATEGORIZED' && activeCatName && (
+          <div className="flex items-center justify-between gap-3 mt-4 pt-3 border-t border-slate-100">
+            <span className="text-[11px] text-slate-500 font-semibold inline-flex items-center gap-1.5 min-w-0">
+              <span className="w-2 h-2 rounded-full bg-md-secondary shrink-0"></span>
+              Đang quản lý: <b className="text-slate-700 truncate">{activeCatName}</b>
+            </span>
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={handleEditCategoryClick}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-radius-lg text-xs font-bold text-blue-600 bg-blue-50 border border-blue-100 hover:bg-blue-100 transition-colors cursor-pointer"
+                title="Sửa tên danh mục đang chọn"
+              >
+                <Pencil size={13} /> Sửa tên
+              </button>
+              <button
+                type="button"
+                onClick={handleDeleteCategoryClick}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-radius-lg text-xs font-bold text-red-600 bg-red-50 border border-red-100 hover:bg-red-100 transition-colors cursor-pointer"
+                title="Xóa danh mục đang chọn"
+              >
+                <Trash2 size={13} /> Xóa
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Bộ lọc trạng thái món ăn */}
@@ -579,10 +595,11 @@ export default function MerchantMenu() {
       ) : (
         // Lưới 2 cột trên màn rộng (xl) để tận dụng không gian, 1 cột ở màn hẹp.
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-          {displayedItems.map((item) => (
+          {displayedItems.map((item, idx) => (
               <div
                 key={item.id}
-                className={`bg-white rounded-radius-xl p-3 border border-slate-200/60 shadow-sm flex gap-4 transition-all hover:shadow-md ${
+                style={{ animationDelay: `${idx * 45}ms` }}
+                className={`bg-white rounded-radius-xl p-3 border border-slate-200/60 shadow-sm flex gap-4 transition-all hover:shadow-md hover:-translate-y-0.5 animate-rise-in ${
                   !item.active ? 'opacity-65 bg-slate-50/50' : ''
                 }`}
               >

@@ -605,69 +605,72 @@ export default function MerchantMenu() {
               <div
                 key={item.id}
                 style={{ animationDelay: `${idx * 45}ms` }}
-                className={`bg-white rounded-radius-xl p-3 border border-slate-200/60 shadow-sm flex gap-4 transition-all hover:shadow-md hover:-translate-y-0.5 animate-rise-in ${
-                  !item.active ? 'opacity-65 bg-slate-50/50' : ''
+                className={`bg-white rounded-radius-xl p-3.5 border border-slate-200/60 shadow-sm flex gap-3.5 transition-all hover:shadow-md hover:-translate-y-0.5 animate-rise-in ${
+                  !item.active ? 'opacity-70 bg-slate-50/50' : ''
                 }`}
               >
-                {/* Đã gỡ tay cầm kéo-thả: chưa có backend sắp xếp lại nên affordance này không hoạt động,
-                    tránh gây hiểu nhầm cho người dùng (có thể bổ sung DnD thật khi có endpoint reorder). */}
-
-                <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-radius-lg overflow-hidden shrink-0 border border-slate-100">
-                  <img src={getFoodImageUrl(item.image)} alt={item.name} className="w-full h-full object-cover" />
+                {/* Ảnh món (to hơn) + nhãn trạng thái đè lên ảnh */}
+                <div className="relative w-20 h-20 sm:w-24 sm:h-24 rounded-radius-lg overflow-hidden shrink-0 border border-slate-100">
+                  <img
+                    src={getFoodImageUrl(item.image)}
+                    alt={item.name}
+                    onError={(e) => { e.currentTarget.src = DEFAULT_FOOD_IMAGE; }}
+                    className="w-full h-full object-cover"
+                  />
+                  {!item.active && (
+                    <span className="absolute top-1 left-1 bg-rose-500 text-white text-[8px] font-extrabold px-1.5 py-0.5 rounded-full shadow-sm">
+                      Tạm hết
+                    </span>
+                  )}
                 </div>
 
-                <div className="flex-1 min-w-0 flex flex-col justify-between py-1">
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <h3 className="font-bold text-xs sm:text-sm text-slate-800 truncate">
-                        {item.name}
-                      </h3>
-                      {!item.active && (
-                        <span className="bg-red-50 text-red-600 text-[9px] font-extrabold px-2 py-0.5 rounded-radius-full shrink-0 border border-red-150">
-                          Tạm hết
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-[10px] text-slate-400 leading-tight truncate mt-1">
-                      {item.desc}
-                    </p>
+                {/* Thông tin món — dồn giá + lượt bán xuống đáy để lấp khoảng trống */}
+                <div className="flex-1 min-w-0 flex flex-col">
+                  <h3 className="font-bold text-sm text-slate-800 truncate">{item.name}</h3>
+                  <p className="text-[11px] text-slate-400 leading-snug line-clamp-2 mt-0.5">
+                    {item.desc || 'Chưa có mô tả cho món này'}
+                  </p>
+                  <div className="mt-auto flex items-center gap-2 pt-2 flex-wrap">
+                    <span className="inline-flex items-center gap-1 text-[10px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full">
+                      <Flame size={11} className="text-amber-500" /> Đã bán {item.sold}
+                    </span>
+                    <span className="font-extrabold text-sm sm:text-base text-md-secondary">
+                      {formatCurrency(item.price)}
+                    </span>
                   </div>
-                  <span className="font-bold text-xs sm:text-sm text-md-secondary mt-1">
-                    {formatCurrency(item.price)}
-                  </span>
                 </div>
 
-                <div className="flex flex-col sm:flex-row items-center justify-center gap-3 shrink-0 px-2">
-                  <div className="flex items-center gap-1">
-                    <span className="text-[9px] font-bold text-slate-400">
+                {/* Thao tác — cột gọn bên phải, toggle trên / sửa-xóa dưới */}
+                <div className="flex flex-col items-end justify-between shrink-0 pl-3 border-l border-slate-100">
+                  <button
+                    onClick={() => toggleItemActive(item)}
+                    className="inline-flex items-center gap-1 focus:outline-none active:scale-95 transition-transform cursor-pointer"
+                    title={item.active ? 'Đang mở bán — bấm để chuyển tạm hết' : 'Đang hết — bấm để mở bán lại'}
+                  >
+                    <span className={`text-[9px] font-bold hidden sm:inline ${item.active ? 'text-md-secondary' : 'text-slate-400'}`}>
                       {item.active ? 'Mở bán' : 'Hết hàng'}
                     </span>
-                    <button 
-                      onClick={() => toggleItemActive(item)}
-                      className="focus:outline-none transition-transform active:scale-95 cursor-pointer"
-                    >
-                      {item.active ? (
-                        <ToggleRight size={24} className="text-md-secondary" />
-                      ) : (
-                        <ToggleLeft size={24} className="text-slate-300" />
-                      )}
-                    </button>
-                  </div>
+                    {item.active ? (
+                      <ToggleRight size={26} className="text-md-secondary" />
+                    ) : (
+                      <ToggleLeft size={26} className="text-slate-300" />
+                    )}
+                  </button>
 
-                  <div className="flex gap-2 border-t sm:border-t-0 sm:border-l border-slate-100 pt-2 sm:pt-0 sm:pl-3">
-                    <button 
+                  <div className="flex gap-1.5">
+                    <button
                       onClick={() => handleOpenEditModal(item)}
-                      className="p-1.5 rounded-full hover:bg-blue-50 text-slate-500 hover:text-blue-600 transition-colors cursor-pointer"
+                      className="p-1.5 rounded-radius-md hover:bg-blue-50 text-slate-500 hover:text-blue-600 transition-colors cursor-pointer"
                       title="Sửa món"
                     >
-                      <Edit size={16} />
+                      <Pencil size={15} />
                     </button>
-                    <button 
+                    <button
                       onClick={() => handleDeleteClick(item.id, item.name)}
-                      className="p-1.5 rounded-full hover:bg-red-50 text-slate-500 hover:text-red-600 transition-colors cursor-pointer"
+                      className="p-1.5 rounded-radius-md hover:bg-red-50 text-slate-500 hover:text-red-600 transition-colors cursor-pointer"
                       title="Xóa món"
                     >
-                      <Trash2 size={16} />
+                      <Trash2 size={15} />
                     </button>
                   </div>
                 </div>

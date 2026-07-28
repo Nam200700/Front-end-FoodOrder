@@ -216,57 +216,14 @@ export const useAuthStore = create(
     }),
     {
       name: 'auth-storage',
-      // BUG-SEC-02: Cấu hình Hybrid Storage chia tách localStorage & sessionStorage
-      storage: {
-        getItem: (name) => {
-          try {
-            const localStr = localStorage.getItem(name);
-            const sessionStr = sessionStorage.getItem(name);
-            const localData = localStr ? JSON.parse(localStr) : null;
-            const sessionData = sessionStr ? JSON.parse(sessionStr) : null;
-            return {
-              state: {
-                ...(localData ? localData.state : {}),
-                ...(sessionData ? sessionData.state : {}),
-              },
-              version: localData?.version || sessionData?.version || 0,
-            };
-          } catch (e) {
-            console.error('[Auth Store]: Storage rehydrate error', e);
-            return null;
-          }
-        },
-        setItem: (name, value) => {
-          try {
-            const { user, role, isLoggedIn } = value.state;
-            const { token, refreshToken } = value.state;
-            
-            // Persist display info and role to localStorage
-            localStorage.setItem(
-              name,
-              JSON.stringify({
-                state: { user, role, isLoggedIn },
-                version: value.version,
-              })
-            );
-            
-            // Persist security tokens to sessionStorage (survives F5, cleared when closing tab)
-            sessionStorage.setItem(
-              name,
-              JSON.stringify({
-                state: { token, refreshToken },
-                version: value.version,
-              })
-            );
-          } catch (e) {
-            console.error('[Auth Store]: Storage save error', e);
-          }
-        },
-        removeItem: (name) => {
-          localStorage.removeItem(name);
-          sessionStorage.removeItem(name);
-        },
-      },
+      // BUG-SEC-02 (nâng cấp): CHỈ persist thông tin hiển thị (không bí mật) vào localStorage.
+      // Access token nằm trong bộ nhớ (mất khi F5 -> silent refresh lấy lại); refresh token
+      // nằm trong cookie HttpOnly do BE quản. Không còn bất kỳ token nào trong web storage.
+      partialize: (state) => ({
+        user: state.user,
+        role: state.role,
+        isLoggedIn: state.isLoggedIn,
+      }),
       // Cập nhật cờ hydration sau khi Zustand khôi phục dữ liệu từ storage thành công
       onRehydrateStorage: () => {
         return (state, error) => {

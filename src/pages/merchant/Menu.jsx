@@ -630,8 +630,12 @@ export default function MerchantMenu() {
                     {item.desc || 'Chưa có mô tả cho món này'}
                   </p>
                   <div className="mt-auto flex items-center gap-2 pt-2 flex-wrap">
-                    <span className="inline-flex items-center gap-1 text-[10px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full">
-                      <Flame size={11} className="text-amber-500" /> Đã bán {item.sold}
+                    {/* Pill trạng thái (trang trí + chỉ báo, không phải chỉ số nghiệp vụ) */}
+                    <span className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                      item.active ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-500'
+                    }`}>
+                      <span className={`w-1.5 h-1.5 rounded-full ${item.active ? 'bg-emerald-500' : 'bg-rose-500'}`}></span>
+                      {item.active ? 'Đang bán' : 'Tạm hết'}
                     </span>
                     <span className="font-extrabold text-sm sm:text-base text-md-secondary">
                       {formatCurrency(item.price)}

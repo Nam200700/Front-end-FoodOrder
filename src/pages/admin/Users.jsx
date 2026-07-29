@@ -205,7 +205,17 @@ export default function AdminUsers() {
           activeClassName="bg-purple-600 text-white shadow-sm font-bold"
         />
 
-
+        <FilterTabs
+          tabs={[
+            { id: 'all', label: 'Tất cả trạng thái' },
+            { id: 'ACTIVE', label: 'Đang hoạt động' },
+            { id: 'BLOCKED', label: 'Đã khóa' },
+          ]}
+          activeTab={statusFilter}
+          onTabChange={handleStatusChange}
+          className="bg-transparent p-0 w-max"
+          activeClassName="bg-purple-600 text-white shadow-sm font-bold"
+        />
       </div>
 
       {/* BẢNG DỮ LIỆU */}

@@ -106,6 +106,7 @@ export default function AdminUsers() {
     }
   };
 
+  //mở khóa tài khoản
   const handleUnlockConfirm = async () => {
     const { userId, name } = unlockModal.data || {};
     if (!userId) return;
@@ -124,6 +125,7 @@ export default function AdminUsers() {
     }
   };
 
+  //khóa tài khoản
   const handleLockConfirm = async () => {
     const { userId, name } = lockModal.data || {};
     if (!userId) return;

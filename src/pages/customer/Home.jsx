@@ -2,13 +2,17 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCartStore } from '../../stores/cartStore';
 import { useAuthStore } from '../../stores/authStore';
-import { Search, MapPin, ShoppingBag, Star, Clock, Heart, Award, ArrowRight, RotateCcw, Sparkles, ChevronDown } from 'lucide-react';
+import { 
+  Search, MapPin, ShoppingBag, Star, Clock, Heart, Award, 
+  ArrowRight, RotateCcw, Sparkles, ChevronDown, Filter, 
+  Flame, ThumbsUp, SlidersHorizontal, Check, RefreshCw, X, Utensils,
+  TrendingUp, ShieldCheck, Zap, Percent, Compass, ChevronRight, Tag
+} from 'lucide-react';
 import { formatCurrency, removeVietnameseTones, normalizeForMatch } from '../../utils/format';
-import Input from '../../components/common/Input';
 import Card from '../../components/common/Card';
 import apiClient from '../../services/api';
 import { calculateHaversineDistance } from '../../utils/haversine';
-import MapModal from '../../components/common/MapModal';
+import MapModal2 from '../../components/common/Map';
 import { SkeletonRestaurantCard } from '../../components/common/SkeletonCard';
 import { mapRestaurant } from '../../utils/mappers';
 import FilterTabs from '../../components/common/FilterTabs';
@@ -16,12 +20,13 @@ import { getCategoryIcon } from '../../utils/iconMap';
 import HeroCarousel from '../../components/customer/HeroCarousel';
 
 const CATEGORIES = [
-  { id: 'all', name: 'Tất cả', icon: '🍽️' },
-  { id: 'com', name: 'Cơm Tấm', icon: '🍜' },
-  { id: 'pizza', name: 'Pizza', icon: '🍕' },
-  { id: 'sushi', name: 'Sushi', icon: '🍣' },
-  { id: 'salad', name: 'Salad', icon: '🥗' },
-  { id: 'drink', name: 'Trà Sữa', icon: '🧋' },
+  { id: 'all', name: 'Tất cả' },
+  { id: 'com', name: 'Cơm Tấm' },
+  { id: 'drink', name: 'Trà Sữa & Cafe' },
+  { id: 'ga', name: 'Gà Rán' },
+  { id: 'bun', name: 'Bún & Phở' },
+  { id: 'pizza', name: 'Pizza' },
+  { id: 'anvat', name: 'Ăn Vặt' },
 ];
 
 export default function Home() {
@@ -36,13 +41,22 @@ export default function Home() {
   const [page, setPage] = useState(0);
   const [hasMore, setHasMore] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
-  const [searchFocused, setSearchFocused] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState('all');
   const [favorites, setFavorites] = useState([]);
   const [pastOrders, setPastOrders] = useState([]);
-  const [sortByFilter, setSortByFilter] = useState('distance'); // distance, rating, ship
+  const [sortByFilter, setSortByFilter] = useState('distance'); 
   const [isMapOpen, setIsMapOpen] = useState(false);
+
+  // States quản lý số lượng hiển thị thêm ở các phần Quán Nổi Bật và Dành Riêng Cho Bạn
+  const [visibleFeaturedCount, setVisibleFeaturedCount] = useState(6);
+  const [visibleRecomCount, setVisibleRecomCount] = useState(4);
+
+  // Quick filters
+  const [onlyOpen, setOnlyOpen] = useState(false);
+  const [onlyHighRating, setOnlyHighRating] = useState(false);
+  const [onlyCheapShip, setOnlyCheapShip] = useState(false);
+  const [onlyFavorites, setOnlyFavorites] = useState(false);
 
   useEffect(() => {
     const fetchRestaurants = async () => {
@@ -52,7 +66,7 @@ export default function Home() {
         setHasMore(true);
         const response = await apiClient.get('/restaurants?page=0&size=6');
         const realData = response.data?.data?.content || [];
-        const isLast = response.data?.data?.last || (realData.length < 6);
+        const isLast = (realData.length < 6);
         setHasMore(!isLast);
         if (realData.length > 0) {
           const mapped = realData.map(mapRestaurant).filter(Boolean);
@@ -102,6 +116,7 @@ export default function Home() {
     fetchPastOrders();
   }, [user?.userId]);
 
+  // Tải thêm quán ăn cho "Khám Phá Quán Ăn" KHI NGƯỜI DÙNG BẤM NÚT XEM THÊM (Không tự động khi cuộn)
   const loadMoreRestaurants = async () => {
     if (loadingMore || !hasMore) return;
     try {
@@ -109,7 +124,7 @@ export default function Home() {
       const nextPage = page + 1;
       const response = await apiClient.get(`/restaurants?page=${nextPage}&size=6`);
       const realData = response.data?.data?.content || [];
-      const isLast = response.data?.data?.last || (realData.length < 6);
+      const isLast = (realData.length < 6);
       setHasMore(!isLast);
       if (realData.length > 0) {
         const mapped = realData.map(mapRestaurant).filter(Boolean);
@@ -124,26 +139,6 @@ export default function Home() {
       console.warn('Lỗi khi tải thêm quán ăn:', err);
     } finally {
       setLoadingMore(false);
-    }
-  };
-
-  useEffect(() => {
-    const handleScroll = () => {
-      if (window.innerHeight + document.documentElement.scrollTop >= document.documentElement.offsetHeight - 150) {
-        if (hasMore && !loadingMore && !loading) {
-          loadMoreRestaurants();
-        }
-      }
-    };
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, [page, hasMore, loadingMore, loading]);
-
-  const scrollToExploreAndFilter = (filterType) => {
-    setSortByFilter(filterType);
-    const element = document.getElementById('explore-restaurants-section');
-    if (element) {
-      element.scrollIntoView({ behavior: 'smooth' });
     }
   };
 
@@ -163,6 +158,7 @@ export default function Home() {
     }
   };
 
+  // Tính khoảng cách Haversine từ vị trí User tới từng Quán ăn
   const restaurantsWithDistance = useMemo(() => {
     const customerLat = user?.lat || 10.762622;
     const customerLng = user?.lng || 106.660172;
@@ -183,39 +179,93 @@ export default function Home() {
         distance: `${dist.toFixed(1)}km`,
         distanceNum: dist,
         time: `${Math.max(10, duration - 3)}-${duration + 3} phút`,
-        // Nhãn phí ship TRUNG THỰC theo mức phí thật (không hứa "miễn phí" vì luôn có
-        // phí ≥ 15k): <=15k = rẻ, <=20k = vừa, còn lại = cao.
         shipping: shippingFee <= 15000 ? 'Phí ship rẻ' : shippingFee <= 20000 ? 'Phí ship vừa' : 'Phí ship cao',
         shippingFee: shippingFee,
       };
     });
   }, [restaurants, user?.lat, user?.lng]);
 
+  // Bộ lọc tổng hợp dành cho "Khám Phá Quán Ăn"
   const filteredRestaurants = useMemo(() => {
     return restaurantsWithDistance.filter((res) => {
-      const nameNorm = normalizeForMatch(res.name);
-      const queryNorm = normalizeForMatch(searchQuery);
+      // 1. Tìm kiếm từ khóa (Khớp với tên quán, mô tả, hoặc tags)
+      const nameNorm = removeVietnameseTones(res.name || '');
+      const descNorm = removeVietnameseTones(res.description || '');
+      const queryNorm = removeVietnameseTones(searchQuery || '');
       
-      const matchesSearch = nameNorm.includes(queryNorm) ||
-                            res.tags.some(tag => normalizeForMatch(tag).includes(queryNorm));
-      
-      if (activeCategory === 'all') return matchesSearch;
-      const cat = CATEGORIES.find(c => c.id === activeCategory);
-      if (!cat) return matchesSearch;
-      const catNameNorm = normalizeForMatch(cat.name);
-      
-      return matchesSearch && res.tags.some(tag => {
-        const tagNorm = normalizeForMatch(tag);
-        return tagNorm.includes(catNameNorm) || catNameNorm.includes(tagNorm) ||
-               (cat.id === 'com' && (tagNorm.includes('com') || tagNorm.includes('rice') || tagNorm.includes('suon'))) ||
-               (cat.id === 'drink' && (tagNorm.includes('sua') || tagNorm.includes('milktea') || tagNorm.includes('tra') || tagNorm.includes('cafe')));
-      });
-    });
-  }, [restaurantsWithDistance, searchQuery, activeCategory]);
+      const matchesSearch = !queryNorm || 
+        nameNorm.includes(queryNorm) || 
+        descNorm.includes(queryNorm) ||
+        (res.tags && res.tags.some(tag => removeVietnameseTones(tag).includes(queryNorm)));
 
+      if (!matchesSearch) return false;
+
+      // 2. Lọc danh mục (Khớp với tên danh mục chọn)
+      if (activeCategory !== 'all') {
+        const tagsNorm = (res.tags || []).map(t => removeVietnameseTones(t)).join(' ');
+        const catsNorm = (res.categories || []).map(c => typeof c === 'string' ? removeVietnameseTones(c) : removeVietnameseTones(c.name || '')).join(' ');
+        const fullText = `${nameNorm} ${descNorm} ${tagsNorm} ${catsNorm}`.toLowerCase();
+
+        let categoryMatch = false;
+        if (activeCategory === 'com') {
+          categoryMatch = fullText.includes('com') || fullText.includes('rice') || fullText.includes('suon') || fullText.includes('tam');
+        } else if (activeCategory === 'drink') {
+          categoryMatch = fullText.includes('tra') || fullText.includes('sua') || fullText.includes('cafe') || fullText.includes('coffee') || fullText.includes('tea') || fullText.includes('drink') || fullText.includes('sinh to') || fullText.includes('nuoc');
+        } else if (activeCategory === 'ga') {
+          categoryMatch = fullText.includes('ga') || fullText.includes('chicken') || fullText.includes('ran') || fullText.includes('canh ga');
+        } else if (activeCategory === 'bun') {
+          categoryMatch = fullText.includes('bun') || fullText.includes('pho') || fullText.includes('mi') || fullText.includes('hu tieu') || fullText.includes('noodle') || fullText.includes('ramen');
+        } else if (activeCategory === 'pizza') {
+          categoryMatch = fullText.includes('pizza') || fullText.includes('y') || fullText.includes('pasta');
+        } else if (activeCategory === 'anvat') {
+          categoryMatch = fullText.includes('vat') || fullText.includes('snack') || fullText.includes('banh') || fullText.includes('che');
+        } else {
+          const catObj = CATEGORIES.find(c => c.id === activeCategory);
+          if (catObj) {
+            const catNorm = removeVietnameseTones(catObj.name).toLowerCase();
+            categoryMatch = fullText.includes(catNorm);
+          }
+        }
+
+        if (!categoryMatch) return false;
+      }
+
+      // 3. Lọc chỉ quán đang mở
+      if (onlyOpen && res.status === false) return false;
+
+      // 4. Lọc đánh giá cao (>= 4.5 star)
+      if (onlyHighRating && (res.rating || 0) < 4.5) return false;
+
+      // 5. Lọc phí ship rẻ (<= 15.000đ)
+      if (onlyCheapShip && (res.shippingFee || 0) > 15000) return false;
+
+      // 6. Lọc quán yêu thích
+      if (onlyFavorites && !favorites.includes(res.id)) return false;
+
+      return true;
+    });
+  }, [restaurantsWithDistance, searchQuery, activeCategory, onlyOpen, onlyHighRating, onlyCheapShip, onlyFavorites, favorites]);
+
+  // SẮP XẾP DÀNH CHO SECTION "KHÁM PHÁ QUÁN ĂN"
+  const nearByRestaurants = useMemo(() => {
+    return [...filteredRestaurants].sort((a, b) => {
+      if (sortByFilter === 'rating') {
+        return b.rating - a.rating;
+      }
+      if (sortByFilter === 'ship') {
+        return a.shippingFee - b.shippingFee;
+      }
+      if (sortByFilter === 'orders') {
+        return (b.orderCount || 0) - (a.orderCount || 0);
+      }
+      // Mặc định: Gần nhất (Sắp xếp khoảng cách km từ nhỏ nhất đến lớn nhất)
+      return a.distanceNum - b.distanceNum;
+    });
+  }, [filteredRestaurants, sortByFilter]);
+
+  // QUÁN NỔI BẬT ĐÁNH GIÁ CAO: Lọc dựa trên rating giảm dần + reviewsCount lượt đánh giá
   const featuredRestaurants = useMemo(() => {
-    // Sắp xếp theo rating giảm dần, sau đó theo reviewsCount (lượt đánh giá) giảm dần
-    const sorted = [...filteredRestaurants].sort((a, b) => {
+    const sorted = [...restaurantsWithDistance].sort((a, b) => {
       if (b.rating !== a.rating) {
         return b.rating - a.rating;
       }
@@ -230,34 +280,33 @@ export default function Home() {
         unique.push(res);
       }
     });
-    return unique.slice(0, 8);
-  }, [filteredRestaurants]);
+    return unique;
+  }, [restaurantsWithDistance]);
 
-  // ĐẶT LẠI QUÁN CŨ (ORDER AGAIN)
+  // ĐẶT LẠI QUÁN CỦ: Lọc dựa trên lịch sử đơn hàng đã từng mua từ OrderResponse (/orders)
   const orderAgainRestaurants = useMemo(() => {
     if (pastOrders.length === 0) return [];
+    const orderedResIds = [...new Set(pastOrders.map(ord => {
+      const id = ord.restaurantId || ord.restaurant?.restaurantId;
+      return id ? id.toString() : null;
+    }).filter(Boolean))];
     
-    // Lọc ra các quán đã đặt thành công và loại bỏ trùng lặp
-    const orderedResIds = [...new Set(pastOrders.map(ord => ord.restaurantId?.toString()).filter(Boolean))];
-    
-    return restaurantsWithDistance.filter(res => orderedResIds.includes(res.id)).slice(0, 5);
+    return restaurantsWithDistance.filter(res => orderedResIds.includes(res.id)).slice(0, 8);
   }, [pastOrders, restaurantsWithDistance]);
 
-  // ĐỀ XUẤT THÔNG MINH DỰA TRÊN LỊCH SỬ MÓN ĂN
+  // DÀNH RIÊNG CHO BẠN: Phân tích danh sách món ăn từ OrderResponse để gợi ý quán tương ứng
   const { recommendedRestaurants, favCuisineName } = useMemo(() => {
-    // Thu thập tất cả tên món đã đặt để đếm tần suất từ khoá
     const allOrderedFoods = [];
     pastOrders.forEach(ord => {
-      if (ord.items) {
-        ord.items.forEach(item => {
-          if (item.foodName) {
-            allOrderedFoods.push(item.foodName);
-          }
-        });
-      }
+      const itemsList = ord.items || ord.orderItems || [];
+      itemsList.forEach(item => {
+        const name = item.foodName || item.name;
+        if (name) {
+          allOrderedFoods.push(name);
+        }
+      });
     });
 
-    // Các từ khoá đặc trưng tương ứng với tags ẩm thực phổ biến
     const keywords = [
       { key: 'com', label: 'Cơm Tấm' },
       { key: 'bun', label: 'Bún Riêu/Bún Bò' },
@@ -283,7 +332,6 @@ export default function Home() {
       });
     });
 
-    // Tìm từ khóa ưa thích nhất
     let maxKey = 'com';
     let maxCount = 0;
     Object.keys(counts).forEach(key => {
@@ -297,12 +345,11 @@ export default function Home() {
     const favName = favKw ? favKw.label : 'Cơm Tấm';
     const favNorm = removeVietnameseTones(favName);
 
-    // Lọc các quán có liên quan theo sở thích của user
     let recommended = [];
     if (maxCount > 0) {
       recommended = restaurantsWithDistance.filter(res => {
-        const nameNorm = removeVietnameseTones(res.name);
-        const tagsNorm = res.tags.map(t => removeVietnameseTones(t));
+        const nameNorm = removeVietnameseTones(res.name || '');
+        const tagsNorm = (res.tags || []).map(t => removeVietnameseTones(t));
         
         return nameNorm.includes(maxKey) || tagsNorm.some(t => t.includes(maxKey)) || 
                nameNorm.includes(favNorm) || tagsNorm.some(t => t.includes(favNorm)) ||
@@ -312,7 +359,6 @@ export default function Home() {
       });
     }
 
-    // FALLBACK: Nếu không tìm thấy quán nào theo sở thích hoặc user chưa đặt đơn nào, gợi ý các quán hot nhất (rating cao, reviewsCount nhiều)
     if (recommended.length === 0) {
       recommended = [...restaurantsWithDistance]
         .sort((a, b) => {
@@ -333,23 +379,10 @@ export default function Home() {
     });
 
     return { 
-      recommendedRestaurants: uniqueRecom.slice(0, 8), 
+      recommendedRestaurants: uniqueRecom, 
       favCuisineName: maxCount > 0 ? favName : 'Được đánh giá cao' 
     };
   }, [pastOrders, restaurantsWithDistance]);
-
-  // SẮP XẾP DÀNH CHO LƯỚT QUÁN GẦN BẠN
-  const nearByRestaurants = useMemo(() => {
-    return [...filteredRestaurants].sort((a, b) => {
-      if (sortByFilter === 'rating') {
-        return b.rating - a.rating; // Sắp xếp rating cao lên đầu
-      }
-      if (sortByFilter === 'ship') {
-        return a.shippingFee - b.shippingFee; // Phí ship rẻ nhất lên đầu
-      }
-      return a.distanceNum - b.distanceNum; // Sắp xếp khoảng cách gần lên đầu
-    });
-  }, [filteredRestaurants, sortByFilter]);
 
   const handleConfirmLocation = async (lat, lng, addressName) => {
     try {
@@ -368,80 +401,86 @@ export default function Home() {
     }
   };
 
-  return (
-    <div className="flex-1 p-6 md:p-10 max-w-7xl mx-auto w-full font-google-sans pb-24">
-      {/* Bố cục dashboard: cột feed chính (trái) + panel đơn hàng/địa chỉ (phải, desktop lg+) */}
-      <div className="flex gap-8 items-start">
-        {/* ═══ CỘT CHÍNH: feed khám phá món ═══ */}
-        <div className="flex-1 min-w-0">
+  const isFilterActive = searchQuery !== '' || activeCategory !== 'all' || sortByFilter !== 'distance' || onlyOpen || onlyHighRating || onlyCheapShip || onlyFavorites;
 
-      {/* ─── HEADER (lời chào + chip địa chỉ giao hàng) ─────────────────────────── */}
-      <div className="mb-8">
-        <div className="min-w-0">
-          {/* Lời chào — đã bỏ emoji 🔍 */}
-          <h1 className="text-2xl md:text-3xl font-extrabold text-md-on-surface tracking-tight">
-            Bạn muốn ăn gì hôm nay?
-          </h1>
-          {/* Chip địa chỉ giao hàng: bấm mở MapModal, icon MapPin thay cho emoji 📍 */}
+  const resetFilters = () => {
+    setSearchQuery('');
+    setActiveCategory('all');
+    setSortByFilter('distance');
+    setOnlyOpen(false);
+    setOnlyHighRating(false);
+    setOnlyCheapShip(false);
+    setOnlyFavorites(false);
+  };
+
+  return (
+    <div className="flex-1 p-3 sm:p-5 md:p-8 max-w-7xl mx-auto w-full font-google-sans pb-24 bg-[#FAFAFA]">
+      {/* ═══ TOP HERO BANNER & GREETING ═══ */}
+      <div className="mb-5 bg-gradient-to-r from-orange-500/10 via-amber-500/5 to-rose-500/10 border border-orange-500/15 rounded-2xl p-4 sm:p-6 shadow-sm">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <h1 className="text-lg sm:text-xl md:text-2xl font-black text-slate-800 tracking-tight flex items-center gap-2">
+              <span>Bạn muốn ăn gì hôm nay?</span>
+              <Sparkles className="text-[#FF6B35] animate-pulse" size={22} />
+            </h1>
+            <p className="text-xs md:text-sm text-slate-500 font-medium mt-1">
+              Khám phá hàng trăm quán ăn chất lượng giao hàng tận nơi nhanh chóng
+            </p>
+          </div>
+          
+          {/* Chip chọn địa chỉ giao hàng - Mở MapModal2 */}
           <button
             type="button"
             onClick={() => setIsMapOpen(true)}
-            className="inline-flex items-center gap-2 max-w-full px-4.5 py-2 bg-gradient-to-r from-md-primary/10 to-md-secondary/5 text-md-primary rounded-radius-full text-sm font-extrabold mt-3.5 cursor-pointer border border-md-primary/15 hover:from-md-primary/20 hover:to-md-secondary/15 transition-all shadow-sm"
+            className="inline-flex items-center gap-2 px-3.5 py-2 bg-white text-[#FF6B35] rounded-xl text-xs md:text-sm font-bold border border-orange-200 shadow-sm hover:border-[#FF6B35] hover:shadow transition-all shrink-0 cursor-pointer self-start md:self-auto"
           >
-            <MapPin size={16} className="shrink-0" />
-            <span className={`truncate ${!user?.address ? "text-amber-600 animate-pulse" : ""}`}>
-              {user?.address ? (user.address.length > 40 ? user.address.slice(0, 40) + '...' : user.address) : 'Vui lòng chọn địa chỉ giao hàng'}
+            <MapPin size={16} className="shrink-0 text-[#FF6B35]" />
+            <span className={`truncate max-w-[180px] sm:max-w-[240px] md:max-w-[280px] ${!user?.address ? "text-amber-600 font-bold animate-pulse" : "text-slate-700"}`}>
+              {user?.address ? (user.address.length > 30 ? user.address.slice(0, 30) + '...' : user.address) : 'Chọn địa chỉ giao hàng'}
             </span>
-            <ChevronDown size={14} className="shrink-0" />
+            <ChevronDown size={14} className="shrink-0 text-slate-400" />
           </button>
         </div>
       </div>
 
-      {/* ─── SEARCH BAR (Pill Shape & Expand on focus) ─────────────────────────── */}
-      <div className="mb-8 relative z-20">
-        <Input
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          placeholder="Tìm món ăn, trà sữa, quán cơm tấm..."
-          icon={Search}
-          className="w-full"
-        />
-      </div>
-
-      {/* ─── HERO CAROUSEL: QUÁN NỔI BẬT (điểm nhấn kích thích thèm ăn) ─────────── */}
-      {/* Dùng lại danh sách featuredRestaurants đã tính sẵn (data thật), bấm vào mở quán. */}
-      {featuredRestaurants.length > 0 && (
-        <div className="mb-10">
-          <HeroCarousel
-            items={featuredRestaurants.slice(0, 6)}
-            onSelect={(res) => navigate(`/restaurants/${res.id}`)}
+      {/* ═══ SEARCH BAR & CATEGORY FILTERS ═══ */}
+      <div className="space-y-3.5 mb-8">
+        {/* Thanh tìm kiếm - KHÔNG CÓ THẺ HAY KHUNG BAO QUANH Ở NGOÀI */}
+        <div className="relative">
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={18} />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Tìm theo tên quán, món ăn (ví dụ: Cơm tấm, Trà sữa, Gà rán...)..."
+            className="w-full pl-10 pr-10 py-3 bg-white border border-slate-200 focus:border-[#FF6B35] rounded-xl text-xs sm:text-sm outline-none shadow-sm transition-all text-slate-800 placeholder:text-slate-400 font-medium"
           />
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery('')}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1 cursor-pointer"
+            >
+              <X size={16} />
+            </button>
+          )}
         </div>
-      )}
 
-      {/* ─── CATEGORY CHIPS (Horizontal snap scroll) ───────────────────────────── */}
-      <div className="mb-10 overflow-hidden">
-        <h3 className="text-sm font-extrabold text-md-on-surface-variant uppercase tracking-wider mb-4">
-          Danh mục ẩm thực
-        </h3>
-        <div className="flex gap-4 overflow-x-auto no-scrollbar snap-x py-1.5">
+        {/* Thanh danh mục ẩm thực (Horizontal chips scroll responsive) */}
+        <div className="flex gap-2 overflow-x-auto no-scrollbar py-1 touch-pan-x">
           {CATEGORIES.map((cat) => {
             const isActive = activeCategory === cat.id;
+            const CatIcon = getCategoryIcon(cat.id);
             return (
               <button
                 key={cat.id}
                 onClick={() => setActiveCategory(cat.id)}
-                className={`snap-start shrink-0 flex items-center gap-3 px-6 py-3.5 rounded-radius-full text-base font-bold transition-all duration-200 border ${
+                className={`shrink-0 flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all border cursor-pointer ${
                   isActive
-                    ? 'bg-md-primary text-white border-md-primary shadow-shadow-3 scale-105'
-                    : 'bg-white text-md-on-surface border-md-outline-variant/50 hover:bg-md-surface-variant/40'
+                    ? 'bg-[#FF6B35] text-white border-[#FF6B35] shadow-sm scale-[1.02]'
+                    : 'bg-white text-slate-700 border-slate-200 hover:border-slate-300 hover:bg-slate-50'
                 }`}
               >
-                {(() => {
-                  // Render icon lucide theo id danh mục (thay cho emoji cũ trong CATEGORIES)
-                  const CatIcon = getCategoryIcon(cat.id);
-                  return <CatIcon size={18} className="shrink-0" />;
-                })()}
+                <CatIcon size={15} className={isActive ? 'text-white' : 'text-[#FF6B35]'} />
                 <span>{cat.name}</span>
               </button>
             );
@@ -449,379 +488,519 @@ export default function Home() {
         </div>
       </div>
 
-      {/* ─── CAROUSEL: ORDER AGAIN ────────────────────────────────────────────── */}
-      {orderAgainRestaurants.length > 0 && (
-        <div className="mb-12 overflow-hidden animate-fade-in">
-          <h2 className="text-lg md:text-xl font-extrabold text-md-on-surface mb-4 flex items-center gap-2">
-            <RotateCcw className="text-md-primary" size={20} /> Đặt Lại Quán Cũ
-          </h2>
-          <div className="flex gap-4 overflow-x-auto no-scrollbar py-1.5">
-            {orderAgainRestaurants.map((res) => (
-              <Card
-                key={`again-${res.id}`}
-                variant="elevated"
-                hoverEffect
-                onClick={() => navigate(`/restaurants/${res.id}`)}
-                className="shrink-0 w-60 p-3 flex flex-col gap-2.5 shadow-sm border border-slate-100 bg-white"
-              >
-                <div className="w-full h-28 rounded-radius-md overflow-hidden shrink-0">
-                  <img src={res.image} alt={res.name} className="w-full h-full object-cover" />
+      {/* Bố cục dashboard: Cột chính (trái) + Panel giỏ hàng (phải, desktop lg+) */}
+      <div className="flex gap-6 lg:gap-8 items-start">
+        {/* ═══ CỘT CHÍNH ═══ */}
+        <div className="flex-1 min-w-0 space-y-8 md:space-y-10">
+
+          {/* ════════════════════════════════════════════════════════════════════
+              🔴 SECTION 1: KHÁM PHÁ QUÁN ĂN (VỊ TRÍ ƯU TIÊN TRÊN ĐẦU)
+             ════════════════════════════════════════════════════════════════════ */}
+          <div id="explore-restaurants-section" className="space-y-4">
+            {/* Header section & counter */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2 border-b border-slate-200/60">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 bg-orange-100 rounded-xl text-[#FF6B35]">
+                  <Utensils size={20} />
                 </div>
-                <div className="flex flex-col justify-between flex-1 min-w-0">
-                  <h3 className="font-extrabold text-xs sm:text-sm text-md-on-surface truncate leading-snug">{res.name}</h3>
-                  <div className="flex items-center justify-between text-[10px] text-md-on-surface-variant mt-2 font-bold">
-                    <span className="flex items-center gap-0.5 text-amber-500">
-                      ★ {res.rating}
+                <div>
+                  <h2 className="text-base sm:text-lg md:text-xl font-extrabold text-slate-800 flex items-center gap-2">
+                    Khám Phá Quán Ăn
+                    <span className="text-xs font-bold bg-orange-50 text-[#FF6B35] px-2 py-0.5 rounded-full border border-orange-200">
+                      {nearByRestaurants.length} quán
                     </span>
-                    <span>{res.distance}</span>
-                    <span>{res.time}</span>
-                  </div>
+                  </h2>
+                  <p className="text-xs text-slate-500 font-medium">Danh sách quán ăn sẵn sàng phục vụ bạn</p>
                 </div>
-              </Card>
-            ))}
-          </div>
-        </div>
-      )}
+              </div>
 
-      {/* ─── FEATURED CAROUSEL (Floating cards, 16:9 images) ────────────────────── */}
-      {featuredRestaurants.length > 0 && (
-        <div className="mb-12">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-xl md:text-2xl font-extrabold text-md-on-surface flex items-center gap-2.5">
-              <Award className="text-md-primary" size={24} />
-              Quán Nổi Bật
-            </h2>
-            {/* "Xem thêm" → sang trang Khám phá để xem đầy đủ quán, thay vì chỉ cuộn
-                nội trang (trước đây cảm giác như không phản hồi). */}
-            <button
-              type="button"
-              onClick={() => navigate('/explore')}
-              className="text-sm font-extrabold text-md-primary flex items-center gap-1 cursor-pointer hover:underline"
-            >
-              Xem thêm <ArrowRight size={16} />
-            </button>
-          </div>
+              {/* Tabs sắp xếp chính */}
+              <FilterTabs
+                tabs={[
+                  { id: 'distance', label: 'Gần nhất' },
+                  { id: 'rating', label: 'Đánh giá cao' },
+                  { id: 'orders', label: 'Bán chạy' },
+                  { id: 'ship', label: 'Phí ship rẻ' }
+                ]}
+                activeTab={sortByFilter}
+                onTabChange={setSortByFilter}
+                className="bg-slate-100 p-1 rounded-xl w-max text-xs font-bold shrink-0 self-start sm:self-auto"
+              />
+            </div>
 
-          <div className="flex md:grid gap-6 overflow-x-auto md:overflow-visible no-scrollbar py-2.5 snap-x md:snap-none scroll-smooth md:grid-cols-2 xl:grid-cols-3">
-            {featuredRestaurants.map((res) => (
-              <Card
-                key={res.id}
-                variant="elevated"
-                hoverEffect
-                onClick={() => navigate(`/restaurants/${res.id}`)}
-                className="relative shrink-0 w-80 md:w-full md:shrink snap-start"
-              >
-                {/* Favorite button */}
-                <button
-                  onClick={(e) => toggleFavorite(res.id, e)}
-                  className="absolute right-4 top-4 bg-white/90 backdrop-blur-md p-2.5 rounded-radius-full text-md-on-surface-variant hover:text-red-500 hover:scale-110 active:scale-95 transition-all shadow-shadow-1 z-10"
-                >
-                  <Heart size={18} className={favorites.includes(res.id) ? 'fill-red-500 text-red-500' : ''} />
-                </button>
-
-                <div className="relative aspect-[16/9] w-full overflow-hidden">
-                  <img
-                    src={res.image}
-                    alt={res.name}
-                    className="w-full h-full object-cover hover:scale-105 transition-transform duration-500"
-                  />
-                  <div className="absolute bottom-4 left-4 flex flex-wrap gap-2">
-                    {res.tags.slice(0, 2).map((tag, i) => (
-                      <span key={i} className="text-[11px] bg-black/70 text-white font-extrabold px-2.5 py-1 rounded">
-                        {tag}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="p-5.5">
-                  <h3 className="font-extrabold text-lg text-md-on-surface truncate leading-tight">{res.name}</h3>
-                  
-                  <div className="flex items-center gap-4.5 mt-4 text-sm text-md-on-surface-variant">
-                    <span className="flex items-center gap-1 font-extrabold text-amber-500">
-                      <Star size={16} className="fill-amber-500" />
-                      {res.rating} ({res.reviewsCount} đánh giá)
-                    </span>
-                    <span className="flex items-center gap-1 font-semibold">
-                      <Clock size={16} />
-                      {res.time}
-                    </span>
-                  </div>
-
-                  <div className="mt-4 pt-4 border-t border-md-outline-variant/30 flex items-center justify-between">
-                    <span className="text-xs font-extrabold bg-slate-100 text-slate-600 px-3 py-1 rounded">
-                      {res.shipping}
-                    </span>
-                    <span className="text-xs text-[#FF6B35] font-extrabold bg-[#FFE8DF] px-2.5 py-1 rounded">
-                      Đã bán {res.orderCount || 0} đơn
-                    </span>
-                  </div>
-                </div>
-              </Card>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* ─── CAROUSEL: RECOMMENDED FOR YOU ──────────────────────────────────────── */}
-      {recommendedRestaurants.length > 0 && (
-        <div className="mb-12 animate-fade-in">
-          <div className="flex items-center justify-between mb-5">
-            <h2 className="text-xl md:text-2xl font-extrabold text-md-on-surface flex items-center gap-2">
-              <Sparkles className="text-md-primary" size={22} /> Dành Riêng Cho Bạn
-              <span className="inline-flex items-center gap-1 text-[10px] md:text-xs font-bold text-md-primary bg-md-primary-container/20 px-3 py-1.5 rounded-full uppercase tracking-wider ml-1">
-                {favCuisineName === 'Được đánh giá cao'
-                  ? (<><Sparkles size={12} /> Gợi ý hot</>)
-                  : (<><Heart size={12} className="fill-md-primary" /> Thích: {favCuisineName}</>)}
+            {/* Quick Filter Badges (Bộ lọc nhanh) */}
+            <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 pt-1 pb-1">
+              <span className="text-xs font-bold text-slate-400 mr-1 flex items-center gap-1">
+                <SlidersHorizontal size={13} /> Bộ lọc:
               </span>
-            </h2>
-            {/* "Xem thêm" gợi ý: sang trang Khám phá để xem nhiều quán hơn. */}
-            <button
-              type="button"
-              onClick={() => navigate('/explore')}
-              className="text-sm font-extrabold text-md-primary flex items-center gap-1 cursor-pointer hover:underline shrink-0"
-            >
-              Xem thêm <ArrowRight size={16} />
-            </button>
-          </div>
-          <div className="flex md:grid gap-4 md:gap-6 overflow-x-auto md:overflow-visible no-scrollbar py-1.5 snap-x md:snap-none scroll-smooth md:grid-cols-2 xl:grid-cols-3">
-            {recommendedRestaurants.map((res) => (
-              <Card
-                key={`recom-${res.id}`}
-                variant="elevated"
-                hoverEffect
-                onClick={() => navigate(`/restaurants/${res.id}`)}
-                className="shrink-0 w-68 md:w-full md:shrink p-4 relative border border-slate-100 bg-white snap-start"
-              >
-                {/* Rating flag */}
-                <span className="absolute left-6 top-6 text-[10px] bg-md-primary text-white font-extrabold px-2 py-0.5 rounded shadow-sm z-10">
-                  ★ {res.rating}
-                </span>
-                
-                <div className="w-full h-36 rounded-radius-md overflow-hidden shrink-0">
-                  <img src={res.image} alt={res.name} className="w-full h-full object-cover" />
-                </div>
-                
-                <div className="pt-3">
-                  <h3 className="font-extrabold text-sm text-md-on-surface truncate leading-snug">{res.name}</h3>
-                  <div className="flex items-center justify-between mt-1.5 text-[10px] text-slate-500 font-medium">
-                    <span className="flex items-center gap-0.5 text-amber-500 font-extrabold">
-                      ★ {res.rating}
-                    </span>
-                    <span>Đã bán {res.orderCount || 0} đơn</span>
-                  </div>
-                  <div className="flex items-center justify-between mt-2 text-[10px] text-md-on-surface-variant font-bold">
-                    <span>{res.distance}</span>
-                    <span>{res.time}</span>
-                    <span className="text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded">
-                      {res.shippingFee <= 15000 ? 'Ship rẻ' : res.shippingFee <= 20000 ? 'Ship vừa' : 'Ship cao'}
-                    </span>
-                  </div>
-                </div>
-              </Card>
-            ))}
-          </div>
-        </div>
-      )}
 
-      {/* ─── VERTICAL LIST: NEARBY RESTAURANTS ──────────────────────────────────── */}
-      <div id="explore-restaurants-section" className="mb-12">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-          <h2 className="text-xl md:text-2xl font-extrabold text-md-on-surface">Khám Phá Quán Ăn</h2>
-          
-          {/* Advanced Sorting Filter Tabs */}
-          <FilterTabs
-            tabs={[
-              { id: 'distance', label: 'Gần nhất' },
-              { id: 'rating', label: 'Đánh giá cao' },
-              { id: 'ship', label: 'Phí ship rẻ' }
-            ]}
-            activeTab={sortByFilter}
-            onTabChange={setSortByFilter}
-            className="bg-slate-100 p-1 rounded-radius-full w-max text-xs font-bold shrink-0"
-          />
-        </div>
-        
-        {loading ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <SkeletonRestaurantCard />
-            <SkeletonRestaurantCard />
-            <SkeletonRestaurantCard />
-            <SkeletonRestaurantCard />
-          </div>
-        ) : filteredRestaurants.length === 0 ? (
-          <div className="text-center py-16 bg-white rounded-radius-xl border border-md-outline-variant/30">
-            <ShoppingBag size={56} className="mx-auto text-md-outline/40 mb-4" />
-            <p className="text-base font-extrabold text-md-on-surface-variant">Không tìm thấy quán ăn phù hợp</p>
-            <p className="text-sm text-md-outline mt-1.5">Vui lòng thử tìm kiếm với từ khóa khác</p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {nearByRestaurants.map((res) => (
-              <Card
-                key={res.id}
-                variant="elevated"
-                hoverEffect
-                onClick={() => navigate(`/restaurants/${res.id}`)}
-                className="p-4.5 flex gap-5"
+              <button
+                onClick={() => setOnlyOpen(!onlyOpen)}
+                className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all border cursor-pointer ${
+                  onlyOpen
+                    ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm'
+                    : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                }`}
               >
-                <div className="w-28 h-28 sm:w-32 sm:h-32 rounded-radius-lg overflow-hidden shrink-0">
-                  <img src={res.image} alt={res.name} className="w-full h-full object-cover" />
+                <Clock size={13} />
+                <span>Đang mở cửa</span>
+                {onlyOpen && <Check size={12} className="ml-0.5" />}
+              </button>
+
+              <button
+                onClick={() => setOnlyHighRating(!onlyHighRating)}
+                className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all border cursor-pointer ${
+                  onlyHighRating
+                    ? 'bg-amber-500 text-white border-amber-500 shadow-sm'
+                    : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                }`}
+              >
+                <Star size={13} className={onlyHighRating ? 'fill-white' : 'text-amber-500'} />
+                <span>Đánh giá 4.5★+</span>
+                {onlyHighRating && <Check size={12} className="ml-0.5" />}
+              </button>
+
+              <button
+                onClick={() => setOnlyCheapShip(!onlyCheapShip)}
+                className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all border cursor-pointer ${
+                  onlyCheapShip
+                    ? 'bg-[#FF6B35] text-white border-[#FF6B35] shadow-sm'
+                    : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                }`}
+              >
+                <TrendingUp size={13} />
+                <span>Ship ≤ 15k</span>
+                {onlyCheapShip && <Check size={12} className="ml-0.5" />}
+              </button>
+
+              <button
+                onClick={() => setOnlyFavorites(!onlyFavorites)}
+                className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all border cursor-pointer ${
+                  onlyFavorites
+                    ? 'bg-rose-500 text-white border-rose-500 shadow-sm'
+                    : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                }`}
+              >
+                <Heart size={13} className={onlyFavorites ? 'fill-white' : 'text-rose-500'} />
+                <span>Quán đã lưu</span>
+                {onlyFavorites && <Check size={12} className="ml-0.5" />}
+              </button>
+
+              {isFilterActive && (
+                <button
+                  onClick={resetFilters}
+                  className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-bold text-slate-500 hover:text-red-500 transition-colors ml-auto cursor-pointer"
+                >
+                  <RefreshCw size={12} />
+                  <span>Xóa bộ lọc</span>
+                </button>
+              )}
+            </div>
+
+            {/* Grid Quán Ăn */}
+            <div className="mt-2">
+              {loading ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-5">
+                  <SkeletonRestaurantCard />
+                  <SkeletonRestaurantCard />
+                  <SkeletonRestaurantCard />
+                  <SkeletonRestaurantCard />
+                  <SkeletonRestaurantCard />
+                  <SkeletonRestaurantCard />
                 </div>
-                
-                <div className="flex-1 flex flex-col justify-between min-w-0">
-                  <div>
-                    <div className="flex items-start justify-between gap-3">
-                      <h3 className="font-extrabold text-base sm:text-lg text-md-on-surface truncate leading-snug">
-                        {res.name}
-                      </h3>
+              ) : filteredRestaurants.length === 0 ? (
+                <div className="text-center py-12 bg-white rounded-2xl border border-dashed border-slate-200">
+                  <ShoppingBag size={44} className="mx-auto text-slate-300 mb-2" />
+                  <p className="text-sm font-bold text-slate-700">Không tìm thấy quán ăn phù hợp</p>
+                  <p className="text-xs text-slate-500 mt-1">Vui lòng chọn danh mục khác hoặc xóa điều kiện lọc</p>
+                  {isFilterActive && (
+                    <button
+                      onClick={resetFilters}
+                      className="mt-3 px-4 py-2 bg-[#FF6B35] text-white rounded-lg text-xs font-bold shadow-sm hover:bg-orange-600 transition-all cursor-pointer"
+                    >
+                      Đặt lại tất cả bộ lọc
+                    </button>
+                  )}
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
+                  {nearByRestaurants.map((res) => (
+                    <Card
+                      key={`explore-${res.id}`}
+                      variant="elevated"
+                      hoverEffect
+                      onClick={() => navigate(`/restaurants/${res.id}`)}
+                      className="!rounded-2xl relative border border-slate-200/80 bg-white overflow-hidden group shadow-sm hover:shadow-md transition-all flex flex-col justify-between"
+                    >
+                      {/* Heart Favorite Button */}
                       <button
                         onClick={(e) => toggleFavorite(res.id, e)}
-                        className="text-md-outline hover:text-red-500 transition-colors p-1"
+                        className="absolute right-3 top-3 bg-white/90 backdrop-blur-md p-2 rounded-full text-slate-400 hover:text-rose-500 transition-all shadow-sm z-10 cursor-pointer"
                       >
-                        <Heart size={18} className={favorites.includes(res.id) ? 'fill-red-500 text-red-500' : ''} />
+                        <Heart size={16} className={favorites.includes(res.id) ? 'fill-rose-500 text-rose-500' : ''} />
                       </button>
-                    </div>
 
-                    <div className="flex flex-wrap gap-1.5 mt-2">
-                      {res.tags.slice(0, 3).map((tag, i) => (
-                        <span key={i} className="text-xs bg-slate-100 text-md-on-surface-variant px-2.5 py-0.5 rounded font-bold">
-                          {tag}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
+                      {/* Image thumbnail container */}
+                      <div>
+                        <div className="relative aspect-[16/10] w-full overflow-hidden bg-slate-100">
+                          <img
+                            src={res.image}
+                            alt={res.name}
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                          />
+                          {/* Rating flag */}
+                          <span className="absolute bottom-2.5 left-2.5 text-[10px] bg-black/75 backdrop-blur-sm text-white font-bold px-2 py-0.5 rounded flex items-center gap-1">
+                            <Star size={11} className="fill-amber-400 text-amber-400" />
+                            {res.rating} ({res.reviewsCount})
+                          </span>
+                          {/* Status Tag */}
+                          <span className={`absolute top-2.5 left-2.5 text-[10px] font-bold px-2 py-0.5 rounded shadow-sm text-white ${res.status !== false ? 'bg-emerald-600' : 'bg-slate-600'}`}>
+                            {res.status !== false ? 'Mở cửa' : 'Tạm đóng'}
+                          </span>
+                        </div>
 
-                  <div className="flex items-center gap-4 text-xs sm:text-sm text-md-on-surface-variant mt-3">
-                    <span className="flex items-center gap-0.5 font-extrabold text-amber-500">
-                      <Star size={15} className="fill-amber-500" />
-                      {res.rating}
-                    </span>
-                    <span className="flex items-center gap-0.5 font-semibold">
-                      <Clock size={15} />
-                      {res.time}
-                    </span>
-                    <span className="font-semibold">{res.distance}</span>
-                  </div>
+                        {/* Content area */}
+                        <div className="p-3.5 sm:p-4">
+                          <h3 className="font-bold text-xs sm:text-sm text-slate-800 truncate group-hover:text-[#FF6B35] transition-colors leading-snug">{res.name}</h3>
+                          
+                          {/* Time & Distance */}
+                          <div className="flex items-center justify-between text-xs text-slate-500 mt-2 font-medium">
+                            <span className="flex items-center gap-1">
+                              <Clock size={13} />
+                              {res.time}
+                            </span>
+                            <span className="font-semibold text-slate-600">{res.distance}</span>
+                          </div>
+                        </div>
+                      </div>
 
-                  <div className="flex items-center justify-between border-t border-slate-100 pt-3 mt-3">
-                    <span className="text-xs font-extrabold text-md-primary">
-                      {res.shipping}
-                    </span>
-                    {/* Trước đây hiện "Giá TB ~45.000đ" hardcode (giả) → thay bằng số
-                        đơn đã bán thật từ backend (orderCount). */}
-                    <span className="text-xs text-md-outline font-extrabold">
-                      Đã bán {res.orderCount || 0} đơn
-                    </span>
-                  </div>
+                      {/* Card Footer: Shipping fee & Orders count */}
+                      <div className="px-3.5 pb-3.5 sm:px-4 sm:pb-4">
+                        <div className="pt-2.5 border-t border-slate-100 flex items-center justify-between">
+                          <span className={`text-[10px] sm:text-[11px] font-bold px-2 py-0.5 rounded ${
+                            res.shippingFee <= 15000 
+                              ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' 
+                              : 'bg-slate-100 text-slate-600'
+                          }`}>
+                            {res.shipping}
+                          </span>
+                          <span className="text-[10px] sm:text-[11px] text-[#FF6B35] font-bold bg-orange-50 px-2 py-0.5 rounded">
+                            Đã bán {res.orderCount || 0}
+                          </span>
+                        </div>
+                      </div>
+                    </Card>
+                  ))}
                 </div>
-              </Card>
-            ))}
-          </div>
-        )}
-        
-        {hasMore && (
-          <div className="flex justify-center mt-10">
-            <button
-              onClick={loadMoreRestaurants}
-              disabled={loadingMore}
-              className="px-8 py-3.5 bg-white border border-[#FF6B35] text-[#FF6B35] hover:bg-[#FF6B35]/5 disabled:border-slate-350 disabled:text-slate-400 font-extrabold text-sm rounded-radius-full shadow-sm transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer flex items-center gap-2"
-            >
-              {loadingMore ? (
-                <>
-                  <span className="w-4 h-4 border-2 border-[#FF6B35] border-t-transparent rounded-full animate-spin"></span>
-                  Đang tải thêm...
-                </>
-              ) : (
-                'Tải thêm quán ăn'
               )}
-            </button>
-          </div>
-        )}
-      </div>
-        </div>
-        {/* ═══ PANEL PHẢI: địa chỉ giao + tóm tắt giỏ hàng (chỉ desktop lg+) ═══ */}
-        {/* Toàn bộ dữ liệu lấy từ user & cartStore đã có — KHÔNG thêm logic mới. */}
-        <aside className="hidden lg:block w-80 shrink-0 sticky top-6 space-y-4">
-          {/* Thẻ địa chỉ giao hàng (bấm "Đổi" mở MapModal sẵn có) */}
-          <div className="bg-white rounded-radius-xl p-5 border border-md-outline-variant/20 shadow-sm">
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="text-xs font-extrabold text-md-on-surface uppercase tracking-wider flex items-center gap-1.5">
-                <MapPin size={15} className="text-md-primary" /> Giao tới
-              </h3>
-              <button onClick={() => setIsMapOpen(true)} className="text-[11px] font-extrabold text-md-primary hover:underline">Đổi</button>
+              
+              {/* Nút Tải Thêm Quán Ăn Khác - CHỈ TẢI KHI KHÁCH CLICK VÀO NÚT (Không tự động khi cuộn) */}
+              {hasMore && (
+                <div className="flex justify-center mt-6 sm:mt-8">
+                  <button
+                    onClick={loadMoreRestaurants}
+                    disabled={loadingMore}
+                    className="px-5 py-2.5 bg-white border border-[#FF6B35] text-[#FF6B35] hover:bg-orange-50 disabled:border-slate-300 disabled:text-slate-400 font-bold text-xs sm:text-sm rounded-xl shadow-sm transition-all hover:scale-[1.01] active:scale-[0.99] cursor-pointer flex items-center gap-2"
+                  >
+                    {loadingMore ? (
+                      <>
+                        <span className="w-4 h-4 border-2 border-[#FF6B35] border-t-transparent rounded-full animate-spin"></span>
+                        Đang tải thêm...
+                      </>
+                    ) : (
+                      'Xem thêm quán ăn khác'
+                    )}
+                  </button>
+                </div>
+              )}
             </div>
-            <p className="text-xs text-md-on-surface-variant font-semibold leading-relaxed">
-              {user?.address || 'Chưa chọn địa chỉ giao hàng'}
-            </p>
           </div>
 
-          {/* Thẻ tóm tắt giỏ hàng (carts từ cartStore) */}
-          <div className="bg-white rounded-radius-xl p-5 border border-md-outline-variant/20 shadow-sm">
-            <h3 className="text-xs font-extrabold text-md-on-surface uppercase tracking-wider flex items-center gap-1.5 mb-3">
-              <ShoppingBag size={15} className="text-md-primary" /> Giỏ hàng của bạn
+          {/* ════════════════════════════════════════════════════════════════════
+              🟠 SECTION 2: HERO CAROUSEL & QUÁN NỔI BẬT
+             ════════════════════════════════════════════════════════════════════ */}
+          {featuredRestaurants.length > 0 && (
+            <div className="space-y-5 sm:space-y-6">
+              {/* Hero Carousel Banner */}
+              <div className="rounded-2xl overflow-hidden shadow-sm">
+                <HeroCarousel
+                  items={featuredRestaurants.slice(0, 6)}
+                  onSelect={(res) => navigate(`/restaurants/${res.id}`)}
+                />
+              </div>
+
+              {/* Grid Quán Nổi Bật */}
+              <div>
+                <div className="flex items-center justify-between mb-3.5">
+                  <h2 className="text-base sm:text-lg md:text-xl font-extrabold text-slate-800 flex items-center gap-2">
+                    <Award className="text-[#FF6B35]" size={20} />
+                    Quán Nổi Bật Đánh Giá Cao
+                  </h2>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
+                  {featuredRestaurants.slice(0, visibleFeaturedCount).map((res) => (
+                    <Card
+                      key={`feat-${res.id}`}
+                      variant="elevated"
+                      hoverEffect
+                      onClick={() => navigate(`/restaurants/${res.id}`)}
+                      className="!rounded-2xl relative border border-slate-200/80 bg-white overflow-hidden group shadow-sm hover:shadow-md transition-all flex flex-col justify-between"
+                    >
+                      <button
+                        onClick={(e) => toggleFavorite(res.id, e)}
+                        className="absolute right-3 top-3 bg-white/90 backdrop-blur-md p-2 rounded-full text-slate-400 hover:text-rose-500 transition-all shadow-sm z-10 cursor-pointer"
+                      >
+                        <Heart size={16} className={favorites.includes(res.id) ? 'fill-rose-500 text-rose-500' : ''} />
+                      </button>
+
+                      <div>
+                        <div className="relative aspect-[16/10] w-full overflow-hidden bg-slate-100">
+                          <img
+                            src={res.image}
+                            alt={res.name}
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                          />
+                          <span className="absolute bottom-2.5 left-2.5 text-[10px] bg-black/75 backdrop-blur-sm text-white font-bold px-2 py-0.5 rounded flex items-center gap-1">
+                            <Star size={11} className="fill-amber-400 text-amber-400" />
+                            {res.rating} ({res.reviewsCount})
+                          </span>
+                        </div>
+
+                        <div className="p-3.5 sm:p-4">
+                          <h3 className="font-bold text-xs sm:text-sm text-slate-800 truncate group-hover:text-[#FF6B35] transition-colors">{res.name}</h3>
+                          
+                          {/* <div className="flex flex-wrap gap-1 mt-1.5">
+                            {res.tags.slice(0, 2).map((tag, i) => (
+                              <span key={i} className="text-[10px] sm:text-[11px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded-md font-semibold">
+                                {tag}
+                              </span>
+                            ))}
+                          </div> */}
+
+                          <div className="flex items-center justify-between text-xs text-slate-500 mt-2 font-medium">
+                            <span className="flex items-center gap-1">
+                              <Clock size={13} />
+                              {res.time}
+                            </span>
+                            <span>{res.distance}</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="px-3.5 pb-3.5 sm:px-4 sm:pb-4">
+                        <div className="pt-2.5 border-t border-slate-100 flex items-center justify-between">
+                          <span className="text-[10px] sm:text-[11px] font-bold text-slate-600 bg-slate-100 px-2 py-0.5 rounded">
+                            {res.shipping}
+                          </span>
+                          <span className="text-[10px] sm:text-[11px] text-[#FF6B35] font-bold bg-orange-50 px-2 py-0.5 rounded">
+                            Đã bán {res.orderCount || 0}
+                          </span>
+                        </div>
+                      </div>
+                    </Card>
+                  ))}
+                </div>
+
+                {/* Nút Xem thêm Quán Nổi Bật ở dưới cùng */}
+                {featuredRestaurants.length > visibleFeaturedCount && (
+                  <div className="flex justify-center mt-6 sm:mt-8">
+                    <button
+                      onClick={() => setVisibleFeaturedCount(prev => prev + 6)}
+                      className="px-5 py-2.5 bg-white border border-[#FF6B35] text-[#FF6B35] hover:bg-orange-50 font-bold text-xs sm:text-sm rounded-xl shadow-sm transition-all hover:scale-[1.01] active:scale-[0.99] cursor-pointer flex items-center gap-2"
+                    >
+                      Xem thêm quán nổi bật
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* ════════════════════════════════════════════════════════════════════
+              🟡 SECTION 3: DÀNH RIÊNG CHO BẠN
+             ════════════════════════════════════════════════════════════════════ */}
+          {recommendedRestaurants.length > 0 && (
+            <div>
+              <div className="flex items-center justify-between mb-3.5">
+                <h2 className="text-base sm:text-lg md:text-xl font-extrabold text-slate-800 flex items-center gap-2">
+                  <Sparkles className="text-[#FF6B35]" size={20} /> Dành Riêng Cho Bạn
+                  <span className="inline-flex items-center gap-1 text-[10px] font-bold text-[#FF6B35] bg-orange-50 border border-orange-200 px-2.5 py-1 rounded-full uppercase tracking-wider">
+                    {favCuisineName === 'Được đánh giá cao'
+                      ? 'Gợi ý hot'
+                      : `Thích: ${favCuisineName}`}
+                  </span>
+                </h2>
+              </div>
+
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 sm:gap-4">
+                {recommendedRestaurants.slice(0, visibleRecomCount).map((res) => (
+                  <Card
+                    key={`recom-${res.id}`}
+                    variant="elevated"
+                    hoverEffect
+                    onClick={() => navigate(`/restaurants/${res.id}`)}
+                    className="!rounded-2xl p-3 relative border border-slate-200/80 bg-white group hover:shadow-md transition-all flex flex-col justify-between"
+                  >
+                    <div>
+                      <div className="w-full h-24 sm:h-28 rounded-xl overflow-hidden bg-slate-100 relative">
+                        <img src={res.image} alt={res.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                        <span className="absolute left-2 top-2 text-[10px] bg-[#FF6B35] text-white font-bold px-1.5 py-0.5 rounded shadow-sm">
+                          ★ {res.rating}
+                        </span>
+                      </div>
+                      
+                      <div className="pt-2">
+                        <h3 className="font-bold text-xs sm:text-sm text-slate-800 truncate leading-snug group-hover:text-[#FF6B35] transition-colors">{res.name}</h3>
+                        <div className="flex items-center justify-between mt-1 text-[10px] sm:text-[11px] text-slate-500 font-medium">
+                          <span>{res.distance}</span>
+                          <span>{res.time}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="mt-2 pt-2 border-t border-slate-100 flex items-center justify-between text-[10px]">
+                      <span className="text-emerald-700 font-bold bg-emerald-50 px-1.5 py-0.5 rounded">
+                        {res.shippingFee <= 15000 ? 'Ship rẻ' : 'Ship vừa'}
+                      </span>
+                      <span className="text-slate-500 font-semibold">Đã bán {res.orderCount || 0}</span>
+                    </div>
+                  </Card>
+                ))}
+              </div>
+
+              {/* Nút Xem thêm Gợi ý dành cho bạn ở dưới cùng */}
+              {recommendedRestaurants.length > visibleRecomCount && (
+                <div className="flex justify-center mt-6 sm:mt-8">
+                  <button
+                    onClick={() => setVisibleRecomCount(prev => prev + 4)}
+                    className="px-5 py-2.5 bg-white border border-[#FF6B35] text-[#FF6B35] hover:bg-orange-50 font-bold text-xs sm:text-sm rounded-xl shadow-sm transition-all hover:scale-[1.01] active:scale-[0.99] cursor-pointer flex items-center gap-2"
+                  >
+                    Xem thêm gợi ý dành cho bạn
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ════════════════════════════════════════════════════════════════════
+              🟢 SECTION 4: ĐẶT LẠI QUÁN CỦ
+             ════════════════════════════════════════════════════════════════════ */}
+          {orderAgainRestaurants.length > 0 && (
+            <div>
+              <h2 className="text-sm sm:text-base md:text-lg font-extrabold text-slate-800 mb-3 flex items-center gap-2">
+                <RotateCcw className="text-[#FF6B35]" size={18} /> Đặt Lại Quán Cũ
+              </h2>
+              <div className="flex gap-3 overflow-x-auto no-scrollbar py-1">
+                {orderAgainRestaurants.map((res) => (
+                  <Card
+                    key={`again-${res.id}`}
+                    variant="elevated"
+                    hoverEffect
+                    onClick={() => navigate(`/restaurants/${res.id}`)}
+                    className="!rounded-2xl shrink-0 w-48 sm:w-52 p-3 flex flex-col justify-between border border-slate-200/80 bg-white group hover:shadow-md transition-all"
+                  >
+                    <div>
+                      <div className="w-full h-20 sm:h-24 rounded-xl overflow-hidden bg-slate-100">
+                        <img src={res.image} alt={res.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+                      </div>
+                      <h3 className="font-bold text-xs text-slate-800 truncate mt-2 group-hover:text-[#FF6B35] transition-colors">{res.name}</h3>
+                    </div>
+                    <div className="flex items-center justify-between text-[10px] text-slate-500 font-medium mt-2 pt-2 border-t border-slate-100">
+                      <span className="font-bold text-amber-500">★ {res.rating}</span>
+                      <span>{res.distance}</span>
+                      <span>{res.time}</span>
+                    </div>
+                  </Card>
+                ))}
+              </div>
+            </div>
+          )}
+
+        </div>
+
+        {/* ═══ ASIDE PANEL (DESKTOP LG+) ═══ */}
+        <aside className="hidden lg:block w-72 xl:w-80 shrink-0 sticky top-6 space-y-4">
+          {/* Panel Giỏ Hàng Quick View */}
+          <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-sm">
+            <h3 className="text-xs font-black text-slate-800 uppercase tracking-wider flex items-center gap-2 mb-3 pb-2 border-b border-slate-100">
+              <ShoppingBag size={16} className="text-[#FF6B35]" /> Giỏ hàng của bạn
             </h3>
             {cartItemsCount === 0 ? (
-              <p className="text-xs text-md-outline font-semibold py-2">Chưa có món nào trong giỏ.</p>
+              <div className="py-6 text-center">
+                <ShoppingBag size={36} className="mx-auto text-slate-300 mb-2" />
+                <p className="text-xs text-slate-500 font-medium">Chưa có món nào trong giỏ.</p>
+              </div>
             ) : (
               <>
-                {/* Hiển thị GỌN theo từng quán (tên + số món + tổng tiền quán) để panel
-                    không bị kéo dài khi giỏ có quá nhiều món. Có scroll nếu nhiều quán. */}
-                <div className="space-y-2.5 max-h-64 overflow-y-auto no-scrollbar">
+                <div className="space-y-3 max-h-64 overflow-y-auto no-scrollbar">
                   {carts.map((cart) => {
                     const itemCount = (cart.items || []).reduce((s, it) => s + it.quantity, 0);
                     return (
-                      <div key={cart.restaurantId} className="flex items-center justify-between gap-2">
+                      <div key={cart.restaurantId} className="flex items-center justify-between gap-2 p-2 bg-slate-50 rounded-xl">
                         <div className="min-w-0">
-                          <p className="text-xs font-extrabold text-md-on-surface truncate">{cart.restaurantName}</p>
-                          <p className="text-[11px] text-md-on-surface-variant font-semibold">{itemCount} món</p>
+                          <p className="text-xs font-bold text-slate-800 truncate">{cart.restaurantName}</p>
+                          <p className="text-[11px] text-slate-500 font-semibold">{itemCount} món</p>
                         </div>
-                        <span className="text-xs font-extrabold text-md-on-surface shrink-0">{formatCurrency(cart.subtotal || 0)}</span>
+                        <span className="text-xs font-black text-[#FF6B35] shrink-0">{formatCurrency(cart.subtotal || 0)}</span>
                       </div>
                     );
                   })}
                 </div>
-                <div className="flex items-center justify-between border-t border-slate-100 pt-3 mt-2">
-                  <span className="text-xs font-bold text-md-on-surface-variant">Tổng ({cartItemsCount} món)</span>
-                  <span className="text-base font-extrabold text-md-primary">{formatCurrency(cartTotal)}</span>
+                <div className="flex items-center justify-between border-t border-slate-100 pt-3 mt-3">
+                  <span className="text-xs font-bold text-slate-500">Tổng ({cartItemsCount} món)</span>
+                  <span className="text-base font-black text-[#FF6B35]">{formatCurrency(cartTotal)}</span>
                 </div>
-                <button onClick={() => navigate('/cart')} className="w-full mt-3 bg-md-primary text-white font-extrabold py-2.5 rounded-radius-full text-sm hover:bg-opacity-95 transition-all">
+                <button 
+                  onClick={() => navigate('/cart')} 
+                  className="w-full mt-3 bg-[#FF6B35] text-white font-extrabold py-2.5 rounded-xl text-xs uppercase tracking-wider shadow-sm hover:bg-orange-600 active:scale-98 transition-all cursor-pointer"
+                >
                   Tới giỏ hàng
                 </button>
               </>
             )}
           </div>
+
+          {/* Panel Thông tin & Cam kết giao hàng 
+          <div className="bg-gradient-to-br from-orange-50 to-amber-50 rounded-2xl p-4 border border-orange-100 shadow-sm">
+            <div className="flex items-center gap-2 text-xs font-bold text-[#FF6B35] mb-1.5">
+              <ShieldCheck size={16} /> Giao hàng uy tín
+            </div>
+            <p className="text-[11px] text-slate-600 leading-relaxed">
+              Món ăn được chế biến tươi nóng từ các nhà hàng uy tín, giao tận tay trong 15-30 phút.
+            </p>
+          </div>*/}
         </aside>
       </div>
 
-      {/* ─── FLOATING CART FAB (chỉ mobile/tablet; desktop đã có panel phải) ───── */}
+      {/* ─── FLOATING CART FAB (Mobile/Tablet) ───── */}
       {cartItemsCount > 0 && (
         <button
           onClick={() => navigate('/cart')}
-          className="fixed bottom-24 left-6 md:left-auto md:right-80 z-40 lg:hidden bg-md-primary text-white pl-5 pr-6 py-3.5 rounded-radius-full shadow-shadow-5 flex items-center gap-3.5 hover:scale-105 active:scale-95 transition-all font-extrabold text-base"
+          className="fixed bottom-20 left-3 right-3 lg:hidden z-40 bg-[#FF6B35] text-white px-4 py-3 rounded-2xl shadow-xl flex items-center justify-between hover:scale-[1.01] active:scale-[0.99] transition-all font-bold text-sm cursor-pointer"
         >
-          <div className="relative">
-            <ShoppingBag size={22} />
-            <span className="absolute -top-1.5 -right-2.5 bg-md-error text-white text-[10px] font-extrabold h-4.5 min-w-4.5 px-1 rounded-full flex items-center justify-center border border-md-primary shadow-md">
-              {cartItemsCount}
-            </span>
+          <div className="flex items-center gap-3">
+            <div className="relative">
+              <ShoppingBag size={20} />
+              <span className="absolute -top-2 -right-2 bg-red-600 text-white text-[10px] font-extrabold h-4.5 min-w-4.5 px-1 rounded-full flex items-center justify-center border border-white">
+                {cartItemsCount}
+              </span>
+            </div>
+            <span className="text-xs text-white/90">Xem giỏ hàng</span>
           </div>
-          <div className="flex flex-col items-start leading-none">
-            <span className="text-[10px] text-white/85 font-bold">Giỏ hàng của bạn</span>
-            <span className="mt-1">{formatCurrency(cartTotal)}</span>
-          </div>
+          <span className="font-extrabold text-sm sm:text-base">{formatCurrency(cartTotal)}</span>
         </button>
       )}
 
-      {/* ─── MAP MODAL ───────────────────────────────────────────────────────── */}
-      <MapModal
+      {/* ─── MAP MODAL 2 ───────────────────────────────────────────────────────── */}
+      <MapModal2
         isOpen={isMapOpen}
         onClose={() => setIsMapOpen(false)}
         onConfirm={handleConfirmLocation}
         initialLat={user?.lat || 10.762622}
         initialLng={user?.lng || 106.660172}
+        showLabelSelector={false}
       />
-
     </div>
   );
 }

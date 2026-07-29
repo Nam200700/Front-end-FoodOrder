@@ -4,6 +4,9 @@ import react from '@vitejs/plugin-react'
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react()],
+    server: {
+
+  }, 
   define: {
     global: 'globalThis',   // thêm dòng này fix lỗi "global is not defined"
   },

@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuthStore } from '../stores/authStore';
 
@@ -55,28 +55,17 @@ import AdminStats from '../pages/admin/Stats';
 // Protected Route Component
 import { useLocation } from 'react-router-dom';
 
-const isTokenExpired = (token) => {
-  if (!token) return true;
-  try {
-    const payload = JSON.parse(atob(token.split('.')[1]));
-    return payload.exp * 1000 < Date.now();
-  } catch {
-    return true;
-  }
-};
-
 function ProtectedRoute({ children, allowedRoles }) {
-  const { isLoggedIn, role, token, user, hasHydrated, logout } = useAuthStore();
+  const { isLoggedIn, role, user, hasHydrated, authReady } = useAuthStore();
   const location = useLocation();
 
-  useEffect(() => {
-    if (isLoggedIn && isTokenExpired(token)) {
-      logout();
-    }
-  }, [isLoggedIn, token, logout]);
+  // Access token nay chỉ nằm trong bộ nhớ nên KHÔNG kiểm tra hạn token ở đây nữa:
+  // hết hạn giữa phiên sẽ được axios interceptor tự refresh (cookie HttpOnly); refresh
+  // thất bại -> hydrateSession/logout hạ isLoggedIn -> điều hướng /login bên dưới.
 
-  // Đợi rehydrate xong từ localStorage để tránh bug flash-redirect về /login
-  if (!hasHydrated) {
+  // Đợi (1) Zustand đọc xong localStorage và (2) đã thử silent refresh khi mở app,
+  // để tránh flash-redirect về /login khi token trong bộ nhớ chưa kịp khôi phục sau F5.
+  if (!hasHydrated || !authReady) {
     return (
       <div className="min-h-screen bg-md-surface flex items-center justify-center font-google-sans">
         <div className="flex flex-col items-center gap-3">
@@ -87,7 +76,7 @@ function ProtectedRoute({ children, allowedRoles }) {
     );
   }
 
-  if (!isLoggedIn || isTokenExpired(token)) {
+  if (!isLoggedIn) {
     return <Navigate to="/login" replace />;
   }
 

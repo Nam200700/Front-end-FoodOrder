@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useOrderStore } from '../../stores/orderStore';
 import { useChatStore } from '../../stores/chatStore';
-import { ArrowLeft, Phone, MessageSquare, ChevronDown, ChevronUp, CheckCircle, Clock, Ban, AlertCircle, Map, AlertTriangle, Store, Bike } from 'lucide-react';
+import { ArrowLeft, Phone, MessageSquare, ChevronDown, ChevronUp, CheckCircle, Clock, Ban, AlertCircle, Map, AlertTriangle, Store, Bike, MapPin } from 'lucide-react';
 import { formatCurrency } from '../../utils/format';
 import Button from '../../components/common/Button';
 import Card from '../../components/common/Card';
@@ -49,9 +49,15 @@ export default function OrderTracking() {
   // TOẠ ĐỘ QUÁN ĂN NẠP TỪ BACKEND
   const [restaurantCoords, setRestaurantCoords] = useState({ lat: null, lng: null });
 
+  // TỌA ĐỘ ĐƯỜNG ĐI (POLYLINE)
+  const [routePoints, setRoutePoints] = useState([]);
+  const [distanceKm, setDistanceKm] = useState(0);
+  const [durationMinutes, setDurationMinutes] = useState(0);
+
   const mapContainerRef = useRef(null);
   const mapRef = useRef(null);
   const markersRef = useRef({ restaurant: null, customer: null });
+  const polylineRef = useRef(null); // Ref để chứa đường đi
 
   // 1. Tải thông tin đơn hàng chi tiết từ Backend và đồng bộ thời gian thực
   useEffect(() => {
@@ -79,8 +85,8 @@ export default function OrderTracking() {
           setErrorMsg('Đơn hàng không tồn tại hoặc bạn không có quyền truy cập đơn hàng này.');
         }
       } catch (error) {
-        console.error('Lỗi khi tải chi tiết đơn hàng từ Backend:', error);
-        setErrorMsg('Không thể tải thông tin đơn hàng từ Backend. Vui lòng kiểm tra lại!');
+        console.error('Lỗi khi tải chi tiết đơn hàng:', error);
+        setErrorMsg('Không thể tải thông tin đơn hàng. Vui lòng kiểm tra lại!');
       } finally {
         if (showSpinner) setLoading(false);
       }
@@ -94,8 +100,6 @@ export default function OrderTracking() {
       console.log('[WebSocket Order Update]: Received updated order', updatedOrder);
       const parsed = parseOrderEvent(updatedOrder);
       if (parsed && parsed.status) {
-        // Tự động tải lại thông tin đơn hàng mới nhất từ API (gồm cả thông tin shipper mới được gán)
-        // mà không hiện spinner để tránh giật lag giao diện của người dùng
         fetchOrderDetails(false);
       }
     });
@@ -118,7 +122,8 @@ export default function OrderTracking() {
         if (realRes && realRes.latitude && realRes.longitude) {
           setRestaurantCoords({
             lat: Number(realRes.latitude),
-            lng: Number(realRes.longitude)
+            lng: Number(realRes.longitude),
+            address: realRes.address
           });
         }
       } catch (err) {
@@ -128,27 +133,57 @@ export default function OrderTracking() {
     fetchRestaurantCoords();
   }, [order?.restaurantId]);
 
-  // 3. Khởi tạo bản đồ Leaflet(chỉ hiển thị Quán ăn và Khách hàng)
+  // 3. TẢI ĐƯỜNG ĐI (ROUTE)
+  useEffect(() => {
+    if (restaurantCoords.lat && order?.deliveryLat) {
+      const fetchRoute = async () => {
+        try {
+          const response = await apiClient.get("/shipping/route", {
+            params: {
+              // Tọa độ quán
+              startLat: restaurantCoords.lat,
+              startLng: restaurantCoords.lng,
+
+              // Tọa độ khách
+              endLat: order.deliveryLat,
+              endLng: order.deliveryLng,
+            },
+          });
+
+          const route = response.data?.data;
+
+          if (route) {
+            setRoutePoints(route.coordinates || []);
+            setDistanceKm(route.distanceKm || 0);
+            setDurationMinutes(route.durationMinutes || 0);
+          }
+        } catch (error) {
+          console.error("Lỗi tải đường đi:", error);
+        }
+      };
+
+      fetchRoute();
+    }
+  }, [restaurantCoords.lat, restaurantCoords.lng, order?.deliveryLat, order?.deliveryLng,]);
+
+  // 4. Khởi tạo bản đồ Leaflet & vẽ Route
   useEffect(() => {
     if (!order || !restaurantCoords.lat || !order.deliveryLat || !mapContainerRef.current) return;
-
     const rLat = restaurantCoords.lat;
     const rLng = restaurantCoords.lng;
     const cLat = order.deliveryLat;
     const cLng = order.deliveryLng;
-
     // Tạo bản đồ
     if (!mapRef.current) {
       const map = L.map(mapContainerRef.current, {
         zoomControl: true,
-        scrollWheelZoom: false // Tránh vô tình zoom khi cuộn trang
+        scrollWheelZoom: false 
       }).setView([(rLat + cLat) / 2, (rLng + cLng) / 2], 14);
       mapRef.current = map;
-
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '&copy; OpenStreetMap contributors'
       }).addTo(map);
-
+      // Icon Quán Ăn
       const resIcon = L.divIcon({
         html: `<div class="flex items-center justify-center w-8 h-8 rounded-full bg-orange-500 text-white shadow-md border-2 border-white"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"/><path d="M7 2v20"/><path d="M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"/></svg></div>`,
         className: 'custom-div-icon',
@@ -156,8 +191,8 @@ export default function OrderTracking() {
         iconAnchor: [16, 16]
       });
       markersRef.current.restaurant = L.marker([rLat, rLng], { icon: resIcon }).addTo(map)
-        .bindPopup(`<b>${order.restaurantName}</b><br/>Nơi chế biến món ăn.`);
-
+        .bindPopup(`<b>Quán ${order.restaurantName}</b><br/>${restaurantCoords.address}`);
+      // Icon Khách hàng
       const custIcon = L.divIcon({
         html: `<div class="flex items-center justify-center w-8 h-8 rounded-full bg-red-500 text-white shadow-md border-2 border-white"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"/><path d="M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg></div>`,
         className: 'custom-div-icon',
@@ -166,18 +201,34 @@ export default function OrderTracking() {
       });
       markersRef.current.customer = L.marker([cLat, cLng], { icon: custIcon }).addTo(map)
         .bindPopup(`<b>Địa chỉ của bạn</b><br/>${order.address}`);
-
       map.fitBounds([[rLat, rLng], [cLat, cLng]], { padding: [40, 40] });
     }
-  }, [restaurantCoords, order?.deliveryLat]);
+    // NẾU CÓ DỮ LIỆU ĐƯỜNG ĐI THÌ VẼ ĐƯỜNG POLYLINE LÊN BẢN ĐỒ
+    if (mapRef.current && routePoints.length > 0) {
+      if (polylineRef.current) {
+        mapRef.current.removeLayer(polylineRef.current);
+      }
+      // Vẽ polyline màu cam gradient
+      polylineRef.current = L.polyline(routePoints, {
+        color: '#ff6b35',
+        weight: 5,
+        opacity: 0.8,
+        lineCap: 'round',
+        lineJoin: 'round'
+      }).addTo(mapRef.current);
+      // Tự động zoom bản đồ sao cho bao trọn cả đường đi
+      mapRef.current.fitBounds(polylineRef.current.getBounds(), { padding: [30, 30] });
+    }
+  }, [restaurantCoords, order?.deliveryLat, routePoints]);
 
-  // 4. Cleanup bản đồ khi huỷ component
+  // 5. Cleanup bản đồ khi huỷ component
   useEffect(() => {
     return () => {
       if (mapRef.current) {
         mapRef.current.remove();
         mapRef.current = null;
         markersRef.current = { restaurant: null, customer: null };
+        polylineRef.current = null;
       }
     };
   }, []);
@@ -337,7 +388,7 @@ export default function OrderTracking() {
       {/* Header */}
       <div className="flex items-center gap-4 mb-4">
         <button 
-          onClick={() => navigate('/')}
+          onClick={() => navigate('/orders')}
           className="p-2.5 rounded-radius-full hover:bg-slate-100 text-md-on-surface-variant transition-colors cursor-pointer"
         >
           <ArrowLeft size={22} />
@@ -448,15 +499,42 @@ export default function OrderTracking() {
 
       {/* BẢN ĐỒ DẪN ĐƯỜNG THỰC TẾ */}
       {!isCancelled && restaurantCoords.lat && displayOrder.deliveryLat && (
-        <Card variant="flat" className="p-0 overflow-hidden bg-white border border-slate-200 shadow-sm rounded-radius-xl">
-          <div className="px-5 py-4 border-b border-slate-100 flex items-center bg-slate-50/50">
-            <div className="flex items-center gap-2 text-md-primary">
-              <Map size={18} className="stroke-[2.5px]" />
-              <span className="font-extrabold text-sm text-slate-800 uppercase tracking-wider">
-                Bản đồ theo dõi thực tế
-              </span>
+        <Card
+          variant="flat"
+          className="p-0 overflow-hidden bg-white border border-slate-200 shadow-sm rounded-radius-xl"
+        >
+          <div className="px-5 py-4 border-b border-slate-100 bg-slate-50/50">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-center gap-2 text-md-primary">
+                <Map size={18} className="stroke-[2.5px]" />
+                <span className="font-extrabold text-sm text-slate-800 uppercase tracking-wider">
+                  Bản đồ theo dõi
+                </span>
+              </div>
+
+              {distanceKm > 0 && (
+                <div className="flex items-center gap-3">
+                  {/* Khoảng cách */}
+                  <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-blue-50 text-blue-700">
+                    <MapPin size={15} className="stroke-[2.5px]" />
+                    <span className="text-sm font-semibold">
+                      {distanceKm.toFixed(1)} km
+                    </span>
+                  </div>
+
+                  {/* Thời gian */}
+                  <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-orange-50 text-orange-700">
+                    <Clock size={15} className="stroke-[2.5px]" />
+                    <span className="text-sm font-semibold">
+                      {Math.ceil(durationMinutes)} phút
+                    </span>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
+
+          {/* Map */}
           <div className="relative">
             <div ref={mapContainerRef} className="w-full h-[280px] z-10" />
           </div>
@@ -550,6 +628,10 @@ export default function OrderTracking() {
 
             {/* Payment Summary */}
             <div className="pt-4 border-t border-slate-100 space-y-2.5 text-sm font-medium">
+              {/* <div className="flex justify-between text-md-on-surface-variant">
+                <span>khoảng cách và thời gian dự kiến:</span>
+                <span className="font-bold">{distanceKm.toFixed(1)} km - {Math.ceil(durationMinutes)} phút</span>
+              </div> */}
               <div className="flex justify-between text-md-on-surface-variant">
                 <span>Tạm tính:</span>
                 <span className="font-bold">{formatCurrency(displayOrder.subtotalAmount)}</span>
@@ -600,82 +682,58 @@ export default function OrderTracking() {
       <Modal
         isOpen={reportModal.isOpen}
         onClose={() => reportModal.close()}
-        title="Báo Cáo Vi Phạm Đơn Hàng"
-        size="md"
+        title={`Báo Cáo Vi Phạm Đơn Hàng #${displayOrder.id}`}
+        size="sm"
+        className="[&_h2]:!text-slate-900 [&_h2]:!text-base [&_h2]:md:!text-lg [&_h2]:!font-bold [&_button]:disabled:opacity-50"
       >
-        <div className="space-y-5">
-          <div className="p-3 bg-red-50 text-red-700 rounded-radius-md text-xs font-bold border border-red-100 flex items-start gap-2">
-            <AlertTriangle className="shrink-0 mt-0.5" size={16} />
-            <span>
-              Báo cáo vi phạm đối với đơn hàng này sẽ được gửi trực tiếp tới Quản trị viên hệ thống để kiểm tra và xử lý.
-            </span>
+        <div className="space-y-4 text-slate-700 !-mt-3">
+          <div className="p-3 bg-amber-50 text-amber-800 rounded-lg text-xs font-medium border border-amber-100 flex items-start gap-2">
+            <AlertCircle className="shrink-0 mt-0.5 text-amber-600" size={15} />
+            <span>Báo cáo vi phạm sẽ được gửi tới Quản trị viên hệ thống để kiểm tra và xử lý.</span>
           </div>
 
           {/* Chọn đối tượng báo cáo */}
-          <div className="space-y-2">
-            <label className="text-xs font-extrabold text-md-on-surface uppercase tracking-wider block">
-              Đối tượng cần báo cáo:
-            </label>
-            <div className="flex gap-3">
+          <div className="space-y-1.5">
+            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Đối tượng cần báo cáo:</span>
+            <div className="flex gap-2">
               <button
                 type="button"
-                onClick={() => {
-                  setReportTarget('RESTAURANT');
-                  setReportReason('');
-                }}
-                className={`flex-1 py-3 px-4 rounded-radius-lg border font-bold text-xs transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                onClick={() => { setReportTarget('RESTAURANT'); setReportReason(''); }}
+                className={`flex-1 py-2 border rounded-lg text-xs font-semibold transition-all flex items-center justify-center gap-2 ${
                   reportTarget === 'RESTAURANT'
-                    ? 'border-md-primary bg-md-primary/10 text-md-primary'
-                    : 'border-slate-200 hover:bg-slate-50 text-slate-600'
+                    ? 'border-orange-500 bg-orange-50/50 text-orange-600'
+                    : 'border-slate-200 text-slate-600 hover:bg-slate-50'
                 }`}
               >
-                <Store size={15} /> Báo cáo Quán ăn
+                <Store size={14} /> Quán {displayOrder.restaurantName}
               </button>
-              
               <button
                 type="button"
                 disabled={!displayOrder.shipper}
-                onClick={() => {
-                  setReportTarget('SHIPPER');
-                  setReportReason('');
-                }}
-                className={`flex-1 py-3 px-4 rounded-radius-lg border font-bold text-xs transition-all flex items-center justify-center gap-2 cursor-pointer ${
-                  !displayOrder.shipper
-                    ? 'opacity-40 cursor-not-allowed border-slate-100 bg-slate-50 text-slate-300'
-                    : reportTarget === 'SHIPPER'
-                      ? 'border-md-primary bg-md-primary/10 text-md-primary'
-                      : 'border-slate-200 hover:bg-slate-50 text-slate-600'
+                onClick={() => { setReportTarget('SHIPPER'); setReportReason(''); }}
+                className={`flex-1 py-2 border rounded-lg text-xs font-semibold transition-all flex items-center justify-center gap-2 ${
+                  !displayOrder.shipper ? 'opacity-50 cursor-not-allowed border-slate-200' : 
+                  reportTarget === 'SHIPPER' ? 'border-orange-500 bg-orange-50/50 text-orange-600' : 'border-slate-200 text-slate-600 hover:bg-slate-50'
                 }`}
-                title={!displayOrder.shipper ? 'Chưa có tài xế nhận đơn để báo cáo' : 'Báo cáo shipper'}
               >
-                <Bike size={15} /> Báo cáo Shipper
+                <Bike size={14} /> Shipper
               </button>
             </div>
           </div>
 
           {/* Lý do mẫu */}
-          <div className="space-y-2">
-            <label className="text-xs font-extrabold text-md-on-surface uppercase tracking-wider block">
-              Chọn lý do vi phạm nhanh:
-            </label>
+          <div className="space-y-1.5">
+            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Chọn lý do nhanh:</span>
             <div className="grid grid-cols-1 gap-1.5">
               {(reportTarget === 'RESTAURANT'
-                ? [
-                    'Quán chuẩn bị thiếu món ăn so với hóa đơn',
-                    'Món ăn không hợp vệ sinh / có dị vật',
-                    'Quán chuẩn bị quá lâu / thái độ phục vụ kém',
-                  ]
-                : [
-                    'Shipper giao thiếu hàng / làm đổ vỡ món ăn',
-                    'Shipper thái độ cọc cằn, xúc phạm khách hàng',
-                    'Shipper đi xe lạng lách đánh võng / không an toàn',
-                  ]
+                ? ['Quán chuẩn bị thiếu món', 'Món ăn không hợp vệ sinh', 'Thái độ phục vụ kém']
+                : ['Shipper giao thiếu hàng', 'Shipper thái độ cọc cằn', 'Lái xe không an toàn']
               ).map((reason, idx) => (
                 <button
-                  key={idx}
-                  type="button"
-                  onClick={() => setReportReason(reason)}
-                  className="text-left px-3.5 py-2.5 rounded-radius-md border border-slate-200 hover:border-md-primary/40 hover:bg-slate-50 transition-all text-xs font-semibold text-slate-700 cursor-pointer"
+                  key={idx} type="button" onClick={() => setReportReason(reason)}
+                  className={`text-left px-3.5 py-2 border rounded-lg text-xs font-semibold transition-all ${
+                    reportReason === reason ? 'border-orange-500 bg-orange-50/50 text-orange-600' : 'border-slate-200 text-slate-600 hover:bg-slate-50'
+                  }`}
                 >
                   {reason}
                 </button>
@@ -684,29 +742,20 @@ export default function OrderTracking() {
           </div>
 
           {/* Nhập tự do */}
-          <div className="space-y-2">
-            <label className="text-xs font-extrabold text-md-on-surface uppercase tracking-wider block">
-              Mô tả chi tiết nội dung vi phạm:
-            </label>
-            <textarea
-              value={reportReason}
-              onChange={(e) => setReportReason(e.target.value)}
-              placeholder="Vui lòng cung cấp thêm thông tin chi tiết (tối thiểu 10 ký tự)..."
-              rows={4}
-              className="w-full p-3.5 border border-slate-200 rounded-radius-md focus:outline-none focus:border-md-primary focus:ring-4 focus:ring-md-primary/10 text-sm font-semibold text-slate-850"
-            />
-          </div>
+          <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Hoặc nhập lý do cụ thể:</span>
+          <textarea
+            value={reportReason}
+            onChange={(e) => setReportReason(e.target.value)}
+            placeholder="Nhập nội dung chi tiết..."
+            rows={3}
+            className="w-full p-3 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-orange-400 bg-slate-50/50 text-slate-800 resize-none"
+          />
 
-          <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-100">
-            <Button variant="outline" size="sm" onClick={() => reportModal.close()} disabled={submittingReport}>
-              Đóng
-            </Button>
-            <Button
-              size="sm"
-              variant="secondary"
+          <div className="flex justify-end gap-3 pt-2 border-t border-slate-100">
+            <Button 
               onClick={handleSubmitReport}
               disabled={submittingReport || !reportReason.trim()}
-              className="bg-red-500 hover:bg-red-600 text-white font-bold"
+              className="!px-5 !py-2 !text-xs !font-bold !bg-orange-500 !text-white !rounded-lg hover:!bg-orange-600 disabled:!bg-slate-300"
             >
               {submittingReport ? 'Đang gửi...' : 'Gửi báo cáo'}
             </Button>
@@ -717,39 +766,26 @@ export default function OrderTracking() {
       {/* ─── MODAL HỦY ĐƠN HÀNG ────────────────────────────────────── */}
       <Modal
         isOpen={cancelModal.isOpen}
-        onClose={() => {
-          cancelModal.close();
-          setCancelReasonInput('');
-        }}
-        title="Xác Nhận Hủy Đơn Hàng"
-        size="md"
+        onClose={() => { cancelModal.close(); setCancelReasonInput(''); }}
+        title={`Xác Nhận Hủy Đơn Hàng #${displayOrder.id}`}
+        size="sm"
+        className="[&_h2]:!text-slate-900 [&_h2]:!text-base [&_h2]:md:!text-lg [&_h2]:!font-bold [&_button]:disabled:opacity-50"
       >
-        <div className="space-y-5">
-          <div className="p-3 bg-red-50 text-red-700 rounded-radius-md text-xs font-bold border border-red-100 flex items-start gap-2">
-            <AlertTriangle className="shrink-0 mt-0.5" size={16} />
-            <span>
-              Lưu ý: Bạn chỉ được tự hủy đơn hàng khi đơn ở trạng thái Mới đặt hoặc Đã xác nhận (quán chưa làm món).
-            </span>
+        <div className="space-y-4 text-slate-700 !-mt-3">
+          <div className="p-3 bg-amber-50 text-amber-800 rounded-lg text-xs font-medium border border-amber-100 flex items-start gap-2">
+            <AlertCircle className="shrink-0 mt-0.5 text-amber-600" size={15} />
+            <span>Lưu ý: Chỉ được hủy khi đơn ở trạng thái Mới đặt hoặc Chưa chuẩn bị món.</span>
           </div>
 
-          {/* Lý do mẫu */}
-          <div className="space-y-2">
-            <label className="text-xs font-extrabold text-md-on-surface uppercase tracking-wider block">
-              Chọn lý do hủy nhanh:
-            </label>
+          <div className="space-y-1.5">
+            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Chọn lý do hủy nhanh:</span>
             <div className="grid grid-cols-1 gap-1.5">
-              {[
-                'Đổi ý không đặt nữa',
-                'Đặt nhầm món / nhầm số lượng',
-                'Thời gian giao hàng quá lâu',
-                'Muốn thay đổi địa chỉ giao hàng',
-                'Tìm thấy quán khác giá rẻ hơn'
-              ].map((reason, idx) => (
-                <button
-                  key={idx}
-                  type="button"
-                  onClick={() => setCancelReasonInput(reason)}
-                  className="text-left px-3.5 py-2.5 rounded-radius-md border border-slate-200 hover:border-md-primary/40 hover:bg-slate-50 transition-all text-xs font-semibold text-slate-700 cursor-pointer"
+              {['Đổi ý không đặt nữa', 'Đặt nhầm món / nhầm số lượng', 'Thời gian giao quá lâu', 'Muốn đổi địa chỉ'].map((reason, idx) => (
+                <button 
+                  key={idx} type="button" onClick={() => setCancelReasonInput(reason)}
+                  className={`text-left px-3.5 py-2 border rounded-lg text-xs font-semibold transition-all ${
+                    cancelReasonInput === reason ? 'border-orange-500 bg-orange-50/50 text-orange-600' : 'border-slate-200 text-slate-600 hover:bg-slate-50'
+                  }`}
                 >
                   {reason}
                 </button>
@@ -757,38 +793,21 @@ export default function OrderTracking() {
             </div>
           </div>
 
-          {/* Nhập tự do */}
-          <div className="space-y-2">
-            <label className="text-xs font-extrabold text-md-on-surface uppercase tracking-wider block">
-              Nhập lý do hủy chi tiết:
-            </label>
-            <textarea
-              value={cancelReasonInput}
-              onChange={(e) => setCancelReasonInput(e.target.value)}
-              placeholder="Vui lòng cung cấp lý do hủy chi tiết (tối đa 300 ký tự)..."
-              rows={3}
-              maxLength={300}
-              className="w-full p-3.5 border border-slate-200 rounded-radius-md focus:outline-none focus:border-md-primary focus:ring-4 focus:ring-md-primary/10 text-sm font-semibold text-slate-850"
-            />
-          </div>
+          <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Hoặc nhập lý do cụ thể:</span>
+          <textarea 
+            value={cancelReasonInput} 
+            onChange={(e) => setCancelReasonInput(e.target.value)} 
+            placeholder="Nhập lý do hủy đơn hàng..." 
+            rows={3}
+            className="w-full p-3 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-orange-400 bg-slate-50/50 text-slate-800 resize-none" 
+            maxLength={300} 
+          />
 
-          <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-100">
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => {
-                cancelModal.close();
-                setCancelReasonInput('');
-              }}
-            >
-              Đóng
-            </Button>
-            <Button
-              size="sm"
-              variant="secondary"
+          <div className="flex justify-end gap-3 pt-2 border-t border-slate-100">
+            <Button 
               onClick={submitCancel}
               disabled={!cancelReasonInput.trim()}
-              className="bg-red-500 hover:bg-red-600 text-white font-bold"
+              className="!px-5 !py-2 !text-xs !font-bold !bg-orange-500 !text-white !rounded-lg hover:!bg-orange-600 disabled:!bg-slate-300"
             >
               Xác nhận hủy
             </Button>

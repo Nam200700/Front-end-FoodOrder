@@ -1,9 +1,17 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { AlertTriangle, ShieldCheck, RefreshCw, CheckCircle2, User, Flag, Quote, ShieldAlert } from 'lucide-react';
 import { useFetchData } from '../../hooks/useFetchData';
 import apiClient from '../../services/api';
 import Spinner from '../../components/common/Spinner';
+import FilterTabs from '../../components/common/FilterTabs';
 import { toast } from 'react-toastify';
+
+// Các trạng thái báo cáo (khớp enum BE ReportStatus) — cho phép admin xem cả lịch sử đã xử lý
+const REPORT_STATUS_TABS = [
+  { id: 'PENDING', label: 'Chờ xử lý' },
+  { id: 'RESOLVED', label: 'Đã xử lý' },
+  { id: 'REJECTED', label: 'Đã từ chối' },
+];
 
 export default function AdminReports() {
   // Ghép nhãn đối tượng bị báo cáo theo targetType (BE ReportResponse chỉ trả targetType + targetId,
@@ -37,9 +45,27 @@ export default function AdminReports() {
     });
   };
 
-  const { data: reports, loading, refetch } = useFetchData('/admin/reports?status=PENDING&size=500', {
+  // Lọc theo trạng thái: PENDING mặc định; đổi tab sẽ đổi URL -> useFetchData tự refetch
+  const [statusFilter, setStatusFilter] = useState('PENDING');
+  const { data: reports, loading, refetch } = useFetchData(`/admin/reports?status=${statusFilter}&size=500`, {
     mapFn: mapReports,
   });
+
+  // Đếm số báo cáo theo trạng thái để hiện badge trên tab (một lần gọi lấy tất cả rồi đếm)
+  const [statusCounts, setStatusCounts] = useState({});
+  useEffect(() => {
+    let ignore = false;
+    apiClient.get('/admin/reports?size=500')
+      .then((res) => {
+        if (ignore) return;
+        const all = res.data?.data?.content || [];
+        const counts = {};
+        all.forEach((r) => { counts[r.status] = (counts[r.status] || 0) + 1; });
+        setStatusCounts(counts);
+      })
+      .catch((err) => console.error('Lỗi đếm báo cáo theo trạng thái:', err));
+    return () => { ignore = true; };
+  }, [reports]); // refresh sau khi giải quyết 1 báo cáo (danh sách đổi)
 
   const handleResolve = async (id, target) => {
     // BE dùng PATCH /admin/reports/{id}/resolve và ResolveReportRequest chỉ nhận { status }
@@ -81,8 +107,18 @@ export default function AdminReports() {
         </button>
       </div>
 
-      {/* ─── Dải tổng quan: số báo cáo đang chờ xử lý ───────────────────────── */}
-      {list.length > 0 && (
+      {/* Bộ lọc trạng thái: xem báo cáo chờ xử lý / đã xử lý / đã từ chối (lịch sử) */}
+      <FilterTabs
+        tabs={REPORT_STATUS_TABS}
+        activeTab={statusFilter}
+        onTabChange={setStatusFilter}
+        counts={statusCounts}
+        className="bg-slate-900 p-1 rounded-radius-lg border border-slate-800 w-max"
+        activeClassName="bg-purple-650 text-white shadow-sm"
+      />
+
+      {/* ─── Dải tổng quan: số báo cáo đang chờ xử lý (chỉ ở tab PENDING) ─────── */}
+      {statusFilter === 'PENDING' && list.length > 0 && (
         <div className="flex items-center gap-3 bg-red-950/15 border border-red-900/30 rounded-radius-xl p-4">
           <div className="p-2.5 rounded-radius-lg bg-red-500/10 text-red-400 shrink-0">
             <ShieldAlert size={22} />
@@ -98,7 +134,11 @@ export default function AdminReports() {
         <div className="text-center py-16 bg-slate-950 rounded-radius-xl border border-slate-800 text-slate-400 text-xs font-bold shadow-md flex flex-col items-center gap-3">
           {/* icon CheckCircle xanh thay emoji 🎉 cho trạng thái sạch báo cáo */}
           <CheckCircle2 size={40} className="text-emerald-500" strokeWidth={1.5} />
-          Tuyệt vời! Không còn báo cáo vi phạm nào chưa xử lý trên hệ thống.
+          {statusFilter === 'PENDING'
+            ? 'Tuyệt vời! Không còn báo cáo vi phạm nào chưa xử lý trên hệ thống.'
+            : statusFilter === 'RESOLVED'
+              ? 'Chưa có báo cáo nào đã được xử lý.'
+              : 'Chưa có báo cáo nào bị từ chối.'}
         </div>
       ) : (
         // Lưới 2 cột ở màn rộng để tận dụng không gian (trước đây 1 cột bị trống bên phải)
@@ -132,14 +172,22 @@ export default function AdminReports() {
                 </p>
               </div>
 
+              {/* Chỉ cho thao tác giải quyết ở tab PENDING; tab lịch sử hiển thị nhãn trạng thái */}
               <div className="flex justify-end gap-2 pt-1">
-                <button
-                  onClick={() => handleResolve(rep.id, rep.target)}
-                  className="px-4.5 py-2 bg-purple-650 hover:bg-purple-750 text-white font-bold text-xs rounded-radius-full shadow-md flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer"
-                >
-                  <ShieldCheck size={14} />
-                  Giải quyết xong
-                </button>
+                {statusFilter === 'PENDING' ? (
+                  <button
+                    onClick={() => handleResolve(rep.id, rep.target)}
+                    className="px-4.5 py-2 bg-purple-650 hover:bg-purple-750 text-white font-bold text-xs rounded-radius-full shadow-md flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer"
+                  >
+                    <ShieldCheck size={14} />
+                    Giải quyết xong
+                  </button>
+                ) : (
+                  <span className={`px-3 py-1.5 rounded-radius-full text-[11px] font-bold inline-flex items-center gap-1.5 ${statusFilter === 'RESOLVED' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-slate-800 text-slate-400 border border-slate-700'}`}>
+                    <ShieldCheck size={13} />
+                    {statusFilter === 'RESOLVED' ? 'Đã xử lý' : 'Đã từ chối'}
+                  </span>
+                )}
               </div>
             </div>
           ))}

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../stores/authStore';
-import { User, Bike, Phone, LogOut, Camera, Mail, ShieldCheck, Clipboard, Trophy, Star, Package, CheckCircle2, Circle, MapPin, Lightbulb, Clock, Route } from 'lucide-react';
+import { User, Bike, Phone, LogOut, Camera, Mail, ShieldCheck, Clipboard, Trophy, Star, Package, CheckCircle2, Circle, MapPin, Lightbulb } from 'lucide-react';
 import apiClient from '../../services/api';
 import Spinner from '../../components/common/Spinner';
 import Card from '../../components/common/Card';
@@ -163,10 +163,10 @@ export default function ShipperProfile() {
         <Spinner />
       ) : (
         <>
-        <div className="grid lg:grid-cols-5 gap-6 items-start">
+        <div className="grid lg:grid-cols-5 gap-6 items-stretch">
 
-          {/* ═══ CỘT TRÁI: thẻ hồ sơ + hoàn thiện + mẹo + đăng xuất ═══ */}
-          <div className="lg:col-span-2 space-y-6">
+          {/* ═══ CỘT TRÁI: thẻ hồ sơ + hoàn thiện (giãn khớp chiều cao cột phải) ═══ */}
+          <div className="lg:col-span-2 flex flex-col gap-6">
 
             {/* Thẻ hồ sơ với banner tài xế đạp xe chạy ngang (phong cách shipper) */}
             <Card variant="flat" className="border-slate-200/60 shadow-sm relative overflow-hidden animate-fade-in">
@@ -234,8 +234,8 @@ export default function ShipperProfile() {
                     { icon: CheckCircle2, color: 'text-emerald-500', bg: 'bg-emerald-50/60 border-emerald-100/50', value: totalDelivery, label: 'Hoàn thành' },
                     { icon: Star, color: 'text-md-tertiary', bg: 'bg-[#E8F5E9]/60 border-[#C8E6C9]/50', value: Number(avgRating).toFixed(1), label: 'Đánh giá', starFill: true },
                   ].map((s, i) => (
-                    <div key={s.label} style={{ animationDelay: `${i * 90}ms` }} className={`rounded-2xl p-3 flex flex-col items-center border animate-rise-in ${s.bg}`}>
-                      <s.icon size={16} className={`${s.color} ${s.starFill ? 'fill-amber-400 text-amber-400' : ''}`} />
+                    <div key={s.label} style={{ animationDelay: `${i * 90}ms` }} className={`rounded-2xl p-3 flex flex-col items-center border animate-rise-in transition-transform hover:-translate-y-0.5 ${s.bg}`}>
+                      <s.icon size={16} className={`animate-float ${s.color} ${s.starFill ? 'fill-amber-400 text-amber-400' : ''}`} style={{ animationDelay: `${i * 300}ms` }} />
                       <span className={`text-base font-black mt-1.5 leading-none ${s.color}`}>{s.value}</span>
                       <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider mt-1">{s.label}</span>
                     </div>
@@ -244,8 +244,8 @@ export default function ShipperProfile() {
               </div>
             </Card>
 
-            {/* Hoàn thiện hồ sơ — thanh tiến độ + checklist field thật */}
-            <Card variant="flat" className="p-5 border-slate-200/60 shadow-sm animate-slide-up">
+            {/* Hoàn thiện hồ sơ — thanh tiến độ + checklist field thật (flex-1 để giãn khớp đáy với form) */}
+            <Card variant="flat" className="p-5 border-slate-200/60 shadow-sm animate-slide-up lg:flex-1 lg:flex lg:flex-col lg:justify-center">
               <div className="flex items-center justify-between mb-3">
                 <h3 className="font-bold text-sm text-slate-800 flex items-center gap-1.5">
                   <ShieldCheck size={16} className="text-md-tertiary" /> Hoàn thiện hồ sơ
@@ -273,13 +273,9 @@ export default function ShipperProfile() {
             </Card>
           </div>
 
-          {/* ═══ CỘT PHẢI: form chỉnh sửa + mẹo (đặt ở đây để cân chiều cao 2 cột) ═══ */}
-          <div className="lg:col-span-3 space-y-5">
-            <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-[0.18em] flex items-center gap-1.5">
-              <Route size={12} className="text-md-tertiary" /> Chỉnh sửa hồ sơ tài xế
-            </span>
-
-            <Card variant="flat" className="p-5 md:p-6 border-slate-200/60 shadow-sm space-y-5 animate-slide-up">
+          {/* ═══ CỘT PHẢI: form chỉnh sửa — top thẳng hàng với thẻ hồ sơ bên trái (bỏ nhãn eyebrow gây lệch) ═══ */}
+          <div className="lg:col-span-3 flex flex-col">
+            <Card variant="flat" className="p-5 md:p-6 border-slate-200/60 shadow-sm space-y-5 animate-slide-up lg:flex-1">
               <h3 className="font-bold text-sm text-slate-800 border-b border-slate-100 pb-2 flex items-center gap-1.5">
                 <ShieldCheck size={16} className="text-md-tertiary" />
                 Thông Tin Cá Nhân
@@ -402,8 +398,12 @@ export default function ShipperProfile() {
           </h3>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             {shipperTips.map((t, i) => (
-              <div key={i} className="flex sm:flex-col items-start gap-2.5 sm:gap-2 p-3.5 rounded-radius-lg bg-slate-50/70 border border-slate-100">
-                <span className="shrink-0 p-1.5 rounded-radius-md bg-md-tertiary/10 text-md-tertiary">
+              <div
+                key={i}
+                style={{ animationDelay: `${i * 120}ms` }}
+                className="flex sm:flex-col items-start gap-2.5 sm:gap-2 p-3.5 rounded-radius-lg bg-slate-50/70 border border-slate-100 animate-rise-in transition-all hover:-translate-y-0.5 hover:border-md-tertiary/30 hover:bg-white"
+              >
+                <span className="shrink-0 p-1.5 rounded-radius-md bg-md-tertiary/10 text-md-tertiary animate-float" style={{ animationDelay: `${i * 250}ms` }}>
                   <t.icon size={14} />
                 </span>
                 <p className="text-xs text-slate-600 font-semibold leading-relaxed">{t.text}</p>

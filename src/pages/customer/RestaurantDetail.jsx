@@ -341,7 +341,7 @@ export default function RestaurantDetail() {
                 size={20}
                 className={`relative transition-colors duration-200 ${
                   isFavorite
-                    ? 'text-red-500 fill-red-500 animate-heart-pop'
+                    ? 'text-red-500 fill-red-500 ' + (favBurst ? 'animate-heart-pop' : 'animate-heart-beat')
                     : 'text-md-on-surface-variant group-hover:text-red-400 group-hover:scale-110'
                 }`}
               />

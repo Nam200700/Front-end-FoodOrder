@@ -35,6 +35,9 @@ export default function Profile() {
   const [isMapOpen, setIsMapOpen] = useState(false);
   const [updating, setUpdating] = useState(false);
   const fileInputRef = useRef(null);
+  // Bản đồ vị trí read-only ở phần "Vị Trí" — dùng nền chủ quyền Goong/CARTO (đồng nhất mọi map)
+  const locMapRef = useRef(null);
+  const locMapInstance = useRef(null);
   const { uploading: uploadingAvatar, handleAvatarChange: uploadAvatar } = useAvatarUpload();
 
   // Các Modal quản lý địa chỉ

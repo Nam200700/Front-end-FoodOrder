@@ -105,8 +105,10 @@ function ProtectedRoute({ children, allowedRoles }) {
 
 export default function AppRoutes() {
   return (
+    // Suspense: hiện Spinner thoáng qua trong lúc nạp chunk trang lần đầu (lazy-load)
+    <Suspense fallback={<Spinner fullScreen />}>
     <Routes>
-      
+
       {/* ─── AUTHENTICATION ROUTES ────────────────────────────────────────────── */}
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />

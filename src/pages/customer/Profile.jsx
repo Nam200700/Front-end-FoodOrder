@@ -460,7 +460,8 @@ export default function Profile() {
           onClick={handleSave}
           disabled={updating}
           loading={updating}
-          className="w-full mt-auto bg-md-primary text-white font-bold py-3.5 px-4 rounded-radius-full shadow-shadow-2 hover:shadow-shadow-3 hover:translate-y-[-1.5px] active:translate-y-[0px] transition-all flex items-center justify-center gap-2 text-xs uppercase tracking-wider cursor-pointer"
+          icon={updating ? undefined : Save}
+          className="group w-full mt-auto bg-md-primary text-white font-bold py-3.5 px-4 rounded-radius-full shadow-shadow-2 hover:shadow-shadow-3 hover:translate-y-[-1.5px] active:translate-y-[0px] transition-all flex items-center justify-center gap-2 text-xs uppercase tracking-wider cursor-pointer [&_svg]:group-hover:rotate-[-8deg] [&_svg]:transition-transform"
         >
           Cập nhật thông tin
         </Button>

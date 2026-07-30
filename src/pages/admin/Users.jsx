@@ -203,7 +203,18 @@ export default function AdminUsers() {
 
       {/* THANH TÌM KIẾM VÀ BỘ LỌC */}
       <div className="flex flex-col gap-3">
-
+        <div className="relative w-full md:w-96">
+          <span className="absolute inset-y-0 left-0 flex items-center pl-3.5 pointer-events-none text-slate-400">
+            <Search size={16} />
+          </span>
+          <input
+            type="text"
+            value={keyword}
+            onChange={handleSearchChange}
+            placeholder="Tìm theo tên, số điện thoại, email"
+            className="w-full pl-10 pr-4 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-purple-500 focus:bg-white transition-all font-semibold text-slate-800"
+          />
+        </div>
 
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
           <FilterTabs

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useOrderStore } from '../../stores/orderStore';
 import { useChatStore } from '../../stores/chatStore';
-import { ArrowLeft, Phone, MessageSquare, ChevronDown, ChevronUp, CheckCircle, Clock, Ban, AlertCircle, Map, AlertTriangle, Store, Bike, MapPin, ChefHat, Package, PartyPopper, ReceiptText, Check, Navigation, Star } from 'lucide-react';
+import { ArrowLeft, Phone, MessageSquare, ChevronDown, ChevronUp, CheckCircle, Clock, Ban, AlertCircle, Map, AlertTriangle, Store, Bike, MapPin, ChefHat, Package, PartyPopper, ReceiptText, Check, Navigation, Star, Utensils, Wallet, Truck, Banknote, Tag } from 'lucide-react';
 import { formatCurrency } from '../../utils/format';
 import Button from '../../components/common/Button';
 import Card from '../../components/common/Card';

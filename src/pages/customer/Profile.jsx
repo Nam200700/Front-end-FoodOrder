@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../stores/authStore';
-import { User, Phone, Mail, MapPin, LogOut, Camera, Map, Utensils, Sparkles, ShoppingBag, Heart, Bell, MessageCircle, ChevronRight, ShieldCheck, Edit2, Plus } from 'lucide-react';
+import { User, Phone, Mail, MapPin, LogOut, Camera, Map, Utensils, Sparkles, ShoppingBag, Heart, Bell, MessageCircle, ChevronRight, ShieldCheck, Edit2, Plus, Save, Lock } from 'lucide-react';
 import MapModal from '../../components/common/MapModal';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';

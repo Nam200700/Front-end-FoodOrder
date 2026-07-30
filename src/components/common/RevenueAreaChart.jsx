@@ -96,7 +96,7 @@ export default function RevenueAreaChart({
               stroke={activeAreas[0]?.color || color}
               fill="rgba(148,163,184,0.10)"
               tickFormatter={() => ''}
-　　          />
+            />
           )}
         </ComposedChart>
       </ResponsiveContainer>

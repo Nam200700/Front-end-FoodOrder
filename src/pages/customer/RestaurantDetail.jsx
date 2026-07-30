@@ -498,16 +498,25 @@ export default function RestaurantDetail() {
                   </h3>
                   
                   <div className="space-y-4 sm:space-y-5">
-                    {sec.items.map((item) => {
+                    {sec.items.map((item, itemIdx) => {
                       const qty = getItemQty(item.id);
                       return (
-                        <Card 
+                        <Card
                           key={item.id}
                           variant="flat"
-                          className="p-3 sm:p-4.5 flex gap-3 sm:gap-5"
+                          className={`group p-3 sm:p-4.5 flex gap-3 sm:gap-5 animate-rise-in transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md ${qty > 0 ? 'ring-1 ring-md-primary/30 bg-orange-50/30' : ''}`}
+                          style={{ animationDelay: `${itemIdx * 55}ms` }}
                         >
-                          <div className="w-20 h-20 xs:w-24 xs:h-24 sm:w-28 sm:h-28 rounded-radius-md overflow-hidden shrink-0 shadow-sm">
-                             <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
+                          <div className="relative w-20 h-20 xs:w-24 xs:h-24 sm:w-28 sm:h-28 rounded-radius-md overflow-hidden shrink-0 shadow-sm">
+                             <img
+                               src={getFoodImageUrl(item.image)}
+                               alt={item.name}
+                               onError={(e) => { e.currentTarget.src = DEFAULT_FOOD_IMAGE; }}
+                               className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
+                             />
+                             {qty > 0 && (
+                               <span className="absolute top-1 left-1 bg-md-primary text-white text-[10px] font-black px-1.5 py-0.5 rounded-full shadow-sm animate-scale-up">×{qty}</span>
+                             )}
                           </div>
 
                           <div className="flex-1 flex flex-col justify-between min-w-0">

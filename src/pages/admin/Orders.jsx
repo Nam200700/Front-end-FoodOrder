@@ -68,7 +68,7 @@ export default function AdminOrders() {
     mapFn: mapOrders,
   });
 
-
+  const { data: kpiData, refetch: refetchKpi } = useFetchData('/admin/orders/stats');
 
   const ordersList = pageData?.items || [];
   const totalPages = pageData?.totalPages || 1;

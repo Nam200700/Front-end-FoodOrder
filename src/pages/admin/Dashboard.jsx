@@ -6,6 +6,7 @@ import {
   CreditCard, CheckCircle2, RotateCcw, Ban, ArrowRight, BarChart3, ShieldAlert,
 } from 'lucide-react';
 import RevenueAreaChart from '../../components/common/RevenueAreaChart';
+import { aggregateDaily, pickGranularity, bucketLabel, granularityCaption } from '../../utils/chartAggregate';
 import { formatCurrency } from '../../utils/format';
 import Spinner from '../../components/common/Spinner';
 import { useFetchData } from '../../hooks/useFetchData';
@@ -24,13 +25,13 @@ export default function AdminDashboard() {
   const ins = insights || {};
 
   // Biểu đồ GTV theo ngày (toàn lịch sử) — dữ liệu server-side chính xác, không bị chặn số bản ghi.
-  // FE có thanh kéo trượt để xem đủ mốc ngày/tháng/năm.
-  const revenueChartData = useMemo(() => {
-    return (ins.dailyGmv || []).map(d => {
-      // date "yyyy-MM-dd" → "dd/MM/yyyy"
-      const [y, m, day] = (d.date || '').split('-');
-      return { day: (day && m && y) ? `${day}/${m}/${y}` : d.date, amount: Number(d.gmv || 0) };
-    });
+  // Gom theo ngày/tuần/tháng tuỳ độ dày để giãn ra, dễ nhìn; kèm thanh kéo trượt xem đủ mốc.
+  const { revenueChartData, chartGranularity } = useMemo(() => {
+    const raw = (ins.dailyGmv || []).map(d => ({ date: d.date, gmv: Number(d.gmv || 0) }));
+    const gran = pickGranularity(raw.length);
+    const agg = aggregateDaily(raw, 'date', gran);
+    const data = agg.map(d => ({ day: bucketLabel(d, gran, 'date', true), amount: d.gmv || 0 }));
+    return { revenueChartData: data, chartGranularity: gran };
   }, [ins.dailyGmv]);
 
   // Giờ cao điểm hệ thống → bar theo khung giờ
@@ -254,7 +255,9 @@ export default function AdminDashboard() {
               Hoa hồng sàn ({Math.round((ov.commissionRate ?? 0) * 100)}%): {formatCurrency(ov.totalCommission ?? 0)}
             </span>
           </div>
-          <p className="text-[10px] text-slate-500 font-semibold -mt-2">Kéo thanh trượt phía dưới để xem đủ mốc ngày · tháng · năm</p>
+          <p className="text-[10px] text-slate-500 font-semibold -mt-2">
+            {granularityCaption(chartGranularity) ? `${granularityCaption(chartGranularity)} · ` : ''}Kéo thanh trượt phía dưới để xem đủ mốc ngày · tháng · năm
+          </p>
           <div className="h-60 w-full text-xs">
             {revenueChartData.length > 0 ? (
               <RevenueAreaChart

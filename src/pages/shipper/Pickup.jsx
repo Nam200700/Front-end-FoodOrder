@@ -7,6 +7,7 @@ import Spinner from '../../components/common/Spinner';
 import { useChatStore } from '../../stores/chatStore';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
+import { addVietnamBaseMap } from '../../utils/mapSovereignty';
 import { useWebSocketContext } from '../../contexts/WebSocketContext';
 import { SkeletonOrderCard } from '../../components/common/SkeletonCard';
 import EmptyState from '../../components/common/EmptyState';
@@ -337,9 +338,8 @@ export default function ShipperPickup() {
       const map = L.map(mapContainerRef.current).setView([(rLat + cLat) / 2, (rLng + cLng) / 2], 14);
       mapRef.current = map;
 
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '&copy; OpenStreetMap contributors'
-      }).addTo(map);
+      // Nền bản đồ chuẩn chủ quyền VN (Goong nếu có key, không thì CARTO + nhãn đỏ)
+      addVietnamBaseMap(map);
 
       const resIcon = L.divIcon({
         html: `<div class="flex items-center justify-center w-8 h-8 rounded-full bg-orange-500 text-white shadow-md border-2 border-white"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 2v7c0 1.1.9 2 2 2a2 2 0 0 0 2-2V2"/><path d="M7 2v20"/><path d="M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"/></svg></div>`,

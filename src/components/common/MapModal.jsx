@@ -4,6 +4,7 @@ import 'leaflet/dist/leaflet.css';
 import { MapPin, X, Navigation, Check } from 'lucide-react';
 import Button from './Button';
 import axios from 'axios';
+import { addVietnamBaseMap, vnSovereigntyAddress } from '../../utils/mapSovereignty';
 
 // Giải quyết lỗi thiếu icon Marker của Leaflet trong môi trường Webpack/Vite
 delete L.Icon.Default.prototype._getIconUrl;
@@ -12,31 +13,6 @@ L.Icon.Default.mergeOptions({
   iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
   shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
 });
-
-// ─── CHỦ QUYỀN BIỂN ĐẢO VIỆT NAM ──────────────────────────────────────────────
-// Bản đồ nền OpenStreetMap không luôn thể hiện rõ hai quần đảo thuộc chủ quyền Việt Nam.
-// Chèn nhãn khẳng định Hoàng Sa & Trường Sa là của Việt Nam lên bản đồ (toạ độ đại diện).
-const VN_ISLANDS = [
-  { lat: 16.50, lng: 112.00, name: 'Quần đảo Hoàng Sa' },
-  { lat: 8.64, lng: 111.92, name: 'Quần đảo Trường Sa' },
-];
-
-// Thêm nhãn (không tương tác) cho 2 quần đảo — không ảnh hưởng thao tác chọn vị trí.
-function addVietnamSovereigntyLabels(map) {
-  VN_ISLANDS.forEach(({ lat, lng, name }) => {
-    const icon = L.divIcon({
-      className: 'vn-island-label',
-      iconSize: [0, 0],
-      html:
-        `<div style="transform:translate(-50%,-50%);white-space:nowrap;` +
-        `background:#DA251D;color:#fff;font-weight:800;font-size:11px;line-height:1.2;` +
-        `padding:3px 9px;border-radius:9999px;box-shadow:0 1px 5px rgba(0,0,0,.35);` +
-        `border:1px solid rgba(255,255,255,.55);font-family:'Google Sans',system-ui,sans-serif;">` +
-        `${name} (Việt Nam)</div>`,
-    });
-    L.marker([lat, lng], { icon, interactive: false, keyboard: false }).addTo(map);
-  });
-}
 
 export default function MapModal({ isOpen, onClose, onConfirm, initialLat = 10.762622, initialLng = 106.660172 }) {
   const mapContainerRef = useRef(null);
@@ -50,6 +26,14 @@ export default function MapModal({ isOpen, onClose, onConfirm, initialLat = 10.7
 
   // Hàm dịch ngược toạ độ ra địa chỉ chữ (Reverse Geocoding) - Miễn phí 100% từ OpenStreetMap Nominatim
   const fetchAddress = async (lat, lng) => {
+    // Toạ độ thuộc Hoàng Sa/Trường Sa → ghi đè địa chỉ chủ quyền VN, KHÔNG hỏi Nominatim
+    // (vốn trả về "Tam Sa, Trung Quốc").
+    const vn = vnSovereigntyAddress(lat, lng);
+    if (vn) {
+      setAddressName(vn);
+      setLoadingAddress(false);
+      return;
+    }
     setLoadingAddress(true);
     try {
       const response = await axios.get(
@@ -81,14 +65,8 @@ export default function MapModal({ isOpen, onClose, onConfirm, initialLat = 10.7
       const map = L.map(mapContainerRef.current).setView([selectedCoords.lat, selectedCoords.lng], 15);
       mapRef.current = map;
 
-      // Nạp Layer bản đồ OpenStreetMap miễn phí 100%
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '&copy; OpenStreetMap contributors',
-        maxZoom: 19,
-      }).addTo(map);
-
-      // Khẳng định chủ quyền Hoàng Sa & Trường Sa của Việt Nam trên bản đồ
-      addVietnamSovereigntyLabels(map);
+      // Nền bản đồ chuẩn chủ quyền VN (Goong nếu có key, không thì CARTO + nhãn đỏ)
+      addVietnamBaseMap(map);
 
       // Tạo Marker ban đầu
       const marker = L.marker([selectedCoords.lat, selectedCoords.lng], {

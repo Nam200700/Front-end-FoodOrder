@@ -6,6 +6,7 @@ import {
   PackageX, EyeOff, ArrowRight, Sparkles, Clock, BarChart3,
 } from 'lucide-react';
 import RevenueAreaChart from '../../components/common/RevenueAreaChart';
+import { aggregateDaily, pickGranularity, bucketLabel, granularityCaption } from '../../utils/chartAggregate';
 import { formatCurrency } from '../../utils/format';
 import apiClient from '../../services/api';
 import Spinner from '../../components/common/Spinner';
@@ -279,7 +280,9 @@ export default function MerchantDashboard() {
               Xem chi tiết ở Thống kê <ArrowRight size={12} />
             </button>
           </div>
-          <p className="text-[10px] text-slate-400 font-semibold -mt-3 mb-3">Kéo thanh trượt phía dưới để xem các mốc ngày khác</p>
+          <p className="text-[10px] text-slate-400 font-semibold -mt-3 mb-3">
+            {granularityCaption(chartGranularity) ? `${granularityCaption(chartGranularity)} · ` : ''}Kéo thanh trượt phía dưới để xem các mốc ngày khác
+          </p>
           <div className="h-64 w-full text-xs">
             {revenueData.length > 0 ? (
               <RevenueAreaChart data={revenueData} dataKey="amount" xKey="day" color="#10B981" height={256} yTickFormatter={(v) => `${v / 1000}k`} brush />

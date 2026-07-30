@@ -581,15 +581,20 @@ export default function RestaurantDetail() {
               </h3>
               
               {cartItems.length === 0 ? (
-                <p className="text-xs text-md-outline font-semibold py-2">Chưa có món nào. Hãy thêm món từ thực đơn.</p>
+                <div className="flex flex-col items-center text-center py-6 gap-2">
+                  <span className="w-12 h-12 rounded-radius-full bg-orange-50 text-md-primary flex items-center justify-center animate-float">
+                    <ShoppingBag size={22} />
+                  </span>
+                  <p className="text-xs text-md-outline font-semibold">Chưa có món nào.<br />Hãy thêm món từ thực đơn.</p>
+                </div>
               ) : (
                 <>
                   <div className="space-y-3 max-h-72 overflow-y-auto no-scrollbar">
                     {cartItems.map((item) => (
-                      <div key={item.id} className="flex items-center justify-between text-xs gap-3">
+                      <div key={item.id} className="flex items-center justify-between text-xs gap-3 animate-rise-in">
                         <div className="flex flex-col truncate pr-2">
-                          <span className="text-md-on-surface truncate">{item.name}</span>
-                          <span className="text-md-on-surface truncate">{item.price} x{item.quantity}</span>
+                          <span className="text-md-on-surface font-semibold truncate">{item.name}</span>
+                          <span className="text-md-outline truncate">{formatCurrency(item.price)} × {item.quantity}</span>
                         </div>
                         
                         <div className="flex items-center gap-3 shrink-0">
@@ -729,30 +734,59 @@ export default function RestaurantDetail() {
 
       {/* ─── TAB CONTENT: INFO ─────────────────────────────────────────────────── */}
       {activeTab === 'info' && (
-        <div className="max-w-3xl mx-auto px-4 sm:px-6 mt-8">
-          <Card variant="elevated" className="p-5 sm:p-6.5 space-y-6">
-            <div>
-              <h3 className="font-extrabold text-base md:text-lg text-md-on-surface">Giới thiệu quán</h3>
-              <p className="text-xs md:text-sm text-md-on-surface-variant leading-relaxed mt-3 font-medium">
-                {restaurant.description}
-              </p>
+        <div className="max-w-3xl mx-auto px-4 sm:px-6 mt-8 space-y-5">
+          {/* Giới thiệu quán */}
+          <Card variant="elevated" className="p-5 sm:p-6.5 animate-rise-in">
+            <h3 className="font-extrabold text-base md:text-lg text-md-on-surface flex items-center gap-2">
+              <span className="w-8 h-8 rounded-xl bg-gradient-to-br from-orange-400 to-orange-600 text-white flex items-center justify-center shadow-sm"><Info size={16} /></span>
+              Giới thiệu quán
+            </h3>
+            <p className="text-xs md:text-sm text-md-on-surface-variant leading-relaxed mt-3.5 font-medium">
+              {restaurant.description || 'Quán chưa cập nhật giới thiệu.'}
+            </p>
+          </Card>
+
+          {/* Thông tin dịch vụ — thẻ icon */}
+          <div>
+            <h3 className="font-extrabold text-sm text-md-on-surface uppercase tracking-wider mb-3 px-1">Thông tin dịch vụ</h3>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              {[
+                { icon: Timer, color: 'text-orange-600 bg-orange-50', label: 'Chuẩn bị TB', value: '10-15 phút' },
+                { icon: Bike, color: 'text-emerald-600 bg-emerald-50', label: 'Giao tối đa', value: '7.0 km' },
+                { icon: Truck, color: 'text-blue-600 bg-blue-50', label: 'Phí ship từ', value: formatCurrency(shippingFee) },
+                { icon: Wallet, color: 'text-purple-600 bg-purple-50', label: 'Thanh toán', value: 'COD' },
+              ].map((it, idx) => {
+                const ItIcon = it.icon;
+                return (
+                  <Card key={idx} variant="flat" className="p-3.5 flex flex-col items-center text-center gap-2 animate-rise-in hover:-translate-y-0.5 hover:shadow-md transition-all" style={{ animationDelay: `${idx * 60}ms` }}>
+                    <span className={`w-10 h-10 rounded-xl flex items-center justify-center ${it.color}`}><ItIcon size={19} /></span>
+                    <span className="text-[10px] text-md-outline font-bold uppercase tracking-wide">{it.label}</span>
+                    <span className="text-xs sm:text-sm font-extrabold text-md-on-surface leading-tight">{it.value}</span>
+                  </Card>
+                );
+              })}
             </div>
-            
-            <div className="pt-5 border-t border-md-outline-variant/20 space-y-3 font-medium">
-              <h3 className="font-extrabold text-base md:text-lg text-md-on-surface mb-3">Thông tin dịch vụ</h3>
-              <div className="flex items-center justify-between text-xs md:text-sm">
-                <span className="text-md-on-surface-variant">Thời gian chuẩn bị trung bình:</span>
-                <span className="font-extrabold text-md-on-surface">10-15 phút</span>
-              </div>
-              <div className="flex items-center justify-between text-xs md:text-sm">
-                <span className="text-md-on-surface-variant">Khoảng cách giao hàng tối đa:</span>
-                <span className="font-extrabold text-md-on-surface">7.0km</span>
-              </div>
-              {/* <div className="flex items-center justify-between text-xs md:text-sm">
-                <span className="text-md-on-surface-variant">Thanh toán hỗ trợ:</span>
-                <span className="font-extrabold text-md-secondary">Tiền mặt COD</span>
-              </div> */}
-            </div>
+          </div>
+
+          {/* Liên hệ & địa chỉ */}
+          <Card variant="elevated" className="p-5 sm:p-6.5 space-y-3.5 animate-rise-in">
+            <h3 className="font-extrabold text-sm text-md-on-surface uppercase tracking-wider">Liên hệ &amp; địa chỉ</h3>
+            {[
+              { icon: MapPin, label: 'Địa chỉ', value: restaurant.address },
+              { icon: Clock, label: 'Giờ mở cửa', value: restaurant.openTime },
+              { icon: Phone, label: 'Điện thoại', value: restaurant.phone },
+            ].map((row, idx) => {
+              const RowIcon = row.icon;
+              return (
+                <div key={idx} className="flex items-start gap-3 text-xs md:text-sm">
+                  <span className="w-8 h-8 rounded-lg bg-slate-100 text-md-primary flex items-center justify-center shrink-0"><RowIcon size={15} /></span>
+                  <div className="min-w-0">
+                    <span className="text-[10px] text-md-outline font-bold uppercase tracking-wide block">{row.label}</span>
+                    <span className="font-semibold text-md-on-surface break-words">{row.value}</span>
+                  </div>
+                </div>
+              );
+            })}
           </Card>
         </div>
       )}

@@ -82,6 +82,10 @@
   --animate-rise-in: riseIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) both;
   /* Sao đánh giá nảy khi được chọn + mặt cảm xúc bật lên */
   --animate-star-pop: starPop 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  /* Nút tim yêu thích: đập tim khi bấm thích + vòng lan toả bung ra */
+  --animate-heart-pop: heartPop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  --animate-heart-burst: heartBurst 0.6s ease-out forwards;
+  --animate-heart-beat: heartBeat 1.4s ease-in-out infinite;
   /* Trang trí hero Login: trôi chậm, đảo nhẹ, vệt sáng quét, lấp lánh, gradient chuyển động */
   --animate-float-slow: floatBob 5s ease-in-out infinite;
   --animate-drift: drift 7s ease-in-out infinite;

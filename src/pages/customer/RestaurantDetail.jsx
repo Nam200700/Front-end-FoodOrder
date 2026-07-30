@@ -183,6 +183,9 @@ export default function RestaurantDetail() {
     fetchFavoriteStatus();
   }, [id, user?.lat, user?.lng, page]); // page: đổi trang → nạp lại danh sách đánh giá
 
+  // Đổi quán → về trang đánh giá đầu (tránh giữ số trang của quán trước)
+  useEffect(() => { setPage(0); }, [id]);
+
   // Parallax scroll effect
   useEffect(() => {
     const handleScroll = () => {

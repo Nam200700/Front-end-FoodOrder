@@ -513,13 +513,13 @@ function SuggestionChips({ bank, selected, onToggle }) {
               type="button"
               key={tag}
               onClick={() => onToggle(tag)}
-              className={`text-[11px] font-bold px-3 py-1.5 rounded-full border transition-all active:scale-95 cursor-pointer ${
+              className={`text-[11px] font-bold px-3 py-1.5 rounded-full border transition-all active:scale-95 cursor-pointer inline-flex items-center gap-1 ${
                 on
                   ? 'bg-md-primary text-white border-md-primary shadow-sm'
                   : 'bg-white text-md-on-surface-variant border-md-outline-variant/50 hover:border-md-primary hover:text-md-primary'
               }`}
             >
-              {on ? '✓ ' : '+ '}{tag}
+              {on ? <Check size={12} /> : <Plus size={12} />}{tag}
             </button>
           );
         })}

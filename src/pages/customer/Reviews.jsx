@@ -25,14 +25,33 @@ const RATING_META = {
 
 // Gợi ý tag theo số sao — bấm để thêm vào nhận xét, khỏi phải tự nghĩ
 const RESTAURANT_TAGS = {
-  positive: ['Món ăn ngon', 'Trình bày đẹp mắt', 'Đóng gói cẩn thận', 'Phần ăn đầy đặn', 'Giá cả hợp lý', 'Sẽ đặt lại'],
-  neutral: ['Tạm ổn', 'Món hơi nguội', 'Cần cải thiện thêm', 'Đúng như mô tả'],
-  negative: ['Món bị nguội', 'Thiếu món', 'Không đúng mô tả', 'Đóng gói sơ sài', 'Vệ sinh chưa tốt'],
+  positive: [
+    'Món ăn ngon', 'Hương vị đậm đà', 'Đồ ăn còn nóng hổi', 'Phần ăn đầy đặn',
+    'Nguyên liệu tươi ngon', 'Trình bày đẹp mắt', 'Đóng gói cẩn thận', 'Giá cả hợp lý',
+    'Đúng như mô tả', 'Giao còn nóng', 'Sẽ đặt lại', 'Đáng đồng tiền',
+  ],
+  neutral: [
+    'Tạm ổn', 'Vị bình thường', 'Món hơi nguội', 'Phần ăn hơi ít',
+    'Đóng gói tạm ổn', 'Giá hơi cao', 'Cần cải thiện thêm', 'Đúng như mô tả',
+  ],
+  negative: [
+    'Món bị nguội', 'Vị không ngon', 'Thiếu món', 'Giao sai món',
+    'Không đúng mô tả', 'Phần ăn quá ít', 'Đồ ăn không tươi', 'Đóng gói sơ sài',
+    'Vệ sinh chưa tốt', 'Giá quá cao', 'Nêm nếm chưa vừa',
+  ],
 };
 const SHIPPER_TAGS = {
-  positive: ['Giao hàng nhanh', 'Tài xế thân thiện', 'Giao đúng giờ', 'Cẩn thận với món', 'Chuyên nghiệp'],
-  neutral: ['Tạm ổn', 'Giao hơi chậm', 'Bình thường'],
-  negative: ['Giao hàng trễ', 'Thái độ chưa tốt', 'Làm rơi/hỏng món', 'Khó liên lạc'],
+  positive: [
+    'Giao hàng nhanh', 'Giao đúng giờ', 'Tài xế thân thiện', 'Vui vẻ nhiệt tình',
+    'Cẩn thận với món', 'Đóng gói nguyên vẹn', 'Gọi điện lịch sự', 'Giao tận nơi', 'Chuyên nghiệp',
+  ],
+  neutral: [
+    'Tạm ổn', 'Giao hơi chậm', 'Bình thường', 'Giao đúng nơi', 'Liên lạc được',
+  ],
+  negative: [
+    'Giao hàng trễ', 'Thái độ chưa tốt', 'Làm rơi/hỏng món', 'Khó liên lạc',
+    'Giao sai địa chỉ', 'Không gọi trước', 'Món bị xáo trộn', 'Thiếu chuyên nghiệp',
+  ],
 };
 const bandForRating = (r) => (r >= 4 ? 'positive' : r === 3 ? 'neutral' : 'negative');
 

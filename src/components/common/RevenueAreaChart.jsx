@@ -12,8 +12,14 @@ export default function RevenueAreaChart({
   yTickFormatter,
   chartType = 'area', // 'area' hoặc 'bar'
   brush = false,      // hiện thanh kéo trượt (scroll) để kéo dữ liệu qua lại
-  brushWindow = 21    // số điểm hiển thị mặc định khi có brush (mới nhất)
+  brushWindow = 21,   // số điểm hiển thị mặc định khi có brush (mới nhất)
+  valueFormatter      // format giá trị trong tooltip; mặc định làm tròn số nguyên (không để lộ số lẻ)
 }) {
+  // Mặc định: làm tròn về số nguyên + phân tách nghìn (khử số lẻ .22 & rác dấu phẩy động khi gom bucket).
+  const fmtValue = valueFormatter || ((v) => {
+    const n = Number(v);
+    return Number.isFinite(n) ? Math.round(n).toLocaleString('vi-VN') : v;
+  });
   // Nếu có areas, dùng areas. Ngược lại dùng dataKey/color mặc định
   const activeAreas = areas.length > 0 ? areas : [{ key: dataKey, name: 'Doanh thu', color: color }];
 

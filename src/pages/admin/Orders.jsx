@@ -38,7 +38,26 @@ export default function AdminOrders() {
     }
   };
 
+  const apiUrl = useMemo(() => {
+    const params = new URLSearchParams({
+      page: page.toString(),
+      size: pageSize.toString(),
+    });
 
+    if (keyword.trim()) {
+      params.append('keyword', keyword.trim());
+    }
+
+    if (statusFilter !== 'all') {
+      if (statusFilter === 'processing' || statusFilter === 'delivering') {
+        params.append('statusGroup', statusFilter.toUpperCase());
+      } else {
+        params.append('status', statusFilter.toUpperCase());
+      }
+    }
+
+    return `/admin/orders?${params.toString()}`;
+  }, [page, pageSize, statusFilter, keyword]);
 
   const mapOrders = (data) => {
     const realData = data?.content || data || [];

@@ -359,7 +359,7 @@ export default function AdminDashboard() {
         {/* Toàn vẹn thanh toán */}
         <div className="bg-slate-950 border border-slate-800 rounded-radius-xl p-5 flex flex-col">
           <h3 className="text-xs font-extrabold text-slate-200 uppercase tracking-wider mb-4 flex items-center gap-1.5">
-            <CreditCard className="text-purple-400" size={16} /> Toàn vẹn thanh toán
+            <CreditCard className="text-purple-400" size={16} /> Thống kê thanh toán
           </h3>
           <div className="space-y-2.5 flex-1">
             {[

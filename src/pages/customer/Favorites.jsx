@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Heart, Shuffle, Sparkles, Plus, Utensils, ArrowRight, Store, Star, MapPin, Clock, Compass } from 'lucide-react';
+import { Heart, Shuffle, Sparkles, Plus, Utensils, ArrowRight, Store, Star, MapPin, Clock, Compass, DoorOpen, Award } from 'lucide-react';
 import { useFetchData } from '../../hooks/useFetchData';
 import apiClient from '../../services/api';
 import { SkeletonRestaurantCard } from '../../components/common/SkeletonCard';
@@ -31,6 +31,18 @@ export default function Favorites() {
   // "HH:mm:ss" → "HH:mm" (bỏ giây cho gọn)
   const fmtTime = (t) => (t ? String(t).slice(0, 5) : null);
 
+  // Quán có đang mở cửa ngay bây giờ không (xử lý cả ca qua đêm closesAt < opensAt).
+  const isOpenNow = (opensAt, closesAt) => {
+    if (!opensAt || !closesAt) return false;
+    const now = new Date();
+    const cur = now.getHours() * 60 + now.getMinutes();
+    const [oh, om] = String(opensAt).slice(0, 5).split(':').map(Number);
+    const [ch, cm] = String(closesAt).slice(0, 5).split(':').map(Number);
+    if ([oh, om, ch, cm].some(Number.isNaN)) return false;
+    const open = oh * 60 + om, close = ch * 60 + cm;
+    return close > open ? (cur >= open && cur < close) : (cur >= open || cur < close);
+  };
+
   const { data: favorites, loading, error, refetch } = useFetchData('/favorites', {
     mapFn: mapFavorites,
   });
@@ -52,6 +64,9 @@ export default function Favorites() {
   const avgRating = ratedList.length
     ? ratedList.reduce((sum, r) => sum + r.rating, 0) / ratedList.length
     : 0;
+  // Số liệu THẬT thêm để dải thống kê phong phú: đang mở cửa + quán được đánh giá cao (≥4.5★)
+  const openNowCount = list.filter((r) => isOpenNow(r.opensAt, r.closesAt)).length;
+  const topRatedCount = list.filter((r) => r.rating >= 4.5).length;
 
   // "Thèm gì hôm nay?" → mở ngẫu nhiên một quán trong bộ sưu tập (cú hích đặt món
   // khi đang phân vân). Thuần trình bày, không gọi API.

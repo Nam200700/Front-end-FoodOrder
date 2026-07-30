@@ -4,6 +4,7 @@ import { useOrderStore } from '../../stores/orderStore';
 import {
   ArrowLeft, Star, Send, Utensils, Bike, Camera, X, MessageSquareReply,
   Sparkles, ReceiptText, Lightbulb, ShieldCheck, ImagePlus, Heart, Check, Plus,
+  Frown, Meh, Smile, Laugh,
 } from 'lucide-react';
 import { useImageUpload } from '../../hooks/useImageUpload';
 import apiClient from '../../services/api';
@@ -13,15 +14,13 @@ import Button from '../../components/common/Button';
 import { formatCurrency } from '../../utils/format';
 import { toast } from 'react-toastify';
 
-const getRatingLabel = (rating) => {
-  switch (rating) {
-    case 1: return 'Tệ';
-    case 2: return 'Không hài lòng';
-    case 3: return 'Bình thường';
-    case 4: return 'Hài lòng';
-    case 5: return 'Tuyệt vời';
-    default: return '';
-  }
+// Nhãn cảm xúc ĐẦY MÀU SẮC theo số sao + icon mặt phản ứng theo điểm
+const RATING_META = {
+  1: { label: 'Tệ', text: 'text-red-500', pill: 'bg-red-50 text-red-600 border-red-200', face: Frown },
+  2: { label: 'Không hài lòng', text: 'text-orange-500', pill: 'bg-orange-50 text-orange-600 border-orange-200', face: Frown },
+  3: { label: 'Bình thường', text: 'text-amber-500', pill: 'bg-amber-50 text-amber-600 border-amber-200', face: Meh },
+  4: { label: 'Hài lòng', text: 'text-lime-600', pill: 'bg-lime-50 text-lime-700 border-lime-200', face: Smile },
+  5: { label: 'Tuyệt vời', text: 'text-emerald-600', pill: 'bg-emerald-50 text-emerald-700 border-emerald-200', face: Laugh },
 };
 
 // Gợi ý tag theo số sao — bấm để thêm vào nhận xét, khỏi phải tự nghĩ
@@ -458,15 +457,18 @@ export default function Reviews() {
   );
 }
 
-/* ── Cụm chọn sao (tái dùng cho quán & shipper) ── */
+/* ── Cụm chọn sao (tái dùng cho quán & shipper) — có animation nảy + mặt cảm xúc đổi màu ── */
 function RatingStars({ value, hover, readOnly, onPick, onHover }) {
   const current = hover || value;
+  const meta = value > 0 ? RATING_META[value] : null;
+  const Face = meta?.face;
   return (
-    <div className="flex flex-col items-center justify-center py-1 space-y-2.5">
+    <div className="flex flex-col items-center justify-center py-1 space-y-3">
       <div className="flex items-center gap-1.5">
         {[...Array(5)].map((_, idx) => {
           const rv = idx + 1;
-          const active = rv <= current;
+          const colored = rv <= current;   // tô vàng (gồm cả hover-preview)
+          const picked = rv <= value;      // đã chấm thật → chạy pop
           return (
             <button
               type="button"
@@ -476,23 +478,32 @@ function RatingStars({ value, hover, readOnly, onPick, onHover }) {
               onMouseEnter={() => !readOnly && onHover(rv)}
               onMouseLeave={() => !readOnly && onHover(0)}
               className={`focus:outline-none transition-transform duration-150 p-1 ${
-                readOnly ? 'cursor-default' : 'hover:scale-110 active:scale-95 cursor-pointer'
-              } ${active && !readOnly ? 'scale-105' : ''}`}
+                readOnly ? 'cursor-default' : 'hover:scale-125 active:scale-90 cursor-pointer'
+              }`}
             >
+              {/* key={value}: đổi sao → remount → replay animation nảy; delay theo vị trí để sáng lần lượt */}
               <Star
-                size={36}
+                key={value}
+                size={38}
+                style={picked && !readOnly ? { animationDelay: `${idx * 55}ms` } : undefined}
                 className={`transition-colors duration-200 ${
-                  active ? 'fill-amber-400 text-amber-400 drop-shadow-sm' : 'text-slate-200'
-                }`}
+                  colored
+                    ? 'fill-amber-400 text-amber-400 drop-shadow-[0_2px_7px_rgba(251,191,36,0.55)]'
+                    : 'text-slate-200'
+                } ${picked && !readOnly ? 'animate-star-pop' : ''}`}
               />
             </button>
           );
         })}
       </div>
-      {value > 0 && (
-        <span className="text-xs font-extrabold text-amber-600 bg-amber-50 border border-amber-200/60 px-3.5 py-1 rounded-full animate-rise-in">
-          {getRatingLabel(value)}
-        </span>
+      {meta && (
+        <div key={value} className="animate-star-pop inline-flex items-center gap-2">
+          {Face && <Face size={22} className={meta.text} strokeWidth={2.4} />}
+          <span className={`text-sm font-extrabold px-3.5 py-1 rounded-full border ${meta.pill}`}>
+            {meta.label}
+          </span>
+          {value === 5 && <Sparkles size={16} className="text-amber-400 animate-twinkle" />}
+        </div>
       )}
     </div>
   );

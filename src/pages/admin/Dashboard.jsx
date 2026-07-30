@@ -248,12 +248,13 @@ export default function AdminDashboard() {
           <div className="flex items-center justify-between flex-wrap gap-2">
             <h3 className="text-xs font-extrabold text-slate-200 uppercase tracking-wider flex items-center gap-1.5">
               <TrendingUp className="text-purple-400" size={18} />
-              GTV hệ thống · 30 ngày gần nhất
+              GTV hệ thống theo ngày
             </h3>
             <span className="text-[10px] text-purple-400 bg-purple-950/20 px-2.5 py-1 rounded-full border border-purple-900/30 font-bold">
               Hoa hồng sàn ({Math.round((ov.commissionRate ?? 0) * 100)}%): {formatCurrency(ov.totalCommission ?? 0)}
             </span>
           </div>
+          <p className="text-[10px] text-slate-500 font-semibold -mt-2">Kéo thanh trượt phía dưới để xem đủ mốc ngày · tháng · năm</p>
           <div className="h-60 w-full text-xs">
             {revenueChartData.length > 0 ? (
               <RevenueAreaChart
@@ -263,11 +264,12 @@ export default function AdminDashboard() {
                 color="#9334E6"
                 height={240}
                 yTickFormatter={(v) => v >= 1000000 ? `${v / 1000000}M` : `${v / 1000}k`}
+                brush
               />
             ) : (
               <div className="h-full flex flex-col items-center justify-center text-slate-500 gap-2">
                 <TrendingUp size={28} className="opacity-40" />
-                <span className="text-xs">Chưa có đơn hoàn tất trong 30 ngày để thống kê.</span>
+                <span className="text-xs">Chưa có đơn hoàn tất để thống kê GTV theo ngày.</span>
               </div>
             )}
           </div>

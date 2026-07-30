@@ -3,6 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../stores/authStore';
 import { User, Phone, Mail, MapPin, LogOut, Camera, Map, Utensils, Sparkles, ShoppingBag, Heart, Bell, MessageCircle, ChevronRight, ShieldCheck, Edit2, Plus } from 'lucide-react';
 import MapModal from '../../components/common/MapModal';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
+import { addVietnamBaseMap } from '../../utils/mapSovereignty';
 import apiClient from '../../services/api';
 import { getAvatarUrl } from '../../utils/avatarHelper';
 import { toast } from 'react-toastify';
@@ -32,6 +35,9 @@ export default function Profile() {
   const [isMapOpen, setIsMapOpen] = useState(false);
   const [updating, setUpdating] = useState(false);
   const fileInputRef = useRef(null);
+  // Bản đồ vị trí read-only ở phần "Vị Trí" — dùng nền chủ quyền Goong/CARTO (đồng nhất mọi map)
+  const locMapRef = useRef(null);
+  const locMapInstance = useRef(null);
   const { uploading: uploadingAvatar, handleAvatarChange: uploadAvatar } = useAvatarUpload();
 
   // Các Modal quản lý địa chỉ
@@ -53,10 +59,39 @@ export default function Profile() {
     lng: user?.lng || 106.660172 
   });
 
-  // Lấy danh sách địa chỉ 
-  useEffect(() => { 
+  // Lấy danh sách địa chỉ
+  useEffect(() => {
     fetchUserAddresses();
   }, []);
+
+  // Bản đồ vị trí (read-only) — nền chủ quyền Goong/CARTO + nhãn Hoàng Sa/Trường Sa, khỏi iframe OSM
+  useEffect(() => {
+    if (!locMapRef.current) return;
+    const la = Number(lat), ln = Number(lng);
+    if (!Number.isFinite(la) || !Number.isFinite(ln)) return;
+
+    // Dọn map cũ trước khi vẽ lại (khi toạ độ đổi)
+    if (locMapInstance.current) {
+      locMapInstance.current.remove();
+      locMapInstance.current = null;
+    }
+
+    const map = L.map(locMapRef.current, { scrollWheelZoom: true }).setView([la, ln], 15);
+    locMapInstance.current = map;
+    addVietnamBaseMap(map); // Goong nếu có key, không thì CARTO + nhãn chủ quyền
+
+    // Chấm cam customer thay marker (dùng circleMarker để khỏi cần asset icon → tránh marker vỡ)
+    L.circleMarker([la, ln], {
+      radius: 9, color: '#fff', weight: 3, fillColor: '#FF6B35', fillOpacity: 1,
+    }).addTo(map);
+
+    return () => {
+      if (locMapInstance.current) {
+        locMapInstance.current.remove();
+        locMapInstance.current = null;
+      }
+    };
+  }, [lat, lng]);
 
   const fetchUserAddresses = async () => {
     try {
@@ -436,12 +471,7 @@ export default function Profile() {
           </h3>
         </div>
         <div className="rounded-radius-lg overflow-hidden border border-md-outline-variant/30">
-          <iframe
-            title="Bản đồ vị trí giao hàng"
-            className="w-full h-56 md:h-72 block"
-            loading="lazy"
-            src={`https://www.openstreetmap.org/export/embed.html?bbox=${Number(lng) - 0.008}%2C${Number(lat) - 0.006}%2C${Number(lng) + 0.008}%2C${Number(lat) + 0.006}&layer=mapnik&marker=${lat}%2C${lng}`}
-          />
+          <div ref={locMapRef} className="w-full h-56 md:h-72 block z-0" />
         </div>
         <p className="text-xs text-md-on-surface-variant font-semibold mt-3 flex items-start gap-1.5 leading-relaxed">
           <MapPin size={14} className="mt-0.5 shrink-0 text-md-primary" />

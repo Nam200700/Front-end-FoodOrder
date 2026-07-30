@@ -1,18 +1,28 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useFetchData } from '../../hooks/useFetchData';
 import apiClient from '../../services/api';
 import Spinner from '../../components/common/Spinner';
 import RegistrationRequestCard from '../../components/common/RegistrationRequestCard';
-import FilterTabs from '../../components/common/FilterTabs';
+import RegistrationReviewShell from '../../components/common/RegistrationReviewShell';
 import { toast } from 'react-toastify';
-import { Bike, CheckCircle2 } from 'lucide-react';
+import { Bike, CheckCircle2, CreditCard, Phone, Mail, ShieldCheck, Inbox } from 'lucide-react';
 import ErrorState from '../../components/common/ErrorState';
 import ConfirmDialog from '../../components/common/ConfirmDialog';
+
+// Cẩm nang duyệt hồ sơ TÀI XẾ (hiển thị ở cột phụ)
+const SHIPPER_GUIDELINES = [
+  { icon: CreditCard, text: 'Số CCCD/ID hợp lệ và khớp họ tên tài xế đăng ký.' },
+  { icon: Bike, text: 'Biển số xe rõ ràng, hợp lệ và khớp loại phương tiện.' },
+  { icon: Phone, text: 'Số điện thoại chính xác để liên hệ khi giao hàng.' },
+  { icon: Mail, text: 'Email liên hệ hợp lệ, dùng nhận thông báo hệ thống.' },
+  { icon: ShieldCheck, text: 'Không trùng với hồ sơ tài xế đã tồn tại trên hệ thống.' },
+];
 
 export default function AdminShippers() {
   const [activeFilter, setActiveFilter] = useState('pending'); // pending, approved, rejected
   const [confirmApproveState, setConfirmApproveState] = useState({ open: false, id: null, name: '' });
   const [actionLoading, setActionLoading] = useState(false);
+  const [counts, setCounts] = useState({ pending: 0, approved: 0, rejected: 0 });
 
   const statusParam = activeFilter === 'approved' ? 'APPROVED' : activeFilter === 'rejected' ? 'REJECTED' : 'PENDING';
 
@@ -46,11 +56,31 @@ export default function AdminShippers() {
     deps: [activeFilter],
   });
 
+  // Đếm số hồ sơ mỗi trạng thái (size=1 → totalElements) cho chip thống kê + badge tab
+  const fetchCounts = useCallback(async () => {
+    try {
+      const [p, a, r] = await Promise.all([
+        apiClient.get('/admin/shipper-registers?status=PENDING&size=1'),
+        apiClient.get('/admin/shipper-registers?status=APPROVED&size=1'),
+        apiClient.get('/admin/shipper-registers?status=REJECTED&size=1'),
+      ]);
+      setCounts({
+        pending: p.data?.data?.totalElements || 0,
+        approved: a.data?.data?.totalElements || 0,
+        rejected: r.data?.data?.totalElements || 0,
+      });
+    } catch (err) {
+      console.error('Lỗi đếm hồ sơ shipper:', err);
+    }
+  }, []);
+
+  useEffect(() => { fetchCounts(); }, [fetchCounts]);
+
+  const refreshAll = () => { refetch(); fetchCounts(); };
+
   const handleApproveClick = (id) => {
-    const list = requests || [];
-    const reqObj = list.find(r => r.id === id);
-    const name = reqObj ? reqObj.fullName : 'Tài xế';
-    setConfirmApproveState({ open: true, id, name });
+    const reqObj = (requests || []).find(r => r.id === id);
+    setConfirmApproveState({ open: true, id, name: reqObj ? reqObj.fullName : 'Tài xế' });
   };
 
   const handleApproveConfirm = async () => {
@@ -61,7 +91,7 @@ export default function AdminShippers() {
       await apiClient.patch(`/admin/shipper-registers/${id}/review`, { status: 'APPROVED' });
       toast.success(`Đã phê duyệt và kích hoạt tài xế "${name}" thành công!`);
       setConfirmApproveState({ open: false, id: null, name: '' });
-      refetch();
+      refreshAll();
     } catch (err) {
       console.error(err);
       toast.error('Có lỗi xảy ra khi phê duyệt tài xế.');
@@ -72,14 +102,13 @@ export default function AdminShippers() {
 
   const handleReject = async (id, reason) => {
     if (actionLoading) return;
-    const list = requests || [];
-    const reqObj = list.find(r => r.id === id);
+    const reqObj = (requests || []).find(r => r.id === id);
     const name = reqObj ? reqObj.fullName : 'Tài xế';
     setActionLoading(true);
     try {
       await apiClient.patch(`/admin/shipper-registers/${id}/review`, { status: 'REJECTED', rejectedReason: reason });
       toast.success(`Đã từ chối tài xế "${name}" với lý do: ${reason}`);
-      refetch();
+      refreshAll();
     } catch (err) {
       console.error(err);
       toast.error('Có lỗi xảy ra khi từ chối tài xế.');
@@ -103,44 +132,42 @@ export default function AdminShippers() {
   const list = requests || [];
 
   return (
-    <div className="flex-1 p-4 md:p-8 max-w-4xl mx-auto w-full font-google-sans text-slate-100 pb-24 space-y-6">
-      <h1 className="text-xl md:text-2xl font-black text-slate-100 flex items-center gap-2 tracking-tight">
-        {/* icon Bike tím thay emoji 🚴 */}
-        <Bike className="text-purple-400" size={26} /> Duyệt Đăng Ký Tài Xế Shipper
-      </h1>
-
-      {/* Filter tab bar — đồng bộ dark + tab active tím */}
-      <FilterTabs
-        tabs={[
-          { id: 'pending', label: 'Chờ duyệt' },
-          { id: 'approved', label: 'Đã phê duyệt' },
-          { id: 'rejected', label: 'Đã từ chối' }
-        ]}
-        activeTab={activeFilter}
-        onTabChange={setActiveFilter}
-        className="bg-slate-900 p-1.5 rounded-2xl border border-slate-800 w-max shadow-sm"
-        activeClassName="bg-purple-650 text-white shadow-sm shadow-purple-650/25"
-      />
-
-      <div className="space-y-4">
-        {list.length === 0 ? (
-          <div className="text-center py-12 bg-slate-950 rounded-3xl border border-slate-800 text-slate-400 text-xs font-bold shadow-md flex flex-col items-center gap-3">
-            {/* icon CheckCircle thay emoji 🎉 cho trạng thái rỗng */}
-            <CheckCircle2 size={38} className="text-emerald-500" strokeWidth={1.5} />
-            Không có yêu cầu đăng ký nào trong mục này.
+    <RegistrationReviewShell
+      icon={Bike}
+      title="Duyệt Đăng Ký Tài Xế Shipper"
+      subtitle="Xét duyệt hồ sơ tài xế gia nhập đội giao hàng. Đối chiếu giấy tờ & phương tiện trước khi kích hoạt."
+      counts={counts}
+      activeFilter={activeFilter}
+      onFilterChange={setActiveFilter}
+      guidelines={SHIPPER_GUIDELINES}
+    >
+      {list.length === 0 ? (
+        <div className="text-center py-16 px-6 bg-slate-950 rounded-3xl border border-dashed border-slate-800 text-slate-400 shadow-md flex flex-col items-center gap-3">
+          <div className="w-16 h-16 rounded-2xl bg-slate-900 border border-slate-800 flex items-center justify-center">
+            {activeFilter === 'pending'
+              ? <CheckCircle2 size={30} className="text-emerald-500" strokeWidth={1.6} />
+              : <Inbox size={30} className="text-slate-500" strokeWidth={1.6} />}
           </div>
-        ) : (
-          list.map((req) => {
-            const fields = [
-              { label: 'Số điện thoại', value: req.phone },
-              { label: 'Email liên hệ', value: req.email },
-              { label: 'Số CCCD/ID Card', value: req.idCard },
-              { label: 'Phương tiện di chuyển', value: `${req.vehicle} (Biển số: ${req.licensePlate || 'N/A'})` }
-            ];
-
-            return (
+          <p className="text-sm font-bold text-slate-300">
+            {activeFilter === 'pending' ? 'Tuyệt vời — không còn hồ sơ nào chờ duyệt!' : 'Chưa có hồ sơ nào trong mục này.'}
+          </p>
+          <p className="text-xs font-semibold text-slate-500 max-w-xs leading-relaxed">
+            {activeFilter === 'pending'
+              ? 'Mọi đăng ký tài xế đã được xử lý. Hồ sơ mới sẽ xuất hiện tại đây.'
+              : 'Các hồ sơ sẽ hiển thị ở đây khi có dữ liệu tương ứng.'}
+          </p>
+        </div>
+      ) : (
+        list.map((req, idx) => {
+          const fields = [
+            { label: 'Số điện thoại', value: req.phone },
+            { label: 'Email liên hệ', value: req.email },
+            { label: 'Số CCCD/ID Card', value: req.idCard },
+            { label: 'Phương tiện di chuyển', value: `${req.vehicle} (Biển số: ${req.licensePlate || 'N/A'})` }
+          ];
+          return (
+            <div key={req.id} className="animate-rise-in" style={{ animationDelay: `${idx * 60}ms` }}>
               <RegistrationRequestCard
-                key={req.id}
                 request={req}
                 fields={fields}
                 onApprove={handleApproveClick}
@@ -148,10 +175,10 @@ export default function AdminShippers() {
                 loading={loading || actionLoading}
                 role="SHIPPER"
               />
-            );
-          })
-        )}
-      </div>
+            </div>
+          );
+        })
+      )}
 
       <ConfirmDialog
         isOpen={confirmApproveState.open}
@@ -162,7 +189,6 @@ export default function AdminShippers() {
         confirmLabel="Phê duyệt"
         loading={actionLoading}
       />
-
-    </div>
+    </RegistrationReviewShell>
   );
 }

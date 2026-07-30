@@ -4,6 +4,7 @@ import 'leaflet/dist/leaflet.css';
 import { MapPin, X, Navigation, Check } from 'lucide-react';
 import Button from './Button';
 import axios from 'axios';
+import { addVietnamBaseMap, vnSovereigntyAddress } from '../../utils/mapSovereignty';
 
 // Giải quyết lỗi thiếu icon Marker của Leaflet trong môi trường Webpack/Vite
 delete L.Icon.Default.prototype._getIconUrl;
@@ -25,6 +26,14 @@ export default function MapModal({ isOpen, onClose, onConfirm, initialLat = 10.7
 
   // Hàm dịch ngược toạ độ ra địa chỉ chữ (Reverse Geocoding) - Miễn phí 100% từ OpenStreetMap Nominatim
   const fetchAddress = async (lat, lng) => {
+    // Toạ độ thuộc Hoàng Sa/Trường Sa → ghi đè địa chỉ chủ quyền VN, KHÔNG hỏi Nominatim
+    // (vốn trả về "Tam Sa, Trung Quốc").
+    const vn = vnSovereigntyAddress(lat, lng);
+    if (vn) {
+      setAddressName(vn);
+      setLoadingAddress(false);
+      return;
+    }
     setLoadingAddress(true);
     try {
       const response = await axios.get(
@@ -56,11 +65,8 @@ export default function MapModal({ isOpen, onClose, onConfirm, initialLat = 10.7
       const map = L.map(mapContainerRef.current).setView([selectedCoords.lat, selectedCoords.lng], 15);
       mapRef.current = map;
 
-      // Nạp Layer bản đồ OpenStreetMap miễn phí 100%
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '&copy; OpenStreetMap contributors',
-        maxZoom: 19,
-      }).addTo(map);
+      // Nền bản đồ chuẩn chủ quyền VN (Goong nếu có key, không thì CARTO + nhãn đỏ)
+      addVietnamBaseMap(map);
 
       // Tạo Marker ban đầu
       const marker = L.marker([selectedCoords.lat, selectedCoords.lng], {

@@ -9,6 +9,7 @@ import Card from '../../components/common/Card';
 import Spinner from '../../components/common/Spinner';
 import Modal from '../../components/common/Modal';
 import { useAuthStore } from '../../stores/authStore';
+import { addVietnamBaseMap } from '../../utils/mapSovereignty';
 import { useWebSocketContext } from '../../contexts/WebSocketContext';
 import apiClient from '../../services/api';
 import { toast } from 'react-toastify';
@@ -180,9 +181,9 @@ export default function OrderTracking() {
         scrollWheelZoom: false 
       }).setView([(rLat + cLat) / 2, (rLng + cLng) / 2], 14);
       mapRef.current = map;
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '&copy; OpenStreetMap contributors'
-      }).addTo(map);
+      // Nền bản đồ chuẩn chủ quyền VN (Goong nếu có key, không thì CARTO + nhãn đỏ)
+      addVietnamBaseMap(map);
+
       // Icon Quán Ăn
       const resIcon = L.divIcon({
         html: `<div class="flex items-center justify-center w-8 h-8 rounded-full bg-orange-500 text-white shadow-md border-2 border-white"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"/><path d="M7 2v20"/><path d="M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"/></svg></div>`,

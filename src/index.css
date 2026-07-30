@@ -80,6 +80,8 @@
   --animate-fab-in: fabIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
   --animate-float: floatBob 3.5s ease-in-out infinite;
   --animate-rise-in: riseIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) both;
+  /* Sao đánh giá nảy khi được chọn + mặt cảm xúc bật lên */
+  --animate-star-pop: starPop 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) both;
   /* Trang trí hero Login: trôi chậm, đảo nhẹ, vệt sáng quét, lấp lánh, gradient chuyển động */
   --animate-float-slow: floatBob 5s ease-in-out infinite;
   --animate-drift: drift 7s ease-in-out infinite;
@@ -259,6 +261,12 @@
   0% { opacity: 0; transform: translateY(8px); }
   100% { opacity: 1; transform: translateY(0); }
 }
+/* Sao đánh giá: bật nảy + xoay nhẹ khi được chấm (satisfying pop) */
+@keyframes starPop {
+  0% { transform: scale(0.4) rotate(-18deg); }
+  55% { transform: scale(1.28) rotate(8deg); }
+  100% { transform: scale(1) rotate(0deg); }
+}
 /* Hero Login: đảo nhẹ khi trôi, vệt sáng quét ngang, đốm lấp lánh, gradient nền chuyển động */
 @keyframes drift {
   0%, 100% { transform: translateY(0) rotate(0deg); }
@@ -345,7 +353,7 @@
   .animate-float-slow, .animate-drift, .animate-shine, .animate-twinkle, .animate-gradient-pan,
   .animate-ride, .animate-bob, .animate-steam, .animate-wiggle,
   .animate-courier, .animate-vroom, .animate-wheel, .animate-speed, .animate-halo,
-  .animate-slide-in-right, .animate-nav-in, .animate-flow { animation: none !important; }
+  .animate-slide-in-right, .animate-nav-in, .animate-flow, .animate-star-pop { animation: none !important; }
 }
 
 /* ─── Parallax Effect ────────────────────────────── */

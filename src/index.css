@@ -375,7 +375,8 @@
   .animate-float-slow, .animate-drift, .animate-shine, .animate-twinkle, .animate-gradient-pan,
   .animate-ride, .animate-bob, .animate-steam, .animate-wiggle,
   .animate-courier, .animate-vroom, .animate-wheel, .animate-speed, .animate-halo,
-  .animate-slide-in-right, .animate-nav-in, .animate-flow, .animate-star-pop { animation: none !important; }
+  .animate-slide-in-right, .animate-nav-in, .animate-flow, .animate-star-pop,
+  .animate-heart-pop, .animate-heart-burst, .animate-heart-beat { animation: none !important; }
 }
 
 /* ─── Parallax Effect ────────────────────────────── */

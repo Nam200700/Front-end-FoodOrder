@@ -59,6 +59,7 @@ export default function RestaurantDetail() {
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState('');
   const [isFavorite, setIsFavorite] = useState(false);
+  const [favBurst, setFavBurst] = useState(false); // 1 nhịp animation khi vừa thả tim
   const [activeTab, setActiveTab] = useState('menu'); 
   const [activeCategory, setActiveCategory] = useState(null);
   const [scrollY, setScrollY] = useState(0);
@@ -244,6 +245,8 @@ export default function RestaurantDetail() {
       } else {
         await apiClient.post(`/favorites/${id}`);
         setIsFavorite(true);
+        setFavBurst(true);
+        setTimeout(() => setFavBurst(false), 650); // 1 nhịp bung vòng lan toả
       }
     } catch (err) {
       console.error('Lỗi khi cập nhật yêu thích:', err);
@@ -322,13 +325,26 @@ export default function RestaurantDetail() {
             <ArrowLeft size={22} />
           </Button>
           <div className="flex gap-3">
-            <Button 
+            <Button
               variant="outline"
               size="sm"
               onClick={handleToggleFavorite}
-              className="w-11 h-11 !p-0 border-none rounded-radius-full bg-white/95 backdrop-blur-md flex items-center justify-center text-md-on-surface shadow-shadow-2 hover:scale-105 transition-transform"
+              className="group relative w-11 h-11 !p-0 border-none rounded-radius-full bg-white/95 backdrop-blur-md flex items-center justify-center text-md-on-surface shadow-shadow-2 hover:scale-105 active:scale-95 transition-transform"
+              title={isFavorite ? 'Bỏ yêu thích' : 'Thêm vào yêu thích'}
             >
-              <Heart size={20} className={isFavorite ? 'text-red-500 fill-red-500' : 'text-md-on-surface-variant'} />
+              {/* Vòng đỏ lan toả khi vừa thả tim */}
+              {favBurst && (
+                <span className="absolute inset-0 rounded-radius-full bg-red-400/50 animate-heart-burst pointer-events-none" />
+              )}
+              <Heart
+                key={isFavorite ? 'fav' : 'unfav'}
+                size={20}
+                className={`relative transition-colors duration-200 ${
+                  isFavorite
+                    ? 'text-red-500 fill-red-500 animate-heart-pop'
+                    : 'text-md-on-surface-variant group-hover:text-red-400 group-hover:scale-110'
+                }`}
+              />
             </Button>
             <Button 
               variant="outline"

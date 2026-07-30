@@ -4,8 +4,12 @@
  * @returns {string}
  */
 export const formatCurrency = (amount) => {
-  if (amount === undefined || amount === null) return '0đ';
-  return amount.toLocaleString('vi-VN') + 'đ';
+  if (amount === undefined || amount === null || amount === '') return '0đ';
+  // VND KHÔNG có đơn vị lẻ (xu) → luôn làm tròn về số nguyên đồng, tránh hiện "2.782.222,22đ".
+  // Chấp nhận cả số lẫn chuỗi (BigDecimal serialize) → ép Number trước khi làm tròn.
+  const n = Number(amount);
+  if (!Number.isFinite(n)) return '0đ';
+  return Math.round(n).toLocaleString('vi-VN') + 'đ';
 };
 
 /**

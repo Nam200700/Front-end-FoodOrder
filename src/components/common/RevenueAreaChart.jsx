@@ -61,6 +61,7 @@ export default function RevenueAreaChart({
           <Tooltip
             contentStyle={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '0.75rem', fontSize: '11px', fontFamily: 'sans-serif', boxShadow: '0 8px 24px rgba(15,23,42,0.12)' }}
             cursor={{ stroke: '#cbd5e1', strokeWidth: 1, strokeDasharray: '4 4' }}
+            formatter={(value, name) => [fmtValue(value), name]}
           />
           {showLegend && <Legend wrapperStyle={{ fontSize: '11px', fontWeight: 700, paddingTop: '6px' }} iconType="circle" iconSize={9} />}
           {activeAreas.map((area, idx) => {

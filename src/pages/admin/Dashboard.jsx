@@ -23,12 +23,13 @@ export default function AdminDashboard() {
   const ov = overviewStats || {};
   const ins = insights || {};
 
-  // Biểu đồ GTV theo ngày (30 ngày) — dữ liệu server-side chính xác, không bị chặn số bản ghi
+  // Biểu đồ GTV theo ngày (toàn lịch sử) — dữ liệu server-side chính xác, không bị chặn số bản ghi.
+  // FE có thanh kéo trượt để xem đủ mốc ngày/tháng/năm.
   const revenueChartData = useMemo(() => {
     return (ins.dailyGmv || []).map(d => {
-      // date "yyyy-MM-dd" → "dd/MM"
+      // date "yyyy-MM-dd" → "dd/MM/yyyy"
       const [y, m, day] = (d.date || '').split('-');
-      return { day: day && m ? `${day}/${m}` : d.date, amount: Number(d.gmv || 0) };
+      return { day: (day && m && y) ? `${day}/${m}/${y}` : d.date, amount: Number(d.gmv || 0) };
     });
   }, [ins.dailyGmv]);
 

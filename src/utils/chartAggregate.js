@@ -13,7 +13,7 @@ export function pickGranularity(count) {
   return 'month';
 }
 
-const GRAN_CAPTION = { day: '', week: 'Gom theo tuần cho dễ nhìn', month: 'Gom theo tháng cho dễ nhìn' };
+const GRAN_CAPTION = { day: '', week: 'Gom theo tuần', month: 'Gom theo tháng' };
 export const granularityCaption = (g) => GRAN_CAPTION[g] || '';
 
 /** Mốc bắt đầu bucket: tuần → thứ 2 đầu tuần; tháng → ngày 1; ngày → chính nó. */

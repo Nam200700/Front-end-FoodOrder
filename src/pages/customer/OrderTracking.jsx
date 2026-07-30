@@ -563,8 +563,10 @@ export default function OrderTracking() {
                           {step.label}
                         </span>
                         {timestamp && (
-                          <span className="text-xs text-md-outline font-extrabold">
-                            {timestamp}
+                          <span className={`text-[11px] font-extrabold inline-flex items-center gap-1 px-2 py-0.5 rounded-full shrink-0 ${
+                            isCompleted ? 'bg-emerald-50 text-emerald-600' : isActive ? 'bg-orange-50 text-orange-600' : 'bg-slate-100 text-slate-500'
+                          }`}>
+                            <Clock size={10} strokeWidth={2.6} /> {timestamp}
                           </span>
                         )}
                       </div>
@@ -687,65 +689,89 @@ export default function OrderTracking() {
       <Card variant="flat" className="overflow-hidden bg-white border border-md-outline-variant/20 shadow-sm">
         <button
           onClick={() => setOrderCollapsed(!orderCollapsed)}
-          className="w-full flex items-center justify-between p-5 font-extrabold text-xs md:text-sm uppercase tracking-wider text-md-on-surface hover:bg-slate-50 transition-colors cursor-pointer"
+          className="w-full flex items-center justify-between p-5 text-md-on-surface hover:bg-orange-50/40 transition-colors cursor-pointer"
         >
-          <span>Chi tiết hóa đơn đơn hàng</span>
-          {orderCollapsed ? <ChevronDown size={18} /> : <ChevronUp size={18} />}
+          <span className="flex items-center gap-2.5 font-extrabold text-xs md:text-sm uppercase tracking-wider">
+            <span className="w-8 h-8 rounded-xl bg-gradient-to-br from-orange-400 to-orange-600 text-white flex items-center justify-center shadow-sm">
+              <ReceiptText size={16} />
+            </span>
+            Chi tiết hóa đơn đơn hàng
+          </span>
+          <span className={`text-md-primary transition-transform duration-300 ${orderCollapsed ? '' : 'rotate-180'}`}>
+            <ChevronDown size={18} />
+          </span>
         </button>
 
         {!orderCollapsed && (
-          <div className="p-6 border-t border-slate-100 space-y-5 animate-fade-in">
-            {/* Foods */}
-            <div className="space-y-4">
+          <div className="p-5 md:p-6 border-t border-orange-100/70 space-y-5 animate-fade-in">
+            {/* Foods — mỗi món 1 thẻ có icon + huy hiệu số lượng */}
+            <div className="space-y-2.5">
+              <span className="flex items-center gap-1.5 text-[10px] md:text-xs font-extrabold text-orange-600 uppercase tracking-wider">
+                <Utensils size={13} /> Món đã đặt ({displayOrder.items.length})
+              </span>
               {displayOrder.items.map((item, idx) => (
-                <div key={idx} className="flex justify-between items-start text-sm font-semibold">
-                  <div className="min-w-0 pr-4">
-                    <span className="font-bold text-md-on-surface-variant">{item.name}</span>
-                    <span className="block text-[11px] text-slate-500 font-medium mt-0.5">
-                      {formatCurrency(item.price)} x{item.quantity}
+                <div
+                  key={idx}
+                  className="flex justify-between items-start gap-3 text-sm rounded-xl border border-orange-100/70 bg-orange-50/30 hover:bg-orange-50/70 hover:border-orange-200 transition-colors p-3 animate-rise-in"
+                  style={{ animationDelay: `${idx * 60}ms` }}
+                >
+                  <div className="flex items-start gap-3 min-w-0">
+                    <span className="shrink-0 mt-0.5 w-6 h-6 rounded-lg bg-white border border-orange-200 text-orange-600 font-black text-xs flex items-center justify-center shadow-sm">
+                      {item.quantity}
                     </span>
-                    {item.note && (
-                      <span className="block text-xs text-md-outline italic mt-1 font-medium">
-                        Ghi chú: "{item.note}"
+                    <div className="min-w-0">
+                      <span className="font-bold text-md-on-surface block leading-snug">{item.name}</span>
+                      <span className="block text-[11px] text-slate-500 font-semibold mt-0.5">
+                        {formatCurrency(item.price)} × {item.quantity}
                       </span>
-                    )}
+                      {item.note && (
+                        <span className="flex items-start gap-1 text-xs text-amber-700 italic mt-1 font-medium">
+                          <MessageSquare size={12} className="shrink-0 mt-0.5" /> "{item.note}"
+                        </span>
+                      )}
+                    </div>
                   </div>
-                  <span className="font-extrabold text-md-on-surface">{formatCurrency(item.price * item.quantity)}</span>
+                  <span className="font-extrabold text-md-on-surface shrink-0">{formatCurrency(item.price * item.quantity)}</span>
                 </div>
               ))}
             </div>
 
             {/* Address */}
-            <div className="pt-4 border-t border-slate-100">
-              <span className="text-[10px] md:text-xs font-extrabold text-md-outline uppercase tracking-wider">
-                Địa chỉ nhận hàng
+            <div className="flex items-start gap-3 pt-4 border-t border-slate-100">
+              <span className="shrink-0 w-8 h-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
+                <MapPin size={16} />
               </span>
-              <p className="text-sm text-md-on-surface-variant mt-1.5 font-medium leading-relaxed">
-                {displayOrder.address}
-              </p>
+              <div className="min-w-0">
+                <span className="text-[10px] md:text-xs font-extrabold text-blue-600 uppercase tracking-wider">
+                  Địa chỉ nhận hàng
+                </span>
+                <p className="text-sm text-md-on-surface mt-0.5 font-semibold leading-relaxed">
+                  {displayOrder.address}
+                </p>
+              </div>
             </div>
 
-            {/* Payment Summary */}
-            <div className="pt-4 border-t border-slate-100 space-y-2.5 text-sm font-medium">
-              {/* <div className="flex justify-between text-md-on-surface-variant">
-                <span>khoảng cách và thời gian dự kiến:</span>
-                <span className="font-bold">{distanceKm.toFixed(1)} km - {Math.ceil(durationMinutes)} phút</span>
-              </div> */}
-              <div className="flex justify-between text-md-on-surface-variant">
-                <span>Tạm tính:</span>
-                <span className="font-bold">{formatCurrency(displayOrder.subtotalAmount)}</span>
+            {/* Payment Summary — mỗi dòng có icon màu */}
+            <div className="pt-4 border-t border-slate-100 space-y-3 text-sm font-medium">
+              <div className="flex justify-between items-center text-md-on-surface-variant">
+                <span className="flex items-center gap-2"><Tag size={15} className="text-orange-500" /> Tạm tính</span>
+                <span className="font-bold text-md-on-surface">{formatCurrency(displayOrder.subtotalAmount)}</span>
               </div>
-              <div className="flex justify-between text-md-on-surface-variant">
-                <span>Phí giao hàng:</span>
-                <span className="font-bold">{formatCurrency(displayOrder.shippingFee)}</span>
+              <div className="flex justify-between items-center text-md-on-surface-variant">
+                <span className="flex items-center gap-2"><Truck size={15} className="text-blue-500" /> Phí giao hàng</span>
+                <span className="font-bold text-md-on-surface">{formatCurrency(displayOrder.shippingFee)}</span>
               </div>
-              <div className="flex justify-between text-md-on-surface-variant">
-                <span>Phương thức:</span>
-                <span className="font-bold">{displayOrder.paymentMethod}</span>
+              <div className="flex justify-between items-center text-md-on-surface-variant">
+                <span className="flex items-center gap-2"><Banknote size={15} className="text-emerald-500" /> Phương thức</span>
+                <span className="font-extrabold text-emerald-700 bg-emerald-50 border border-emerald-100 px-2.5 py-0.5 rounded-full text-xs">
+                  {displayOrder.paymentMethod}
+                </span>
               </div>
-              <div className="flex justify-between text-base font-extrabold pt-3.5 border-t border-slate-100 flex-wrap">
-                <span>Tổng thanh toán:</span>
-                <span className="text-md-primary">{formatCurrency(displayOrder.total)}</span>
+              <div className="flex justify-between items-center pt-3.5 mt-1 rounded-xl bg-gradient-to-r from-orange-50 to-amber-50 border border-orange-100 px-3.5 py-3 flex-wrap gap-2">
+                <span className="flex items-center gap-2 text-base font-extrabold text-md-on-surface">
+                  <Wallet size={18} className="text-orange-500" /> Tổng thanh toán
+                </span>
+                <span className="text-lg font-black text-md-primary">{formatCurrency(displayOrder.total)}</span>
               </div>
             </div>
           </div>

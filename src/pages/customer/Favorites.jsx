@@ -189,10 +189,11 @@ export default function Favorites() {
                   </div>
                   <button
                     onClick={(e) => handleRemoveFavorite(res.id, e)}
-                    className="absolute top-3 right-3 bg-white/90 backdrop-blur-md p-2 rounded-full text-red-500 hover:scale-110 active:scale-95 transition-all shadow-sm"
+                    className="group/fav absolute top-3 right-3 bg-white/90 backdrop-blur-md p-2 rounded-full text-red-500 hover:scale-110 active:scale-95 transition-all shadow-sm"
                     title="Bỏ khỏi yêu thích"
                   >
-                    <Heart size={15} className="fill-red-500" />
+                    {/* Đã lưu → tim đập nhẹ liên tục; rê chuột thì dừng để báo hiệu sắp bỏ */}
+                    <Heart size={15} className="fill-red-500 animate-heart-beat group-hover/fav:[animation-play-state:paused]" />
                   </button>
 
                   {/* Tên quán trên ảnh */}

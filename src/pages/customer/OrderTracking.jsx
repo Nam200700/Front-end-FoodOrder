@@ -444,12 +444,49 @@ export default function OrderTracking() {
                 <h2 className="text-xl md:text-2xl font-black leading-tight mt-1.5">{stage.title}</h2>
                 <p className="text-xs md:text-sm text-white/90 font-semibold mt-1 leading-relaxed">{stage.desc}</p>
                 {!isCancelled && (
-                  <div className="mt-3.5">
-                    <div className="flex justify-between text-[10px] font-extrabold text-white/85 mb-1">
-                      <span>Tiến độ đơn hàng</span><span>{pct}%</span>
+                  <div className="mt-4 md:mt-5">
+                    <div className="flex justify-between items-center text-[10px] font-extrabold text-white/90 mb-2">
+                      <span className="inline-flex items-center gap-1.5">
+                        <Navigation size={11} className="animate-wiggle" /> Tiến độ đơn hàng
+                      </span>
+                      <span className="tabular-nums text-xs font-black">{pct}%</span>
                     </div>
-                    <div className="h-2 bg-white/25 rounded-full overflow-hidden">
-                      <div className="h-full bg-white rounded-full transition-all duration-700 ease-out" style={{ width: `${pct}%` }} />
+
+                    {/* Đường ray tiến độ: nền tối, fill trắng có vệt sáng chảy, cột mốc, và ICON chặng chạy dọc theo */}
+                    <div className="relative h-2.5 rounded-full bg-black/20 shadow-inner">
+                      {/* Fill + vệt sáng chảy (shimmer) */}
+                      <div
+                        className="absolute inset-y-0 left-0 rounded-full bg-white shadow-[0_0_12px_rgba(255,255,255,0.65)] overflow-hidden transition-all duration-700 ease-out"
+                        style={{ width: `${pct}%` }}
+                      >
+                        <span className="absolute inset-y-0 -left-1/3 w-1/3 bg-gradient-to-r from-transparent via-white/40 to-transparent animate-flow" />
+                      </div>
+
+                      {/* Cột mốc từng chặng — sáng lên khi tiến độ vượt qua */}
+                      <div className="absolute inset-0 flex items-center justify-between px-1">
+                        {steps.map((_, i) => {
+                          const reached = pct >= Math.round((i / (steps.length - 1)) * 100) - 1;
+                          return (
+                            <span
+                              key={i}
+                              className={`w-1.5 h-1.5 rounded-full transition-all duration-500 ${
+                                reached ? 'bg-orange-500 scale-110 shadow-[0_0_6px_rgba(255,107,53,0.9)]' : 'bg-white/45'
+                              }`}
+                            />
+                          );
+                        })}
+                      </div>
+
+                      {/* ICON chặng "chạy" theo mép tiến độ, nhấp nhô như đang di chuyển */}
+                      <div
+                        className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 transition-all duration-700 ease-out"
+                        style={{ left: `${pct}%` }}
+                      >
+                        <span className="absolute inset-0 -m-1 rounded-full bg-white/40 animate-ping" />
+                        <span className="relative flex items-center justify-center w-7 h-7 rounded-full bg-white text-orange-600 shadow-lg ring-2 ring-white/70 animate-bob">
+                          <RiderIcon size={14} strokeWidth={2.6} />
+                        </span>
+                      </div>
                     </div>
                   </div>
                 )}

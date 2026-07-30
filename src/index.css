@@ -521,6 +521,36 @@
   background-color: #FFFFFF !important;
 }
 
+/* ─── Dashboard admin: tint /20 + text accent 400/300 (trước chưa map → nền bạc màu, chữ nhạt khó đọc) ───
+   Map sang màu bão hoà đọc rõ trên nền sáng để dải cảnh báo & panel NỔI BẬT. */
+.theme-light .bg-emerald-950\/20 {
+  background-color: rgba(52, 168, 83, 0.1) !important;
+  border-color: rgba(52, 168, 83, 0.25) !important;
+}
+.theme-light .bg-amber-950\/20 {
+  background-color: rgba(245, 158, 11, 0.12) !important;
+  border-color: rgba(245, 158, 11, 0.3) !important;
+}
+.theme-light .bg-red-950\/20 {
+  background-color: rgba(239, 68, 68, 0.1) !important;
+  border-color: rgba(239, 68, 68, 0.3) !important;
+}
+.theme-light .bg-purple-950\/20 {
+  background-color: rgba(147, 52, 230, 0.1) !important;
+  border-color: rgba(147, 52, 230, 0.28) !important;
+}
+/* Text accent trên nền sáng — đậm & bão hoà để tương phản tốt (400/300 mặc định quá nhạt) */
+.theme-light .text-emerald-400 { color: #059669 !important; }
+.theme-light .text-red-400 { color: #DC2626 !important; }
+.theme-light .text-red-300 { color: #DC2626 !important; }
+.theme-light .text-amber-400 { color: #B45309 !important; }
+.theme-light .text-yellow-500 { color: #CA8A04 !important; }
+.theme-light .text-cyan-400 { color: #0891B2 !important; }
+.theme-light .text-blue-400 { color: #1A73E8 !important; }
+.theme-light .text-purple-300 { color: #7E22CE !important; }
+.theme-light .text-slate-500 { color: #64748B !important; }
+.theme-light .text-slate-600 { color: #475569 !important; }
+
 /* Badge & Card overrides for Light Theme */
 .theme-light .bg-purple-950 {
   background-color: rgba(147, 52, 230, 0.08) !important;

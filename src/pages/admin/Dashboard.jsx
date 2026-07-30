@@ -267,6 +267,7 @@ export default function AdminDashboard() {
                 color="#9334E6"
                 height={240}
                 yTickFormatter={(v) => v >= 1000000 ? `${v / 1000000}M` : `${v / 1000}k`}
+                valueFormatter={formatCurrency}
                 brush
               />
             ) : (

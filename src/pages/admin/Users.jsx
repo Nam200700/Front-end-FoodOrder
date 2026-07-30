@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Users, UserCheck, Lock, ShieldCheck, ChevronLeft, ChevronRight, Unlock, ShieldAlert } from 'lucide-react';
+import { Users, UserCheck, Lock, ShieldCheck, ChevronLeft, ChevronRight, Unlock, Search } from 'lucide-react';
 import { useFetchData } from '../../hooks/useFetchData';
 import apiClient from '../../services/api';
 import Spinner from '../../components/common/Spinner';
@@ -21,6 +21,7 @@ export default function AdminUsers() {
 
   const [roleFilter, setRoleFilter] = useState('all');    // all | CUSTOMER | OWNER | SHIPPER | ADMIN
   const [statusFilter, setStatusFilter] = useState('all'); // all | ACTIVE | BLOCKED
+  const [keyword, setKeyword] = useState('');              // Từ khóa tìm kiếm (tên, sđt, email)
 
   const [page, setPage] = useState(0);                     
   const pageSize = 10;                                    
@@ -30,6 +31,10 @@ export default function AdminUsers() {
       page: page.toString(),
       size: pageSize.toString(),
     });
+
+    if (keyword.trim()) {
+      params.append('keyword', keyword.trim());
+    }
 
     if (roleFilter !== 'all') {
       params.append('role', roleFilter);
@@ -42,7 +47,7 @@ export default function AdminUsers() {
     }
 
     return `/admin/users?${params.toString()}`;
-  }, [page, pageSize, roleFilter, statusFilter]);
+  }, [page, pageSize, roleFilter, statusFilter, keyword]);
 
   // Lấy dữ liệu danh sách người dùng phân trang
   const mapUsers = (data) => {
@@ -97,6 +102,11 @@ export default function AdminUsers() {
     setPage(0);
   };
 
+  const handleSearchChange = (e) => {
+    setKeyword(e.target.value);
+    setPage(0); 
+  };
+
   const handleToggleStatusClick = (userId, name, currentStatus) => {
     const nextActive = currentStatus === 'BLOCKED';
     if (nextActive) {
@@ -106,7 +116,7 @@ export default function AdminUsers() {
     }
   };
 
-  //mở khóa tài khoản
+  // Mở khóa tài khoản
   const handleUnlockConfirm = async () => {
     const { userId, name } = unlockModal.data || {};
     if (!userId) return;
@@ -125,7 +135,7 @@ export default function AdminUsers() {
     }
   };
 
-  //khóa tài khoản
+  // Khóa tài khoản
   const handleLockConfirm = async () => {
     const { userId, name } = lockModal.data || {};
     if (!userId) return;
@@ -171,19 +181,19 @@ export default function AdminUsers() {
       {/* HÀNG KPI HIỂN THỊ TỔNG TOÀN HỆ THỐNG */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         {[
-          { label: 'Tổng tài khoản', value: `${userSummary.totalUser}`, sub: `Toàn hệ thống`, icon: Users, color: 'border-slate-200/80 bg-white text-purple-600' },
-          { label: 'Đang hoạt động', value: `${userSummary.activeUser}`, sub: 'Toàn hệ thống', icon: UserCheck, color: 'border-slate-200/80 bg-white text-emerald-600' },
-          { label: 'Đã khóa', value: `${userSummary.blockedUser}`, sub: 'Toàn hệ thống', icon: Lock, color: 'border-slate-200/80 bg-white text-red-600' },
-          { label: 'Quản trị viên', value: `${userSummary.totalAdmin}`, sub: 'Tài khoản nội bộ', icon: ShieldCheck, color: 'border-slate-200/80 bg-white text-cyan-600' },
+          { label: 'Tổng tài khoản', value: `${userSummary.totalUser}`, sub: `Toàn hệ thống`, icon: Users, color: 'border-purple-100 bg-purple-50/50 text-purple-600', iconBg: 'bg-purple-100 text-purple-600' },
+          { label: 'Đang hoạt động', value: `${userSummary.activeUser}`, sub: 'Toàn hệ thống', icon: UserCheck, color: 'border-emerald-100 bg-emerald-50/50 text-emerald-600', iconBg: 'bg-emerald-100 text-emerald-600' },
+          { label: 'Đã khóa', value: `${userSummary.blockedUser}`, sub: 'Toàn hệ thống', icon: Lock, color: 'border-red-100 bg-red-50/50 text-red-600', iconBg: 'bg-red-100 text-red-600' },
+          { label: 'Quản trị viên', value: `${userSummary.totalAdmin}`, sub: 'Tài khoản nội bộ', icon: ShieldCheck, color: 'border-cyan-100 bg-cyan-50/50 text-cyan-600', iconBg: 'bg-cyan-100 text-cyan-600' },
         ].map((kpi, i) => {
           const Icon = kpi.icon;
           return (
-            <div key={i} className={`rounded-2xl p-3.5 border shadow-sm flex items-center gap-3 bg-white ${kpi.color}`}>
-              <div className="p-2 rounded-xl bg-purple-50 shrink-0">
+            <div key={i} className={`rounded-2xl p-3.5 border shadow-sm flex items-center gap-3 ${kpi.color}`}>
+              <div className={`p-2 rounded-xl shrink-0 ${kpi.iconBg}`}>
                 <Icon size={18} />
               </div>
               <div className="min-w-0">
-                <span className="text-[10px] text-slate-400 font-bold block truncate uppercase tracking-wider">{kpi.label}</span>
+                <span className="text-[10px] text-slate-500 font-bold block truncate uppercase tracking-wider">{kpi.label}</span>
                 <span className="text-sm font-bold text-slate-800 block mt-0.5">{kpi.value}</span>
               </div>
             </div>
@@ -191,33 +201,37 @@ export default function AdminUsers() {
         })}
       </div>
 
-      {/* BỘ LỌC*/}
-      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
-        <FilterTabs
-          tabs={[
-            { id: 'all', label: `Tất cả vai trò (${userSummary.totalUser})` },
-            { id: 'CUSTOMER', label: `Khách hàng (${userSummary.totalCustomer})` },
-            { id: 'OWNER', label: `Chủ quán (${userSummary.totalCustomer})` },
-            { id: 'SHIPPER', label: `Tài xế (${userSummary.totalShipper})` },
-            { id: 'ADMIN', label: `Quản trị (${userSummary.totalAdmin})` },
-          ]}
-          activeTab={roleFilter}
-          onTabChange={handleRoleChange}
-          className="bg-transparent p-0 w-max"
-          activeClassName="bg-purple-600 text-white shadow-sm font-bold"
-        />
+      {/* THANH TÌM KIẾM VÀ BỘ LỌC */}
+      <div className="flex flex-col gap-3">
 
-        <FilterTabs
-          tabs={[
-            { id: 'all', label: 'Tất cả trạng thái' },
-            { id: 'ACTIVE', label: 'Đang hoạt động' },
-            { id: 'BLOCKED', label: 'Đã khóa' },
-          ]}
-          activeTab={statusFilter}
-          onTabChange={handleStatusChange}
-          className="bg-transparent p-0 w-max"
-          activeClassName="bg-purple-600 text-white shadow-sm font-bold"
-        />
+
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
+          <FilterTabs
+            tabs={[
+              { id: 'all', label: `Tất cả vai trò (${userSummary.totalUser})` },
+              { id: 'CUSTOMER', label: `Khách hàng (${userSummary.totalCustomer})` },
+              { id: 'OWNER', label: `Chủ quán (${userSummary.totalOwner})` },
+              { id: 'SHIPPER', label: `Tài xế (${userSummary.totalShipper})` },
+              { id: 'ADMIN', label: `Quản trị (${userSummary.totalAdmin})` },
+            ]}
+            activeTab={roleFilter}
+            onTabChange={handleRoleChange}
+            className="bg-transparent p-0 w-max"
+            activeClassName="bg-purple-600 text-white shadow-sm font-bold"
+          />
+
+          <FilterTabs
+            tabs={[
+              { id: 'all', label: 'Tất cả trạng thái' },
+              { id: 'ACTIVE', label: 'Đang hoạt động' },
+              { id: 'BLOCKED', label: 'Đã khóa' },
+            ]}
+            activeTab={statusFilter}
+            onTabChange={handleStatusChange}
+            className="bg-transparent p-0 w-max"
+            activeClassName="bg-purple-600 text-white shadow-sm font-bold"
+          />
+        </div>
       </div>
 
       {/* BẢNG DỮ LIỆU */}
@@ -225,7 +239,7 @@ export default function AdminUsers() {
         {list.length === 0 ? (
           <div className="text-center py-14 text-slate-400 text-xs font-bold flex flex-col items-center gap-2">
             <Users size={36} className="text-slate-300" strokeWidth={1.5} />
-            Không tìm thấy tài khoản nào phù hợp với bộ lọc.
+            Không tìm thấy tài khoản nào phù hợp với từ khóa và bộ lọc.
           </div>
         ) : (
           <div className="overflow-x-auto no-scrollbar">
@@ -349,7 +363,7 @@ export default function AdminUsers() {
         isOpen={unlockModal.isOpen}
         onClose={() => unlockModal.close()}
         onConfirm={handleUnlockConfirm}
-        title="Mở Khóa Tài Khoản"
+        title="Xác Nhận Mở Khóa Tài Khoản"
         message={`Bạn có chắc chắn muốn mở khóa tài khoản của "${unlockModal.data?.name || ''}" không?`}
         confirmLabel="Mở khóa"
         loading={actionLoading}
@@ -388,7 +402,7 @@ export default function AdminUsers() {
               loading={actionLoading}
               disabled={!lockReason.trim()}
               size="sm"
-              className="rounded-xl"
+              className="rounded-xl bg-purple-600 hover:bg-purple-700 text-white"
             >
               Khóa tài khoản
             </Button>

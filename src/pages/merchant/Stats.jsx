@@ -252,7 +252,7 @@ export default function MerchantStats() {
               ) : (
                 <div className="h-64 w-full text-[10px] font-bold">
                   <RevenueAreaChart data={timelineData} xKey="dateStr" height={256} showLegend
-                    yTickFormatter={(v) => v >= 1000 ? `${v / 1000}k` : v} chartType={chartType}
+                    yTickFormatter={(v) => v >= 1000 ? `${v / 1000}k` : v} valueFormatter={formatCurrency} chartType={chartType}
                     areas={[
                       { key: 'Doanh thu món', name: 'Tiền món ăn', color: '#1A73E8' },
                       { key: 'Thực nhận', name: `Quán thực nhận (${100 - ratePct}%)`, color: '#00897B' },

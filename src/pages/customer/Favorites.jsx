@@ -144,24 +144,25 @@ export default function Favorites() {
         />
       ) : (
         <>
-          {/* ─── DẢI THỐNG KÊ THẬT (số quán + số loại ẩm thực) — suy ra từ dữ liệu, không bịa ── */}
-          <div className="grid grid-cols-2 gap-4 mb-8">
+          {/* ─── DẢI THỐNG KÊ THẬT (4 ô, mỗi ô 1 màu) — suy ra từ dữ liệu, không bịa ── */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 mb-8">
             {[
-              { icon: Store, value: list.length, label: 'Quán đã lưu' },
-              { icon: Star, value: avgRating > 0 ? avgRating.toFixed(1) : '—', label: avgRating > 0 ? `Điểm TB · ${ratedList.length} quán` : 'Chưa có đánh giá' },
+              { icon: Store, value: list.length, label: 'Quán đã lưu', grad: 'from-orange-400 to-orange-600', anim: 'animate-float' },
+              { icon: Star, value: avgRating > 0 ? avgRating.toFixed(1) : '—', label: avgRating > 0 ? `Điểm TB · ${ratedList.length} quán` : 'Chưa có đánh giá', grad: 'from-amber-400 to-yellow-500', anim: 'animate-twinkle' },
+              { icon: DoorOpen, value: openNowCount, label: 'Đang mở cửa', grad: 'from-emerald-400 to-green-600', anim: 'animate-pulse-slow' },
+              { icon: Award, value: topRatedCount, label: 'Yêu thích (≥4.5★)', grad: 'from-rose-400 to-pink-600', anim: 'animate-heart-beat' },
             ].map((s, i) => (
               <div
                 key={s.label}
                 style={{ animationDelay: `${i * 80}ms` }}
-                className="relative overflow-hidden flex items-center gap-3.5 bg-white rounded-radius-xl border border-md-outline-variant/20 shadow-sm p-4 animate-rise-in"
+                className="relative overflow-hidden bg-white rounded-radius-xl border border-md-outline-variant/20 shadow-sm p-4 animate-rise-in hover:-translate-y-0.5 hover:shadow-md transition-all"
               >
-                <div className="shrink-0 w-11 h-11 rounded-radius-lg bg-md-primary-container/40 text-md-primary flex items-center justify-center">
+                <div className={`absolute -right-5 -top-5 w-16 h-16 rounded-full bg-gradient-to-br ${s.grad} opacity-10`} />
+                <div className={`relative w-11 h-11 rounded-radius-lg bg-gradient-to-br ${s.grad} text-white flex items-center justify-center shadow-sm ${s.anim}`}>
                   <s.icon size={20} />
                 </div>
-                <div className="min-w-0">
-                  <p className="text-2xl font-extrabold text-md-on-surface leading-none tabular-nums">{s.value}</p>
-                  <p className="text-xs font-semibold text-md-on-surface-variant mt-1">{s.label}</p>
-                </div>
+                <p className="relative text-2xl font-extrabold text-md-on-surface leading-none tabular-nums mt-3">{s.value}</p>
+                <p className="relative text-[11px] font-semibold text-md-on-surface-variant mt-1 leading-tight">{s.label}</p>
               </div>
             ))}
           </div>

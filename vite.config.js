@@ -11,10 +11,13 @@ export default defineConfig({
   build: {
     rollupOptions: {
       output: {
-        // Gom React vào 1 chunk ổn định → hash ít đổi giữa các lần deploy, cache lâu.
+        // Gom React runtime vào 1 chunk ổn định → hash ít đổi giữa các lần deploy, cache lâu.
+        // (rolldown/Vite 8 yêu cầu manualChunks dạng HÀM, không phải object.)
         // Các lib nặng (recharts/leaflet/maplibre) đã tự tách chunk theo trang nhờ lazy-load.
-        manualChunks: {
-          'react-vendor': ['react', 'react-dom', 'react-router-dom'],
+        manualChunks(id) {
+          if (/node_modules\/(react|react-dom|react-router|react-router-dom|scheduler)\//.test(id)) {
+            return 'react-vendor';
+          }
         },
       },
     },

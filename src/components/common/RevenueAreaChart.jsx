@@ -1,16 +1,18 @@
 import React from 'react';
-import { ResponsiveContainer, ComposedChart, Area, Bar, CartesianGrid, XAxis, YAxis, Tooltip, Legend } from 'recharts';
+import { ResponsiveContainer, ComposedChart, Area, Bar, CartesianGrid, XAxis, YAxis, Tooltip, Legend, Brush } from 'recharts';
 
-export default function RevenueAreaChart({ 
-  data, 
-  dataKey = 'revenue', 
-  color = '#6366f1', 
-  height = 200, 
+export default function RevenueAreaChart({
+  data,
+  dataKey = 'revenue',
+  color = '#6366f1',
+  height = 200,
   xKey = 'date',
   areas = [], // Mảng cấu hình các đường vẽ: [{ key, name, color }]
   showLegend = false,
   yTickFormatter,
-  chartType = 'area' // 'area' hoặc 'bar'
+  chartType = 'area', // 'area' hoặc 'bar'
+  brush = false,      // hiện thanh kéo trượt (scroll) để kéo dữ liệu qua lại
+  brushWindow = 21    // số điểm hiển thị mặc định khi có brush (mới nhất)
 }) {
   // Nếu có areas, dùng areas. Ngược lại dùng dataKey/color mặc định
   const activeAreas = areas.length > 0 ? areas : [{ key: dataKey, name: 'Doanh thu', color: color }];
@@ -19,13 +21,16 @@ export default function RevenueAreaChart({
   // THƯA (≤ 31 điểm) mới hiện chấm cho dễ đọc giá trị từng ngày.
   const pointCount = data?.length || 0;
   const dense = pointCount > 31;
+  // Có brush: mặc định hiện cửa sổ brushWindow điểm gần nhất, kéo trượt để xem phần còn lại.
+  const showBrush = brush && pointCount > brushWindow;
+  const brushStart = showBrush ? pointCount - brushWindow : 0;
   // Nhiều đường chồng nhau → fill nhạt hơn để không bị đục màu; ít đường thì đậm cho nổi khối.
   const fillTop = activeAreas.length > 1 ? 0.12 : 0.22;
 
   return (
     <div style={{ width: '100%', height }}>
       <ResponsiveContainer width="100%" height="100%">
-        <ComposedChart data={data} margin={{ top: 10, right: 12, left: -25, bottom: 0 }}>
+        <ComposedChart data={data} margin={{ top: 10, right: 12, left: -25, bottom: showBrush ? 4 : 0 }}>
           <defs>
             {activeAreas.map((area, idx) => {
               const gradientId = `gradient-area-${idx}`;

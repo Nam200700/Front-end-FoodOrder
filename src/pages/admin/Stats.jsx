@@ -10,6 +10,7 @@ import {
   BarChart3, AreaChart, Flame, Wallet, PackageCheck, XCircle, UserCheck,
 } from 'lucide-react';
 import FilterTabs from '../../components/common/FilterTabs';
+import { aggregateDaily, pickGranularity, bucketLabel, granularityCaption } from '../../utils/chartAggregate';
 
 const COLORS = ['#8B5CF6', '#10B981', '#F43F5E', '#06B6D4', '#F59E0B', '#3B82F6'];
 const PAYMENT_LABELS = { PAID: 'Đã thanh toán', PENDING: 'Chờ thanh toán', REFUNDED: 'Đã hoàn tiền', FAILED: 'Thất bại' };
@@ -67,17 +68,22 @@ export default function AdminStats() {
   const rate = report?.commissionRate != null ? Number(report.commissionRate) : (overview?.commissionRate ?? 0.1);
   const ratePct = Math.round(rate * 100);
 
-  const timelineData = useMemo(() => {
-    return (report?.daily || []).map(d => {
-      const [y, m, day] = (d.date || '').split('-');
-      const sub = Number(d.subtotal || 0);
-      return {
-        dateStr: day && m ? `${day}/${m}` : d.date,
-        'Tổng GTV': Number(d.gtv || 0),
-        'Quán đối tác': Math.round(sub * (1 - rate)),
-        'Hoa hồng sàn': Math.round(sub * rate),
-      };
-    });
+  // Gom theo ngày/tuần/tháng tuỳ độ dày để biểu đồ giãn ra, dễ đọc xu hướng.
+  const { timelineData, chartGranularity } = useMemo(() => {
+    const raw = (report?.daily || []).map(d => ({
+      date: d.date,
+      gtv: Number(d.gtv || 0),
+      sub: Number(d.subtotal || 0),
+    }));
+    const gran = pickGranularity(raw.length);
+    const agg = aggregateDaily(raw, 'date', gran);
+    const data = agg.map(d => ({
+      dateStr: bucketLabel(d, gran),
+      'Tổng GTV': d.gtv || 0,
+      'Quán đối tác': Math.round((d.sub || 0) * (1 - rate)),
+      'Hoa hồng sàn': Math.round((d.sub || 0) * rate),
+    }));
+    return { timelineData: data, chartGranularity: gran };
   }, [report, rate]);
 
   const paymentData = useMemo(() => {
@@ -201,11 +207,16 @@ export default function AdminStats() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="bg-slate-950 border border-slate-850 rounded-[1.25rem] p-5 shadow-md lg:col-span-2 space-y-4">
             <div className="flex items-center justify-between">
-              <h3 className="text-xs font-extrabold text-slate-200 uppercase tracking-wider flex items-center gap-1.5">
-                <TrendingUp className="text-purple-400" size={18} /> Xu Hướng GTV · Thực Nhận · Hoa Hồng Sàn
-              </h3>
+              <div className="min-w-0">
+                <h3 className="text-xs font-extrabold text-slate-200 uppercase tracking-wider flex items-center gap-1.5">
+                  <TrendingUp className="text-purple-400" size={18} /> Xu Hướng GTV · Thực Nhận · Hoa Hồng Sàn
+                </h3>
+                {granularityCaption(chartGranularity) && (
+                  <span className="text-[10px] text-purple-400/80 font-semibold">{granularityCaption(chartGranularity)}</span>
+                )}
+              </div>
               <button onClick={() => setChartType(p => p === 'area' ? 'bar' : 'area')}
-                className="px-2 py-1.5 rounded bg-slate-900 border border-slate-800 text-slate-400 hover:text-purple-400 cursor-pointer text-[10px] font-bold transition-all flex items-center gap-1">
+                className="px-2 py-1.5 rounded bg-slate-900 border border-slate-800 text-slate-400 hover:text-purple-400 cursor-pointer text-[10px] font-bold transition-all flex items-center gap-1 shrink-0">
                 {chartType === 'area' ? (<><BarChart3 size={13} /> Dạng Cột</>) : (<><AreaChart size={13} /> Dạng Miền</>)}
               </button>
             </div>
@@ -214,7 +225,7 @@ export default function AdminStats() {
             ) : (
               <div className="h-68 w-full text-[10px] font-bold">
                 <RevenueAreaChart data={timelineData} xKey="dateStr" height={272} showLegend
-                  yTickFormatter={(v) => v >= 1000000 ? `${v / 1000000}M` : `${v / 1000}k`} chartType={chartType}
+                  yTickFormatter={(v) => v >= 1000000 ? `${v / 1000000}M` : `${v / 1000}k`} valueFormatter={formatCurrency} chartType={chartType}
                   areas={[
                     { key: 'Tổng GTV', name: 'Tổng giao dịch (GTV)', color: '#8B5CF6' },
                     { key: 'Quán đối tác', name: 'Quán đối tác thực nhận', color: '#3B82F6' },

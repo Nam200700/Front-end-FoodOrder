@@ -6,6 +6,7 @@ import {
   CreditCard, CheckCircle2, RotateCcw, Ban, ArrowRight, BarChart3, ShieldAlert,
 } from 'lucide-react';
 import RevenueAreaChart from '../../components/common/RevenueAreaChart';
+import { aggregateDaily, pickGranularity, bucketLabel, granularityCaption } from '../../utils/chartAggregate';
 import { formatCurrency } from '../../utils/format';
 import Spinner from '../../components/common/Spinner';
 import { useFetchData } from '../../hooks/useFetchData';
@@ -23,13 +24,14 @@ export default function AdminDashboard() {
   const ov = overviewStats || {};
   const ins = insights || {};
 
-  // Biểu đồ GTV theo ngày (30 ngày) — dữ liệu server-side chính xác, không bị chặn số bản ghi
-  const revenueChartData = useMemo(() => {
-    return (ins.dailyGmv || []).map(d => {
-      // date "yyyy-MM-dd" → "dd/MM"
-      const [y, m, day] = (d.date || '').split('-');
-      return { day: day && m ? `${day}/${m}` : d.date, amount: Number(d.gmv || 0) };
-    });
+  // Biểu đồ GTV theo ngày (toàn lịch sử) — dữ liệu server-side chính xác, không bị chặn số bản ghi.
+  // Gom theo ngày/tuần/tháng tuỳ độ dày để giãn ra, dễ nhìn; kèm thanh kéo trượt xem đủ mốc.
+  const { revenueChartData, chartGranularity } = useMemo(() => {
+    const raw = (ins.dailyGmv || []).map(d => ({ date: d.date, gmv: Number(d.gmv || 0) }));
+    const gran = pickGranularity(raw.length);
+    const agg = aggregateDaily(raw, 'date', gran);
+    const data = agg.map(d => ({ day: bucketLabel(d, gran, 'date', true), amount: d.gmv || 0 }));
+    return { revenueChartData: data, chartGranularity: gran };
   }, [ins.dailyGmv]);
 
   // Giờ cao điểm hệ thống → bar theo khung giờ
@@ -247,12 +249,15 @@ export default function AdminDashboard() {
           <div className="flex items-center justify-between flex-wrap gap-2">
             <h3 className="text-xs font-extrabold text-slate-200 uppercase tracking-wider flex items-center gap-1.5">
               <TrendingUp className="text-purple-400" size={18} />
-              GTV hệ thống · 30 ngày gần nhất
+              GTV hệ thống theo ngày
             </h3>
             <span className="text-[10px] text-purple-400 bg-purple-950/20 px-2.5 py-1 rounded-full border border-purple-900/30 font-bold">
               Hoa hồng sàn ({Math.round((ov.commissionRate ?? 0) * 100)}%): {formatCurrency(ov.totalCommission ?? 0)}
             </span>
           </div>
+          <p className="text-[10px] text-slate-500 font-semibold -mt-2">
+            {granularityCaption(chartGranularity) ? `${granularityCaption(chartGranularity)} · ` : ''}Kéo thanh trượt phía dưới để xem đủ mốc ngày · tháng · năm
+          </p>
           <div className="h-60 w-full text-xs">
             {revenueChartData.length > 0 ? (
               <RevenueAreaChart
@@ -262,11 +267,13 @@ export default function AdminDashboard() {
                 color="#9334E6"
                 height={240}
                 yTickFormatter={(v) => v >= 1000000 ? `${v / 1000000}M` : `${v / 1000}k`}
+                valueFormatter={formatCurrency}
+                brush
               />
             ) : (
               <div className="h-full flex flex-col items-center justify-center text-slate-500 gap-2">
                 <TrendingUp size={28} className="opacity-40" />
-                <span className="text-xs">Chưa có đơn hoàn tất trong 30 ngày để thống kê.</span>
+                <span className="text-xs">Chưa có đơn hoàn tất để thống kê GTV theo ngày.</span>
               </div>
             )}
           </div>

@@ -3,7 +3,9 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useCartStore } from '../../stores/cartStore';
 import { useChatStore } from '../../stores/chatStore';
 import { useAuthStore } from '../../stores/authStore';
-import { ArrowLeft, Star, Clock, MapPin, Phone, Search, ShoppingBag, Heart, Share2, Plus, Minus, MessageSquare, AlertTriangle, Bike, AlertCircle, X, ZoomIn, ChevronLeft, ChevronRight } from 'lucide-react';import { formatCurrency } from '../../utils/format';
+import { ArrowLeft, Star, Clock, MapPin, Phone, Search, ShoppingBag, Heart, Share2, Plus, Minus, MessageSquare, AlertTriangle, Bike, AlertCircle, X, ZoomIn, ChevronLeft, ChevronRight, Utensils, Info, Truck, Wallet, Timer } from 'lucide-react';
+import { formatCurrency } from '../../utils/format';
+import { getFoodImageUrl, DEFAULT_FOOD_IMAGE } from '../../utils/avatarHelper';
 import Button from '../../components/common/Button';
 import Card from '../../components/common/Card';
 import Spinner from '../../components/common/Spinner';
@@ -13,6 +15,34 @@ import { calculateHaversineDistance } from '../../utils/haversine';
 import { toast } from 'react-toastify';
 import { mapRestaurant } from '../../utils/mappers';
 import { useModalState } from '../../hooks/useModalState';
+
+// Hàng 5 sao dùng chung — tô theo điểm (làm tròn), tuỳ chọn hiệu ứng pop cho sinh động.
+function StarRow({ value = 0, size = 14, animate = false, className = '' }) {
+  const filled = Math.round(Number(value) || 0);
+  return (
+    <span className={`inline-flex items-center gap-0.5 ${className}`}>
+      {[...Array(5)].map((_, idx) => (
+        <Star
+          key={idx}
+          size={size}
+          strokeWidth={2}
+          className={`${idx < filled ? 'fill-amber-400 text-amber-400' : 'fill-slate-200 text-slate-200'} ${animate && idx < filled ? 'animate-star-pop' : ''}`}
+          style={animate && idx < filled ? { animationDelay: `${idx * 70}ms` } : undefined}
+        />
+      ))}
+    </span>
+  );
+}
+
+// Lời nhận xét ngắn theo mức điểm trung bình (thân thiện, tông khách hàng).
+const ratingBlurb = (r) => {
+  const n = Number(r) || 0;
+  if (n >= 4.5) return 'Tuyệt vời! Quán được thực khách yêu thích và đánh giá rất cao.';
+  if (n >= 4) return 'Rất tốt — phần lớn khách hài lòng với món ăn và dịch vụ.';
+  if (n >= 3) return 'Khá ổn — quán đang được nhiều khách ủng hộ.';
+  if (n > 0) return 'Quán đang nỗ lực cải thiện chất lượng phục vụ.';
+  return 'Hãy là người đầu tiên đánh giá quán nhé!';
+};
 
 export default function RestaurantDetail() {
   const { id } = useParams();
@@ -29,6 +59,7 @@ export default function RestaurantDetail() {
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState('');
   const [isFavorite, setIsFavorite] = useState(false);
+  const [favBurst, setFavBurst] = useState(false); // 1 nhịp animation khi vừa thả tim
   const [activeTab, setActiveTab] = useState('menu'); 
   const [activeCategory, setActiveCategory] = useState(null);
   const [scrollY, setScrollY] = useState(0);
@@ -81,32 +112,24 @@ export default function RestaurantDetail() {
             fetchShippingForRestaurant(id, customerLat, customerLng);
           }
 
-          // Lấy đánh giá
+          // Lấy đánh giá (chỉ để HIỂN THỊ danh sách theo trang). SỐ SAO & TỔNG ĐÁNH GIÁ
+          // lấy TOÀN CỤC từ BE (mapRestaurant → realRes.rating/reviewsCount) — KHÔNG tính lại từ
+          // 1 trang review (trước bị lệch: 3.7/10 thay vì 3.9/18 vì chỉ tính trên 10 review/trang).
           let realReviews = [];
-          let fetchedTotalPages = 0;
           try {
             const reviewsRes = await apiClient.get(`/restaurants/${id}/reviews?page=${page}&size=${size}`);
             const reviewData = reviewsRes.data?.data;
             realReviews = reviewData?.content || [];
-            fetchedTotalPages = reviewData?.totalPages || 0;
-            setTotalPages(fetchedTotalPages);
+            setTotalPages(reviewData?.totalPages || 0);
           } catch (reviewErr) {
             console.warn('Lỗi khi tải đánh giá nhà hàng:', reviewErr);
           }
 
-          const totalReviews = realReviews.totalElements;
-          const totalPages = realReviews.totalPages || 0;
-
-          const totalRating = realReviews.reduce((sum, r) => sum + (r.restaurantRating || 0), 0);
-          const avgRating = realReviews.length > 0 ? (totalRating / realReviews.length).toFixed(1) : '5.0';
-
-          // Map thông tin quán ăn
+          // Map thông tin quán ăn (đã có rating & reviewsCount toàn cục từ BE)
           const mapped = mapRestaurant(realRes);
           const mappedRes = {
             ...mapped,
             ownerId: realRes.ownerId,
-            rating: Number(avgRating),
-            reviewsCount: realReviews.length,
             phone: realRes.phone,
             openTime: (realRes.opensAt && realRes.closesAt) ? `${realRes.opensAt.substring(0, 5)} - ${realRes.closesAt.substring(0, 5)}` : '--',
             reviews: realReviews.map(r => ({
@@ -161,7 +184,10 @@ export default function RestaurantDetail() {
 
     fetchDetails();
     fetchFavoriteStatus();
-  }, [id, user?.lat, user?.lng]);
+  }, [id, user?.lat, user?.lng, page]); // page: đổi trang → nạp lại danh sách đánh giá
+
+  // Đổi quán → về trang đánh giá đầu (tránh giữ số trang của quán trước)
+  useEffect(() => { setPage(0); }, [id]);
 
   // Parallax scroll effect
   useEffect(() => {
@@ -219,6 +245,8 @@ export default function RestaurantDetail() {
       } else {
         await apiClient.post(`/favorites/${id}`);
         setIsFavorite(true);
+        setFavBurst(true);
+        setTimeout(() => setFavBurst(false), 650); // 1 nhịp bung vòng lan toả
       }
     } catch (err) {
       console.error('Lỗi khi cập nhật yêu thích:', err);
@@ -297,13 +325,26 @@ export default function RestaurantDetail() {
             <ArrowLeft size={22} />
           </Button>
           <div className="flex gap-3">
-            <Button 
+            <Button
               variant="outline"
               size="sm"
               onClick={handleToggleFavorite}
-              className="w-11 h-11 !p-0 border-none rounded-radius-full bg-white/95 backdrop-blur-md flex items-center justify-center text-md-on-surface shadow-shadow-2 hover:scale-105 transition-transform"
+              className="group relative w-11 h-11 !p-0 border-none rounded-radius-full bg-white/95 backdrop-blur-md flex items-center justify-center text-md-on-surface shadow-shadow-2 hover:scale-105 active:scale-95 transition-transform"
+              title={isFavorite ? 'Bỏ yêu thích' : 'Thêm vào yêu thích'}
             >
-              <Heart size={20} className={isFavorite ? 'text-red-500 fill-red-500' : 'text-md-on-surface-variant'} />
+              {/* Vòng đỏ lan toả khi vừa thả tim */}
+              {favBurst && (
+                <span className="absolute inset-0 rounded-radius-full bg-red-400/50 animate-heart-burst pointer-events-none" />
+              )}
+              <Heart
+                key={isFavorite ? 'fav' : 'unfav'}
+                size={20}
+                className={`relative transition-colors duration-200 ${
+                  isFavorite
+                    ? 'text-red-500 fill-red-500 ' + (favBurst ? 'animate-heart-pop' : 'animate-heart-beat')
+                    : 'text-md-on-surface-variant group-hover:text-red-400 group-hover:scale-110'
+                }`}
+              />
             </Button>
             <Button 
               variant="outline"
@@ -326,16 +367,17 @@ export default function RestaurantDetail() {
               </h1>
               
               <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 sm:gap-4 mt-3 xs:mt-4.5 text-xs md:text-sm font-bold text-md-on-surface-variant">
-                <span className="flex items-center gap-1.5 text-amber-500 bg-amber-50 px-2.5 py-1 rounded-radius-sm">
-                  <Star size={16} className="fill-amber-500 text-amber-500" />
-                  {restaurant.rating} ({restaurant.reviewsCount} đánh giá)
+                <span className="flex items-center gap-2 text-amber-600 bg-amber-50 border border-amber-100 px-3 py-1.5 rounded-radius-md shadow-sm">
+                  <span className="font-black text-amber-500 text-sm md:text-base leading-none">{restaurant.rating}</span>
+                  <StarRow value={restaurant.rating} size={13} />
+                  <span className="text-amber-600/70 font-semibold">({restaurant.reviewsCount} đánh giá)</span>
                 </span>
-                <span className="flex items-center gap-1.5 bg-slate-100 px-2.5 py-1 rounded-radius-sm text-md-on-surface-variant">
-                  <Clock size={16} />
+                <span className="flex items-center gap-1.5 bg-slate-100 px-2.5 py-1 rounded-radius-sm text-md-on-surface-variant transition-colors hover:bg-slate-200/70">
+                  <Clock size={16} className="text-md-primary" />
                   {durationText}
                 </span>
-                <span className="flex items-center gap-1.5 bg-slate-100 px-2.5 py-1 rounded-radius-sm text-md-on-surface-variant">
-                  <MapPin size={16} /> {distance}
+                <span className="flex items-center gap-1.5 bg-slate-100 px-2.5 py-1 rounded-radius-sm text-md-on-surface-variant transition-colors hover:bg-slate-200/70">
+                  <MapPin size={16} className="text-md-primary" /> {distance}
                 </span>
               </div>
             </div>
@@ -385,22 +427,31 @@ export default function RestaurantDetail() {
       <div className="sticky top-0 bg-white border-b border-md-outline-variant/40 z-20 shadow-sm mt-8">
         <div className="max-w-5xl mx-auto flex items-center justify-around">
           {[
-            { id: 'menu', name: 'Thực đơn' },
-            { id: 'reviews', name: `Đánh giá` },
-            { id: 'info', name: 'Thông tin' }
+            { id: 'menu', name: 'Thực đơn', icon: Utensils, badge: menu.reduce((s, c) => s + c.items.length, 0) },
+            { id: 'reviews', name: 'Đánh giá', icon: Star, badge: restaurant.reviewsCount },
+            { id: 'info', name: 'Thông tin', icon: Info, badge: null }
           ].map((tab) => {
             const isActive = activeTab === tab.id;
+            const TabIcon = tab.icon;
             return (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`py-3 px-3 sm:py-4.5 sm:px-8 text-sm sm:text-base font-extrabold border-b-[3px] transition-all ${
+                className={`group py-3 px-3 sm:py-4.5 sm:px-8 text-sm sm:text-base font-extrabold border-b-[3px] transition-all flex items-center gap-2 ${
                   isActive
                     ? 'border-md-primary text-md-primary'
                     : 'border-transparent text-md-on-surface-variant hover:text-md-on-surface'
                 }`}
               >
+                <TabIcon size={17} className={`transition-transform ${isActive ? 'scale-110 -rotate-6' : 'group-hover:scale-110'} ${isActive && tab.id === 'reviews' ? 'fill-md-primary' : ''}`} />
                 {tab.name}
+                {tab.badge > 0 && (
+                  <span className={`text-[10px] font-black px-1.5 py-0.5 rounded-full leading-none transition-colors ${
+                    isActive ? 'bg-md-primary text-white' : 'bg-slate-100 text-slate-500'
+                  }`}>
+                    {tab.badge}
+                  </span>
+                )}
               </button>
             );
           })}
@@ -463,16 +514,25 @@ export default function RestaurantDetail() {
                   </h3>
                   
                   <div className="space-y-4 sm:space-y-5">
-                    {sec.items.map((item) => {
+                    {sec.items.map((item, itemIdx) => {
                       const qty = getItemQty(item.id);
                       return (
-                        <Card 
+                        <Card
                           key={item.id}
                           variant="flat"
-                          className="p-3 sm:p-4.5 flex gap-3 sm:gap-5"
+                          className={`group p-3 sm:p-4.5 flex gap-3 sm:gap-5 animate-rise-in transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md ${qty > 0 ? 'ring-1 ring-md-primary/30 bg-orange-50/30' : ''}`}
+                          style={{ animationDelay: `${itemIdx * 55}ms` }}
                         >
-                          <div className="w-20 h-20 xs:w-24 xs:h-24 sm:w-28 sm:h-28 rounded-radius-md overflow-hidden shrink-0 shadow-sm">
-                             <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
+                          <div className="relative w-20 h-20 xs:w-24 xs:h-24 sm:w-28 sm:h-28 rounded-radius-md overflow-hidden shrink-0 shadow-sm">
+                             <img
+                               src={getFoodImageUrl(item.image)}
+                               alt={item.name}
+                               onError={(e) => { e.currentTarget.src = DEFAULT_FOOD_IMAGE; }}
+                               className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
+                             />
+                             {qty > 0 && (
+                               <span className="absolute top-1 left-1 bg-md-primary text-white text-[10px] font-black px-1.5 py-0.5 rounded-full shadow-sm animate-scale-up">×{qty}</span>
+                             )}
                           </div>
 
                           <div className="flex-1 flex flex-col justify-between min-w-0">
@@ -537,15 +597,20 @@ export default function RestaurantDetail() {
               </h3>
               
               {cartItems.length === 0 ? (
-                <p className="text-xs text-md-outline font-semibold py-2">Chưa có món nào. Hãy thêm món từ thực đơn.</p>
+                <div className="flex flex-col items-center text-center py-6 gap-2">
+                  <span className="w-12 h-12 rounded-radius-full bg-orange-50 text-md-primary flex items-center justify-center animate-float">
+                    <ShoppingBag size={22} />
+                  </span>
+                  <p className="text-xs text-md-outline font-semibold">Chưa có món nào.<br />Hãy thêm món từ thực đơn.</p>
+                </div>
               ) : (
                 <>
                   <div className="space-y-3 max-h-72 overflow-y-auto no-scrollbar">
                     {cartItems.map((item) => (
-                      <div key={item.id} className="flex items-center justify-between text-xs gap-3">
+                      <div key={item.id} className="flex items-center justify-between text-xs gap-3 animate-rise-in">
                         <div className="flex flex-col truncate pr-2">
-                          <span className="text-md-on-surface truncate">{item.name}</span>
-                          <span className="text-md-on-surface truncate">{item.price} x{item.quantity}</span>
+                          <span className="text-md-on-surface font-semibold truncate">{item.name}</span>
+                          <span className="text-md-outline truncate">{formatCurrency(item.price)} × {item.quantity}</span>
                         </div>
                         
                         <div className="flex items-center gap-3 shrink-0">
@@ -593,22 +658,34 @@ export default function RestaurantDetail() {
             </Card>
           ) : (
             <>
+              {/* Tổng quan đánh giá (điểm toàn cục từ BE) */}
+              <Card variant="elevated" className="p-5 sm:p-6 flex items-center gap-5 bg-gradient-to-br from-amber-50/80 to-white border border-amber-100 animate-rise-in">
+                <div className="text-center shrink-0">
+                  <div className="text-4xl sm:text-5xl font-black text-amber-500 leading-none tracking-tight">{restaurant.rating}</div>
+                  <StarRow value={restaurant.rating} size={16} animate className="mt-2 justify-center" />
+                  <div className="text-[11px] text-md-outline font-bold mt-1.5">{restaurant.reviewsCount} đánh giá</div>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm sm:text-base font-extrabold text-md-on-surface leading-snug">Cảm nhận của thực khách</p>
+                  <p className="text-xs sm:text-sm text-md-on-surface-variant font-medium mt-1 leading-relaxed">{ratingBlurb(restaurant.rating)}</p>
+                </div>
+              </Card>
+
               {/* Danh sách các review */}
               <div className="space-y-4">
                 {restaurant.reviews.map((rev, i) => (
-                  <Card key={i} variant="elevated" className="p-4 sm:p-5 space-y-3">
-                    <div className="flex items-center justify-between">
-                      <span className="font-extrabold text-sm sm:text-base text-md-on-surface">{rev.name}</span>
-                      <span className="text-[10px] sm:text-xs text-md-outline font-medium">{rev.date}</span>
-                    </div>
-                    <div className="flex items-center gap-1 text-amber-500">
-                      {[...Array(5)].map((_, idx) => (
-                        <Star 
-                          key={idx} 
-                          size={14} 
-                          className={idx < rev.rating ? 'fill-amber-500 text-amber-500' : 'text-slate-200'} 
-                        />
-                      ))}
+                  <Card key={i} variant="elevated" className="p-4 sm:p-5 space-y-3 animate-rise-in hover:shadow-md transition-shadow" style={{ animationDelay: `${i * 60}ms` }}>
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <span className="w-10 h-10 rounded-radius-full bg-gradient-to-br from-orange-400 to-orange-600 text-white font-black text-sm flex items-center justify-center shadow-sm shrink-0 uppercase">
+                          {(rev.name || '?').trim().charAt(0)}
+                        </span>
+                        <div className="min-w-0">
+                          <span className="font-extrabold text-sm sm:text-base text-md-on-surface block truncate leading-tight">{rev.name}</span>
+                          <StarRow value={rev.rating} size={13} className="mt-0.5" />
+                        </div>
+                      </div>
+                      <span className="text-[10px] sm:text-xs text-md-outline font-semibold shrink-0">{rev.date}</span>
                     </div>
                     <p className="text-xs sm:text-sm text-md-on-surface-variant leading-relaxed font-medium">
                       {rev.comment}
@@ -673,30 +750,59 @@ export default function RestaurantDetail() {
 
       {/* ─── TAB CONTENT: INFO ─────────────────────────────────────────────────── */}
       {activeTab === 'info' && (
-        <div className="max-w-3xl mx-auto px-4 sm:px-6 mt-8">
-          <Card variant="elevated" className="p-5 sm:p-6.5 space-y-6">
-            <div>
-              <h3 className="font-extrabold text-base md:text-lg text-md-on-surface">Giới thiệu quán</h3>
-              <p className="text-xs md:text-sm text-md-on-surface-variant leading-relaxed mt-3 font-medium">
-                {restaurant.description}
-              </p>
+        <div className="max-w-3xl mx-auto px-4 sm:px-6 mt-8 space-y-5">
+          {/* Giới thiệu quán */}
+          <Card variant="elevated" className="p-5 sm:p-6.5 animate-rise-in">
+            <h3 className="font-extrabold text-base md:text-lg text-md-on-surface flex items-center gap-2">
+              <span className="w-8 h-8 rounded-xl bg-gradient-to-br from-orange-400 to-orange-600 text-white flex items-center justify-center shadow-sm"><Info size={16} /></span>
+              Giới thiệu quán
+            </h3>
+            <p className="text-xs md:text-sm text-md-on-surface-variant leading-relaxed mt-3.5 font-medium">
+              {restaurant.description || 'Quán chưa cập nhật giới thiệu.'}
+            </p>
+          </Card>
+
+          {/* Thông tin dịch vụ — thẻ icon */}
+          <div>
+            <h3 className="font-extrabold text-sm text-md-on-surface uppercase tracking-wider mb-3 px-1">Thông tin dịch vụ</h3>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              {[
+                { icon: Timer, color: 'text-orange-600 bg-orange-50', label: 'Chuẩn bị TB', value: '10-15 phút' },
+                { icon: Bike, color: 'text-emerald-600 bg-emerald-50', label: 'Giao tối đa', value: '7.0 km' },
+                { icon: Truck, color: 'text-blue-600 bg-blue-50', label: 'Phí ship từ', value: formatCurrency(shippingFee) },
+                { icon: Wallet, color: 'text-purple-600 bg-purple-50', label: 'Thanh toán', value: 'COD' },
+              ].map((it, idx) => {
+                const ItIcon = it.icon;
+                return (
+                  <Card key={idx} variant="flat" className="p-3.5 flex flex-col items-center text-center gap-2 animate-rise-in hover:-translate-y-0.5 hover:shadow-md transition-all" style={{ animationDelay: `${idx * 60}ms` }}>
+                    <span className={`w-10 h-10 rounded-xl flex items-center justify-center ${it.color}`}><ItIcon size={19} /></span>
+                    <span className="text-[10px] text-md-outline font-bold uppercase tracking-wide">{it.label}</span>
+                    <span className="text-xs sm:text-sm font-extrabold text-md-on-surface leading-tight">{it.value}</span>
+                  </Card>
+                );
+              })}
             </div>
-            
-            <div className="pt-5 border-t border-md-outline-variant/20 space-y-3 font-medium">
-              <h3 className="font-extrabold text-base md:text-lg text-md-on-surface mb-3">Thông tin dịch vụ</h3>
-              <div className="flex items-center justify-between text-xs md:text-sm">
-                <span className="text-md-on-surface-variant">Thời gian chuẩn bị trung bình:</span>
-                <span className="font-extrabold text-md-on-surface">10-15 phút</span>
-              </div>
-              <div className="flex items-center justify-between text-xs md:text-sm">
-                <span className="text-md-on-surface-variant">Khoảng cách giao hàng tối đa:</span>
-                <span className="font-extrabold text-md-on-surface">7.0km</span>
-              </div>
-              {/* <div className="flex items-center justify-between text-xs md:text-sm">
-                <span className="text-md-on-surface-variant">Thanh toán hỗ trợ:</span>
-                <span className="font-extrabold text-md-secondary">Tiền mặt COD</span>
-              </div> */}
-            </div>
+          </div>
+
+          {/* Liên hệ & địa chỉ */}
+          <Card variant="elevated" className="p-5 sm:p-6.5 space-y-3.5 animate-rise-in">
+            <h3 className="font-extrabold text-sm text-md-on-surface uppercase tracking-wider">Liên hệ &amp; địa chỉ</h3>
+            {[
+              { icon: MapPin, label: 'Địa chỉ', value: restaurant.address },
+              { icon: Clock, label: 'Giờ mở cửa', value: restaurant.openTime },
+              { icon: Phone, label: 'Điện thoại', value: restaurant.phone },
+            ].map((row, idx) => {
+              const RowIcon = row.icon;
+              return (
+                <div key={idx} className="flex items-start gap-3 text-xs md:text-sm">
+                  <span className="w-8 h-8 rounded-lg bg-slate-100 text-md-primary flex items-center justify-center shrink-0"><RowIcon size={15} /></span>
+                  <div className="min-w-0">
+                    <span className="text-[10px] text-md-outline font-bold uppercase tracking-wide block">{row.label}</span>
+                    <span className="font-semibold text-md-on-surface break-words">{row.value}</span>
+                  </div>
+                </div>
+              );
+            })}
           </Card>
         </div>
       )}

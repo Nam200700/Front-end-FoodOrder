@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Heart, Shuffle, Sparkles, Plus, Utensils, ArrowRight, Store, Star, MapPin, Clock, Compass } from 'lucide-react';
+import { Heart, Shuffle, Sparkles, Plus, Utensils, ArrowRight, Store, Star, MapPin, Clock, Compass, DoorOpen, Award } from 'lucide-react';
 import { useFetchData } from '../../hooks/useFetchData';
 import apiClient from '../../services/api';
 import { SkeletonRestaurantCard } from '../../components/common/SkeletonCard';
@@ -31,6 +31,18 @@ export default function Favorites() {
   // "HH:mm:ss" → "HH:mm" (bỏ giây cho gọn)
   const fmtTime = (t) => (t ? String(t).slice(0, 5) : null);
 
+  // Quán có đang mở cửa ngay bây giờ không (xử lý cả ca qua đêm closesAt < opensAt).
+  const isOpenNow = (opensAt, closesAt) => {
+    if (!opensAt || !closesAt) return false;
+    const now = new Date();
+    const cur = now.getHours() * 60 + now.getMinutes();
+    const [oh, om] = String(opensAt).slice(0, 5).split(':').map(Number);
+    const [ch, cm] = String(closesAt).slice(0, 5).split(':').map(Number);
+    if ([oh, om, ch, cm].some(Number.isNaN)) return false;
+    const open = oh * 60 + om, close = ch * 60 + cm;
+    return close > open ? (cur >= open && cur < close) : (cur >= open || cur < close);
+  };
+
   const { data: favorites, loading, error, refetch } = useFetchData('/favorites', {
     mapFn: mapFavorites,
   });
@@ -52,6 +64,9 @@ export default function Favorites() {
   const avgRating = ratedList.length
     ? ratedList.reduce((sum, r) => sum + r.rating, 0) / ratedList.length
     : 0;
+  // Số liệu THẬT thêm để dải thống kê phong phú: đang mở cửa + quán được đánh giá cao (≥4.5★)
+  const openNowCount = list.filter((r) => isOpenNow(r.opensAt, r.closesAt)).length;
+  const topRatedCount = list.filter((r) => r.rating >= 4.5).length;
 
   // "Thèm gì hôm nay?" → mở ngẫu nhiên một quán trong bộ sưu tập (cú hích đặt món
   // khi đang phân vân). Thuần trình bày, không gọi API.
@@ -129,33 +144,34 @@ export default function Favorites() {
         />
       ) : (
         <>
-          {/* ─── DẢI THỐNG KÊ THẬT (số quán + số loại ẩm thực) — suy ra từ dữ liệu, không bịa ── */}
-          <div className="grid grid-cols-2 gap-4 mb-8">
+          {/* ─── DẢI THỐNG KÊ THẬT (4 ô, mỗi ô 1 màu) — suy ra từ dữ liệu, không bịa ── */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 mb-8">
             {[
-              { icon: Store, value: list.length, label: 'Quán đã lưu' },
-              { icon: Star, value: avgRating > 0 ? avgRating.toFixed(1) : '—', label: avgRating > 0 ? `Điểm TB · ${ratedList.length} quán` : 'Chưa có đánh giá' },
+              { icon: Store, value: list.length, label: 'Quán đã lưu', grad: 'from-orange-400 to-orange-600', anim: 'animate-float' },
+              { icon: Star, value: avgRating > 0 ? avgRating.toFixed(1) : '—', label: avgRating > 0 ? `Điểm TB · ${ratedList.length} quán` : 'Chưa có đánh giá', grad: 'from-amber-400 to-yellow-500', anim: 'animate-twinkle' },
+              { icon: DoorOpen, value: openNowCount, label: 'Đang mở cửa', grad: 'from-emerald-400 to-green-600', anim: 'animate-pulse-slow' },
+              { icon: Award, value: topRatedCount, label: 'Yêu thích (≥4.5★)', grad: 'from-rose-400 to-pink-600', anim: 'animate-heart-beat' },
             ].map((s, i) => (
               <div
                 key={s.label}
                 style={{ animationDelay: `${i * 80}ms` }}
-                className="relative overflow-hidden flex items-center gap-3.5 bg-white rounded-radius-xl border border-md-outline-variant/20 shadow-sm p-4 animate-rise-in"
+                className="relative overflow-hidden bg-white rounded-radius-xl border border-md-outline-variant/20 shadow-sm p-4 animate-rise-in hover:-translate-y-0.5 hover:shadow-md transition-all"
               >
-                <div className="shrink-0 w-11 h-11 rounded-radius-lg bg-md-primary-container/40 text-md-primary flex items-center justify-center">
+                <div className={`absolute -right-5 -top-5 w-16 h-16 rounded-full bg-gradient-to-br ${s.grad} opacity-10`} />
+                <div className={`relative w-11 h-11 rounded-radius-lg bg-gradient-to-br ${s.grad} text-white flex items-center justify-center shadow-sm ${s.anim}`}>
                   <s.icon size={20} />
                 </div>
-                <div className="min-w-0">
-                  <p className="text-2xl font-extrabold text-md-on-surface leading-none tabular-nums">{s.value}</p>
-                  <p className="text-xs font-semibold text-md-on-surface-variant mt-1">{s.label}</p>
-                </div>
+                <p className="relative text-2xl font-extrabold text-md-on-surface leading-none tabular-nums mt-3">{s.value}</p>
+                <p className="relative text-[11px] font-semibold text-md-on-surface-variant mt-1 leading-tight">{s.label}</p>
               </div>
             ))}
           </div>
 
           {/* Nhãn khu vực bộ sưu tập */}
           <div className="flex items-center gap-2 mb-4">
-            <Heart size={16} className="text-md-primary fill-md-primary" />
+            <Heart size={16} className="text-md-primary fill-md-primary animate-heart-beat" />
             <h2 className="text-sm font-extrabold text-md-on-surface uppercase tracking-wide">Quán trong bộ sưu tập</h2>
-            <span className="text-xs font-bold text-md-on-surface-variant">· {list.length}</span>
+            <span className="text-xs font-bold text-white bg-md-primary px-2 py-0.5 rounded-full">{list.length}</span>
           </div>
 
           {/* Lưới gallery card EDITORIAL: tên nổi trên ảnh + chip loại món + thanh hành động dưới.
@@ -189,10 +205,11 @@ export default function Favorites() {
                   </div>
                   <button
                     onClick={(e) => handleRemoveFavorite(res.id, e)}
-                    className="absolute top-3 right-3 bg-white/90 backdrop-blur-md p-2 rounded-full text-red-500 hover:scale-110 active:scale-95 transition-all shadow-sm"
+                    className="group/fav absolute top-3 right-3 bg-white/90 backdrop-blur-md p-2 rounded-full text-red-500 hover:scale-110 active:scale-95 transition-all shadow-sm"
                     title="Bỏ khỏi yêu thích"
                   >
-                    <Heart size={15} className="fill-red-500" />
+                    {/* Đã lưu → tim đập nhẹ liên tục; rê chuột thì dừng để báo hiệu sắp bỏ */}
+                    <Heart size={15} className="fill-red-500 animate-heart-beat group-hover/fav:[animation-play-state:paused]" />
                   </button>
 
                   {/* Tên quán trên ảnh */}
@@ -209,17 +226,22 @@ export default function Favorites() {
                     </p>
                   )}
                   <div className="flex items-center justify-between gap-2">
-                    {fmtTime(res.opensAt) && fmtTime(res.closesAt) ? (
+                    {fmtTime(res.opensAt) && fmtTime(res.closesAt) ? (() => {
+                      const openNow = isOpenNow(res.opensAt, res.closesAt);
+                      return (
+                        <span className="inline-flex items-center gap-1.5 text-[11px] font-bold min-w-0">
+                          <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${openNow ? 'bg-emerald-500 animate-pulse' : 'bg-slate-300'}`} />
+                          <span className={openNow ? 'text-emerald-600' : 'text-slate-400'}>{openNow ? 'Đang mở' : 'Đã đóng'}</span>
+                          <span className="text-md-outline font-semibold truncate">· {fmtTime(res.opensAt)}–{fmtTime(res.closesAt)}</span>
+                        </span>
+                      );
+                    })() : (
                       <span className="inline-flex items-center gap-1.5 text-[11px] font-bold text-md-on-surface-variant">
-                        <Clock size={12} className="text-md-primary" /> {fmtTime(res.opensAt)}–{fmtTime(res.closesAt)}
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center gap-1.5 text-[11px] font-bold text-md-on-surface-variant">
-                        <Heart size={12} className="fill-red-500 text-red-500" /> Đã lưu
+                        <Heart size={12} className="fill-red-500 text-red-500 animate-heart-beat" /> Đã lưu
                       </span>
                     )}
-                    <span className="inline-flex items-center gap-1.5 text-xs font-extrabold text-white bg-md-primary px-3.5 py-2 rounded-radius-full shadow-sm group-hover:gap-2.5 transition-all">
-                      Xem quán <ArrowRight size={14} />
+                    <span className="inline-flex items-center gap-1.5 text-xs font-extrabold text-white bg-md-primary px-3.5 py-2 rounded-radius-full shadow-sm group-hover:gap-2.5 transition-all shrink-0">
+                      Xem quán <ArrowRight size={14} className="group-hover:translate-x-0.5 transition-transform" />
                     </span>
                   </div>
                 </div>

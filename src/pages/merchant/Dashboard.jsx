@@ -6,6 +6,7 @@ import {
   PackageX, EyeOff, ArrowRight, Sparkles, Clock, BarChart3,
 } from 'lucide-react';
 import RevenueAreaChart from '../../components/common/RevenueAreaChart';
+import { aggregateDaily, pickGranularity, bucketLabel, granularityCaption } from '../../utils/chartAggregate';
 import { formatCurrency } from '../../utils/format';
 import apiClient from '../../services/api';
 import Spinner from '../../components/common/Spinner';
@@ -50,20 +51,15 @@ export default function MerchantDashboard() {
     [allOrders]
   );
 
-  // Biểu đồ doanh thu tuần (rút gọn) — subtotal đơn hoàn tất theo thứ trong tuần
-  const revenueData = useMemo(() => {
-    const daysMap = { Monday: 'T2', Tuesday: 'T3', Wednesday: 'T4', Thursday: 'T5', Friday: 'T6', Saturday: 'T7', Sunday: 'CN' };
-    const daysOfWeek = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
-    const temp = { T2: 0, T3: 0, T4: 0, T5: 0, T6: 0, T7: 0, CN: 0 };
-    completedOrders.forEach(o => {
-      const mapped = daysMap[new Date(o.createdAt).toLocaleDateString('en-US', { weekday: 'long' })];
-      if (mapped) {
-        const sub = o.subtotalAmount != null ? Number(o.subtotalAmount) : Number(o.totalAmount || 0) - Number(o.shippingFee || 0);
-        temp[mapped] += sub;
-      }
-    });
-    return daysOfWeek.map(d => ({ day: d, amount: temp[d] }));
-  }, [completedOrders]);
+  // Biểu đồ doanh thu món theo NGÀY (server-side, toàn lịch sử, không bị chặn size như tính client).
+  // Gom theo ngày/tuần/tháng tuỳ độ dày để giãn ra, dễ nhìn; kèm thanh kéo trượt xem đủ mốc.
+  const { revenueData, chartGranularity } = useMemo(() => {
+    const raw = (insightsData?.dailyRevenue || []).map(d => ({ date: d.date, revenue: Number(d.revenue || 0) }));
+    const gran = pickGranularity(raw.length);
+    const agg = aggregateDaily(raw, 'date', gran);
+    const data = agg.map(d => ({ day: bucketLabel(d, gran, 'date', true), amount: d.revenue || 0 }));
+    return { revenueData: data, chartGranularity: gran };
+  }, [insightsData]);
 
   // Top 3 món bán chạy (rút gọn — bản đầy đủ ở trang Thống kê)
   const topFoods = useMemo(() => {
@@ -278,14 +274,24 @@ export default function MerchantDashboard() {
         <div className="bg-white rounded-radius-xl p-5 border border-slate-200/60 shadow-sm lg:col-span-2">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
-              <TrendingUp className="text-md-secondary" size={18} /> Doanh thu theo ngày trong tuần
+              <TrendingUp className="text-md-secondary" size={18} /> Doanh thu món theo ngày
             </h3>
             <button onClick={() => navigate('/merchant/stats')} className="text-[11px] font-bold text-md-secondary hover:underline inline-flex items-center gap-1">
               Xem chi tiết ở Thống kê <ArrowRight size={12} />
             </button>
           </div>
+          <p className="text-[10px] text-slate-400 font-semibold -mt-3 mb-3">
+            {granularityCaption(chartGranularity) ? `${granularityCaption(chartGranularity)} · ` : ''}Kéo thanh trượt phía dưới để xem các mốc ngày khác
+          </p>
           <div className="h-64 w-full text-xs">
-            <RevenueAreaChart data={revenueData} dataKey="amount" xKey="day" color="#10B981" height={256} yTickFormatter={(v) => `${v / 1000}k`} />
+            {revenueData.length > 0 ? (
+              <RevenueAreaChart data={revenueData} dataKey="amount" xKey="day" color="#10B981" height={256} yTickFormatter={(v) => `${v / 1000}k`} valueFormatter={formatCurrency} brush />
+            ) : (
+              <div className="h-full flex flex-col items-center justify-center text-slate-400 gap-2">
+                <TrendingUp size={26} className="opacity-40" />
+                <span className="text-xs font-semibold">Chưa có đơn hoàn tất để thống kê doanh thu theo ngày.</span>
+              </div>
+            )}
           </div>
         </div>
 

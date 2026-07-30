@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../stores/authStore';
-import { User, Phone, Mail, MapPin, LogOut, Camera, Map, Utensils, Sparkles, ShoppingBag, Heart, Bell, MessageCircle, ChevronRight, ShieldCheck, Edit2, Plus } from 'lucide-react';
+import { User, Phone, Mail, MapPin, LogOut, Camera, Map, Utensils, Sparkles, ShoppingBag, Heart, Bell, MessageCircle, ChevronRight, ShieldCheck, Edit2, Plus, Save, Lock } from 'lucide-react';
 import MapModal from '../../components/common/MapModal';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -280,7 +280,7 @@ export default function Profile() {
 
       {/* ─── THẺ THÀNH VIÊN ẨM THỰC (membership card, accent cam) ─────────────────── */}
       <div className="relative overflow-hidden rounded-radius-xl p-6 shadow-shadow-2 bg-gradient-to-br from-md-primary to-[#FF8C42] text-white animate-fade-in">
-        <Utensils className="absolute -right-4 -bottom-4 text-white/10" size={120} strokeWidth={1.2} />
+        <Utensils className="absolute -right-4 -bottom-4 text-white/10 animate-float-slow" size={120} strokeWidth={1.2} />
 
         <div className="relative flex items-center gap-5">
           <div className="relative shrink-0">
@@ -306,7 +306,7 @@ export default function Profile() {
 
           <div className="min-w-0">
             <span className="inline-flex items-center gap-1 text-[10px] font-bold bg-white/20 px-2.5 py-0.5 rounded-full uppercase tracking-wider">
-              <Sparkles size={11} /> Thành viên Foodie
+              <Sparkles size={11} className="animate-twinkle" /> Thành viên Foodie
             </span>
             <h2 className="font-extrabold text-xl mt-2 truncate">{user.name}</h2>
             <p className="text-xs text-white/85 font-semibold mt-0.5 truncate">{user.email}</p>
@@ -344,7 +344,7 @@ export default function Profile() {
               onClick={() => navigate(to)}
               className="w-full flex items-center gap-3 p-2.5 rounded-radius-lg hover:bg-md-primary/5 transition-colors text-left cursor-pointer group"
             >
-              <span className="p-2 bg-md-primary/10 text-md-primary rounded-radius-md shrink-0">
+              <span className="p-2 bg-md-primary/10 text-md-primary rounded-radius-md shrink-0 transition-all group-hover:bg-md-primary group-hover:text-white group-hover:scale-110 group-hover:-rotate-6">
                 <ItemIcon size={16} />
               </span>
               <span className="flex-1 min-w-0">
@@ -361,56 +361,59 @@ export default function Profile() {
 
       {/* ─── CỘT PHẢI: form hồ sơ ──────────────────────────── */}
       <Card className="p-5 border border-md-outline-variant/20 shadow-sm space-y-5.5 animate-slide-up h-full flex flex-col">
-        <div className="flex items-center gap-2 pb-1 border-b border-md-outline-variant/20">
-          <User size={16} className="text-md-primary" />
+        <div className="flex items-center gap-2.5 pb-3 border-b border-md-outline-variant/20">
+          <span className="w-8 h-8 rounded-xl bg-gradient-to-br from-md-primary to-[#FF8C42] text-white flex items-center justify-center shadow-sm animate-float">
+            <User size={16} />
+          </span>
           <h3 className="text-sm font-extrabold text-md-on-surface">Hồ Sơ Của Bạn</h3>
         </div>
-        <div>
+        <div className="animate-rise-in" style={{ animationDelay: '40ms' }}>
           <label className="block text-[10px] font-bold text-md-on-surface-variant uppercase tracking-wider mb-2">
             Họ và tên
           </label>
-          <div className="relative">
-            <User className="absolute left-3.5 top-1/2 -translate-y-1/2 text-md-outline" size={16} />
+          <div className="relative group">
+            <User className="absolute left-3.5 top-1/2 -translate-y-1/2 text-md-outline group-focus-within:text-md-primary group-focus-within:scale-110 transition-all duration-200" size={16} />
             <input
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 border border-md-outline-variant focus:border-md-primary rounded-radius-lg text-xs focus:outline-none focus:bg-white transition-all font-semibold"
+              className="w-full pl-10 pr-4 py-2.5 border border-md-outline-variant focus:border-md-primary rounded-radius-lg text-xs focus:outline-none focus:bg-white focus:ring-2 focus:ring-md-primary/15 transition-all font-semibold"
             />
           </div>
         </div>
 
-        <div>
+        <div className="animate-rise-in" style={{ animationDelay: '100ms' }}>
           <label className="block text-[10px] font-bold text-md-on-surface-variant uppercase tracking-wider mb-2">
             Địa chỉ Email
           </label>
-          <div className="relative">
-            <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 text-md-outline" size={16} />
+          <div className="relative group">
+            <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 text-md-outline group-focus-within:text-md-primary group-focus-within:scale-110 transition-all duration-200" size={16} />
             <input
-              type="text"            
+              type="text"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 border border-md-outline-variant focus:border-md-primary rounded-radius-lg text-xs focus:outline-none focus:bg-white transition-all font-semibold"         />
+              className="w-full pl-10 pr-4 py-2.5 border border-md-outline-variant focus:border-md-primary rounded-radius-lg text-xs focus:outline-none focus:bg-white focus:ring-2 focus:ring-md-primary/15 transition-all font-semibold" />
           </div>
         </div>
 
-        <div>
-          <label className="block text-[10px] font-bold text-md-on-surface-variant uppercase tracking-wider mb-2">
+        <div className="animate-rise-in" style={{ animationDelay: '160ms' }}>
+          <label className="flex items-center gap-1.5 text-[10px] font-bold text-md-on-surface-variant uppercase tracking-wider mb-2">
             Số điện thoại
+            <span className="inline-flex items-center gap-0.5 text-[9px] text-slate-400 normal-case font-semibold"><Lock size={9} /> Không đổi</span>
           </label>
-          <div className="relative">
+          <div className="relative group">
             <Phone className="absolute left-3.5 top-1/2 -translate-y-1/2 text-md-outline" size={16} />
             <input
               type="tel"
               readOnly
               value={phone}
               onChange={(e) => { setPhone(e.target.value);}}
-              className="w-full pl-10 pr-4 py-2.5 border border-md-outline-variant rounded-radius-lg text-xs focus:outline-none focus:bg-white transition-all font-semibold"
+              className="w-full pl-10 pr-4 py-2.5 border border-md-outline-variant rounded-radius-lg text-xs focus:outline-none bg-slate-50/60 text-slate-500 transition-all font-semibold cursor-not-allowed"
             />
           </div>
         </div>
 
-        <div className="space-y-1.5 pt-1">
+        <div className="space-y-1.5 pt-1 animate-rise-in" style={{ animationDelay: '220ms' }}>
           <div className="flex items-center justify-between mb-2">
             <label className="block text-[10px] font-bold text-md-on-surface-variant uppercase tracking-wider">
               Địa chỉ giao hàng
@@ -438,9 +441,9 @@ export default function Profile() {
             </button>
           </div>
 
-          <div className="relative flex items-start">
-            <MapPin className="absolute left-3.5 top-3 text-md-outline pointer-events-none" size={16} />
-            <div className="w-full pl-10 pr-4 py-2.5 border border-md-outline-variant rounded-radius-lg text-xs font-semibold text-slate-700 min-h-[46px] flex items-center">
+          <div className="relative flex items-start group">
+            <MapPin className="absolute left-3.5 top-3 text-md-primary pointer-events-none group-hover:scale-110 group-hover:-translate-y-0.5 transition-transform duration-200" size={16} />
+            <div className="w-full pl-10 pr-4 py-2.5 border border-md-outline-variant group-hover:border-md-primary/40 rounded-radius-lg text-xs font-semibold text-slate-700 min-h-[46px] flex items-center transition-colors">
               {isUpdatingLocation ? (
                 <span className="flex items-center gap-2 text-slate-400">
                   <Spinner size="sm" /> Đang cập nhật...
@@ -457,7 +460,8 @@ export default function Profile() {
           onClick={handleSave}
           disabled={updating}
           loading={updating}
-          className="w-full mt-auto bg-md-primary text-white font-bold py-3.5 px-4 rounded-radius-full shadow-shadow-2 hover:shadow-shadow-3 hover:translate-y-[-1.5px] active:translate-y-[0px] transition-all flex items-center justify-center gap-2 text-xs uppercase tracking-wider cursor-pointer"
+          icon={updating ? undefined : Save}
+          className="group w-full mt-auto bg-md-primary text-white font-bold py-3.5 px-4 rounded-radius-full shadow-shadow-2 hover:shadow-shadow-3 hover:translate-y-[-1.5px] active:translate-y-[0px] transition-all flex items-center justify-center gap-2 text-xs uppercase tracking-wider cursor-pointer [&_svg]:group-hover:rotate-[-8deg] [&_svg]:transition-transform"
         >
           Cập nhật thông tin
         </Button>

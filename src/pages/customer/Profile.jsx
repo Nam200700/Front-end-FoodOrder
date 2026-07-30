@@ -344,7 +344,7 @@ export default function Profile() {
               onClick={() => navigate(to)}
               className="w-full flex items-center gap-3 p-2.5 rounded-radius-lg hover:bg-md-primary/5 transition-colors text-left cursor-pointer group"
             >
-              <span className="p-2 bg-md-primary/10 text-md-primary rounded-radius-md shrink-0">
+              <span className="p-2 bg-md-primary/10 text-md-primary rounded-radius-md shrink-0 transition-all group-hover:bg-md-primary group-hover:text-white group-hover:scale-110 group-hover:-rotate-6">
                 <ItemIcon size={16} />
               </span>
               <span className="flex-1 min-w-0">

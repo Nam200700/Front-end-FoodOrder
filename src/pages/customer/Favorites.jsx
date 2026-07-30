@@ -169,9 +169,9 @@ export default function Favorites() {
 
           {/* Nhãn khu vực bộ sưu tập */}
           <div className="flex items-center gap-2 mb-4">
-            <Heart size={16} className="text-md-primary fill-md-primary" />
+            <Heart size={16} className="text-md-primary fill-md-primary animate-heart-beat" />
             <h2 className="text-sm font-extrabold text-md-on-surface uppercase tracking-wide">Quán trong bộ sưu tập</h2>
-            <span className="text-xs font-bold text-md-on-surface-variant">· {list.length}</span>
+            <span className="text-xs font-bold text-white bg-md-primary px-2 py-0.5 rounded-full">{list.length}</span>
           </div>
 
           {/* Lưới gallery card EDITORIAL: tên nổi trên ảnh + chip loại món + thanh hành động dưới.
@@ -226,17 +226,22 @@ export default function Favorites() {
                     </p>
                   )}
                   <div className="flex items-center justify-between gap-2">
-                    {fmtTime(res.opensAt) && fmtTime(res.closesAt) ? (
+                    {fmtTime(res.opensAt) && fmtTime(res.closesAt) ? (() => {
+                      const openNow = isOpenNow(res.opensAt, res.closesAt);
+                      return (
+                        <span className="inline-flex items-center gap-1.5 text-[11px] font-bold min-w-0">
+                          <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${openNow ? 'bg-emerald-500 animate-pulse' : 'bg-slate-300'}`} />
+                          <span className={openNow ? 'text-emerald-600' : 'text-slate-400'}>{openNow ? 'Đang mở' : 'Đã đóng'}</span>
+                          <span className="text-md-outline font-semibold truncate">· {fmtTime(res.opensAt)}–{fmtTime(res.closesAt)}</span>
+                        </span>
+                      );
+                    })() : (
                       <span className="inline-flex items-center gap-1.5 text-[11px] font-bold text-md-on-surface-variant">
-                        <Clock size={12} className="text-md-primary" /> {fmtTime(res.opensAt)}–{fmtTime(res.closesAt)}
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center gap-1.5 text-[11px] font-bold text-md-on-surface-variant">
-                        <Heart size={12} className="fill-red-500 text-red-500" /> Đã lưu
+                        <Heart size={12} className="fill-red-500 text-red-500 animate-heart-beat" /> Đã lưu
                       </span>
                     )}
-                    <span className="inline-flex items-center gap-1.5 text-xs font-extrabold text-white bg-md-primary px-3.5 py-2 rounded-radius-full shadow-sm group-hover:gap-2.5 transition-all">
-                      Xem quán <ArrowRight size={14} />
+                    <span className="inline-flex items-center gap-1.5 text-xs font-extrabold text-white bg-md-primary px-3.5 py-2 rounded-radius-full shadow-sm group-hover:gap-2.5 transition-all shrink-0">
+                      Xem quán <ArrowRight size={14} className="group-hover:translate-x-0.5 transition-transform" />
                     </span>
                   </div>
                 </div>

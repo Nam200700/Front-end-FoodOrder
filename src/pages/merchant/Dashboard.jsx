@@ -272,14 +272,22 @@ export default function MerchantDashboard() {
         <div className="bg-white rounded-radius-xl p-5 border border-slate-200/60 shadow-sm lg:col-span-2">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
-              <TrendingUp className="text-md-secondary" size={18} /> Doanh thu theo ngày trong tuần
+              <TrendingUp className="text-md-secondary" size={18} /> Doanh thu món theo ngày
             </h3>
             <button onClick={() => navigate('/merchant/stats')} className="text-[11px] font-bold text-md-secondary hover:underline inline-flex items-center gap-1">
               Xem chi tiết ở Thống kê <ArrowRight size={12} />
             </button>
           </div>
+          <p className="text-[10px] text-slate-400 font-semibold -mt-3 mb-3">Kéo thanh trượt phía dưới để xem các mốc ngày khác</p>
           <div className="h-64 w-full text-xs">
-            <RevenueAreaChart data={revenueData} dataKey="amount" xKey="day" color="#10B981" height={256} yTickFormatter={(v) => `${v / 1000}k`} />
+            {revenueData.length > 0 ? (
+              <RevenueAreaChart data={revenueData} dataKey="amount" xKey="day" color="#10B981" height={256} yTickFormatter={(v) => `${v / 1000}k`} brush />
+            ) : (
+              <div className="h-full flex flex-col items-center justify-center text-slate-400 gap-2">
+                <TrendingUp size={26} className="opacity-40" />
+                <span className="text-xs font-semibold">Chưa có đơn hoàn tất để thống kê doanh thu theo ngày.</span>
+              </div>
+            )}
           </div>
         </div>
 

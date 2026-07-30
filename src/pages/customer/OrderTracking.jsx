@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useOrderStore } from '../../stores/orderStore';
 import { useChatStore } from '../../stores/chatStore';
-import { ArrowLeft, Phone, MessageSquare, ChevronDown, ChevronUp, CheckCircle, Clock, Ban, AlertCircle, Map, AlertTriangle, Store, Bike, MapPin } from 'lucide-react';
+import { ArrowLeft, Phone, MessageSquare, ChevronDown, ChevronUp, CheckCircle, Clock, Ban, AlertCircle, Map, AlertTriangle, Store, Bike, MapPin, ChefHat, Package, PartyPopper, ReceiptText, Check, Navigation, Star } from 'lucide-react';
 import { formatCurrency } from '../../utils/format';
 import Button from '../../components/common/Button';
 import Card from '../../components/common/Card';
@@ -19,6 +19,18 @@ import { DEFAULT_AVATAR } from '../../utils/avatarHelper';
 import { useModalState } from '../../hooks/useModalState';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
+
+// Giao diện theo TỪNG GIAI ĐOẠN đơn hàng (banner sống động): icon động, lời nhắn, gradient màu
+const STAGE_UI = {
+  PENDING:          { icon: ReceiptText, title: 'Đã đặt hàng thành công', desc: 'Đang chờ quán xác nhận đơn của bạn...', grad: 'from-amber-400 to-orange-500' },
+  CONFIRMED:        { icon: Store,       title: 'Quán đã xác nhận đơn',    desc: 'Quán chuẩn bị bắt tay vào làm món cho bạn.', grad: 'from-orange-400 to-orange-600' },
+  PREPARING:        { icon: ChefHat,     title: 'Đang chuẩn bị món',       desc: 'Đầu bếp đang trổ tài — món ngon sắp xong!', grad: 'from-orange-500 to-rose-500' },
+  READY_FOR_PICKUP: { icon: Package,     title: 'Món đã sẵn sàng',         desc: 'Đang chờ tài xế tới lấy hàng của bạn.', grad: 'from-amber-500 to-orange-600' },
+  DELIVERING:       { icon: Bike,        title: 'Tài xế đang giao tới bạn', desc: 'Món đang trên đường — sắp tới nơi rồi!', grad: 'from-orange-500 to-red-500' },
+  COMPLETED:        { icon: PartyPopper, title: 'Giao hàng thành công!',   desc: 'Chúc bạn ngon miệng. Đừng quên đánh giá nhé!', grad: 'from-emerald-500 to-green-600' },
+  CANCELLED:        { icon: Ban,         title: 'Đơn hàng đã bị hủy',      desc: 'Đơn hàng của bạn đã được hủy.', grad: 'from-slate-500 to-slate-700' },
+};
+const getStageUI = (status) => (status === 'PICKED_UP' ? STAGE_UI.DELIVERING : (STAGE_UI[status] || STAGE_UI.PENDING));
 
 // Thiết lập default icon cho Leaflet để tránh mất ảnh marker
 delete L.Icon.Default.prototype._getIconUrl;
@@ -301,12 +313,12 @@ export default function OrderTracking() {
   const displayOrder = order;
 
   const steps = [
-    { key: 'PENDING', label: STATUS_META.PENDING?.label || 'Đặt hàng thành công' },
-    { key: 'CONFIRMED', label: STATUS_META.CONFIRMED?.label || 'Quán đã xác nhận' },
-    { key: 'PREPARING', label: STATUS_META.PREPARING?.label || 'Đang chuẩn bị món' },
-    { key: 'READY_FOR_PICKUP', label: STATUS_META.READY_FOR_PICKUP?.label || 'Chờ shipper lấy hàng' },
-    { key: 'DELIVERING', label: STATUS_META.DELIVERING?.label || 'Đang giao tới bạn' },
-    { key: 'COMPLETED', label: STATUS_META.COMPLETED?.label || 'Giao hàng thành công' },
+    { key: 'PENDING', label: STATUS_META.PENDING?.label || 'Đặt hàng thành công', icon: ReceiptText },
+    { key: 'CONFIRMED', label: STATUS_META.CONFIRMED?.label || 'Quán đã xác nhận', icon: Store },
+    { key: 'PREPARING', label: STATUS_META.PREPARING?.label || 'Đang chuẩn bị món', icon: ChefHat },
+    { key: 'READY_FOR_PICKUP', label: STATUS_META.READY_FOR_PICKUP?.label || 'Chờ shipper lấy hàng', icon: Package },
+    { key: 'DELIVERING', label: STATUS_META.DELIVERING?.label || 'Đang giao tới bạn', icon: Bike },
+    { key: 'COMPLETED', label: STATUS_META.COMPLETED?.label || 'Giao hàng thành công', icon: PartyPopper },
   ];
 
   const getStepIndex = (status) => {
@@ -401,6 +413,50 @@ export default function OrderTracking() {
         </div>
       </div>
 
+      {/* ─── BANNER TRẠNG THÁI SỐNG ĐỘNG (theo giai đoạn hiện tại) ─── */}
+      {(() => {
+        const stage = getStageUI(displayOrder.status);
+        const StageIcon = stage.icon;
+        const pct = isCancelled ? 0 : displayOrder.status === 'COMPLETED' ? 100 : Math.round(((activeIndex + 1) / steps.length) * 100);
+        const isDelivering = displayOrder.status === 'DELIVERING' || displayOrder.status === 'PICKED_UP';
+        const etaChip = displayOrder.status === 'COMPLETED' && displayOrder.timestamps?.COMPLETED
+          ? `Đã giao lúc ${displayOrder.timestamps.COMPLETED}`
+          : isDelivering && durationMinutes > 0
+            ? `Dự kiến ~${Math.ceil(durationMinutes)} phút nữa`
+            : `Bước ${Math.min(activeIndex + 1, steps.length)}/${steps.length}`;
+        return (
+          <div className={`relative overflow-hidden rounded-3xl p-6 md:p-7 text-white shadow-md bg-gradient-to-br ${stage.grad}`}>
+            <div className="pointer-events-none absolute -top-12 -right-8 w-48 h-48 rounded-full bg-white/15 blur-2xl" />
+            <div className="pointer-events-none absolute -bottom-16 left-8 w-48 h-48 rounded-full bg-black/5 blur-2xl" />
+            <div className="relative flex items-center gap-5">
+              <div className="w-16 h-16 rounded-2xl bg-white/20 border border-white/25 flex items-center justify-center shrink-0 animate-float">
+                <StageIcon size={32} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-wider text-white/80 flex-wrap">
+                  <span>Đơn #{displayOrder.id}</span>
+                  <span className="inline-flex items-center gap-1 bg-white/20 rounded-full px-2 py-0.5">
+                    {displayOrder.status === 'COMPLETED' ? <CheckCircle size={11} /> : <Clock size={11} />} {etaChip}
+                  </span>
+                </div>
+                <h2 className="text-xl md:text-2xl font-black leading-tight mt-1.5">{stage.title}</h2>
+                <p className="text-xs md:text-sm text-white/90 font-semibold mt-1 leading-relaxed">{stage.desc}</p>
+                {!isCancelled && (
+                  <div className="mt-3.5">
+                    <div className="flex justify-between text-[10px] font-extrabold text-white/85 mb-1">
+                      <span>Tiến độ đơn hàng</span><span>{pct}%</span>
+                    </div>
+                    <div className="h-2 bg-white/25 rounded-full overflow-hidden">
+                      <div className="h-full bg-white rounded-full transition-all duration-700 ease-out" style={{ width: `${pct}%` }} />
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
       {/* 2 cột: trạng thái + bản đồ | tài xế + hóa đơn*/}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start w-full">
         {/* ── CỘT TRÁI: trạng thái + bản đồ ── */}
@@ -428,6 +484,7 @@ export default function OrderTracking() {
                 const isCompleted = idx < activeIndex || (displayOrder.status === 'COMPLETED' && idx === activeIndex);
                 const isActive = idx === activeIndex && displayOrder.status !== 'COMPLETED';
                 const timestamp = displayOrder.timestamps?.[step.key];
+                const StepIcon = step.icon;
 
                 let pointStyle = 'bg-slate-200 text-slate-400';
 
@@ -447,11 +504,11 @@ export default function OrderTracking() {
                       />
                     )}
 
-                    {/* Step Circle Pin */}
-                    <div className={`absolute -left-[28.5px] w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold transition-all duration-300 ${pointStyle} ${
+                    {/* Step Circle Pin — icon riêng theo từng chặng */}
+                    <div className={`absolute -left-[28.5px] w-6 h-6 rounded-full flex items-center justify-center transition-all duration-300 ${pointStyle} ${
                       isActive ? 'animate-ripple' : ''
                     }`}>
-                      {isCompleted && '✓'}
+                      {isCompleted ? <Check size={13} strokeWidth={3} /> : <StepIcon size={12} strokeWidth={2.4} />}
                     </div>
 
                     {/* Content */}
@@ -472,11 +529,12 @@ export default function OrderTracking() {
                           </span>
                         )}
                       </div>
-                      {/* {isActive && step.key !== 'COMPLETED' && (
-                        <span className="text-[10px] md:text-xs text-md-primary font-bold inline-flex items-center gap-1.5 mt-2 bg-md-primary-container/20 px-2.5 py-1 rounded animate-pulse">
-                          Đang xử lý...
+                      {isActive && (
+                        <span className="text-[10px] md:text-xs text-md-primary font-extrabold inline-flex items-center gap-1.5 mt-2 bg-md-primary-container/25 px-2.5 py-1 rounded-full">
+                          <span className="w-1.5 h-1.5 rounded-full bg-md-primary animate-ping inline-block" />
+                          Đang diễn ra
                         </span>
-                      )} */}
+                      )}
                     </div>
                   </div>
                 );
@@ -485,10 +543,11 @@ export default function OrderTracking() {
 
             {/* Stepper Success CTA */}
             {displayOrder.status === 'COMPLETED' && (
-              <Button 
+              <Button
                 variant="secondary"
                 onClick={() => navigate(`/reviews/${displayOrder.id}`)}
                 size="lg"
+                icon={Star}
                 className="w-full text-sm uppercase tracking-wider bg-md-tertiary hover:bg-opacity-95 cursor-pointer shadow-sm"
               >
                 Đánh giá đơn hàng ngay

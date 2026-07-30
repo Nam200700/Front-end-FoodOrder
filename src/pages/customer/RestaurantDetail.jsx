@@ -411,22 +411,31 @@ export default function RestaurantDetail() {
       <div className="sticky top-0 bg-white border-b border-md-outline-variant/40 z-20 shadow-sm mt-8">
         <div className="max-w-5xl mx-auto flex items-center justify-around">
           {[
-            { id: 'menu', name: 'Thực đơn' },
-            { id: 'reviews', name: `Đánh giá` },
-            { id: 'info', name: 'Thông tin' }
+            { id: 'menu', name: 'Thực đơn', icon: Utensils, badge: menu.reduce((s, c) => s + c.items.length, 0) },
+            { id: 'reviews', name: 'Đánh giá', icon: Star, badge: restaurant.reviewsCount },
+            { id: 'info', name: 'Thông tin', icon: Info, badge: null }
           ].map((tab) => {
             const isActive = activeTab === tab.id;
+            const TabIcon = tab.icon;
             return (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`py-3 px-3 sm:py-4.5 sm:px-8 text-sm sm:text-base font-extrabold border-b-[3px] transition-all ${
+                className={`group py-3 px-3 sm:py-4.5 sm:px-8 text-sm sm:text-base font-extrabold border-b-[3px] transition-all flex items-center gap-2 ${
                   isActive
                     ? 'border-md-primary text-md-primary'
                     : 'border-transparent text-md-on-surface-variant hover:text-md-on-surface'
                 }`}
               >
+                <TabIcon size={17} className={`transition-transform ${isActive ? 'scale-110 -rotate-6' : 'group-hover:scale-110'} ${isActive && tab.id === 'reviews' ? 'fill-md-primary' : ''}`} />
                 {tab.name}
+                {tab.badge > 0 && (
+                  <span className={`text-[10px] font-black px-1.5 py-0.5 rounded-full leading-none transition-colors ${
+                    isActive ? 'bg-md-primary text-white' : 'bg-slate-100 text-slate-500'
+                  }`}>
+                    {tab.badge}
+                  </span>
+                )}
               </button>
             );
           })}

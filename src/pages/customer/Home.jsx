@@ -638,9 +638,20 @@ export default function Home() {
                       {/* Heart Favorite Button */}
                       <button
                         onClick={(e) => toggleFavorite(res.id, e)}
-                        className="absolute right-3 top-3 bg-white/90 backdrop-blur-md p-2 rounded-full text-slate-400 hover:text-rose-500 transition-all shadow-sm z-10 cursor-pointer"
+                        title={favorites.includes(res.id) ? 'Bỏ yêu thích' : 'Thêm vào yêu thích'}
+                        className="group/fav absolute right-3 top-3 bg-white/90 backdrop-blur-md p-2 rounded-full text-slate-400 hover:text-rose-500 transition-all shadow-sm z-10 cursor-pointer active:scale-90"
                       >
-                        <Heart size={16} className={favorites.includes(res.id) ? 'fill-rose-500 text-rose-500' : ''} />
+                        {burstFavId === res.id && (
+                          <span className="absolute inset-0 rounded-full bg-rose-400/50 animate-heart-burst pointer-events-none" />
+                        )}
+                        <Heart
+                          size={16}
+                          className={`relative transition-transform ${
+                            favorites.includes(res.id)
+                              ? 'fill-rose-500 text-rose-500 ' + (burstFavId === res.id ? 'animate-heart-pop' : 'animate-heart-beat')
+                              : 'group-hover/fav:scale-110'
+                          }`}
+                        />
                       </button>
 
                       {/* Image thumbnail container */}
@@ -752,9 +763,20 @@ export default function Home() {
                     >
                       <button
                         onClick={(e) => toggleFavorite(res.id, e)}
-                        className="absolute right-3 top-3 bg-white/90 backdrop-blur-md p-2 rounded-full text-slate-400 hover:text-rose-500 transition-all shadow-sm z-10 cursor-pointer"
+                        title={favorites.includes(res.id) ? 'Bỏ yêu thích' : 'Thêm vào yêu thích'}
+                        className="group/fav absolute right-3 top-3 bg-white/90 backdrop-blur-md p-2 rounded-full text-slate-400 hover:text-rose-500 transition-all shadow-sm z-10 cursor-pointer active:scale-90"
                       >
-                        <Heart size={16} className={favorites.includes(res.id) ? 'fill-rose-500 text-rose-500' : ''} />
+                        {burstFavId === res.id && (
+                          <span className="absolute inset-0 rounded-full bg-rose-400/50 animate-heart-burst pointer-events-none" />
+                        )}
+                        <Heart
+                          size={16}
+                          className={`relative transition-transform ${
+                            favorites.includes(res.id)
+                              ? 'fill-rose-500 text-rose-500 ' + (burstFavId === res.id ? 'animate-heart-pop' : 'animate-heart-beat')
+                              : 'group-hover/fav:scale-110'
+                          }`}
+                        />
                       </button>
 
                       <div>

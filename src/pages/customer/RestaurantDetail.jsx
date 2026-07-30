@@ -181,7 +181,7 @@ export default function RestaurantDetail() {
 
     fetchDetails();
     fetchFavoriteStatus();
-  }, [id, user?.lat, user?.lng]);
+  }, [id, user?.lat, user?.lng, page]); // page: đổi trang → nạp lại danh sách đánh giá
 
   // Parallax scroll effect
   useEffect(() => {

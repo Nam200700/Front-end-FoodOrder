@@ -346,16 +346,17 @@ export default function RestaurantDetail() {
               </h1>
               
               <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 sm:gap-4 mt-3 xs:mt-4.5 text-xs md:text-sm font-bold text-md-on-surface-variant">
-                <span className="flex items-center gap-1.5 text-amber-500 bg-amber-50 px-2.5 py-1 rounded-radius-sm">
-                  <Star size={16} className="fill-amber-500 text-amber-500" />
-                  {restaurant.rating} ({restaurant.reviewsCount} đánh giá)
+                <span className="flex items-center gap-2 text-amber-600 bg-amber-50 border border-amber-100 px-3 py-1.5 rounded-radius-md shadow-sm">
+                  <span className="font-black text-amber-500 text-sm md:text-base leading-none">{restaurant.rating}</span>
+                  <StarRow value={restaurant.rating} size={13} />
+                  <span className="text-amber-600/70 font-semibold">({restaurant.reviewsCount} đánh giá)</span>
                 </span>
-                <span className="flex items-center gap-1.5 bg-slate-100 px-2.5 py-1 rounded-radius-sm text-md-on-surface-variant">
-                  <Clock size={16} />
+                <span className="flex items-center gap-1.5 bg-slate-100 px-2.5 py-1 rounded-radius-sm text-md-on-surface-variant transition-colors hover:bg-slate-200/70">
+                  <Clock size={16} className="text-md-primary" />
                   {durationText}
                 </span>
-                <span className="flex items-center gap-1.5 bg-slate-100 px-2.5 py-1 rounded-radius-sm text-md-on-surface-variant">
-                  <MapPin size={16} /> {distance}
+                <span className="flex items-center gap-1.5 bg-slate-100 px-2.5 py-1 rounded-radius-sm text-md-on-surface-variant transition-colors hover:bg-slate-200/70">
+                  <MapPin size={16} className="text-md-primary" /> {distance}
                 </span>
               </div>
             </div>

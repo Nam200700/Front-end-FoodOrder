@@ -50,20 +50,14 @@ export default function MerchantDashboard() {
     [allOrders]
   );
 
-  // Biểu đồ doanh thu tuần (rút gọn) — subtotal đơn hoàn tất theo thứ trong tuần
+  // Biểu đồ doanh thu món theo NGÀY (server-side, toàn lịch sử, không bị chặn size như tính client)
+  // → {ngày dd/MM/yyyy, doanh thu}. FE có thanh kéo trượt để xem toàn bộ mốc thời gian.
   const revenueData = useMemo(() => {
-    const daysMap = { Monday: 'T2', Tuesday: 'T3', Wednesday: 'T4', Thursday: 'T5', Friday: 'T6', Saturday: 'T7', Sunday: 'CN' };
-    const daysOfWeek = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
-    const temp = { T2: 0, T3: 0, T4: 0, T5: 0, T6: 0, T7: 0, CN: 0 };
-    completedOrders.forEach(o => {
-      const mapped = daysMap[new Date(o.createdAt).toLocaleDateString('en-US', { weekday: 'long' })];
-      if (mapped) {
-        const sub = o.subtotalAmount != null ? Number(o.subtotalAmount) : Number(o.totalAmount || 0) - Number(o.shippingFee || 0);
-        temp[mapped] += sub;
-      }
+    return (insightsData?.dailyRevenue || []).map(d => {
+      const [y, m, day] = (d.date || '').split('-');
+      return { day: (day && m && y) ? `${day}/${m}/${y}` : d.date, amount: Number(d.revenue || 0) };
     });
-    return daysOfWeek.map(d => ({ day: d, amount: temp[d] }));
-  }, [completedOrders]);
+  }, [insightsData]);
 
   // Top 3 món bán chạy (rút gọn — bản đầy đủ ở trang Thống kê)
   const topFoods = useMemo(() => {

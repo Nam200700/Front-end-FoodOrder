@@ -50,13 +50,14 @@ export default function MerchantDashboard() {
     [allOrders]
   );
 
-  // Biểu đồ doanh thu món theo NGÀY (server-side, toàn lịch sử, không bị chặn size như tính client)
-  // → {ngày dd/MM/yyyy, doanh thu}. FE có thanh kéo trượt để xem toàn bộ mốc thời gian.
-  const revenueData = useMemo(() => {
-    return (insightsData?.dailyRevenue || []).map(d => {
-      const [y, m, day] = (d.date || '').split('-');
-      return { day: (day && m && y) ? `${day}/${m}/${y}` : d.date, amount: Number(d.revenue || 0) };
-    });
+  // Biểu đồ doanh thu món theo NGÀY (server-side, toàn lịch sử, không bị chặn size như tính client).
+  // Gom theo ngày/tuần/tháng tuỳ độ dày để giãn ra, dễ nhìn; kèm thanh kéo trượt xem đủ mốc.
+  const { revenueData, chartGranularity } = useMemo(() => {
+    const raw = (insightsData?.dailyRevenue || []).map(d => ({ date: d.date, revenue: Number(d.revenue || 0) }));
+    const gran = pickGranularity(raw.length);
+    const agg = aggregateDaily(raw, 'date', gran);
+    const data = agg.map(d => ({ day: bucketLabel(d, gran, 'date', true), amount: d.revenue || 0 }));
+    return { revenueData: data, chartGranularity: gran };
   }, [insightsData]);
 
   // Top 3 món bán chạy (rút gọn — bản đầy đủ ở trang Thống kê)

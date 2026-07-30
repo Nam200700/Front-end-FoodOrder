@@ -77,18 +77,23 @@ export default function MerchantStats() {
   const rate = report?.commissionRate != null ? Number(report.commissionRate) : 0.1;
   const ratePct = Math.round(rate * 100);
 
-  // Chuỗi ngày cho biểu đồ (subtotal + thực nhận = subtotal*(1-rate))
-  const timelineData = useMemo(() => {
-    return (report?.daily || []).map(d => {
-      const [y, m, day] = (d.date || '').split('-');
-      const sub = Number(d.subtotal || 0);
-      return {
-        dateStr: day && m ? `${day}/${m}` : d.date,
-        'Doanh thu món': sub,
-        'Thực nhận': Math.round(sub * (1 - rate)),
-        orders: Number(d.orders || 0),
-      };
-    });
+  // Chuỗi ngày cho biểu đồ (subtotal + thực nhận = subtotal*(1-rate)).
+  // Gom theo ngày/tuần/tháng tuỳ độ dày để biểu đồ giãn ra, dễ đọc xu hướng.
+  const { timelineData, chartGranularity } = useMemo(() => {
+    const raw = (report?.daily || []).map(d => ({
+      date: d.date,
+      sub: Number(d.subtotal || 0),
+      orders: Number(d.orders || 0),
+    }));
+    const gran = pickGranularity(raw.length);
+    const agg = aggregateDaily(raw, 'date', gran);
+    const data = agg.map(d => ({
+      dateStr: bucketLabel(d, gran),
+      'Doanh thu món': d.sub || 0,
+      'Thực nhận': Math.round((d.sub || 0) * (1 - rate)),
+      orders: d.orders || 0,
+    }));
+    return { timelineData: data, chartGranularity: gran };
   }, [report, rate]);
 
   const paymentData = useMemo(() => {
@@ -228,11 +233,16 @@ export default function MerchantStats() {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="bg-white rounded-[1.25rem] p-5 border border-slate-200/60 shadow-sm lg:col-span-2 space-y-4">
               <div className="flex items-center justify-between">
-                <h3 className="text-xs font-extrabold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
-                  <TrendingUp className="text-md-secondary" size={18} /> Xu Hướng Doanh Thu (Khấu Trừ Hoa Hồng)
-                </h3>
+                <div className="min-w-0">
+                  <h3 className="text-xs font-extrabold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+                    <TrendingUp className="text-md-secondary" size={18} /> Xu Hướng Doanh Thu (Khấu Trừ Hoa Hồng)
+                  </h3>
+                  {granularityCaption(chartGranularity) && (
+                    <span className="text-[10px] text-md-secondary/80 font-semibold">{granularityCaption(chartGranularity)}</span>
+                  )}
+                </div>
                 <button onClick={() => setChartType(p => p === 'area' ? 'bar' : 'area')}
-                  className="px-2 py-1.5 rounded bg-slate-50 border border-slate-200 text-slate-600 hover:text-md-secondary cursor-pointer text-[10px] font-bold transition-all flex items-center gap-1">
+                  className="px-2 py-1.5 rounded bg-slate-50 border border-slate-200 text-slate-600 hover:text-md-secondary cursor-pointer text-[10px] font-bold transition-all flex items-center gap-1 shrink-0">
                   {chartType === 'area' ? (<><BarChart3 size={11} /> Dạng Cột</>) : (<><AreaChart size={11} /> Dạng Miền</>)}
                 </button>
               </div>

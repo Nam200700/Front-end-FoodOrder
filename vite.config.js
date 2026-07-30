@@ -11,13 +11,14 @@ export default defineConfig({
   build: {
     rollupOptions: {
       output: {
-        // Gom React runtime vào 1 chunk ổn định → hash ít đổi giữa các lần deploy, cache lâu.
+        // Tách các lib NẶNG ra chunk riêng để KHÔNG lọt vào bundle entry (index):
+        // map (maplibre ~800KB) & chart chỉ tải khi mở trang bản đồ / thống kê.
         // (rolldown/Vite 8 yêu cầu manualChunks dạng HÀM, không phải object.)
-        // Các lib nặng (recharts/leaflet/maplibre) đã tự tách chunk theo trang nhờ lazy-load.
         manualChunks(id) {
-          if (/node_modules\/(react|react-dom|react-router|react-router-dom|scheduler)\//.test(id)) {
-            return 'react-vendor';
-          }
+          if (!id.includes('node_modules')) return;
+          if (/node_modules\/(react|react-dom|react-router|react-router-dom|scheduler)\//.test(id)) return 'react-vendor';
+          if (/node_modules\/(leaflet|maplibre-gl|@maplibre)\//.test(id)) return 'map-vendor';
+          if (/node_modules\/(recharts|d3-|victory-vendor|internmap|delaunator|robust-predicates)\//.test(id)) return 'charts-vendor';
         },
       },
     },

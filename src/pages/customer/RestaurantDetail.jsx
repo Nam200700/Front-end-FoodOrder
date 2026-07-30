@@ -14,6 +14,34 @@ import { toast } from 'react-toastify';
 import { mapRestaurant } from '../../utils/mappers';
 import { useModalState } from '../../hooks/useModalState';
 
+// Hàng 5 sao dùng chung — tô theo điểm (làm tròn), tuỳ chọn hiệu ứng pop cho sinh động.
+function StarRow({ value = 0, size = 14, animate = false, className = '' }) {
+  const filled = Math.round(Number(value) || 0);
+  return (
+    <span className={`inline-flex items-center gap-0.5 ${className}`}>
+      {[...Array(5)].map((_, idx) => (
+        <Star
+          key={idx}
+          size={size}
+          strokeWidth={2}
+          className={`${idx < filled ? 'fill-amber-400 text-amber-400' : 'fill-slate-200 text-slate-200'} ${animate && idx < filled ? 'animate-star-pop' : ''}`}
+          style={animate && idx < filled ? { animationDelay: `${idx * 70}ms` } : undefined}
+        />
+      ))}
+    </span>
+  );
+}
+
+// Lời nhận xét ngắn theo mức điểm trung bình (thân thiện, tông khách hàng).
+const ratingBlurb = (r) => {
+  const n = Number(r) || 0;
+  if (n >= 4.5) return 'Tuyệt vời! Quán được thực khách yêu thích và đánh giá rất cao.';
+  if (n >= 4) return 'Rất tốt — phần lớn khách hài lòng với món ăn và dịch vụ.';
+  if (n >= 3) return 'Khá ổn — quán đang được nhiều khách ủng hộ.';
+  if (n > 0) return 'Quán đang nỗ lực cải thiện chất lượng phục vụ.';
+  return 'Hãy là người đầu tiên đánh giá quán nhé!';
+};
+
 export default function RestaurantDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -81,32 +109,24 @@ export default function RestaurantDetail() {
             fetchShippingForRestaurant(id, customerLat, customerLng);
           }
 
-          // Lấy đánh giá
+          // Lấy đánh giá (chỉ để HIỂN THỊ danh sách theo trang). SỐ SAO & TỔNG ĐÁNH GIÁ
+          // lấy TOÀN CỤC từ BE (mapRestaurant → realRes.rating/reviewsCount) — KHÔNG tính lại từ
+          // 1 trang review (trước bị lệch: 3.7/10 thay vì 3.9/18 vì chỉ tính trên 10 review/trang).
           let realReviews = [];
-          let fetchedTotalPages = 0;
           try {
             const reviewsRes = await apiClient.get(`/restaurants/${id}/reviews?page=${page}&size=${size}`);
             const reviewData = reviewsRes.data?.data;
             realReviews = reviewData?.content || [];
-            fetchedTotalPages = reviewData?.totalPages || 0;
-            setTotalPages(fetchedTotalPages);
+            setTotalPages(reviewData?.totalPages || 0);
           } catch (reviewErr) {
             console.warn('Lỗi khi tải đánh giá nhà hàng:', reviewErr);
           }
 
-          const totalReviews = realReviews.totalElements;
-          const totalPages = realReviews.totalPages || 0;
-
-          const totalRating = realReviews.reduce((sum, r) => sum + (r.restaurantRating || 0), 0);
-          const avgRating = realReviews.length > 0 ? (totalRating / realReviews.length).toFixed(1) : '5.0';
-
-          // Map thông tin quán ăn
+          // Map thông tin quán ăn (đã có rating & reviewsCount toàn cục từ BE)
           const mapped = mapRestaurant(realRes);
           const mappedRes = {
             ...mapped,
             ownerId: realRes.ownerId,
-            rating: Number(avgRating),
-            reviewsCount: realReviews.length,
             phone: realRes.phone,
             openTime: (realRes.opensAt && realRes.closesAt) ? `${realRes.opensAt.substring(0, 5)} - ${realRes.closesAt.substring(0, 5)}` : '--',
             reviews: realReviews.map(r => ({

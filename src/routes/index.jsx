@@ -222,5 +222,6 @@ export default function AppRoutes() {
       <Route path="*" element={<NotFound />} />
 
     </Routes>
+    </Suspense>
   );
 }

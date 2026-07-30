@@ -63,8 +63,7 @@ export default function AdminOrders() {
     const realData = data?.content || data || [];
     const items = realData.map(ord => {
       const dateObj = ord.createdAt ? new Date(ord.createdAt) : new Date();
-      const dateStr = `${String(dateObj.getDate()).padStart(2, '0')}/${String(dateObj.getMonth() + 1).padStart(2, '0')} ${String(dateObj.getHours()).padStart(2, '0')}:${String(dateObj.getMinutes()).padStart(2, '0')}`;
-      
+      const dateStr = `${String(dateObj.getDate()).padStart(2, '0')}/${String(dateObj.getMonth() + 1).padStart(2, '0')}/${dateObj.getFullYear()} ${String(dateObj.getHours()).padStart(2, '0')}:${String(dateObj.getMinutes()).padStart(2, '0')}`;
       return {
         id: ord.orderId?.toString() || '—',
         resName: ord.restaurantName || 'Quán ăn đối tác',
@@ -99,8 +98,7 @@ export default function AdminOrders() {
       completedOrders: kpiData?.completedOrders ?? 0,
       processingOrders: kpiData?.processingOrders ?? 0,
       deliveringOrders: kpiData?.deliveringOrders ?? 0,
-      cancelledOrders: kpiData?.cancelledOrders ?? 0,
-      gmv: kpiData?.gmv ?? 0,
+      cancelledOrders: kpiData?.cancelledOrders ?? 0
     };
   }, [kpiData, totalElements]);
 
@@ -133,18 +131,12 @@ export default function AdminOrders() {
           <Package className="text-purple-600" size={22} />
           Quản Lý Đơn Hàng
         </h1>
-        {/* <button
-          onClick={() => { refetch(); refetchKpi(); }}
-          className="px-3 py-1.5 border border-slate-200 hover:bg-slate-50 text-slate-700 font-bold text-xs rounded-xl transition-colors cursor-pointer inline-flex items-center gap-1.5 shadow-2xs"
-        >
-          <RefreshCw size={13} /> Làm mới
-        </button> */}
       </div>
 
       {/* ─── HÀNG KPI TÓM TẮT ─────────────────────────── */}
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
         {[
-          { label: 'Tổng đơn hàng', value: `${orderSummary.totalOrders} đơn`, sub: `Doanh số: ${formatCurrency(orderSummary.gmv)}`, icon: Package, color: 'border-purple-100 bg-purple-50/50 text-purple-600', iconBg: 'bg-purple-100 text-purple-600' },
+          { label: 'Tổng đơn hàng', value: `${orderSummary.totalOrders} đơn`, sub: `Doanh số`, icon: Package, color: 'border-purple-100 bg-purple-50/50 text-purple-600', iconBg: 'bg-purple-100 text-purple-600' },
           { label: 'Đã giao thành công', value: `${orderSummary.completedOrders} đơn`, sub: 'Hoàn tất giao - thanh toán', icon: CheckCircle2, color: 'border-emerald-100 bg-emerald-50/50 text-emerald-600', iconBg: 'bg-emerald-100 text-emerald-600' },
           { label: 'Đang xử lý', value: `${orderSummary.processingOrders} đơn`, sub: 'Chờ xác nhận -> Chuẩn bị món', icon: Clock, color: 'border-amber-100 bg-amber-50/50 text-amber-600', iconBg: 'bg-amber-100 text-amber-600' },
           { label: 'Đang giao', value: `${orderSummary.deliveringOrders} đơn`, sub: 'Đã lấy hàng -> Đang giao', icon: Truck, color: 'border-blue-100 bg-blue-50/50 text-blue-600', iconBg: 'bg-blue-100 text-blue-600' },
@@ -185,7 +177,6 @@ export default function AdminOrders() {
           <div className="relative w-full md:w-96">
             <span className="absolute inset-y-0 left-0 flex items-center pl-3.5 pointer-events-none text-slate-400">
               <Search size={16} />
-              
             </span>
             <input
               type="text"
@@ -207,43 +198,43 @@ export default function AdminOrders() {
           </div>
         ) : (
           <div className="overflow-x-auto no-scrollbar">
-            <table className="w-full text-xs text-left min-w-[700px]">
+            <table className="w-full text-xs text-left min-w-[950px] table-fixed">
               <thead className="bg-slate-50 border-b border-slate-100 text-[10px] text-slate-500 font-bold uppercase tracking-wider">
                 <tr>
-                  <th className="py-3.5 px-4">Mã đơn</th>
-                  <th className="py-3.5 px-4">Quán ăn</th>
-                  <th className="py-3.5 px-4">Khách hàng</th>
-                  <th className="py-3.5 px-4">SĐT khách hàng</th>
-                  <th className="py-3.5 px-4">Tổng tiền</th>
-                  <th className="py-3.5 px-4">Thời gian</th>
-                  <th className="py-3.5 px-4">Trạng thái</th>
-                  <th className="py-3.5 px-4">Hành động</th>
+                  <th className="py-3.5 px-4 w-24">Mã đơn</th>
+                  <th className="py-3.5 px-4 w-44">Quán ăn</th>
+                  <th className="py-3.5 px-4 w-36">Khách hàng</th>
+                  <th className="py-3.5 px-4 w-32">SĐT khách hàng</th>
+                  <th className="py-3.5 px-4 w-32">Tổng tiền</th>
+                  <th className="py-3.5 px-4 w-40">Thời gian</th>
+                  <th className="py-3.5 px-4 w-36">Trạng thái</th>
+                  <th className="py-3.5 px-4 w-28 text-center">Hành động</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 font-semibold">
                 {ordersList.map((order) => (
                   <tr key={order.id} className="hover:bg-slate-50/60 transition-colors">
-                    <td className="py-3.5 px-4 font-extrabold text-slate-800">#{order.id}</td>
-                    <td className="py-3.5 px-4 text-slate-600 font-bold">{order.resName}</td>
-                    <td className="py-3.5 px-4 text-slate-600 font-bold">{order.customer}</td>
-                    <td className="py-3.5 px-4 text-slate-600 font-bold">{order.customerPhone}</td>
-                    <td className="py-3.5 px-4 font-extrabold text-purple-600">{formatCurrency(order.total)}</td>
-                    <td className="py-3.5 px-4 text-slate-500 font-medium">{order.date}</td>
-                    <td className="py-3.5 px-4">
+                    <td className="py-3.5 px-4 w-24 font-extrabold text-slate-800 truncate">#{order.id}</td>
+                    <td className="py-3.5 px-4 w-44 text-slate-600 font-bold truncate" title={order.resName}>{order.resName}</td>
+                    <td className="py-3.5 px-4 w-36 text-slate-600 font-bold truncate" title={order.customer}>{order.customer}</td>
+                    <td className="py-3.5 px-4 w-32 text-slate-600 font-bold truncate">{order.customerPhone || '—'}</td>
+                    <td className="py-3.5 px-4 w-32 font-extrabold text-purple-600 truncate">{formatCurrency(order.total)}</td>
+                    <td className="py-3.5 px-4 w-40 text-slate-500 font-medium truncate">{order.date}</td>
+                    <td className="py-3.5 px-4 w-36 truncate">
                       {order.status && (
-                        <Badge status={order.status} className="text-[10px] font-bold px-2.5 py-1 rounded-full border" />
+                        <Badge status={order.status} className="text-[10px] font-bold px-2.5 py-1 rounded-full border inline-block max-w-full truncate" />
                       )}
                     </td>
-                    <td className="py-3.5 px-4">
+                    <td className="py-3.5 px-4 w-28 text-center">
                       {order.status !== 'COMPLETED' && order.status !== 'CANCELLED' ? (
                         <button
                           onClick={() => handleOpenCancelModal(order.id)}
-                          className="px-3 py-1 bg-red-50 hover:bg-red-100 text-red-600 font-bold text-xs rounded-xl border border-red-200/60 transition-all cursor-pointer shadow-2xs inline-flex items-center gap-1"
+                          className="text-[10px] font-bold px-2.5 py-1 rounded-full border bg-red-50 hover:bg-red-100 text-red-600 border-red-200/60 transition-all cursor-pointer shadow-2xs inline-flex items-center justify-center gap-1"
                         >
                           <span>Hủy đơn</span>
                         </button>
                       ) : (
-                        <span className="text-slate-400 font-bold">—</span>
+                        <span className="text-slate-400 font-bold inline-block w-full text-center">—</span>
                       )}
                     </td>
                   </tr>

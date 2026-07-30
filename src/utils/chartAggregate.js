@@ -51,12 +51,15 @@ export function aggregateDaily(rows, dateKey, granularity) {
   return out;
 }
 
-/** Nhãn trục X cho 1 bucket: ngày/tuần → 'dd/MM'; tháng → 'MM/yyyy'. */
-export function bucketLabel(row, granularity, dateKey = 'date') {
+/**
+ * Nhãn trục X cho 1 bucket: tháng → 'MM/yyyy'; ngày/tuần → 'dd/MM' (hoặc 'dd/MM/yyyy' khi withYear).
+ * withYear dùng cho dashboard (yêu cầu hiện đủ ngày·tháng·năm); trang Thống kê để gọn 'dd/MM'.
+ */
+export function bucketLabel(row, granularity, dateKey = 'date', withYear = false) {
   const d = row.__start instanceof Date ? row.__start : new Date(row[dateKey]);
   if (isNaN(d.getTime())) return row[dateKey] || '';
   const dd = String(d.getDate()).padStart(2, '0');
   const mm = String(d.getMonth() + 1).padStart(2, '0');
   if (granularity === 'month') return `${mm}/${d.getFullYear()}`;
-  return `${dd}/${mm}`;
+  return withYear ? `${dd}/${mm}/${d.getFullYear()}` : `${dd}/${mm}`;
 }

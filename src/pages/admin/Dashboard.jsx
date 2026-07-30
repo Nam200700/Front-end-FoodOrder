@@ -245,7 +245,7 @@ export default function AdminDashboard() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="bg-slate-950 border border-slate-800 rounded-radius-xl p-5 lg:col-span-2 space-y-4">
           <div className="flex items-center justify-between flex-wrap gap-2">
-            <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+            <h3 className="text-xs font-extrabold text-slate-200 uppercase tracking-wider flex items-center gap-1.5">
               <TrendingUp className="text-purple-400" size={18} />
               GTV hệ thống · 30 ngày gần nhất
             </h3>
@@ -297,7 +297,7 @@ export default function AdminDashboard() {
 
         {/* Hàng chờ kiểm duyệt */}
         <div className="bg-slate-950 border border-slate-800 rounded-radius-xl p-5 flex flex-col">
-          <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4 flex items-center gap-1.5">
+          <h3 className="text-xs font-extrabold text-slate-200 uppercase tracking-wider mb-4 flex items-center gap-1.5">
             <AlertTriangle className="text-yellow-500" size={16} /> Hàng chờ kiểm duyệt
           </h3>
           <div className="space-y-2.5 flex-1">
@@ -325,7 +325,7 @@ export default function AdminDashboard() {
 
         {/* Sức khoẻ vận hành */}
         <div className="bg-slate-950 border border-slate-800 rounded-radius-xl p-5 flex flex-col">
-          <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4 flex items-center gap-1.5">
+          <h3 className="text-xs font-extrabold text-slate-200 uppercase tracking-wider mb-4 flex items-center gap-1.5">
             <Activity className="text-purple-400" size={16} /> Sức khoẻ vận hành
           </h3>
           <div className="space-y-4 text-xs font-semibold flex-1">
@@ -358,7 +358,7 @@ export default function AdminDashboard() {
 
         {/* Toàn vẹn thanh toán */}
         <div className="bg-slate-950 border border-slate-800 rounded-radius-xl p-5 flex flex-col">
-          <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4 flex items-center gap-1.5">
+          <h3 className="text-xs font-extrabold text-slate-200 uppercase tracking-wider mb-4 flex items-center gap-1.5">
             <CreditCard className="text-purple-400" size={16} /> Toàn vẹn thanh toán
           </h3>
           <div className="space-y-2.5 flex-1">

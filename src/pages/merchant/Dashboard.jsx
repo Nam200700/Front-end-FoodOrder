@@ -285,7 +285,7 @@ export default function MerchantDashboard() {
           </p>
           <div className="h-64 w-full text-xs">
             {revenueData.length > 0 ? (
-              <RevenueAreaChart data={revenueData} dataKey="amount" xKey="day" color="#10B981" height={256} yTickFormatter={(v) => `${v / 1000}k`} brush />
+              <RevenueAreaChart data={revenueData} dataKey="amount" xKey="day" color="#10B981" height={256} yTickFormatter={(v) => `${v / 1000}k`} valueFormatter={formatCurrency} brush />
             ) : (
               <div className="h-full flex flex-col items-center justify-center text-slate-400 gap-2">
                 <TrendingUp size={26} className="opacity-40" />

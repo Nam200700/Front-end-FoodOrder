@@ -280,7 +280,7 @@ export default function Profile() {
 
       {/* ─── THẺ THÀNH VIÊN ẨM THỰC (membership card, accent cam) ─────────────────── */}
       <div className="relative overflow-hidden rounded-radius-xl p-6 shadow-shadow-2 bg-gradient-to-br from-md-primary to-[#FF8C42] text-white animate-fade-in">
-        <Utensils className="absolute -right-4 -bottom-4 text-white/10" size={120} strokeWidth={1.2} />
+        <Utensils className="absolute -right-4 -bottom-4 text-white/10 animate-float-slow" size={120} strokeWidth={1.2} />
 
         <div className="relative flex items-center gap-5">
           <div className="relative shrink-0">
@@ -306,7 +306,7 @@ export default function Profile() {
 
           <div className="min-w-0">
             <span className="inline-flex items-center gap-1 text-[10px] font-bold bg-white/20 px-2.5 py-0.5 rounded-full uppercase tracking-wider">
-              <Sparkles size={11} /> Thành viên Foodie
+              <Sparkles size={11} className="animate-twinkle" /> Thành viên Foodie
             </span>
             <h2 className="font-extrabold text-xl mt-2 truncate">{user.name}</h2>
             <p className="text-xs text-white/85 font-semibold mt-0.5 truncate">{user.email}</p>

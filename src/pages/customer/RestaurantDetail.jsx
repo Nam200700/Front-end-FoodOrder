@@ -614,22 +614,34 @@ export default function RestaurantDetail() {
             </Card>
           ) : (
             <>
+              {/* Tổng quan đánh giá (điểm toàn cục từ BE) */}
+              <Card variant="elevated" className="p-5 sm:p-6 flex items-center gap-5 bg-gradient-to-br from-amber-50/80 to-white border border-amber-100 animate-rise-in">
+                <div className="text-center shrink-0">
+                  <div className="text-4xl sm:text-5xl font-black text-amber-500 leading-none tracking-tight">{restaurant.rating}</div>
+                  <StarRow value={restaurant.rating} size={16} animate className="mt-2 justify-center" />
+                  <div className="text-[11px] text-md-outline font-bold mt-1.5">{restaurant.reviewsCount} đánh giá</div>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm sm:text-base font-extrabold text-md-on-surface leading-snug">Cảm nhận của thực khách</p>
+                  <p className="text-xs sm:text-sm text-md-on-surface-variant font-medium mt-1 leading-relaxed">{ratingBlurb(restaurant.rating)}</p>
+                </div>
+              </Card>
+
               {/* Danh sách các review */}
               <div className="space-y-4">
                 {restaurant.reviews.map((rev, i) => (
-                  <Card key={i} variant="elevated" className="p-4 sm:p-5 space-y-3">
-                    <div className="flex items-center justify-between">
-                      <span className="font-extrabold text-sm sm:text-base text-md-on-surface">{rev.name}</span>
-                      <span className="text-[10px] sm:text-xs text-md-outline font-medium">{rev.date}</span>
-                    </div>
-                    <div className="flex items-center gap-1 text-amber-500">
-                      {[...Array(5)].map((_, idx) => (
-                        <Star 
-                          key={idx} 
-                          size={14} 
-                          className={idx < rev.rating ? 'fill-amber-500 text-amber-500' : 'text-slate-200'} 
-                        />
-                      ))}
+                  <Card key={i} variant="elevated" className="p-4 sm:p-5 space-y-3 animate-rise-in hover:shadow-md transition-shadow" style={{ animationDelay: `${i * 60}ms` }}>
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <span className="w-10 h-10 rounded-radius-full bg-gradient-to-br from-orange-400 to-orange-600 text-white font-black text-sm flex items-center justify-center shadow-sm shrink-0 uppercase">
+                          {(rev.name || '?').trim().charAt(0)}
+                        </span>
+                        <div className="min-w-0">
+                          <span className="font-extrabold text-sm sm:text-base text-md-on-surface block truncate leading-tight">{rev.name}</span>
+                          <StarRow value={rev.rating} size={13} className="mt-0.5" />
+                        </div>
+                      </div>
+                      <span className="text-[10px] sm:text-xs text-md-outline font-semibold shrink-0">{rev.date}</span>
                     </div>
                     <p className="text-xs sm:text-sm text-md-on-surface-variant leading-relaxed font-medium">
                       {rev.comment}

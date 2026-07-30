@@ -225,7 +225,7 @@ export default function AdminStats() {
             ) : (
               <div className="h-68 w-full text-[10px] font-bold">
                 <RevenueAreaChart data={timelineData} xKey="dateStr" height={272} showLegend
-                  yTickFormatter={(v) => v >= 1000000 ? `${v / 1000000}M` : `${v / 1000}k`} chartType={chartType}
+                  yTickFormatter={(v) => v >= 1000000 ? `${v / 1000000}M` : `${v / 1000}k`} valueFormatter={formatCurrency} chartType={chartType}
                   areas={[
                     { key: 'Tổng GTV', name: 'Tổng giao dịch (GTV)', color: '#8B5CF6' },
                     { key: 'Quán đối tác', name: 'Quán đối tác thực nhận', color: '#3B82F6' },

@@ -13,6 +13,31 @@ L.Icon.Default.mergeOptions({
   shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
 });
 
+// ─── CHỦ QUYỀN BIỂN ĐẢO VIỆT NAM ──────────────────────────────────────────────
+// Bản đồ nền OpenStreetMap không luôn thể hiện rõ hai quần đảo thuộc chủ quyền Việt Nam.
+// Chèn nhãn khẳng định Hoàng Sa & Trường Sa là của Việt Nam lên bản đồ (toạ độ đại diện).
+const VN_ISLANDS = [
+  { lat: 16.50, lng: 112.00, name: 'Quần đảo Hoàng Sa' },
+  { lat: 8.64, lng: 111.92, name: 'Quần đảo Trường Sa' },
+];
+
+// Thêm nhãn (không tương tác) cho 2 quần đảo — không ảnh hưởng thao tác chọn vị trí.
+function addVietnamSovereigntyLabels(map) {
+  VN_ISLANDS.forEach(({ lat, lng, name }) => {
+    const icon = L.divIcon({
+      className: 'vn-island-label',
+      iconSize: [0, 0],
+      html:
+        `<div style="transform:translate(-50%,-50%);white-space:nowrap;` +
+        `background:#DA251D;color:#fff;font-weight:800;font-size:11px;line-height:1.2;` +
+        `padding:3px 9px;border-radius:9999px;box-shadow:0 1px 5px rgba(0,0,0,.35);` +
+        `border:1px solid rgba(255,255,255,.55);font-family:'Google Sans',system-ui,sans-serif;">` +
+        `${name} (Việt Nam)</div>`,
+    });
+    L.marker([lat, lng], { icon, interactive: false, keyboard: false }).addTo(map);
+  });
+}
+
 export default function MapModal({ isOpen, onClose, onConfirm, initialLat = 10.762622, initialLng = 106.660172 }) {
   const mapContainerRef = useRef(null);
   const mapRef = useRef(null);
@@ -61,6 +86,9 @@ export default function MapModal({ isOpen, onClose, onConfirm, initialLat = 10.7
         attribution: '&copy; OpenStreetMap contributors',
         maxZoom: 19,
       }).addTo(map);
+
+      // Khẳng định chủ quyền Hoàng Sa & Trường Sa của Việt Nam trên bản đồ
+      addVietnamSovereigntyLabels(map);
 
       // Tạo Marker ban đầu
       const marker = L.marker([selectedCoords.lat, selectedCoords.lng], {

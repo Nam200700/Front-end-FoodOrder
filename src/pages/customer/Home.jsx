@@ -44,6 +44,7 @@ export default function Home() {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState('all');
   const [favorites, setFavorites] = useState([]);
+  const [burstFavId, setBurstFavId] = useState(null); // id quán vừa thả tim → chạy 1 nhịp bung vòng
   const [pastOrders, setPastOrders] = useState([]);
   const [sortByFilter, setSortByFilter] = useState('distance'); 
   const [isMapOpen, setIsMapOpen] = useState(false);
@@ -152,6 +153,8 @@ export default function Home() {
       } else {
         await apiClient.post(`/favorites/${resId}`);
         setFavorites(prev => [...prev, resId]);
+        setBurstFavId(resId);
+        setTimeout(() => setBurstFavId(v => (v === resId ? null : v)), 650);
       }
     } catch (err) {
       console.error('Lỗi khi cập nhật yêu thích:', err);

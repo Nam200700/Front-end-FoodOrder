@@ -185,6 +185,7 @@ export default function AdminOrders() {
           <div className="relative w-full md:w-96">
             <span className="absolute inset-y-0 left-0 flex items-center pl-3.5 pointer-events-none text-slate-400">
               <Search size={16} />
+              
             </span>
             <input
               type="text"

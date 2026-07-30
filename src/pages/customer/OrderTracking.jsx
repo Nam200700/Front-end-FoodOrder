@@ -513,9 +513,16 @@ export default function OrderTracking() {
           </div>
         ) : (
           <div className="space-y-8">
-            <h3 className="text-xs font-extrabold text-md-on-surface-variant uppercase tracking-wider mb-3">
-              Trạng thái đơn hàng
-            </h3>
+            <div className="flex items-center justify-between gap-3 mb-3">
+              <h3 className="text-xs font-extrabold text-md-on-surface-variant uppercase tracking-wider">
+                Trạng thái đơn hàng
+              </h3>
+              {displayOrder.status === 'COMPLETED' && (
+                <span className="inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider text-emerald-700 bg-emerald-50 border border-emerald-100 px-2.5 py-1 rounded-full animate-rise-in">
+                  <PartyPopper size={12} className="animate-wiggle" /> Hoàn tất
+                </span>
+              )}
+            </div>
 
             {/* Vertical Stepper */}
             <div className="relative pl-8 space-y-8 before:absolute before:left-3 before:top-3 before:bottom-3 before:w-0.75 before:bg-slate-100">
@@ -646,44 +653,65 @@ export default function OrderTracking() {
         <div className="space-y-6 w-full">
 
       {/* Shipper Info Box */}
-      {displayOrder.shipper && (
-        <Card variant="flat" className="p-6.5 flex gap-5 items-center bg-white border border-md-outline-variant/20 shadow-sm animate-slide-up">
-          <img
-            src={displayOrder.shipper.avatar}
-            alt="Shipper"
-            onError={(e) => { e.currentTarget.src = DEFAULT_AVATAR; }}
-            className="w-16 h-16 rounded-radius-full object-cover border-2 border-md-outline-variant shadow-sm shrink-0"
-          />
+      {displayOrder.shipper && (() => {
+        const shipperDelivering = displayOrder.status === 'DELIVERING' || displayOrder.status === 'PICKED_UP';
+        const shipperDone = displayOrder.status === 'COMPLETED';
+        const shipperLabel = shipperDone ? 'Đã Giao Thành Công' : shipperDelivering ? 'Tài Xế Đang Giao' : 'Tài Xế Phụ Trách';
+        return (
+        <Card variant="flat" className="p-5 md:p-6 flex gap-4 md:gap-5 items-center bg-gradient-to-br from-emerald-50/70 to-white border border-emerald-100 shadow-sm animate-slide-up">
+          {/* Avatar + badge xe + chấm trạng thái */}
+          <div className="relative shrink-0">
+            <img
+              src={displayOrder.shipper.avatar}
+              alt="Shipper"
+              onError={(e) => { e.currentTarget.src = DEFAULT_AVATAR; }}
+              className="w-16 h-16 rounded-radius-full object-cover border-2 border-emerald-300 shadow-sm ring-2 ring-emerald-100"
+            />
+            <span className={`absolute -bottom-1 -right-1 w-7 h-7 rounded-full bg-md-tertiary text-white flex items-center justify-center border-2 border-white shadow-sm ${shipperDelivering ? 'animate-vroom' : ''}`}>
+              {shipperDone ? <Check size={14} strokeWidth={3} /> : <Bike size={14} />}
+            </span>
+            {shipperDelivering && (
+              <span className="absolute top-0 right-0 w-3.5 h-3.5 rounded-full bg-emerald-500 border-2 border-white">
+                <span className="absolute inset-0 rounded-full bg-emerald-400 animate-ping" />
+              </span>
+            )}
+          </div>
+
           <div className="flex-1 min-w-0">
-            <span className="text-[10px] md:text-xs text-[#2E7D32] bg-[#E8F5E9] font-extrabold px-3 py-1 rounded-full uppercase tracking-wider shadow-sm">
-              Tài Xế Đang Giao
+            <span className="inline-flex items-center gap-1.5 text-[10px] md:text-xs text-[#2E7D32] bg-[#E8F5E9] font-extrabold px-3 py-1 rounded-full uppercase tracking-wider shadow-sm">
+              {shipperDone
+                ? <CheckCircle size={12} />
+                : <span className={`w-1.5 h-1.5 rounded-full bg-md-tertiary ${shipperDelivering ? 'animate-pulse' : ''}`} />}
+              {shipperLabel}
             </span>
             <h3 className="font-extrabold text-base md:text-lg text-md-on-surface mt-2.5 leading-none">
               {displayOrder.shipper.name}
             </h3>
-            <p className="text-xs md:text-sm text-md-on-surface-variant mt-2 font-medium">
-              {displayOrder.shipper.bike} • <span className="font-extrabold text-md-on-surface">{displayOrder.shipper.plate}</span>
+            <p className="flex items-center gap-1.5 text-xs md:text-sm text-md-on-surface-variant mt-2 font-medium">
+              <Bike size={14} className="text-md-tertiary shrink-0" />
+              {displayOrder.shipper.bike} • <span className="font-extrabold text-md-on-surface tracking-wide">{displayOrder.shipper.plate}</span>
             </p>
           </div>
-          
-          <div className="flex gap-3">
-            <button 
+
+          <div className="flex gap-2.5 shrink-0">
+            <button
               onClick={handleChatWithShipper}
-              className="p-3.5 rounded-radius-full bg-slate-100 hover:bg-md-primary/10 hover:text-md-primary text-md-on-surface-variant transition-all shadow-sm hover:scale-105 active:scale-95 cursor-pointer"
+              className="p-3.5 rounded-radius-full bg-orange-50 text-md-primary hover:bg-md-primary hover:text-white transition-all shadow-sm hover:scale-105 active:scale-95 cursor-pointer"
               title="Nhắn tin cho tài xế"
             >
               <MessageSquare size={18} />
             </button>
-            <a 
+            <a
               href={`tel:${displayOrder.shipper.phone}`}
-              className="p-3.5 rounded-radius-full bg-slate-100 hover:bg-md-secondary/10 hover:text-md-secondary text-md-on-surface-variant transition-all shadow-sm hover:scale-105 active:scale-95 cursor-pointer flex items-center justify-center"
+              className="p-3.5 rounded-radius-full bg-emerald-50 text-md-tertiary hover:bg-md-tertiary hover:text-white transition-all shadow-sm hover:scale-105 active:scale-95 cursor-pointer flex items-center justify-center"
               title="Gọi điện cho tài xế"
             >
               <Phone size={18} />
             </a>
           </div>
         </Card>
-      )}
+        );
+      })()}
 
       {/* Collapsible Order Bill Detail */}
       <Card variant="flat" className="overflow-hidden bg-white border border-md-outline-variant/20 shadow-sm">

@@ -274,7 +274,7 @@ export default function AdminDashboard() {
 
         {/* Giờ cao điểm hệ thống */}
         <div className="bg-slate-950 border border-slate-800 rounded-radius-xl p-5 flex flex-col">
-          <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1 flex items-center gap-1.5">
+          <h3 className="text-xs font-extrabold text-slate-200 uppercase tracking-wider mb-1 flex items-center gap-1.5">
             <Clock className="text-purple-400" size={18} /> Giờ cao điểm toàn sàn
           </h3>
           <p className="text-[10px] text-slate-500 font-semibold mb-3">

@@ -60,7 +60,7 @@ export default function RegistrationReviewShell({
             {chips.map((c) => {
               const CIcon = c.icon;
               return (
-                <div key={c.id} className="rounded-2xl bg-slate-900/70 border border-slate-800 px-3.5 py-2.5 text-center min-w-[84px]">
+                <div key={c.id} className="rounded-2xl bg-slate-900 border border-slate-800 px-3.5 py-2.5 text-center min-w-[84px]">
                   <CIcon size={15} className={`mx-auto mb-1 ${c.color}`} />
                   <div className={`text-lg font-black leading-none ${c.color}`}>{c.value ?? 0}</div>
                   <div className="text-[9px] text-slate-500 font-bold uppercase tracking-wide mt-1">{c.label}</div>
@@ -122,7 +122,7 @@ export default function RegistrationReviewShell({
             <ol className="space-y-3.5">
               {PROCESS_STEPS.map((s, i) => (
                 <li key={i} className="flex items-start gap-3">
-                  <span className="w-6 h-6 rounded-full bg-slate-900 border border-slate-700 flex items-center justify-center text-[10px] font-black text-purple-300 shrink-0">
+                  <span className="w-6 h-6 rounded-full bg-slate-900 border border-slate-800 flex items-center justify-center text-[10px] font-black text-purple-300 shrink-0">
                     {i + 1}
                   </span>
                   <div>
@@ -137,7 +137,7 @@ export default function RegistrationReviewShell({
           {/* Nhắc nhở trách nhiệm */}
           <div className="rounded-3xl border border-purple-900/40 bg-purple-950/20 p-4 flex items-start gap-2.5">
             <ShieldCheck size={16} className="text-purple-300 shrink-0 mt-0.5" />
-            <p className="text-[10px] font-semibold text-purple-200/90 leading-relaxed">
+            <p className="text-[10px] font-semibold text-purple-300 leading-relaxed">
               Phê duyệt sẽ <b>kích hoạt tài khoản đối tác</b> ngay lập tức. Hãy đối chiếu kỹ thông tin trước khi quyết định.
             </p>
           </div>

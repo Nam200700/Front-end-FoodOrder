@@ -419,6 +419,8 @@ export default function OrderTracking() {
         const StageIcon = stage.icon;
         const pct = isCancelled ? 0 : displayOrder.status === 'COMPLETED' ? 100 : Math.round(((activeIndex + 1) / steps.length) * 100);
         const isDelivering = displayOrder.status === 'DELIVERING' || displayOrder.status === 'PICKED_UP';
+        const isDone = displayOrder.status === 'COMPLETED';
+        const RiderIcon = isDone ? PartyPopper : StageIcon;
         const etaChip = displayOrder.status === 'COMPLETED' && displayOrder.timestamps?.COMPLETED
           ? `Đã giao lúc ${displayOrder.timestamps.COMPLETED}`
           : isDelivering && durationMinutes > 0

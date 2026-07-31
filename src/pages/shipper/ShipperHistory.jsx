@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { History, ClipboardList, Clipboard, Check, X, Utensils, Wallet, CheckCircle2, ChevronLeft, ChevronRight, User, Clock, Sparkles, Package, Calendar, Coins, Bike, PackageSearch, Search, SlidersHorizontal } from 'lucide-react';
+import { History, ClipboardList, Clipboard, Check, X, Utensils, Wallet, CheckCircle2, ChevronLeft, ChevronRight, User, Clock, Sparkles, Package, Calendar, Coins, Bike, PackageSearch, Search, SlidersHorizontal, ArrowDownUp, ChevronDown, TrendingUp } from 'lucide-react';
 import { formatCurrency } from '../../utils/format';
 import { useFetchData } from '../../hooks/useFetchData';
 import { SkeletonOrderCard } from '../../components/common/SkeletonCard';
@@ -8,11 +8,34 @@ import ErrorState from '../../components/common/ErrorState';
 import Card from '../../components/common/Card';
 import FilterTabs from '../../components/common/FilterTabs';
 
+const SORTS = [
+  { id: 'recent', label: 'Mới nhất' },
+  { id: 'oldest', label: 'Cũ nhất' },
+  { id: 'feeHigh', label: 'Phí cao nhất' },
+  { id: 'feeLow', label: 'Phí thấp nhất' },
+];
+
+// Tô sáng phần khớp từ khoá tìm kiếm (kiểu GitHub/Algolia) — an toàn, chỉ so chuỗi thường.
+function Highlight({ text, q }) {
+  const s = String(text ?? '');
+  if (!q) return s;
+  const i = s.toLowerCase().indexOf(q);
+  if (i === -1) return s;
+  return (
+    <>
+      {s.slice(0, i)}
+      <mark className="bg-amber-200/70 text-slate-900 rounded px-0.5">{s.slice(i, i + q.length)}</mark>
+      {s.slice(i + q.length)}
+    </>
+  );
+}
+
 export default function ShipperHistory() {
   const [page, setPage] = useState(0);
   const [activeTab, setActiveTab] = useState('ALL');
   const [search, setSearch] = useState('');
   const [dateRange, setDateRange] = useState('ALL'); // ALL | TODAY | 7D | 30D
+  const [sortBy, setSortBy] = useState('recent');
   const pageSize = 10;
 
   const mapHistory = (data) => {
@@ -95,11 +118,31 @@ export default function ShipperHistory() {
     return true;
   });
 
-  // Phân trang CLIENT trên kết quả đã lọc
-  const totalPages = Math.max(1, Math.ceil(filteredList.length / pageSize));
+  // Sắp xếp kết quả đã lọc theo lựa chọn
+  const sortedList = [...filteredList].sort((a, b) => {
+    if (sortBy === 'oldest') return a.ts - b.ts;
+    if (sortBy === 'feeHigh') return (b.fee || 0) - (a.fee || 0) || b.ts - a.ts;
+    if (sortBy === 'feeLow') return (a.fee || 0) - (b.fee || 0) || b.ts - a.ts;
+    return b.ts - a.ts; // recent
+  });
+
+  // Phân trang CLIENT trên kết quả đã lọc + sắp xếp
+  const totalPages = Math.max(1, Math.ceil(sortedList.length / pageSize));
   const safePage = Math.min(page, totalPages - 1);
-  const pageItems = filteredList.slice(safePage * pageSize, safePage * pageSize + pageSize);
+  const pageItems = sortedList.slice(safePage * pageSize, safePage * pageSize + pageSize);
   const hasActiveFilter = q !== '' || dateRange !== 'ALL' || activeTab !== 'ALL';
+
+  // ─── TỔNG QUAN (theo kết quả đang lọc, kiểu trip-summary Grab/Uber) ───
+  const doneList = filteredList.filter((i) => i.status === 'COMPLETED');
+  const deliveringCount = filteredList.filter((i) => i.status === 'DELIVERING' || i.status === 'READY_FOR_PICKUP').length;
+  const sumFee = doneList.reduce((s, i) => s + (i.fee || 0), 0);
+  const avgFee = doneList.length ? sumFee / doneList.length : 0;
+  const summaryStats = [
+    { icon: Wallet, tint: 'text-md-tertiary', bg: 'from-[#E8F5E9]/70 to-white border-[#C8E6C9]/60', value: formatCurrency(sumFee), label: 'Tổng phí đã nhận' },
+    { icon: CheckCircle2, tint: 'text-emerald-500', bg: 'from-emerald-50/70 to-white border-emerald-100', value: doneList.length, label: 'Chuyến thành công' },
+    { icon: Bike, tint: 'text-blue-500', bg: 'from-blue-50/70 to-white border-blue-100', value: deliveringCount, label: 'Đang giao' },
+    { icon: TrendingUp, tint: 'text-amber-500', bg: 'from-amber-50/70 to-white border-amber-100', value: formatCurrency(avgFee), label: 'TB mỗi chuyến' },
+  ];
 
   // tab trạng thái
   const filterTabs = [
@@ -115,6 +158,8 @@ export default function ShipperHistory() {
     { id: '7D', label: '7 ngày' },
     { id: '30D', label: '30 ngày' },
   ];
+
+  const changeSort = (v) => { setSortBy(v); resetPage(); };
 
   return (
     <div className="flex-1 p-4 md:p-8 max-w-6xl mx-auto w-full font-google-sans pb-24 space-y-6">
@@ -242,12 +287,40 @@ export default function ShipperHistory() {
             activeClassName="bg-md-tertiary text-white shadow-sm shadow-md-tertiary/25"
           />
 
-          {/* Số kết quả sau khi lọc */}
-          <div className="flex items-center justify-between -mt-1">
+          {/* ─── DẢI TỔNG QUAN theo kết quả lọc (trip-summary Grab/Uber) ─── */}
+          {filteredList.length > 0 && (
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+              {summaryStats.map((s, i) => (
+                <div
+                  key={s.label}
+                  style={{ animationDelay: `${i * 70}ms` }}
+                  className={`relative overflow-hidden rounded-radius-xl p-3.5 border bg-gradient-to-br ${s.bg} shadow-sm animate-rise-in transition-transform hover:-translate-y-0.5`}
+                >
+                  <s.icon size={16} className={`${s.tint} animate-float`} style={{ animationDelay: `${i * 200}ms` }} />
+                  <p className="text-base md:text-lg font-black text-slate-800 mt-1.5 leading-none tabular-nums">{s.value}</p>
+                  <p className="text-[9px] md:text-[10px] text-slate-400 font-bold uppercase tracking-wider mt-1">{s.label}</p>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Hàng đếm kết quả + sắp xếp */}
+          <div className="flex items-center justify-between gap-3 -mt-1">
             <p className="text-xs font-semibold text-slate-500">
               Tìm thấy <span className="font-extrabold text-md-tertiary">{filteredList.length}</span> chuyến
               {hasActiveFilter && <span className="text-slate-400 font-medium"> / {list.length} tổng</span>}
             </p>
+            <div className="relative shrink-0">
+              <ArrowDownUp size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+              <select
+                value={sortBy}
+                onChange={(e) => changeSort(e.target.value)}
+                className="appearance-none pl-8 pr-8 py-2 text-xs font-bold rounded-radius-lg bg-white border border-slate-200 text-slate-600 hover:border-md-tertiary/50 focus:border-md-tertiary focus:ring-2 focus:ring-md-tertiary/20 outline-none cursor-pointer transition-all"
+              >
+                {SORTS.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}
+              </select>
+              <ChevronDown size={14} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+            </div>
           </div>
 
           {/* ─── DANH SÁCH CHUYẾN GIAO SỬ DỤNG COMPONENT CARD ────── */}
@@ -296,7 +369,7 @@ export default function ShipperHistory() {
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2 flex-wrap">
                           <span className="font-bold text-xs sm:text-sm text-slate-800">
-                            Mã Đơn #{item.id}
+                            Mã Đơn #<Highlight text={item.id} q={q} />
                           </span>
                           <span className="text-[11px] text-slate-400 font-medium flex items-center gap-1">
                             <Calendar size={11} className="shrink-0" /> {item.date}
@@ -314,10 +387,10 @@ export default function ShipperHistory() {
 
                         <div className="mt-2 flex flex-col gap-1">
                           <span className="text-[11px] text-slate-500 flex items-center gap-1.5 truncate">
-                            <User size={12} className="shrink-0 text-md-tertiary" /> Khách hàng: <span className="font-semibold text-slate-600">{item.customer}</span>
+                            <User size={12} className="shrink-0 text-md-tertiary" /> Khách hàng: <span className="font-semibold text-slate-600"><Highlight text={item.customer} q={q} /></span>
                           </span>
                           <span className="text-[11px] text-slate-500 flex items-center gap-1.5 truncate">
-                            <Utensils size={12} className="shrink-0 text-orange-400" /> Quán: <span className="font-semibold text-slate-600">{item.restaurant}</span>
+                            <Utensils size={12} className="shrink-0 text-orange-400" /> Quán: <span className="font-semibold text-slate-600"><Highlight text={item.restaurant} q={q} /></span>
                           </span>
                         </div>
                       </div>

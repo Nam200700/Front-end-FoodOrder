@@ -46,6 +46,27 @@ export default function ShipperPickup() {
   const mapRef = useRef(null);
   const markersRef = useRef({ restaurant: null, customer: null, shipper: null });
   const polylineRef = useRef(null);
+  const [mapReady, setMapReady] = useState(0); // tăng mỗi lần map (tái) tạo → effect vẽ marker/route chạy lại
+
+  // CALLBACK REF gắn vào <div> bản đồ: tạo map NGAY khi node mount, GỠ map khi node unmount.
+  // Cách này khớp map với đúng DOM node hiện tại → đổi đơn / khung ẩn-hiện lại đều không bị map trống
+  // (bug cũ: map chỉ tạo 1 lần & chỉ gỡ lúc rời trang → nhận đơn 2 map trống, phải reload).
+  const setMapNode = useCallback((node) => {
+    if (!node) {
+      // Node bị gỡ (đổi đơn / đang tải lại toạ độ) → huỷ map để lần sau tạo mới trên node mới
+      if (mapRef.current) { mapRef.current.remove(); mapRef.current = null; }
+      markersRef.current = { restaurant: null, customer: null, shipper: null };
+      polylineRef.current = null;
+      mapContainerRef.current = null;
+      return;
+    }
+    mapContainerRef.current = node;
+    if (mapRef.current) return; // đã có map cho node này
+    const map = L.map(node).setView([10.7769, 106.7009], 13); // tâm mặc định (HCM), sẽ fitBounds sau
+    mapRef.current = map;
+    addVietnamBaseMap(map); // nền chủ quyền VN (Goong/CARTO + Hoàng Sa/Trường Sa)
+    setMapReady((v) => v + 1);
+  }, []);
 
   const orderModal = useModalState(null);
 
@@ -310,6 +331,38 @@ export default function ShipperPickup() {
     fetchRoute();
   }, [activeJob?.id, activeJob?.step, restaurantCoords.lat, activeJob?.deliveryLat]);
 
+  // Vẽ / cập nhật MARKER quán + khách lên map (map đã do callback ref tạo sẵn).
+  // Chạy lại khi: map vừa (tái) tạo (mapReady) · đổi đơn · toạ độ quán/khách đổi.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !activeJob || !restaurantCoords.lat || !activeJob.deliveryLat) return;
+
+    const rLat = restaurantCoords.lat, rLng = restaurantCoords.lng;
+    const cLat = activeJob.deliveryLat, cLng = activeJob.deliveryLng;
+
+    // Xoá marker cũ trước khi vẽ lại (đổi đơn)
+    if (markersRef.current.restaurant) map.removeLayer(markersRef.current.restaurant);
+    if (markersRef.current.customer) map.removeLayer(markersRef.current.customer);
+
+    const resIcon = L.divIcon({
+      html: `<div class="flex items-center justify-center w-8 h-8 rounded-full bg-orange-500 text-white shadow-md border-2 border-white"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 2v7c0 1.1.9 2 2 2a2 2 0 0 0 2-2V2"/><path d="M7 2v20"/><path d="M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"/></svg></div>`,
+      className: 'custom-div-icon', iconSize: [32, 32], iconAnchor: [16, 16]
+    });
+    markersRef.current.restaurant = L.marker([rLat, rLng], { icon: resIcon }).addTo(map)
+      .bindPopup(`<b>Quán ${activeJob.restaurant}</b><br/> ${activeJob.resAddress}`);
+
+    const custIcon = L.divIcon({
+      html: `<div class="flex items-center justify-center w-8 h-8 rounded-full bg-red-500 text-white shadow-md border-2 border-white"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 22V12h6v10"/></svg></div>`,
+      className: 'custom-div-icon', iconSize: [32, 32], iconAnchor: [16, 16]
+    });
+    markersRef.current.customer = L.marker([cLat, cLng], { icon: custIcon }).addTo(map)
+      .bindPopup(`<b>Khách hàng: ${activeJob.customer}</b><br/>${activeJob.custAddress}`);
+
+    // Leaflet đôi khi cần tính lại kích thước sau khi container vừa mount → tránh map xám
+    map.invalidateSize();
+    map.fitBounds([[rLat, rLng], [cLat, cLng]], { padding: [40, 40] });
+  }, [mapReady, restaurantCoords.lat, restaurantCoords.lng, activeJob?.id, activeJob?.deliveryLat, activeJob?.deliveryLng]);
+
   // Vẽ / cập nhật đường polyline tuyến đường thật lên bản đồ Leaflet
   useEffect(() => {
     if (!mapRef.current || routeCoords.length === 0) return;
@@ -325,60 +378,7 @@ export default function ShipperPickup() {
     }).addTo(mapRef.current);
 
     mapRef.current.fitBounds(polylineRef.current.getBounds(), { padding: [40, 40] });
-  }, [routeCoords]);
-
-  // Vẽ bản đồ Leaflet thật cho Shipper
-  useEffect(() => {
-    if (!activeJob || !restaurantCoords.lat || !activeJob.deliveryLat || !mapContainerRef.current) return;
-
-    const rLat = restaurantCoords.lat;
-    const rLng = restaurantCoords.lng;
-    const cLat = activeJob.deliveryLat;
-    const cLng = activeJob.deliveryLng;
-
-    if (!mapRef.current) {
-      const map = L.map(mapContainerRef.current).setView([(rLat + cLat) / 2, (rLng + cLng) / 2], 14);
-      mapRef.current = map;
-
-      // Nền bản đồ chuẩn chủ quyền VN (Goong nếu có key, không thì CARTO + nhãn đỏ)
-      addVietnamBaseMap(map);
-
-      const resIcon = L.divIcon({
-        html: `<div class="flex items-center justify-center w-8 h-8 rounded-full bg-orange-500 text-white shadow-md border-2 border-white"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 2v7c0 1.1.9 2 2 2a2 2 0 0 0 2-2V2"/><path d="M7 2v20"/><path d="M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"/></svg></div>`,
-        className: 'custom-div-icon',
-        iconSize: [32, 32],
-        iconAnchor: [16, 16]
-      });
-      markersRef.current.restaurant = L.marker([rLat, rLng], { icon: resIcon }).addTo(map)
-        .bindPopup(`<b>Quán ${activeJob.restaurant}</b><br/> ${activeJob.resAddress}`);
-
-      const custIcon = L.divIcon({
-        html: `<div class="flex items-center justify-center w-8 h-8 rounded-full bg-red-500 text-white shadow-md border-2 border-white"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 22V12h6v10"/></svg></div>`,
-        className: 'custom-div-icon',
-        iconSize: [32, 32],
-        iconAnchor: [16, 16]
-      });
-      markersRef.current.customer = L.marker([cLat, cLng], { icon: custIcon }).addTo(map)
-        .bindPopup(`<b>Khách hàng: ${activeJob.customer}</b><br/>${activeJob.custAddress}`);
-
-      map.fitBounds([[rLat, rLng], [cLat, cLng]], { padding: [40, 40] });
-    }
-    // Thêm activeJob?.id vào deps: đổi đơn → tạo lại map cho đơn mới (sau khi cleanup gỡ map cũ)
-  }, [restaurantCoords, activeJob?.deliveryLat, activeJob?.id]);
-
-  // Cleanup bản đồ: chạy khi ĐỔI activeJob.id (đơn 1 xong sang đơn 2) HOẶC unmount.
-  // Gỡ instance Leaflet cũ + reset ref để đơn kế tiếp khởi tạo map mới trên div mới
-  // (trước đây chỉ cleanup lúc unmount → nhận đơn 2 map trống, phải reload trang).
-  useEffect(() => {
-    return () => {
-      if (mapRef.current) {
-        mapRef.current.remove();
-        mapRef.current = null;
-        markersRef.current = { restaurant: null, customer: null, shipper: null };
-        polylineRef.current = null;
-      }
-    };
-  }, [activeJob?.id]);
+  }, [routeCoords, mapReady]);
 
   const handleAcceptJob = async (order) => {
     try {
@@ -510,7 +510,7 @@ export default function ShipperPickup() {
 
           <div className="flex-1 min-h-[280px] relative border-b md:border-b-0 md:border-r border-slate-200/60">
             {restaurantCoords.lat && activeJob.deliveryLat ? (
-              <div ref={mapContainerRef} className="w-full h-full min-h-[300px] z-10" />
+              <div ref={setMapNode} className="w-full h-full min-h-[300px] z-10" />
             ) : (
               <div className="w-full h-full min-h-[300px] flex items-center justify-center bg-slate-50 text-slate-400 font-bold text-xs">
                 Đang tải dữ liệu bản đồ...

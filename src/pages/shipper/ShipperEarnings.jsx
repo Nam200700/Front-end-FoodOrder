@@ -139,7 +139,7 @@ export default function ShipperEarnings() {
             {formatCurrency(earningsStats.totalEarnings)}
           </h2>
           <p className="text-[11px] text-white/85 font-semibold mt-2 flex items-center gap-1.5">
-            <TrendingUp size={13} /> Dữ liệu thực từ database của bạn
+            <TrendingUp size={13} /> Thống kê thu nhập từ trước giờ của bạn
           </p>
         </div>
       </div>

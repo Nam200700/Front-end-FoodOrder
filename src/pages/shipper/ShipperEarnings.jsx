@@ -47,6 +47,7 @@ export default function ShipperEarnings() {
       completedCount: completedOrders.length,
       todayEarnings, todayCount,
       week7dEarnings, week7dCount,
+      thisWeekEarnings,
       ratedCount: ratedOrders.length,
       dailyData: sortedChartData,
       rating: avgShipperRating,

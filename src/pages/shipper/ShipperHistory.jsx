@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { History, ClipboardList, Clipboard, Check, X, Utensils, Wallet, CheckCircle2, ChevronLeft, ChevronRight, User, Clock, Sparkles, Package, Calendar, Coins, Bike, PackageSearch, Search, SlidersHorizontal, ArrowDownUp, ChevronDown, TrendingUp } from 'lucide-react';
+import { History, ClipboardList, Clipboard, Check, X, Utensils, Wallet, CheckCircle2, ChevronLeft, ChevronRight, User, Clock, Sparkles, Package, Calendar, Coins, Bike, PackageSearch, Search, SlidersHorizontal, ArrowDownUp, ChevronDown, TrendingUp, CalendarDays, CalendarRange } from 'lucide-react';
 import { formatCurrency } from '../../utils/format';
 import { useFetchData } from '../../hooks/useFetchData';
 import { SkeletonOrderCard } from '../../components/common/SkeletonCard';
@@ -34,7 +34,9 @@ export default function ShipperHistory() {
   const [page, setPage] = useState(0);
   const [activeTab, setActiveTab] = useState('ALL');
   const [search, setSearch] = useState('');
-  const [dateRange, setDateRange] = useState('ALL'); // ALL | TODAY | 7D | 30D
+  const [dateRange, setDateRange] = useState('ALL'); // ALL | TODAY | WEEK | 7D | 30D
+  const [weekday, setWeekday] = useState('ALL'); // ALL | 0..6 (getDay: 0=CN)
+  const [monthFilter, setMonthFilter] = useState('ALL'); // ALL | 'yyyy-m'
   const [sortBy, setSortBy] = useState('recent');
   const pageSize = 10;
 
@@ -52,6 +54,8 @@ export default function ShipperHistory() {
         date: formattedDate,
         createdAt: ord.createdAt,
         ts: dateObj.getTime(),
+        dow: dateObj.getDay(),                                   // thứ trong tuần (0=CN..6=T7)
+        ym: `${dateObj.getFullYear()}-${dateObj.getMonth()}`,    // khoá tháng để lọc/gom
         fee: Number(ord.shippingFee),
         status: ord.orderStatus
       };
@@ -95,12 +99,17 @@ export default function ShipperHistory() {
   const list = mapHistory({ content: rawContent });
   const totalElements = pageData?.totalElements ?? list.length; // tổng chuyến THẬT
 
-  // ─── ÁP BỘ LỌC: trạng thái + tìm kiếm + mốc thời gian ───
+  // ─── ÁP BỘ LỌC: trạng thái + tìm kiếm + mốc thời gian + thứ + tháng ───
   const q = search.trim().toLowerCase();
   const now = Date.now();
   const DAY = 86400000;
+  // Tuần HIỆN TẠI: từ Thứ 2 (00:00).
+  const nowD = new Date();
+  const dow0 = (nowD.getDay() + 6) % 7; // Thứ 2 = 0
+  const weekStartTs = new Date(nowD.getFullYear(), nowD.getMonth(), nowD.getDate() - dow0).getTime();
   const dateFloor =
     dateRange === 'TODAY' ? new Date(new Date().setHours(0, 0, 0, 0)).getTime()
+    : dateRange === 'WEEK' ? weekStartTs
     : dateRange === '7D' ? now - 7 * DAY
     : dateRange === '30D' ? now - 30 * DAY
     : 0;
@@ -112,11 +121,23 @@ export default function ShipperHistory() {
     if (activeTab === 'DELIVERING' && !(item.status === 'DELIVERING' || item.status === 'READY_FOR_PICKUP')) return false;
     // mốc thời gian
     if (dateFloor && !(item.ts >= dateFloor)) return false;
+    // thứ trong tuần
+    if (weekday !== 'ALL' && item.dow !== Number(weekday)) return false;
+    // tháng cụ thể
+    if (monthFilter !== 'ALL' && item.ym !== monthFilter) return false;
     // tìm kiếm (mã đơn / khách / quán)
     if (q && !(`#${item.id}`.toLowerCase().includes(q) || item.id.includes(q) ||
       item.customer.toLowerCase().includes(q) || item.restaurant.toLowerCase().includes(q))) return false;
     return true;
   });
+
+  // Danh sách THÁNG có dữ liệu (mới → cũ) cho dropdown lọc tháng.
+  const monthOptions = [...new Set(list.map((i) => i.ym))]
+    .sort((a, b) => {
+      const [ay, am] = a.split('-').map(Number); const [by, bm] = b.split('-').map(Number);
+      return by - ay || bm - am;
+    })
+    .map((ym) => { const [y, m] = ym.split('-').map(Number); return { ym, label: `Tháng ${m + 1}/${y}` }; });
 
   // Sắp xếp kết quả đã lọc theo lựa chọn
   const sortedList = [...filteredList].sort((a, b) => {
@@ -130,7 +151,7 @@ export default function ShipperHistory() {
   const totalPages = Math.max(1, Math.ceil(sortedList.length / pageSize));
   const safePage = Math.min(page, totalPages - 1);
   const pageItems = sortedList.slice(safePage * pageSize, safePage * pageSize + pageSize);
-  const hasActiveFilter = q !== '' || dateRange !== 'ALL' || activeTab !== 'ALL';
+  const hasActiveFilter = q !== '' || dateRange !== 'ALL' || activeTab !== 'ALL' || weekday !== 'ALL' || monthFilter !== 'ALL';
 
   // ─── TỔNG QUAN (theo kết quả đang lọc, kiểu trip-summary Grab/Uber) ───
   const doneList = filteredList.filter((i) => i.status === 'COMPLETED');
@@ -155,11 +176,20 @@ export default function ShipperHistory() {
   const dateChips = [
     { id: 'ALL', label: 'Mọi lúc' },
     { id: 'TODAY', label: 'Hôm nay' },
+    { id: 'WEEK', label: 'Tuần này' },
     { id: '7D', label: '7 ngày' },
     { id: '30D', label: '30 ngày' },
   ];
 
+  // chip lọc theo THỨ trong tuần (giá trị theo getDay: 0=CN..6=T7)
+  const weekdayChips = [
+    { id: 'ALL', label: 'Mọi thứ' },
+    { id: 1, label: 'T2' }, { id: 2, label: 'T3' }, { id: 3, label: 'T4' },
+    { id: 4, label: 'T5' }, { id: 5, label: 'T6' }, { id: 6, label: 'T7' }, { id: 0, label: 'CN' },
+  ];
+
   const changeSort = (v) => { setSortBy(v); resetPage(); };
+  const clearAllFilters = () => { setSearch(''); setDateRange('ALL'); setWeekday('ALL'); setMonthFilter('ALL'); setActiveTab('ALL'); resetPage(); };
 
   return (
     <div className="flex-1 p-4 md:p-8 max-w-6xl mx-auto w-full font-google-sans pb-24 space-y-6">
@@ -227,7 +257,7 @@ export default function ShipperHistory() {
               <span className="text-sm font-bold">Bộ lọc</span>
               {hasActiveFilter && (
                 <button
-                  onClick={() => { setSearch(''); setDateRange('ALL'); setActiveTab('ALL'); resetPage(); }}
+                  onClick={clearAllFilters}
                   className="ml-auto text-[11px] font-bold text-md-tertiary hover:text-[#2E7D32] inline-flex items-center gap-1 cursor-pointer transition-colors"
                 >
                   <X size={13} /> Xoá lọc
@@ -274,6 +304,46 @@ export default function ShipperHistory() {
                 </button>
               ))}
             </div>
+
+            {/* Chip lọc theo THỨ trong tuần */}
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-[11px] font-bold text-slate-400 inline-flex items-center gap-1 mr-0.5">
+                <CalendarDays size={12} /> Thứ:
+              </span>
+              {weekdayChips.map((c) => (
+                <button
+                  key={String(c.id)}
+                  onClick={() => { setWeekday(c.id); resetPage(); }}
+                  className={`text-xs font-bold px-3 py-1.5 rounded-radius-full border transition-all cursor-pointer ${
+                    weekday === c.id
+                      ? 'bg-md-tertiary text-white border-md-tertiary shadow-sm shadow-md-tertiary/25'
+                      : 'bg-white text-slate-500 border-slate-200 hover:border-md-tertiary/50 hover:text-md-tertiary'
+                  }`}
+                >
+                  {c.label}
+                </button>
+              ))}
+            </div>
+
+            {/* Dropdown lọc theo THÁNG cụ thể */}
+            {monthOptions.length > 0 && (
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-[11px] font-bold text-slate-400 inline-flex items-center gap-1 mr-0.5">
+                  <CalendarRange size={12} /> Tháng:
+                </span>
+                <div className="relative">
+                  <select
+                    value={monthFilter}
+                    onChange={(e) => { setMonthFilter(e.target.value); resetPage(); }}
+                    className="appearance-none pl-3 pr-8 py-1.5 text-xs font-bold rounded-radius-full bg-white border border-slate-200 text-slate-600 hover:border-md-tertiary/50 focus:border-md-tertiary focus:ring-2 focus:ring-md-tertiary/20 outline-none cursor-pointer transition-all"
+                  >
+                    <option value="ALL">Tất cả tháng</option>
+                    {monthOptions.map((m) => <option key={m.ym} value={m.ym}>{m.label}</option>)}
+                  </select>
+                  <ChevronDown size={14} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                </div>
+              </div>
+            )}
           </div>
 
           {/* ─── FILTER TABS TRẠNG THÁI ──────────────── */}
@@ -333,7 +403,7 @@ export default function ShipperHistory() {
               <p className="text-xs text-slate-400 font-medium">Thử đổi từ khoá, mốc thời gian hoặc trạng thái phía trên nhé.</p>
               {hasActiveFilter && (
                 <button
-                  onClick={() => { setSearch(''); setDateRange('ALL'); setActiveTab('ALL'); resetPage(); }}
+                  onClick={clearAllFilters}
                   className="mt-1 text-xs font-bold text-white bg-md-tertiary px-4 py-2 rounded-radius-full inline-flex items-center gap-1.5 hover:bg-[#2E7D32] cursor-pointer transition-colors"
                 >
                   <X size={13} /> Xoá bộ lọc

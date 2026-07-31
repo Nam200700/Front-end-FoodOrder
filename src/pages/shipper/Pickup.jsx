@@ -200,6 +200,9 @@ export default function ShipperPickup() {
   // Nạp toạ độ Quán ăn khi có đơn activeJob
   useEffect(() => {
     if (!activeJob?.restaurantId) return;
+    // Reset toạ độ quán cũ trước khi nạp đơn mới → map không vẽ nhầm ở quán của đơn trước
+    // (đồng thời chờ có toạ độ mới mới khởi tạo map, tránh vẽ sai vị trí trong lúc fetch).
+    setRestaurantCoords({ lat: null, lng: null });
     const fetchRestaurantCoords = async () => {
       try {
         const response = await apiClient.get(`/restaurants/${activeJob.restaurantId}`);
@@ -360,9 +363,12 @@ export default function ShipperPickup() {
 
       map.fitBounds([[rLat, rLng], [cLat, cLng]], { padding: [40, 40] });
     }
-  }, [restaurantCoords, activeJob?.deliveryLat]);
+    // Thêm activeJob?.id vào deps: đổi đơn → tạo lại map cho đơn mới (sau khi cleanup gỡ map cũ)
+  }, [restaurantCoords, activeJob?.deliveryLat, activeJob?.id]);
 
-  // Cleanup bản đồ khi component huỷ
+  // Cleanup bản đồ: chạy khi ĐỔI activeJob.id (đơn 1 xong sang đơn 2) HOẶC unmount.
+  // Gỡ instance Leaflet cũ + reset ref để đơn kế tiếp khởi tạo map mới trên div mới
+  // (trước đây chỉ cleanup lúc unmount → nhận đơn 2 map trống, phải reload trang).
   useEffect(() => {
     return () => {
       if (mapRef.current) {
@@ -372,7 +378,7 @@ export default function ShipperPickup() {
         polylineRef.current = null;
       }
     };
-  }, []);
+  }, [activeJob?.id]);
 
   const handleAcceptJob = async (order) => {
     try {

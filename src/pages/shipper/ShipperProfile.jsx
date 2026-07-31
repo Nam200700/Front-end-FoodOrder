@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../stores/authStore';
-import { User, Bike, Phone, LogOut, Camera, Mail, ShieldCheck, Clipboard, Trophy, Star, Package, CheckCircle2, Circle, MapPin, Lightbulb } from 'lucide-react';
+import { User, Bike, Phone, LogOut, Camera, Mail, ShieldCheck, Clipboard, Trophy, Star, Package, CheckCircle2, Circle, MapPin, Lightbulb, Lock, Sparkles, Car, Save } from 'lucide-react';
 import apiClient from '../../services/api';
 import Spinner from '../../components/common/Spinner';
 import Card from '../../components/common/Card';
@@ -29,6 +29,8 @@ export default function ShipperProfile() {
   const [activeDelivery, setActiveDelivery] = useState(0);
   const [totalDelivery, setTotalDelivery] = useState(0);
   const [avgRating, setAvgRating] = useState(5.0);
+  // Ảnh chụp giá trị gốc để biết form CÓ THAY ĐỔI chưa (dirty state — chỉ bật nút Lưu khi có sửa).
+  const [initial, setInitial] = useState({ name: '', email: '', phone: '', vehicleType: '', licensePlate: '' });
   const fileInputRef = useRef(null);
   const { uploading: uploadingAvatar, handleAvatarChange: uploadAvatar } = useAvatarUpload();
 
@@ -61,6 +63,13 @@ export default function ShipperProfile() {
         setActiveDelivery(realUser.activeDelivery || 0);
         setTotalDelivery(realUser.totalDelivery || 0);
         setAvgRating(realUser.avgRating || 5.0);
+        setInitial({
+          name: realUser.fullName || '',
+          email: realUser.email || '',
+          phone: realUser.phone || '',
+          vehicleType: realUser.vehicleType || '',
+          licensePlate: realUser.licensePlate || '',
+        });
       }
     } catch (err) {
       console.warn('Lỗi khi tải thông tin hồ sơ tài xế:', err);
@@ -87,6 +96,16 @@ export default function ShipperProfile() {
       return;
     }
 
+    if (!phone.trim()) {
+      toast.warning('Vui lòng nhập số điện thoại!');
+      return;
+    }
+    // SĐT Việt Nam: bắt đầu 0, 10 chữ số (cho phép khoảng trắng khi gõ).
+    if (!/^0\d{9}$/.test(phone.trim().replace(/\s/g, ''))) {
+      toast.warning('Số điện thoại không hợp lệ (10 số, bắt đầu bằng 0)!');
+      return;
+    }
+
     if (!licensePlate.trim()) {
       toast.warning('Vui lòng nhập biển số xe!');
       return;
@@ -103,6 +122,7 @@ export default function ShipperProfile() {
       await apiClient.put('/users/profile', {
         fullName: name.trim(),
         email: email.trim(),
+        phone: phone.trim(),
         vehicleType: vehicleType,
         licensePlate: licensePlate.trim()
       });
@@ -110,10 +130,13 @@ export default function ShipperProfile() {
       updateProfile({
         name: name.trim(),
         email: email.trim(),
+        phone: phone.trim(),
         vehicleType: vehicleType,
         licensePlate: licensePlate.trim()
       });
 
+      // Cập nhật lại mốc gốc → nút Lưu trở về trạng thái "đã lưu".
+      setInitial({ name: name.trim(), email: email.trim(), phone: phone.trim(), vehicleType, licensePlate: licensePlate.trim() });
       toast.success('Đã cập nhật hồ sơ cá nhân thành công!');
     } catch (err) {
       console.error('Lỗi khi cập nhật hồ sơ shipper:', err);
@@ -142,6 +165,18 @@ export default function ShipperProfile() {
   ];
   const doneCount = profileChecks.filter((c) => c.done).length;
   const profilePct = Math.round((doneCount / profileChecks.length) * 100);
+
+  // Form có thay đổi chưa lưu? (chỉ so field sửa được)
+  const isDirty =
+    name.trim() !== initial.name ||
+    email.trim() !== initial.email ||
+    phone.trim() !== initial.phone ||
+    vehicleType !== initial.vehicleType ||
+    licensePlate.trim() !== initial.licensePlate;
+
+  // Meta phương tiện: icon + nhãn theo loại xe (để hiện preview biển số sống động kiểu Grab/Uber)
+  const vehicleMeta = { MOTORBIKE: { icon: Bike, label: 'Xe máy' }, CAR: { icon: Car, label: 'Ô tô' }, ALL: { icon: Bike, label: 'Tất cả' } }[vehicleType] || { icon: Bike, label: 'Phương tiện' };
+  const VehicleIcon = vehicleMeta.icon;
 
   // Mẹo chạy đơn cho tài xế (thuần trình bày)
   const shipperTips = [
@@ -265,10 +300,20 @@ export default function ShipperProfile() {
                   </span>
                 ))}
               </div>
-              {profilePct < 100 && (
+              {profilePct < 100 ? (
                 <p className="text-[11px] text-slate-400 font-semibold mt-3 leading-relaxed">
                   Hồ sơ đầy đủ giúp quán và khách tin tưởng, dễ được giao đơn hơn.
                 </p>
+              ) : (
+                <div className="mt-3 flex items-center gap-2 p-2.5 rounded-radius-lg bg-gradient-to-r from-[#E8F5E9] to-emerald-50 border border-[#C8E6C9] animate-rise-in">
+                  <span className="relative shrink-0 w-7 h-7 rounded-radius-full bg-md-tertiary text-white flex items-center justify-center">
+                    <Sparkles size={14} className="animate-twinkle" />
+                  </span>
+                  <div className="min-w-0">
+                    <span className="block text-xs font-black text-md-tertiary leading-tight">Hồ sơ hoàn hảo!</span>
+                    <span className="block text-[10px] text-emerald-700/80 font-semibold">Bạn đã sẵn sàng nhận nhiều đơn hơn.</span>
+                  </div>
+                </div>
               )}
             </Card>
           </div>
@@ -281,66 +326,68 @@ export default function ShipperProfile() {
                 Thông Tin Cá Nhân
               </h3>
 
-              <div>
-                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">
+              <div className="group/f">
+                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2 transition-colors group-focus-within/f:text-md-tertiary">
                   Họ và tên
                 </label>
                 <div className="relative">
-                  <User className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                  <User className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 transition-all group-focus-within/f:text-md-tertiary group-focus-within/f:scale-110" size={16} />
                   <input
                     type="text"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-radius-lg text-xs focus:outline-none focus:border-md-tertiary focus:bg-white transition-all font-semibold text-slate-700"
+                    className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-radius-lg text-xs focus:outline-none focus:border-md-tertiary focus:bg-white focus:ring-2 focus:ring-md-tertiary/15 transition-all font-semibold text-slate-700"
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                <div>
-                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">
+                <div className="group/f">
+                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2 transition-colors group-focus-within/f:text-md-tertiary">
                     Địa chỉ Email
                   </label>
                   <div className="relative">
-                    <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                    <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 transition-all group-focus-within/f:text-md-tertiary group-focus-within/f:scale-110" size={16} />
                     <input
                       type="email"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
-                      className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-radius-lg text-xs focus:outline-none focus:border-md-tertiary focus:bg-white transition-all font-semibold text-slate-700"
+                      className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-radius-lg text-xs focus:outline-none focus:border-md-tertiary focus:bg-white focus:ring-2 focus:ring-md-tertiary/15 transition-all font-semibold text-slate-700"
                     />
                   </div>
                 </div>
 
-                <div>
-                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">
+                <div className="group/f">
+                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2 transition-colors group-focus-within/f:text-md-tertiary">
                     Số điện thoại
                   </label>
                   <div className="relative">
-                    <Phone className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                    <Phone className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 transition-all group-focus-within/f:text-md-tertiary group-focus-within/f:scale-110" size={16} />
                     <input
                       type="tel"
-                      readOnly
                       value={phone}
                       onChange={(e) => setPhone(e.target.value)}
-                      className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-radius-lg text-xs focus:outline-none focus:border-md-tertiary focus:bg-white transition-all font-semibold text-slate-700"
+                      placeholder="Ví dụ: 0901234567"
+                      className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-radius-lg text-xs focus:outline-none focus:border-md-tertiary focus:bg-white focus:ring-2 focus:ring-md-tertiary/15 transition-all font-semibold text-slate-700"
                     />
                   </div>
                 </div>
               </div>
 
               <div>
-                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">
+                <label className="flex items-center gap-1 text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">
                   Căn cước công dân
+                  <span className="inline-flex items-center gap-0.5 text-[9px] text-slate-400 normal-case font-semibold"><Lock size={9} /> đã xác minh</span>
                 </label>
-                <div className="relative">
+                <div className="relative" title="CCCD đã xác minh, không thể chỉnh sửa">
                   <Clipboard className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
                   <input
                     type="text"
                     readOnly
                     value={idCard}
-                    className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-radius-lg text-xs focus:outline-none focus:border-md-tertiary focus:bg-white transition-all font-semibold text-slate-700"
+                    className="w-full pl-10 pr-9 py-2.5 bg-slate-100 border border-slate-200 rounded-radius-lg text-xs outline-none font-semibold text-slate-500 cursor-not-allowed"
                   />
+                  <ShieldCheck className="absolute right-3.5 top-1/2 -translate-y-1/2 text-emerald-400" size={14} />
                 </div>
               </div>
 
@@ -365,8 +412,8 @@ export default function ShipperProfile() {
                   </select>
                 </div>
 
-                <div>
-                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">
+                <div className="group/f">
+                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2 transition-colors group-focus-within/f:text-md-tertiary">
                     Biển số xe
                   </label>
                   <input
@@ -374,19 +421,49 @@ export default function ShipperProfile() {
                     placeholder="Ví dụ: 29E2-678.90"
                     value={licensePlate}
                     onChange={(e) => setLicensePlate(e.target.value)}
-                    className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-radius-lg text-xs focus:outline-none focus:border-md-tertiary focus:bg-white transition-all font-semibold text-slate-700"
+                    className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-radius-lg text-xs focus:outline-none focus:border-md-tertiary focus:bg-white focus:ring-2 focus:ring-md-tertiary/15 transition-all font-semibold text-slate-700"
                   />
                 </div>
               </div>
 
-              <Button
-                type="button"
-                onClick={handleSave}
-                loading={updating}
-                className="w-full mt-4 !bg-md-tertiary text-white font-bold !py-3.5 !px-4 rounded-radius-full shadow-sm hover:scale-[1.01] active:scale-[0.99] transition-all text-xs uppercase tracking-wider"
-              >
-                Cập Nhật Hồ Sơ
-              </Button>
+              {/* Preview phương tiện sống động (kiểu thẻ xe Grab/Uber): icon loại xe + biển số dạng bảng số */}
+              <div className="flex items-center gap-3 p-3 rounded-radius-lg bg-gradient-to-br from-[#E8F5E9]/60 to-white border border-[#C8E6C9]/60">
+                <span className="shrink-0 w-9 h-9 rounded-radius-md bg-md-tertiary/10 text-md-tertiary flex items-center justify-center animate-float">
+                  <VehicleIcon size={18} />
+                </span>
+                <div className="min-w-0">
+                  <span className="block text-[9px] font-bold text-slate-400 uppercase tracking-wider">{vehicleMeta.label} · Biển số</span>
+                  <span className="inline-flex items-center mt-1 px-2.5 py-1 rounded-md bg-white border-2 border-slate-800/80 text-slate-800 font-black text-sm tracking-widest tabular-nums shadow-sm">
+                    {licensePlate.trim() || '—— ———'}
+                  </span>
+                </div>
+              </div>
+
+              {/* Cụm lưu: chỉ báo thay đổi (pill) + nút — cách nhau rõ, không đè */}
+              <div className="pt-2 space-y-2.5">
+                {isDirty && (
+                  <div className="flex justify-center">
+                    <span className="inline-flex items-center gap-1.5 text-[11px] font-bold text-amber-700 bg-amber-50 border border-amber-200 px-3 py-1 rounded-full animate-rise-in">
+                      <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
+                      Bạn có thay đổi chưa lưu
+                    </span>
+                  </div>
+                )}
+                <Button
+                  type="button"
+                  onClick={handleSave}
+                  loading={updating}
+                  disabled={!isDirty}
+                  icon={Save}
+                  className={`w-full !py-3.5 !px-4 rounded-radius-full shadow-sm transition-all text-xs uppercase tracking-wider gap-2 ${
+                    isDirty
+                      ? '!bg-md-tertiary text-white font-bold hover:scale-[1.01] active:scale-[0.99]'
+                      : '!bg-slate-100 !text-slate-400 font-bold cursor-not-allowed'
+                  }`}
+                >
+                  {isDirty ? 'Cập Nhật Hồ Sơ' : 'Đã Lưu Hồ Sơ'}
+                </Button>
+              </div>
             </Card>
           </div>
         </div>

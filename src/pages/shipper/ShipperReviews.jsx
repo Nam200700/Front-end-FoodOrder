@@ -19,15 +19,11 @@ export default function ShipperReviews() {
   // State quản lý phóng to ảnh trong tab hiện tại
   const [selectedImage, setSelectedImage] = useState(null);
 
-  // Khai báo state phân trang
+  // Khai báo state phân trang (CLIENT — vì đã tải hết review để tổng hợp cho đúng)
   const [page, setPage] = useState(0);
   const size = 10;
 
-  const [pageData, setPageData] = useState({ content: [], totalPages: 0, totalElements: 0 });
-
   const mapReviews = (data) => {
-    setPageData(data || { content: [], totalPages: 0, totalElements: 0 });
-
     const realData = data?.content || [];
     return realData.map(rev => ({
       id: rev.reviewId.toString(),
@@ -39,30 +35,34 @@ export default function ShipperReviews() {
     }));
   };
 
+  // Tải TOÀN BỘ đánh giá (size lớn) để điểm TB, phân bố sao và bộ lọc tính trên tất cả — khớp với tổng hiển thị.
   const { data: reviews, loading: loadingReviews, error: errorReviews, refetch } = useFetchData(
-    `/shipper/reviews?page=${page}&size=${size}`,
-    {
-      mapFn: mapReviews,
-      deps: [page],
-    }
+    `/shipper/reviews?page=0&size=1000`,
+    { mapFn: mapReviews }
   );
 
   const loading = loadingReviews;
-  const reviewsList = reviews || [];
+  const reviewsList = reviews || []; // TẤT CẢ đánh giá
 
-  const totalReviews = pageData.totalElements;
-  const totalPages = pageData.totalPages || 0;
+  const totalReviews = reviewsList.length; // tổng THẬT = số đã tải
 
-  // Điểm trung bình tính trên trang đang tải (không có API tổng hợp riêng).
+  // Điểm trung bình + phân bố sao tính trên TOÀN BỘ đánh giá (nhất quán với tổng).
   const avgRating = reviewsList.length ? reviewsList.reduce((s, r) => s + (r.rating || 0), 0) / reviewsList.length : 0;
   const ratingDist = [5, 4, 3, 2, 1].map((star) => {
     const count = reviewsList.filter((r) => Math.round(r.rating) === star).length;
     return { star, count, pct: reviewsList.length ? (count / reviewsList.length) * 100 : 0 };
   });
 
-  const filteredReviews = starFilter === 'all'
+  // Lọc theo sao trên toàn bộ, rồi PHÂN TRANG CLIENT trên kết quả đã lọc.
+  const matchedReviews = starFilter === 'all'
     ? reviewsList
     : reviewsList.filter((r) => Math.round(r.rating) === Number(starFilter));
+  const totalPages = Math.max(1, Math.ceil(matchedReviews.length / size));
+  const safePage = Math.min(page, totalPages - 1);
+  const filteredReviews = matchedReviews.slice(safePage * size, safePage * size + size);
+
+  // đổi bộ lọc sao thì về trang đầu
+  const changeFilter = (v) => { setStarFilter(v); setPage(0); };
 
   if (errorReviews) {
     return (
@@ -108,7 +108,7 @@ export default function ShipperReviews() {
               return (
                 <button
                   key={star}
-                  onClick={() => setStarFilter(isActive ? 'all' : String(star))}
+                  onClick={() => changeFilter(isActive ? 'all' : String(star))}
                   className={`w-full flex items-center gap-3 text-xs font-bold rounded-lg px-2.5 py-1 transition-all cursor-pointer ${
                     isActive ? 'bg-amber-100/60 text-amber-900 ring-1 ring-amber-300' : 'hover:bg-slate-50 text-slate-600'
                   }`}
@@ -132,7 +132,7 @@ export default function ShipperReviews() {
       {reviewsList.length > 0 && (
         <div className="flex gap-2 flex-wrap items-center pt-1">
           <Button
-            onClick={() => setStarFilter('all')}
+            onClick={() => changeFilter('all')}
             variant={starFilter === 'all' ? 'secondary' : 'outline'}
             size="sm"
             className={starFilter === 'all' ? '!bg-emerald-600 !border-emerald-600 !text-white shadow-sm' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'}
@@ -144,7 +144,7 @@ export default function ShipperReviews() {
             return (
               <Button
                 key={star}
-                onClick={() => setStarFilter(String(star))}
+                onClick={() => changeFilter(String(star))}
                 variant={isActive ? 'secondary' : 'outline'}
                 size="sm"
                 className={`inline-flex items-center gap-1.5 ${isActive ? '!bg-emerald-600 !border-emerald-600 !text-white shadow-sm' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'}`}
@@ -172,7 +172,7 @@ export default function ShipperReviews() {
         <Card variant="elevated" className="bg-white rounded-xl border border-slate-100 shadow-sm p-4 md:p-5 flex flex-col text-center py-16">
           <Star size={48} className="mx-auto text-slate-300 mb-3.5" />
           <p className="text-sm font-bold text-slate-600">Không có đánh giá {starFilter} sao nào</p>
-          <Button onClick={() => setStarFilter('all')} variant="text" size="sm" className="mt-3 text-emerald-600">
+          <Button onClick={() => changeFilter('all')} variant="text" size="sm" className="mt-3 text-emerald-600">
             Xem tất cả đánh giá
           </Button>
         </Card>
@@ -239,20 +239,20 @@ export default function ShipperReviews() {
           {totalPages > 1 && (
             <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-200/60">
               <button
-                onClick={() => setPage((prev) => Math.max(prev - 1, 0))}
-                disabled={page === 0}
+                onClick={() => setPage(Math.max(safePage - 1, 0))}
+                disabled={safePage === 0}
                 className="flex items-center gap-1 px-3 py-1.5 rounded-radius-md text-xs font-bold bg-white border border-slate-200 text-slate-600 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-50 transition-all cursor-pointer"
               >
                 <ChevronLeft size={16} />
               </button>
 
               <span className="text-xs font-bold text-slate-500 mr-1">
-                Trang {page + 1} / {totalPages}
+                Trang {safePage + 1} / {totalPages}
               </span>
 
               <button
-                onClick={() => setPage((prev) => Math.min(prev + 1, totalPages - 1))}
-                disabled={page >= totalPages - 1}
+                onClick={() => setPage(Math.min(safePage + 1, totalPages - 1))}
+                disabled={safePage >= totalPages - 1}
                 className="flex items-center gap-1 px-3 py-1.5 rounded-radius-md text-xs font-bold bg-white border border-slate-200 text-slate-600 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-50 transition-all cursor-pointer"
               >
                 <ChevronRight size={16} />

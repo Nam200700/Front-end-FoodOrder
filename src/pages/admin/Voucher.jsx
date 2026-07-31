@@ -9,6 +9,7 @@ import ErrorState from '../../components/common/ErrorState';
 import Modal from '../../components/common/Modal';
 import FilterTabs from '../../components/common/FilterTabs';
 import { useModalState } from '../../hooks/useModalState';
+import { formatDateTime } from '../../utils/format';
 
 export default function Voucher() {
   const [keyword, setKeyword] = useState('');
@@ -68,7 +69,7 @@ export default function Voucher() {
   const totalPages = rawVouchersData?.totalPages || 1;
   const totalElements = rawVouchersData?.totalElements || vouchersList.length;
 
-  // Tabs bộ lọc trạng thái (Đã bổ sung tab EXPIRED)
+  // Tabs bộ lọc trạng thái 
   const filterTabs = [
     { id: 'all', label: 'Tất cả', count: statsData?.totalVouchers },
     { id: 'ACTIVE', label: 'Đang hoạt động', count: statsData?.activeVouchers },
@@ -113,9 +114,61 @@ export default function Voucher() {
     formModal.open(voucher.voucherId);
   };
 
+  // Hàm Validate Form trước khi gửi API
+  const validateForm = () => {
+    if (!formData.code.trim()) {
+      toast.error('Mã voucher không được để trống!');
+      return false;
+    }
+    if (!formData.name.trim()) {
+      toast.error('Tên chương trình voucher không được để trống!');
+      return false;
+    }
+    
+    const val = Number(formData.discountValue);
+    if (isNaN(val) || val <= 0) {
+      toast.error('Giá trị giảm phải là một số lớn hơn 0!');
+      return false;
+    }
+
+    if (formData.discountType === 'PERCENT' && val > 100) {
+      toast.error('Giá trị giảm theo phần trăm (%) không được vượt quá 100!');
+      return false;
+    }
+
+    const qty = Number(formData.quantity);
+    if (isNaN(qty) || qty <= 0 || !Number.isInteger(qty)) {
+      toast.error('Số lượng phát hành phải là số nguyên lớn hơn 0!');
+      return false;
+    }
+
+    if (!formData.startDate) {
+      toast.error('Vui lòng chọn thời gian bắt đầu!');
+      return false;
+    }
+
+    if (!formData.endDate) {
+      toast.error('Vui lòng chọn thời gian kết thúc!');
+      return false;
+    }
+
+    const start = new Date(formData.startDate);
+    const end = new Date(formData.endDate);
+    if (end <= start) {
+      toast.error('Thời gian kết thúc phải lớn hơn thời gian bắt đầu!');
+      return false;
+    }
+
+    return true;
+  };
+
   // Xử lý Submit Form (Thêm hoặc Sửa)
   const handleSubmitForm = async (e) => {
     e.preventDefault();
+
+    // Gọi hàm kiểm tra validate
+    if (!validateForm()) return;
+
     setSubmitting(true);
     try {
       const payload = {
@@ -188,7 +241,7 @@ export default function Voucher() {
         </Button>
       </div>
 
-      {/* Hàng KPI Tóm Tắt (Đã thêm ô Voucher hết hạn) */}
+      {/* Hàng KPI Tóm Tắt */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="bg-purple-50/50 border border-purple-100 p-4 rounded-2xl flex items-center gap-4">
           <div className="p-3 bg-purple-100 text-purple-600 rounded-xl">
@@ -291,7 +344,7 @@ export default function Voucher() {
                       {v.usedQuantity || 0} / {v.quantity}
                     </td>
                     <td className="py-3.5 px-4 w-40 text-slate-500 text-[11px] truncate">
-                      {v.startDate?.replace('T', ' ')} <br/>đến {v.endDate?.replace('T', ' ')}
+                      {formatDateTime(v.startDate)} <br/>đến {formatDateTime(v.endDate)}
                     </td>
                     <td className="py-3.5 px-4 w-28 truncate">
                       <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold border ${
@@ -382,7 +435,6 @@ export default function Voucher() {
               <label className="block text-xs font-bold text-slate-700 mb-1">Mã Voucher (*)</label>
               <input
                 type="text"
-                required
                 maxLength={50}
                 value={formData.code}
                 onChange={(e) => setFormData({ ...formData, code: e.target.value.toUpperCase() })}
@@ -395,7 +447,6 @@ export default function Voucher() {
               <label className="block text-xs font-bold text-slate-700 mb-1">Tên Voucher (*)</label>
               <input
                 type="text"
-                required
                 maxLength={255}
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
@@ -422,8 +473,6 @@ export default function Voucher() {
               <input
                 type="number"
                 step="any"
-                min="0.1"
-                required
                 value={formData.discountValue}
                 onChange={(e) => setFormData({ ...formData, discountValue: e.target.value })}
                 placeholder="Nhập giá trị giảm"
@@ -435,8 +484,6 @@ export default function Voucher() {
               <label className="block text-xs font-bold text-slate-700 mb-1">Số Lượng Phát Hành (*)</label>
               <input
                 type="number"
-                min="1"
-                required
                 value={formData.quantity}
                 onChange={(e) => setFormData({ ...formData, quantity: e.target.value })}
                 placeholder="VD: 100"
@@ -457,7 +504,7 @@ export default function Voucher() {
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">Thời Gian Bắt Đầu</label>
+              <label className="block text-xs font-bold text-slate-700 mb-1">Thời Gian Bắt Đầu (*)</label>
               <input
                 type="datetime-local"
                 value={formData.startDate}
@@ -467,7 +514,7 @@ export default function Voucher() {
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">Thời Gian Kết Thúc</label>
+              <label className="block text-xs font-bold text-slate-700 mb-1">Thời Gian Kết Thúc (*)</label>
               <input
                 type="datetime-local"
                 value={formData.endDate}

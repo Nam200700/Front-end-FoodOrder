@@ -634,7 +634,9 @@ export default function ShipperPickup() {
               <span>Vui lòng chuyển trạng thái sang <span className="text-slate-600 font-extrabold">ONLINE</span> để bắt đầu quét các đơn hàng.</span>
             </Card>
           ) : loading ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-5">
+              <SkeletonOrderCard />
+              <SkeletonOrderCard />
               <SkeletonOrderCard />
               <SkeletonOrderCard />
             </div>
@@ -685,7 +687,7 @@ export default function ShipperPickup() {
               </div>
             </Card>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-5">
               {availableOrders.map((order) => (
                 <Card
                   key={order.id}

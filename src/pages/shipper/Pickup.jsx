@@ -10,7 +10,6 @@ import 'leaflet/dist/leaflet.css';
 import { addVietnamBaseMap } from '../../utils/mapSovereignty';
 import { useWebSocketContext } from '../../contexts/WebSocketContext';
 import { SkeletonOrderCard } from '../../components/common/SkeletonCard';
-import EmptyState from '../../components/common/EmptyState';
 import { toast } from 'react-toastify';
 import { mapOrder } from '../../utils/mappers';
 import Modal from '../../components/common/Modal';

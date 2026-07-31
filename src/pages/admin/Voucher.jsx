@@ -22,17 +22,16 @@ export default function Voucher() {
   // Hook quản lý modal Xác nhận khóa
   const lockModal = useModalState();
 
-  // State form data
+  // State form data (Đã bao gồm issueType)
   const [formData, setFormData] = useState({
     code: '',
     name: '',
-    discountType: 'PERCENT', 
+    discountType: '', 
     discountValue: '',
-    quantity: '',
     startDate: '',
     endDate: '',
-    status: 'ACTIVE', 
-    issueType: 'MANUAL'
+    status: '', 
+    issueType: ''
   });
 
   const [submitting, setSubmitting] = useState(false);
@@ -84,7 +83,6 @@ export default function Voucher() {
       name: '',
       discountType: 'PERCENT',
       discountValue: '',
-      quantity: '',
       startDate: '',
       endDate: '',
       status: 'ACTIVE',
@@ -105,7 +103,6 @@ export default function Voucher() {
       name: voucher.name || '',
       discountType: voucher.discountType || 'PERCENT',
       discountValue: voucher.discountValue || '',
-      quantity: voucher.quantity || '',
       startDate: formatLocalDateTime(voucher.startDate),
       endDate: formatLocalDateTime(voucher.endDate),
       status: voucher.status || 'ACTIVE',
@@ -136,12 +133,6 @@ export default function Voucher() {
       return false;
     }
 
-    const qty = Number(formData.quantity);
-    if (isNaN(qty) || qty <= 0 || !Number.isInteger(qty)) {
-      toast.error('Số lượng phát hành phải là số nguyên lớn hơn 0!');
-      return false;
-    }
-
     if (!formData.startDate) {
       toast.error('Vui lòng chọn thời gian bắt đầu!');
       return false;
@@ -166,7 +157,6 @@ export default function Voucher() {
   const handleSubmitForm = async (e) => {
     e.preventDefault();
 
-    // Gọi hàm kiểm tra validate
     if (!validateForm()) return;
 
     setSubmitting(true);
@@ -174,7 +164,6 @@ export default function Voucher() {
       const payload = {
         ...formData,
         discountValue: Number(formData.discountValue),
-        quantity: Number(formData.quantity),
         startDate: formData.startDate ? `${formData.startDate}:00` : null,
         endDate: formData.endDate ? `${formData.endDate}:00` : null,
       };
@@ -323,7 +312,7 @@ export default function Voucher() {
                   <th className="py-3.5 px-4 w-44">Tên chương trình</th>
                   <th className="py-3.5 px-4 w-32">Loại giảm</th>
                   <th className="py-3.5 px-4 w-32">Giá trị giảm</th>
-                  <th className="py-3.5 px-4 w-28">Đã dùng / Tổng</th>
+                  <th className="py-3.5 px-4 w-28">Đã dùng</th>
                   <th className="py-3.5 px-4 w-40">Thời gian hiệu lực</th>
                   <th className="py-3.5 px-4 w-28">Trạng thái</th>
                   <th className="py-3.5 px-4 w-28 text-center">Hành động</th>
@@ -340,8 +329,8 @@ export default function Voucher() {
                     <td className="py-3.5 px-4 w-32 font-extrabold text-emerald-600 truncate">
                       {v.discountType === 'PERCENT' ? `${v.discountValue}%` : v.discountType === 'FIXED' ? `${Number(v.discountValue).toLocaleString()} đ` : 'Freeship'}
                     </td>
-                    <td className="py-3.5 px-4 w-28 text-slate-600 truncate">
-                      {v.usedQuantity || 0} / {v.quantity}
+                    <td className="py-3.5 px-4 w-32 text-slate-600 truncate">
+                      {v.usedQuantity || 0} 
                     </td>
                     <td className="py-3.5 px-4 w-40 text-slate-500 text-[11px] truncate">
                       {formatDateTime(v.startDate)} <br/>đến {formatDateTime(v.endDate)}
@@ -480,15 +469,19 @@ export default function Voucher() {
               />
             </div>
 
+            {/* Thêm trường Loại Phát Hành (Issue Type) */}
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">Số Lượng Phát Hành (*)</label>
-              <input
-                type="number"
-                value={formData.quantity}
-                onChange={(e) => setFormData({ ...formData, quantity: e.target.value })}
-                placeholder="VD: 100"
+              <label className="block text-xs font-bold text-slate-700 mb-1">Loại Phát Hành (*)</label>
+              <select
+                value={formData.issueType}
+                onChange={(e) => setFormData({ ...formData, issueType: e.target.value })}
                 className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-purple-500 text-slate-800"
-              />
+              >
+                <option value="NEW_USER">Người dùng mới (New User)</option>
+                <option value="BIRTHDAY">Sinh nhật (Birthday)</option>
+                <option value="EVENT">Sự kiện (Event)</option>
+                <option value="ORDER_CANCELLED">Hủy đơn hàng (Order Cancelled)</option>
+              </select>
             </div>
 
             <div>

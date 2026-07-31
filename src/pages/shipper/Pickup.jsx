@@ -640,11 +640,51 @@ export default function ShipperPickup() {
               <SkeletonOrderCard />
             </div>
           ) : availableOrders.length === 0 ? (
-            <EmptyState
-              title=""
-              message="Không có các đơn hàng xung quanh vị trí của bạn."
-              icon={Bike}
-            />
+            <Card variant="elevated" className="!rounded-radius-xl p-8 md:p-10 flex flex-col items-center text-center gap-5 animate-fade-in">
+              {/* Radar quét đơn — vòng sóng lan toả quanh icon xe */}
+              <div className="relative w-24 h-24 flex items-center justify-center">
+                <span className="absolute inset-0 rounded-full bg-emerald-400/20 animate-ping" />
+                <span className="absolute inset-3 rounded-full bg-emerald-400/25 animate-ping" style={{ animationDelay: '0.5s' }} />
+                <span className="relative w-16 h-16 rounded-full bg-gradient-to-br from-emerald-400 to-green-600 text-white flex items-center justify-center shadow-lg animate-float">
+                  <Bike size={28} />
+                </span>
+              </div>
+
+              <div>
+                <h3 className="text-base font-extrabold text-slate-800">Đang quét đơn quanh bạn…</h3>
+                <p className="text-xs text-slate-500 font-semibold mt-1.5 max-w-xs leading-relaxed">
+                  Chưa có đơn phù hợp gần đây. Đơn mới sẽ <span className="text-md-tertiary font-extrabold">tự hiện ngay</span> khi có khách đặt gần vị trí của bạn.
+                </p>
+              </div>
+
+              <button
+                onClick={handleRefreshAvailable}
+                disabled={refreshing}
+                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-radius-full text-xs font-extrabold uppercase tracking-wider bg-md-tertiary text-white shadow-sm hover:scale-[1.03] active:scale-95 transition-all cursor-pointer disabled:opacity-60"
+              >
+                <RefreshCw size={15} className={refreshing ? 'animate-spin' : ''} /> {refreshing ? 'Đang quét…' : 'Quét lại ngay'}
+              </button>
+
+              {/* Mẹo giúp shipper nhận nhiều đơn hơn */}
+              <div className="w-full max-w-md pt-5 border-t border-slate-100 text-left space-y-2.5">
+                <p className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                  <Zap size={12} className="text-amber-500" /> Mẹo nhận nhiều đơn hơn
+                </p>
+                {[
+                  { icon: MapPin, color: 'bg-emerald-50 text-emerald-600', text: 'Di chuyển tới khu tập trung nhiều quán ăn để bắt được nhiều đơn hơn.' },
+                  { icon: Zap, color: 'bg-amber-50 text-amber-600', text: 'Giữ trạng thái Online liên tục để không bỏ lỡ đơn vừa lên.' },
+                  { icon: Bell, color: 'bg-blue-50 text-blue-600', text: 'Bật thông báo trên máy để nhận đơn kịp thời, phản hồi nhanh.' },
+                ].map((tip, i) => {
+                  const TipIcon = tip.icon;
+                  return (
+                    <div key={i} className="flex items-center gap-3 bg-slate-50/70 rounded-radius-lg p-2.5 animate-rise-in" style={{ animationDelay: `${i * 70}ms` }}>
+                      <span className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${tip.color}`}><TipIcon size={15} /></span>
+                      <span className="text-[11px] font-semibold text-slate-600 leading-snug">{tip.text}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </Card>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               {availableOrders.map((order) => (

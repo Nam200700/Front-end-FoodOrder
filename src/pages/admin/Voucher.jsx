@@ -68,11 +68,12 @@ export default function Voucher() {
   const totalPages = rawVouchersData?.totalPages || 1;
   const totalElements = rawVouchersData?.totalElements || vouchersList.length;
 
-  // Tabs bộ lọc trạng thái
+  // Tabs bộ lọc trạng thái (Đã bổ sung tab EXPIRED)
   const filterTabs = [
     { id: 'all', label: 'Tất cả', count: statsData?.totalVouchers },
     { id: 'ACTIVE', label: 'Đang hoạt động', count: statsData?.activeVouchers },
     { id: 'INACTIVE', label: 'Tạm khóa', count: statsData?.inactiveVouchers },
+    { id: 'EXPIRED', label: 'Đã hết hạn', count: statsData?.expiredVouchers },
   ];
 
   // Xử lý mở Modal Thêm mới
@@ -296,9 +297,11 @@ export default function Voucher() {
                       <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold border ${
                         v.status === 'ACTIVE' 
                           ? 'bg-emerald-50 text-emerald-600 border-emerald-200' 
+                          : v.status === 'EXPIRED' || (v.endDate && new Date(v.endDate) < new Date())
+                          ? 'bg-amber-50 text-amber-600 border-amber-200'
                           : 'bg-slate-100 text-slate-500 border-slate-200'
                       }`}>
-                        {v.status === 'ACTIVE' ? 'Đang hoạt động' : 'Tạm khóa'}
+                        {v.status === 'ACTIVE' ? 'Đang hoạt động' : (v.status === 'EXPIRED' || (v.endDate && new Date(v.endDate) < new Date())) ? 'Đã hết hạn' : 'Tạm khóa'}
                       </span>
                     </td>
                     <td className="py-3.5 px-4 w-28 text-center">

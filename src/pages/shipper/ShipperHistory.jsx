@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { History, ClipboardList, Clipboard, Check, X, Utensils, Wallet, CheckCircle2, ChevronLeft, ChevronRight, User, Clock, Sparkles, Package, Calendar, Coins, Bike, PackageSearch } from 'lucide-react';
+import { History, ClipboardList, Clipboard, Check, X, Utensils, Wallet, CheckCircle2, ChevronLeft, ChevronRight, User, Clock, Sparkles, Package, Calendar, Coins, Bike, PackageSearch, Search, SlidersHorizontal } from 'lucide-react';
 import { formatCurrency } from '../../utils/format';
 import { useFetchData } from '../../hooks/useFetchData';
 import { SkeletonOrderCard } from '../../components/common/SkeletonCard';
@@ -10,12 +10,14 @@ import FilterTabs from '../../components/common/FilterTabs';
 
 export default function ShipperHistory() {
   const [page, setPage] = useState(0);
-  const [activeTab, setActiveTab] = useState('ALL'); 
+  const [activeTab, setActiveTab] = useState('ALL');
+  const [search, setSearch] = useState('');
+  const [dateRange, setDateRange] = useState('ALL'); // ALL | TODAY | 7D | 30D
   const pageSize = 10;
 
   const mapHistory = (data) => {
     const content = data?.content || [];
-    
+
     return content.map(ord => {
       const dateObj = new Date(ord.createdAt);
       const formattedDate = dateObj.toLocaleDateString('vi-VN');
@@ -25,16 +27,21 @@ export default function ShipperHistory() {
         restaurant: ord.restaurantName || 'Nhà hàng AntiGravity',
         customer: ord.customerName || 'Khách hàng',
         date: formattedDate,
-        fee: Number(ord.shippingFee), 
+        createdAt: ord.createdAt,
+        ts: dateObj.getTime(),
+        fee: Number(ord.shippingFee),
         status: ord.orderStatus
       };
     });
   };
 
-  // gọi api lấy danh sách lịch sử đơn giao
-  const { data: pageData, loading, error, refetch } = useFetchData(`/shipper/orders?page=${page}&size=${pageSize}`, {
-    mapFn: (data) => data, 
+  // Tải toàn bộ lịch sử để BỘ LỌC áp trên tất cả (không chỉ 1 trang). Một shipper số đơn nhỏ nên an toàn.
+  const { data: pageData, loading, error, refetch } = useFetchData(`/shipper/orders?page=0&size=1000`, {
+    mapFn: (data) => data,
   });
+
+  // reset về trang 1 mỗi khi đổi bộ lọc
+  const resetPage = () => setPage(0);
 
   if (loading) {
     return (
@@ -60,25 +67,53 @@ export default function ShipperHistory() {
     );
   }
 
-  // Xử lý dữ liệu thô từ trang hiện tại
+  // Toàn bộ chuyến giao (đã tải hết)
   const rawContent = pageData?.content || [];
   const list = mapHistory({ content: rawContent });
-  const totalPages = pageData?.totalPages || 1;
-  const totalElements = pageData?.totalElements ?? list.length; // tổng chuyến THẬT (mọi trang)
+  const totalElements = pageData?.totalElements ?? list.length; // tổng chuyến THẬT
 
-  // Lọc danh sách theo Tab 
+  // ─── ÁP BỘ LỌC: trạng thái + tìm kiếm + mốc thời gian ───
+  const q = search.trim().toLowerCase();
+  const now = Date.now();
+  const DAY = 86400000;
+  const dateFloor =
+    dateRange === 'TODAY' ? new Date(new Date().setHours(0, 0, 0, 0)).getTime()
+    : dateRange === '7D' ? now - 7 * DAY
+    : dateRange === '30D' ? now - 30 * DAY
+    : 0;
+
   const filteredList = list.filter(item => {
-    if (activeTab === 'COMPLETED') return item.status === 'COMPLETED';
-    if (activeTab === 'CANCELLED') return item.status === 'CANCELLED';
-    if (activeTab === 'DELIVERING') return item.status === 'DELIVERING' || item.status === 'READY_FOR_PICKUP';
-    return true; 
+    // trạng thái
+    if (activeTab === 'COMPLETED' && item.status !== 'COMPLETED') return false;
+    if (activeTab === 'CANCELLED' && item.status !== 'CANCELLED') return false;
+    if (activeTab === 'DELIVERING' && !(item.status === 'DELIVERING' || item.status === 'READY_FOR_PICKUP')) return false;
+    // mốc thời gian
+    if (dateFloor && !(item.ts >= dateFloor)) return false;
+    // tìm kiếm (mã đơn / khách / quán)
+    if (q && !(`#${item.id}`.toLowerCase().includes(q) || item.id.includes(q) ||
+      item.customer.toLowerCase().includes(q) || item.restaurant.toLowerCase().includes(q))) return false;
+    return true;
   });
+
+  // Phân trang CLIENT trên kết quả đã lọc
+  const totalPages = Math.max(1, Math.ceil(filteredList.length / pageSize));
+  const safePage = Math.min(page, totalPages - 1);
+  const pageItems = filteredList.slice(safePage * pageSize, safePage * pageSize + pageSize);
+  const hasActiveFilter = q !== '' || dateRange !== 'ALL' || activeTab !== 'ALL';
 
   // tab trạng thái
   const filterTabs = [
     { id: 'ALL', label: 'Tất cả' },
-    { id: 'DELIVERING', label: 'Đang giao' }, 
+    { id: 'DELIVERING', label: 'Đang giao' },
     { id: 'COMPLETED', label: 'Thành công' },
+  ];
+
+  // chip lọc theo mốc thời gian
+  const dateChips = [
+    { id: 'ALL', label: 'Mọi lúc' },
+    { id: 'TODAY', label: 'Hôm nay' },
+    { id: '7D', label: '7 ngày' },
+    { id: '30D', label: '30 ngày' },
   ];
 
   return (
@@ -138,15 +173,82 @@ export default function ShipperHistory() {
         />
       ) : (
         <>
-          {/* ─── FILTER TABS ──────────────── */}
+          {/* ─── BỘ LỌC: tìm kiếm + trạng thái + mốc thời gian ──────────────── */}
+          <div className="bg-white rounded-radius-xl border border-slate-200/70 shadow-shadow-1 p-3.5 md:p-4 space-y-3.5 animate-rise-in">
+            <div className="flex items-center gap-2 text-slate-700">
+              <span className="w-7 h-7 rounded-radius-md bg-[#E8F5E9] text-md-tertiary flex items-center justify-center shrink-0">
+                <SlidersHorizontal size={15} />
+              </span>
+              <span className="text-sm font-bold">Bộ lọc</span>
+              {hasActiveFilter && (
+                <button
+                  onClick={() => { setSearch(''); setDateRange('ALL'); setActiveTab('ALL'); resetPage(); }}
+                  className="ml-auto text-[11px] font-bold text-md-tertiary hover:text-[#2E7D32] inline-flex items-center gap-1 cursor-pointer transition-colors"
+                >
+                  <X size={13} /> Xoá lọc
+                </button>
+              )}
+            </div>
+
+            {/* Ô tìm kiếm */}
+            <div className="relative">
+              <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+              <input
+                type="text"
+                value={search}
+                onChange={(e) => { setSearch(e.target.value); resetPage(); }}
+                placeholder="Tìm mã đơn, khách hàng, quán..."
+                className="w-full pl-9 pr-9 py-2.5 text-sm rounded-radius-lg bg-slate-50 border border-slate-200 focus:bg-white focus:border-md-tertiary focus:ring-2 focus:ring-md-tertiary/20 outline-none transition-all font-medium text-slate-700 placeholder:text-slate-400"
+              />
+              {search && (
+                <button
+                  onClick={() => { setSearch(''); resetPage(); }}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full text-slate-400 hover:bg-slate-100 hover:text-slate-600 flex items-center justify-center cursor-pointer transition-colors"
+                >
+                  <X size={14} />
+                </button>
+              )}
+            </div>
+
+            {/* Chip mốc thời gian */}
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-[11px] font-bold text-slate-400 inline-flex items-center gap-1 mr-0.5">
+                <Calendar size={12} /> Thời gian:
+              </span>
+              {dateChips.map((c) => (
+                <button
+                  key={c.id}
+                  onClick={() => { setDateRange(c.id); resetPage(); }}
+                  className={`text-xs font-bold px-3 py-1.5 rounded-radius-full border transition-all cursor-pointer ${
+                    dateRange === c.id
+                      ? 'bg-md-tertiary text-white border-md-tertiary shadow-sm shadow-md-tertiary/25'
+                      : 'bg-white text-slate-500 border-slate-200 hover:border-md-tertiary/50 hover:text-md-tertiary'
+                  }`}
+                >
+                  {c.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* ─── FILTER TABS TRẠNG THÁI ──────────────── */}
           <FilterTabs
             tabs={filterTabs}
             activeTab={activeTab}
             onTabChange={(tabId) => {
               setActiveTab(tabId);
+              resetPage();
             }}
             activeClassName="bg-md-tertiary text-white shadow-sm shadow-md-tertiary/25"
           />
+
+          {/* Số kết quả sau khi lọc */}
+          <div className="flex items-center justify-between -mt-1">
+            <p className="text-xs font-semibold text-slate-500">
+              Tìm thấy <span className="font-extrabold text-md-tertiary">{filteredList.length}</span> chuyến
+              {hasActiveFilter && <span className="text-slate-400 font-medium"> / {list.length} tổng</span>}
+            </p>
+          </div>
 
           {/* ─── DANH SÁCH CHUYẾN GIAO SỬ DỤNG COMPONENT CARD ────── */}
           {filteredList.length === 0 ? (
@@ -154,12 +256,20 @@ export default function ShipperHistory() {
               <span className="w-14 h-14 rounded-radius-full bg-slate-50 text-slate-300 flex items-center justify-center animate-float">
                 <PackageSearch size={26} />
               </span>
-              <p className="text-sm font-bold text-slate-500">Không có chuyến giao nào ở mục này</p>
-              <p className="text-xs text-slate-400 font-medium">Thử chọn bộ lọc khác phía trên nhé.</p>
+              <p className="text-sm font-bold text-slate-500">Không có chuyến giao nào khớp bộ lọc</p>
+              <p className="text-xs text-slate-400 font-medium">Thử đổi từ khoá, mốc thời gian hoặc trạng thái phía trên nhé.</p>
+              {hasActiveFilter && (
+                <button
+                  onClick={() => { setSearch(''); setDateRange('ALL'); setActiveTab('ALL'); resetPage(); }}
+                  className="mt-1 text-xs font-bold text-white bg-md-tertiary px-4 py-2 rounded-radius-full inline-flex items-center gap-1.5 hover:bg-[#2E7D32] cursor-pointer transition-colors"
+                >
+                  <X size={13} /> Xoá bộ lọc
+                </button>
+              )}
             </div>
           ) : (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-3.5">
-              {filteredList.map((item, idx) => {
+              {pageItems.map((item, idx) => {
                 const isDone = item.status === 'COMPLETED';
                 return (
                   <Card
@@ -230,20 +340,20 @@ export default function ShipperHistory() {
           {totalPages > 1 && (
             <div className="flex items-center justify-between pt-4 border-t border-slate-200/60">
               <button
-                onClick={() => setPage((prev) => Math.max(prev - 1, 0))}
-                disabled={page === 0}
+                onClick={() => setPage(Math.max(safePage - 1, 0))}
+                disabled={safePage === 0}
                 className="flex items-center gap-1 px-3 py-1.5 rounded-radius-md text-xs font-bold bg-white border border-slate-200 text-slate-600 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-50 transition-all cursor-pointer"
               >
                 <ChevronLeft size={16} /> Trước đó
               </button>
-              
+
               <span className="text-xs font-bold text-slate-500">
-                Trang {page + 1} / {totalPages}
+                Trang {safePage + 1} / {totalPages}
               </span>
 
               <button
-                onClick={() => setPage((prev) => Math.min(prev + 1, totalPages - 1))}
-                disabled={page >= totalPages - 1}
+                onClick={() => setPage(Math.min(safePage + 1, totalPages - 1))}
+                disabled={safePage >= totalPages - 1}
                 className="flex items-center gap-1 px-3 py-1.5 rounded-radius-md text-xs font-bold bg-white border border-slate-200 text-slate-600 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-50 transition-all cursor-pointer"
               >
                 Kế tiếp <ChevronRight size={16} />

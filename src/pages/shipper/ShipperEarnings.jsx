@@ -87,13 +87,14 @@ export default function ShipperEarnings() {
     completedCount: 0,
     todayEarnings: 0, todayCount: 0,
     week7dEarnings: 0, week7dCount: 0,
+    thisWeekEarnings: 0,
     ratedCount: 0,
     dailyData: [],
     rating: '5.0'
   };
 
-  // Nếu chưa có đơn hoàn thành nào, hiển thị biểu đồ mặc định với giá trị 0 hoặc mock mờ ảo để người dùng tham khảo cách hiển thị
-  const hasData = earningsStats.totalEarnings > 0;
+  // Biểu đồ theo thứ chỉ có ý nghĩa khi tuần NÀY đã có thu nhập; nếu chưa thì hiện 7 cột 0 để tham khảo bố cục.
+  const hasData = earningsStats.thisWeekEarnings > 0;
   const displayData = hasData ? earningsStats.dailyData : [
     { day: 'T2', amount: 0 },
     { day: 'T3', amount: 0 },
@@ -194,11 +195,14 @@ export default function ShipperEarnings() {
       <div className="bg-white rounded-radius-xl p-5 border border-slate-200/60 shadow-sm">
         <div className="flex items-start justify-between gap-3 mb-4">
           <div>
-            {/* Nhãn đúng bản chất dữ liệu: gom TẤT CẢ đơn đã hoàn thành theo thứ trong tuần */}
+            {/* Nhãn đúng bản chất dữ liệu: chỉ gom đơn của TUẦN NÀY theo từng thứ */}
             <h3 className="text-xs font-extrabold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
-              <BarChart3 size={15} className="text-md-tertiary" /> Thu nhập theo thứ trong tuần
+              <BarChart3 size={15} className="text-md-tertiary" /> Thu nhập tuần này theo thứ
             </h3>
-            <p className="text-[10px] text-slate-400 font-semibold mt-0.5">Tổng hợp toàn bộ đơn đã hoàn thành theo từng thứ</p>
+            <p className="text-[10px] text-slate-400 font-semibold mt-0.5">
+              Đơn hoàn thành từ Thứ 2 → Chủ nhật tuần hiện tại
+              {hasData && <> · Tổng tuần: <span className="font-bold text-md-tertiary">{formatCurrency(earningsStats.thisWeekEarnings)}</span></>}
+            </p>
           </div>
           {bestDay && bestDay.amount > 0 && (
             <span className="shrink-0 text-[10px] font-bold text-md-tertiary bg-[#E8F5E9] border border-[#C8E6C9] px-2.5 py-1 rounded-full flex items-center gap-1">

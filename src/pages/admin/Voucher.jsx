@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Ticket, Plus, Search, Edit3, Trash2, CheckCircle2, XCircle, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Ticket, Plus, Search, Edit3, Ban, CheckCircle2, XCircle, Clock, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useFetchData } from '../../hooks/useFetchData';
 import apiClient from '../../services/api';
 import Spinner from '../../components/common/Spinner';
@@ -18,30 +18,30 @@ export default function Voucher() {
 
   // Hook quản lý modal Thêm/Sửa
   const formModal = useModalState();
-  // Hook quản lý modal Xóa
-  const deleteModal = useModalState();
+  // Hook quản lý modal Xác nhận khóa
+  const lockModal = useModalState();
 
-  // State form data (Cập nhật đúng enum từ Backend)
+  // State form data
   const [formData, setFormData] = useState({
     code: '',
     name: '',
-    discountType: 'PERCENT', // FIXED / PERCENT / FREESHIP
+    discountType: 'PERCENT', 
     discountValue: '',
     quantity: '',
     startDate: '',
     endDate: '',
-    status: 'ACTIVE', // ACTIVE / INACTIVE
-    issueType: 'MANUAL' // MANUAL / NEW_USER / FIRST_ORDER / INACTIVE_DAYS / BIRTHDAY
+    status: 'ACTIVE', 
+    issueType: 'MANUAL'
   });
 
   const [submitting, setSubmitting] = useState(false);
 
   // Gọi API lấy thông tin KPI thống kê Voucher
   const { data: statsData, refetch: refetchKpi } = useFetchData('/vouchers/stats', {
-    mapFn: (res) => res?.result || res || { totalVouchers: 0, activeVouchers: 0, inactiveVouchers: 0 }
+    mapFn: (res) => res?.result || res || { totalVouchers: 0, activeVouchers: 0, inactiveVouchers: 0, expiredVouchers: 0 }
   });
 
-  // Xây dựng URL API phân trang & lọc danh sách voucher (Đã đồng bộ ID tab viết hoa)
+  // Xây dựng URL API phân trang & lọc danh sách voucher
   const apiUrl = useMemo(() => {
     const params = new URLSearchParams({
       page: page.toString(),
@@ -64,12 +64,11 @@ export default function Voucher() {
     mapFn: (res) => res?.result || res || {}
   });
 
-  // Xử lý dữ liệu trả về dạng Page hoặc List thô tùy backend
   const vouchersList = rawVouchersData?.content || (Array.isArray(rawVouchersData) ? rawVouchersData : []);
   const totalPages = rawVouchersData?.totalPages || 1;
   const totalElements = rawVouchersData?.totalElements || vouchersList.length;
 
-  // Tabs bộ lọc trạng thái (Đồng bộ ID khớp chính xác với giá trị gửi API và Backend Enum)
+  // Tabs bộ lọc trạng thái
   const filterTabs = [
     { id: 'all', label: 'Tất cả', count: statsData?.totalVouchers },
     { id: 'ACTIVE', label: 'Đang hoạt động', count: statsData?.activeVouchers },
@@ -145,18 +144,18 @@ export default function Voucher() {
     }
   };
 
-  // Xử lý Xóa voucher
-  const handleDeleteSubmit = async () => {
+  // Xử lý Khóa voucher 
+  const handleLockSubmit = async () => {
     try {
-      const voucherId = deleteModal.data;
-      await apiClient.delete(`/vouchers/${voucherId}`);
-      toast.success('Đã xóa voucher thành công!');
-      deleteModal.close();
+      const voucherId = lockModal.data;
+      await apiClient.put(`/vouchers/${voucherId}/inactive`); 
+      toast.success('Đã khóa voucher thành công!');
+      lockModal.close();
       refetch();
       refetchKpi();
     } catch (err) {
       console.error(err);
-      toast.error(err.response?.data?.message || 'Không thể xóa voucher này.');
+      toast.error(err.response?.data?.message || 'Không thể khóa voucher này.');
     }
   };
 
@@ -188,8 +187,8 @@ export default function Voucher() {
         </Button>
       </div>
 
-      {/* Hàng KPI Tóm Tắt */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      {/* Hàng KPI Tóm Tắt (Đã thêm ô Voucher hết hạn) */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="bg-purple-50/50 border border-purple-100 p-4 rounded-2xl flex items-center gap-4">
           <div className="p-3 bg-purple-100 text-purple-600 rounded-xl">
             <Ticket size={24} />
@@ -213,31 +212,44 @@ export default function Voucher() {
             <XCircle size={24} />
           </div>
           <div>
-            <p className="text-xs text-slate-500 font-semibold">Tạm khóa / Hết hạn</p>
+            <p className="text-xs text-slate-500 font-semibold">Đang tạm khóa</p>
             <h3 className="text-xl font-extrabold text-slate-700">{statsData?.inactiveVouchers || 0}</h3>
+          </div>
+        </div>
+        <div className="bg-amber-50/50 border border-amber-100 p-4 rounded-2xl flex items-center gap-4">
+          <div className="p-3 bg-amber-100 text-amber-600 rounded-xl">
+            <Clock size={24} />
+          </div>
+          <div>
+            <p className="text-xs text-slate-500 font-semibold">Đã hết hạn</p>
+            <h3 className="text-xl font-extrabold text-amber-600">{statsData?.expiredVouchers || 0}</h3>
           </div>
         </div>
       </div>
 
       {/* Thanh Filter Tabs & Tìm kiếm */}
-      <div className="flex flex-col md:flex-row items-center justify-between gap-3 pt-2">
-        <FilterTabs 
-            tabs={filterTabs} 
-            activeTab={statusFilter} 
-            onTabChange={(tabId) => { setStatusFilter(tabId); setPage(0); }} 
-        />
-
-        <div className="relative w-full md:w-80">
-          <span className="absolute inset-y-0 left-0 flex items-center pl-3.5 pointer-events-none text-slate-400">
-            <Search size={16} />
-          </span>
-          <input
-            type="text"
-            value={keyword}
-            onChange={(e) => { setKeyword(e.target.value); setPage(0); }}
-            placeholder="Tìm theo mã hoặc tên voucher..."
-            className="w-full pl-10 pr-4 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-purple-500 focus:bg-white transition-all font-semibold text-slate-800"
+      <div className="flex flex-col gap-3">
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
+          <FilterTabs
+            tabs={filterTabs}
+            activeTab={statusFilter}
+            onTabChange={(tabId) => { setStatusFilter(tabId); setPage(0); }}
+            className="bg-transparent p-0 w-max"
+            activeClassName="bg-purple-600 text-white shadow-sm font-bold"
           />
+
+          <div className="relative w-full md:w-96">
+            <span className="absolute inset-y-0 left-0 flex items-center pl-3.5 pointer-events-none text-slate-400">
+              <Search size={16} />
+            </span>
+            <input
+              type="text"
+              value={keyword}
+              onChange={(e) => { setKeyword(e.target.value); setPage(0); }}
+              placeholder="Tìm theo mã hoặc tên voucher..."
+              className="w-full pl-10 pr-4 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-purple-500 focus:bg-white transition-all font-semibold text-slate-800"
+            />
+          </div>
         </div>
       </div>
 
@@ -298,13 +310,15 @@ export default function Voucher() {
                         >
                           <Edit3 size={14} />
                         </button>
-                        <button
-                          onClick={() => deleteModal.open(v.voucherId)}
-                          title="Xóa voucher"
-                          className="p-1.5 rounded-lg border bg-red-50 hover:bg-red-100 text-red-600 border-red-200 transition-all cursor-pointer"
-                        >
-                          <Trash2 size={14} />
-                        </button>
+                        {v.status === 'ACTIVE' && (
+                          <button
+                            onClick={() => lockModal.open(v.voucherId)}
+                            title="Khóa voucher"
+                            className="p-1.5 rounded-lg border bg-amber-50 hover:bg-amber-100 text-amber-600 border-amber-200 transition-all cursor-pointer"
+                          >
+                            <Ban size={14} />
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -315,27 +329,37 @@ export default function Voucher() {
         )}
 
         {/* Phân trang */}
-        {totalPages > 1 && (
-          <div className="flex items-center justify-between px-4 py-3 border-t border-slate-100 bg-slate-50/50">
+        {totalPages > 0 && (
+          <div className="py-3.5 px-4 border-t border-slate-100 bg-white flex items-center justify-between gap-4">
             <span className="text-xs text-slate-500 font-medium">
-              Hiển thị trang <strong className="text-slate-800">{page + 1}</strong> / <strong className="text-slate-800">{totalPages}</strong> (Tổng {totalElements} voucher)
+              Hiển thị <span className="text-slate-800 font-bold">{vouchersList.length}</span> / <span className="text-slate-800 font-bold">{totalElements}</span> voucher
             </span>
-            <div className="flex items-center gap-1">
+
+            <div className="flex items-center gap-2">
               <Button
                 variant="outline"
-                disabled={page === 0}
-                onClick={() => setPage(p => Math.max(0, p - 1))}
-                className="p-1.5 rounded-xl border border-slate-200 text-slate-600 disabled:opacity-40"
+                size="sm"
+                onClick={() => setPage(prev => Math.max(prev - 1, 0))}
+                disabled={page === 0 || loading}
+                className="flex items-center gap-1 text-xs border-slate-200 bg-white text-slate-700 hover:bg-slate-50 disabled:opacity-40 rounded-xl"
               >
-                <ChevronLeft size={16} />
+                <ChevronLeft size={14} /> 
               </Button>
+
+              <div className="flex items-center gap-1 px-1">
+                <span className="text-xs text-slate-500">Trang {page + 1}</span>
+                <span className="text-xs text-slate-500">/</span>
+                <span className="text-xs text-slate-500">{totalPages}</span>
+              </div>
+
               <Button
                 variant="outline"
-                disabled={page >= totalPages - 1}
-                onClick={() => setPage(p => Math.min(totalPages - 1, p + 1))}
-                className="p-1.5 rounded-xl border border-slate-200 text-slate-600 disabled:opacity-40"
+                size="sm"
+                onClick={() => setPage(prev => Math.min(prev + 1, totalPages - 1))}
+                disabled={page >= totalPages - 1 || loading}
+                className="flex items-center gap-1 text-xs border-slate-200 bg-white text-slate-700 hover:bg-slate-50 disabled:opacity-40 rounded-xl"
               >
-                <ChevronRight size={16} />
+                <ChevronRight size={14} />
               </Button>
             </div>
           </div>
@@ -360,7 +384,7 @@ export default function Voucher() {
                 value={formData.code}
                 onChange={(e) => setFormData({ ...formData, code: e.target.value.toUpperCase() })}
                 placeholder="VD: SALE50"
-                className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-purple-500 font-semibold text-slate-800 uppercase"
+                className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-purple-500 text-slate-800 uppercase"
               />
             </div>
 
@@ -373,7 +397,7 @@ export default function Voucher() {
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                 placeholder="VD: Giảm giá mùa hè"
-                className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-purple-500 font-semibold text-slate-800"
+                className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-purple-500 text-slate-800"
               />
             </div>
 
@@ -382,7 +406,7 @@ export default function Voucher() {
               <select
                 value={formData.discountType}
                 onChange={(e) => setFormData({ ...formData, discountType: e.target.value })}
-                className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-purple-500 font-semibold text-slate-800"
+                className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-purple-500 text-slate-800"
               >
                 <option value="PERCENT">Phần trăm (%)</option>
                 <option value="FIXED">Số tiền cố định (VNĐ)</option>
@@ -400,7 +424,7 @@ export default function Voucher() {
                 value={formData.discountValue}
                 onChange={(e) => setFormData({ ...formData, discountValue: e.target.value })}
                 placeholder="Nhập giá trị giảm"
-                className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-purple-500 font-semibold text-slate-800"
+                className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-purple-500 text-slate-800"
               />
             </div>
 
@@ -413,104 +437,87 @@ export default function Voucher() {
                 value={formData.quantity}
                 onChange={(e) => setFormData({ ...formData, quantity: e.target.value })}
                 placeholder="VD: 100"
-                className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-purple-500 font-semibold text-slate-800"
+                className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-purple-500 text-slate-800"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">Loại Phát Hành (*)</label>
-              <select
-                value={formData.issueType}
-                onChange={(e) => setFormData({ ...formData, issueType: e.target.value })}
-                className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-purple-500 font-semibold text-slate-800"
-              >
-                <option value="MANUAL">Thủ công (Manual)</option>
-                <option value="NEW_USER">Người dùng mới (New User)</option>
-                <option value="FIRST_ORDER">Đơn hàng đầu tiên (First Order)</option>
-                <option value="INACTIVE_DAYS">Khách hàng lâu không quay lại (Inactive Days)</option>
-                <option value="BIRTHDAY">Sinh nhật (Birthday)</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">Ngày Bắt Đầu (*)</label>
-              <input
-                type="datetime-local"
-                required
-                value={formData.startDate}
-                onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
-                className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-purple-500 font-semibold text-slate-800"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">Ngày Kết Thúc (*)</label>
-              <input
-                type="datetime-local"
-                required
-                value={formData.endDate}
-                onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}
-                className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-purple-500 font-semibold text-slate-800"
-              />
-            </div>
-
-            <div className="md:col-span-2">
               <label className="block text-xs font-bold text-slate-700 mb-1">Trạng Thái (*)</label>
               <select
                 value={formData.status}
                 onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-                className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-purple-500 font-semibold text-slate-800"
+                className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-purple-500 text-slate-800"
               >
-                <option value="ACTIVE">Hoạt động (Active)</option>
-                <option value="INACTIVE">Không hoạt động (Inactive)</option>
+                <option value="ACTIVE">Đang hoạt động</option>
+                <option value="INACTIVE">Tạm khóa</option>
               </select>
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1">Thời Gian Bắt Đầu</label>
+              <input
+                type="datetime-local"
+                value={formData.startDate}
+                onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
+                className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-purple-500 text-slate-800"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1">Thời Gian Kết Thúc</label>
+              <input
+                type="datetime-local"
+                value={formData.endDate}
+                onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}
+                className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-purple-500 text-slate-800"
+              />
             </div>
           </div>
 
-          <div className="flex justify-end gap-2 pt-4 border-t border-slate-100">
+          <div className="flex justify-end gap-2 pt-3 border-t border-slate-100">
             <Button
               type="button"
               variant="outline"
               onClick={formModal.close}
-              className="text-xs px-4 py-2 rounded-xl"
+              className="text-xs font-bold px-4 py-2 rounded-xl"
             >
-              Hủy bỏ
+              Hủy
             </Button>
             <Button
               type="submit"
               disabled={submitting}
-              className="bg-purple-600 hover:bg-purple-700 text-white text-xs px-5 py-2 rounded-xl shadow-sm"
+              className="bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold px-4 py-2 rounded-xl shadow-sm"
             >
-              {submitting ? 'Đang lưu...' : (formModal.data ? 'Cập Nhật' : 'Tạo Mới')}
+              {submitting ? 'Đang lưu...' : 'Lưu lại'}
             </Button>
           </div>
         </form>
       </Modal>
 
-      {/* Modal Xác Nhận Xóa */}
+      {/* Modal Xác Nhận Khóa Voucher */}
       <Modal
-        isOpen={deleteModal.isOpen}
-        onClose={deleteModal.close}
-        title="Xác Nhận Xóa Voucher"
+        isOpen={lockModal.isOpen}
+        onClose={lockModal.close}
+        title="Xác Nhận Khóa Voucher"
         size="sm"
       >
         <div className="space-y-4">
-          <p className="text-xs text-slate-600">
-            Bạn có chắc chắn muốn xóa voucher này không? Hành động này không thể hoàn tác.
+          <p className="text-xs text-slate-600 font-medium">
+            Bạn có chắc chắn muốn khóa voucher này không? Voucher sẽ chuyển sang trạng thái tạm khóa và không thể sử dụng cho các đơn hàng mới.
           </p>
           <div className="flex justify-end gap-2 pt-2">
             <Button
               variant="outline"
-              onClick={deleteModal.close}
-              className="text-xs px-4 py-2 rounded-xl"
+              onClick={lockModal.close}
+              className="text-xs font-bold px-4 py-2 rounded-xl"
             >
               Hủy
             </Button>
             <Button
-              onClick={handleDeleteSubmit}
-              className="bg-red-600 hover:bg-red-700 text-white text-xs px-4 py-2 rounded-xl shadow-sm"
+              onClick={handleLockSubmit}
+              className="bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold px-4 py-2 rounded-xl shadow-sm"
             >
-              Xác nhận xóa
+              Xác nhận khóa
             </Button>
           </div>
         </div>

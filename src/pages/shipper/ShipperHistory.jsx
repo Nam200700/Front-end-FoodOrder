@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { History, ClipboardList, Clipboard, Check, X, Utensils, Wallet, CheckCircle2, ChevronLeft, ChevronRight, User, Clock, Sparkles, Package } from 'lucide-react';
+import { History, ClipboardList, Clipboard, Check, X, Utensils, Wallet, CheckCircle2, ChevronLeft, ChevronRight, User, Clock, Sparkles, Package, Calendar, Coins, Bike, PackageSearch } from 'lucide-react';
 import { formatCurrency } from '../../utils/format';
 import { useFetchData } from '../../hooks/useFetchData';
 import { SkeletonOrderCard } from '../../components/common/SkeletonCard';
@@ -150,8 +150,12 @@ export default function ShipperHistory() {
 
           {/* ─── DANH SÁCH CHUYẾN GIAO SỬ DỤNG COMPONENT CARD ────── */}
           {filteredList.length === 0 ? (
-            <div className="py-12 text-center text-slate-400 text-sm font-medium bg-white rounded-radius-xl border border-slate-200/60">
-              Không có đơn hàng nào phù hợp.
+            <div className="py-14 flex flex-col items-center gap-3 text-center bg-white rounded-radius-xl border border-slate-200/60">
+              <span className="w-14 h-14 rounded-radius-full bg-slate-50 text-slate-300 flex items-center justify-center animate-float">
+                <PackageSearch size={26} />
+              </span>
+              <p className="text-sm font-bold text-slate-500">Không có chuyến giao nào ở mục này</p>
+              <p className="text-xs text-slate-400 font-medium">Thử chọn bộ lọc khác phía trên nhé.</p>
             </div>
           ) : (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-3.5">
@@ -162,17 +166,20 @@ export default function ShipperHistory() {
                     key={item.id}
                     variant="elevated"
                     style={{ animationDelay: `${idx * 55}ms` }}
-                    className="flex items-stretch overflow-hidden animate-rise-in transition-all hover:shadow-shadow-3 hover:-translate-y-0.5"
+                    className="group flex items-stretch overflow-hidden animate-rise-in transition-all hover:shadow-shadow-3 hover:-translate-y-0.5"
                   >
-                    <div className={`w-1.5 shrink-0 ${isDone ? 'bg-md-tertiary' : 'bg-blue-400'}`} />
+                    <div className={`w-1.5 group-hover:w-2.5 shrink-0 transition-all duration-300 ${isDone ? 'bg-md-tertiary' : 'bg-blue-400'}`} />
                     <div className="flex-1 p-4 flex items-center gap-3.5 min-w-0">
-                      {/* Icon trạng thái */}
-                      <div className={`w-11 h-11 rounded-radius-lg flex items-center justify-center shrink-0 shadow-sm border ${
-                        isDone
-                          ? 'bg-[#E8F5E9] text-md-tertiary border-[#C8E6C9]'
-                          : 'bg-blue-50 text-blue-500 border-blue-100'
-                      }`}>
-                        {isDone ? <Check size={18} strokeWidth={3} /> : <Clock size={18} strokeWidth={3} />}
+                      {/* Icon trạng thái — done: dấu check; đang giao: xe máy nhấp nháy */}
+                      <div className="relative shrink-0">
+                        {!isDone && <span className="absolute inset-0 rounded-radius-lg bg-blue-400/25 animate-ping" />}
+                        <div className={`relative w-11 h-11 rounded-radius-lg flex items-center justify-center shadow-sm border transition-transform group-hover:scale-105 ${
+                          isDone
+                            ? 'bg-[#E8F5E9] text-md-tertiary border-[#C8E6C9]'
+                            : 'bg-blue-50 text-blue-500 border-blue-100'
+                        }`}>
+                          {isDone ? <Check size={18} strokeWidth={3} /> : <Bike size={18} strokeWidth={2.6} />}
+                        </div>
                       </div>
 
                       {/* Thông tin đơn: tiêu đề + ngày + trạng thái cùng hàng, rồi khách/quán */}
@@ -182,23 +189,25 @@ export default function ShipperHistory() {
                             Mã Đơn #{item.id}
                           </span>
                           <span className="text-[11px] text-slate-400 font-medium flex items-center gap-1">
-                            <Clipboard size={11} className="shrink-0" /> {item.date}
+                            <Calendar size={11} className="shrink-0" /> {item.date}
                           </span>
-                          <span className={`text-[9px] font-bold border px-2 py-0.5 rounded-full ${
+                          <span className={`text-[9px] font-bold border px-2 py-0.5 rounded-full inline-flex items-center gap-1 ${
                             isDone
                               ? 'bg-emerald-50 text-emerald-700 border-emerald-100'
                               : 'bg-blue-50 text-blue-700 border-blue-100'
                           }`}>
-                            {isDone ? 'Thành công' : 'Đang giao'}
+                            {isDone
+                              ? <><CheckCircle2 size={10} /> Thành công</>
+                              : <><span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" /> Đang giao</>}
                           </span>
                         </div>
 
                         <div className="mt-2 flex flex-col gap-1">
                           <span className="text-[11px] text-slate-500 flex items-center gap-1.5 truncate">
-                            <User size={12} className="shrink-0 text-slate-400" /> Khách hàng: <span className="font-semibold text-slate-600">{item.customer}</span>
+                            <User size={12} className="shrink-0 text-md-tertiary" /> Khách hàng: <span className="font-semibold text-slate-600">{item.customer}</span>
                           </span>
                           <span className="text-[11px] text-slate-500 flex items-center gap-1.5 truncate">
-                            <Utensils size={12} className="shrink-0 text-slate-400" /> Quán: <span className="font-semibold text-slate-600">{item.restaurant}</span>
+                            <Utensils size={12} className="shrink-0 text-orange-400" /> Quán: <span className="font-semibold text-slate-600">{item.restaurant}</span>
                           </span>
                         </div>
                       </div>
@@ -206,8 +215,8 @@ export default function ShipperHistory() {
                       {/* Phí ship — tách bằng đường kẻ dọc, canh giữa theo chiều cao card */}
                       <div className="shrink-0 self-stretch pl-3.5 border-l border-slate-100 flex flex-col justify-center items-end text-right">
                         <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wide">Phí giao hàng</span>
-                        <span className="mt-1.5 text-sm font-extrabold px-2.5 py-1 rounded-radius-full text-md-tertiary bg-[#E8F5E9]">
-                          {formatCurrency(item.fee)}
+                        <span className="mt-1.5 text-sm font-extrabold px-2.5 py-1 rounded-radius-full text-md-tertiary bg-[#E8F5E9] inline-flex items-center gap-1 transition-transform group-hover:scale-105">
+                          <Coins size={13} className="shrink-0" /> {formatCurrency(item.fee)}
                         </span>
                       </div>
                     </div>

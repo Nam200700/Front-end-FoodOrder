@@ -458,7 +458,7 @@ export default function ShipperPickup() {
   };
 
   return (
-    <div className="flex-1 p-4 md:p-8 max-w-4xl mx-auto w-full font-google-sans pb-24 space-y-6">
+    <div className="flex-1 p-4 md:p-8 max-w-7xl mx-auto w-full font-google-sans pb-24 space-y-6">
 
       {/* Header with online toggle */}
       <Card variant="elevated" className={`!rounded-radius-xl p-5 flex items-center justify-between transition-all duration-300 border ${
@@ -634,7 +634,7 @@ export default function ShipperPickup() {
               <span>Vui lòng chuyển trạng thái sang <span className="text-slate-600 font-extrabold">ONLINE</span> để bắt đầu quét các đơn hàng.</span>
             </Card>
           ) : loading ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
               <SkeletonOrderCard />
               <SkeletonOrderCard />
               <SkeletonOrderCard />
@@ -687,7 +687,7 @@ export default function ShipperPickup() {
               </div>
             </Card>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
               {availableOrders.map((order) => (
                 <Card
                   key={order.id}

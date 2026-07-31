@@ -15,16 +15,21 @@ export default function ShipperEarnings() {
     const now = new Date();
     const startToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const start7d = new Date(now); start7d.setDate(now.getDate() - 6); start7d.setHours(0, 0, 0, 0);
+    // Tuần HIỆN TẠI: từ Thứ 2 (00:00) đến trước Thứ 2 tuần sau — chỉ đơn trong khoảng này mới lên biểu đồ.
+    const dow = (now.getDay() + 6) % 7; // Thứ 2 = 0
+    const weekStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() - dow);
+    const weekEnd = new Date(weekStart.getFullYear(), weekStart.getMonth(), weekStart.getDate() + 7);
 
     const dayKeys = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
     const dayMap = { T2: 0, T3: 0, T4: 0, T5: 0, T6: 0, T7: 0, CN: 0 };
 
-    let totalEarnings = 0, todayEarnings = 0, todayCount = 0, week7dEarnings = 0, week7dCount = 0;
+    let totalEarnings = 0, todayEarnings = 0, todayCount = 0, week7dEarnings = 0, week7dCount = 0, thisWeekEarnings = 0;
     completedOrders.forEach(ord => {
       const fee = Number(ord.shippingFee) || 0;
       totalEarnings += fee;
       const d = new Date(ord.createdAt);
-      dayMap[dayKeys[d.getDay()]] += fee;
+      // Biểu đồ theo thứ: CHỈ tính đơn thuộc tuần hiện tại (không dồn cả lịch sử vào 7 cột).
+      if (d >= weekStart && d < weekEnd) { dayMap[dayKeys[d.getDay()]] += fee; thisWeekEarnings += fee; }
       if (d >= startToday) { todayEarnings += fee; todayCount++; }
       if (d >= start7d) { week7dEarnings += fee; week7dCount++; }
     });

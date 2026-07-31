@@ -1,6 +1,6 @@
 import React from 'react';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Cell } from 'recharts';
-import { DollarSign, TrendingUp, Star, CheckCircle2, Wallet, BarChart3, Calendar } from 'lucide-react';
+import { DollarSign, TrendingUp, Star, CheckCircle2, Wallet, BarChart3, Calendar, Sun } from 'lucide-react';
 import { formatCurrency } from '../../utils/format';
 import { useFetchData } from '../../hooks/useFetchData';
 import ErrorState from '../../components/common/ErrorState';
@@ -8,50 +8,48 @@ import { SkeletonOrderCard } from '../../components/common/SkeletonCard';
 
 export default function ShipperEarnings() {
   const mapEarnings = (data) => {
-    const content = data?.content || [];
-    
-    // Chỉ lấy các đơn đã hoàn thành để tính thu nhập thực tế
-    const completedOrders = content.filter(ord => ord.orderStatus === 'COMPLETED');
-    const totalEarnings = completedOrders.reduce((sum, ord) => sum + Number(ord.shippingFee), 0);
-    
-    // Nhóm doanh thu theo thứ trong tuần từ dữ liệu thật
-    const dayMap = {
-      'T2': 0, 'T3': 0, 'T4': 0, 'T5': 0, 'T6': 0, 'T7': 0, 'CN': 0
-    };
+    // Đã lọc status=COMPLETED + size lớn ở query → content là TOÀN BỘ đơn đã hoàn thành
+    // (không còn bị chặn 1 trang như trước, nên tổng thu nhập/đơn/biểu đồ mới ĐÚNG).
+    const completedOrders = (data?.content || []).filter(ord => ord.orderStatus === 'COMPLETED');
 
+    const now = new Date();
+    const startToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const start7d = new Date(now); start7d.setDate(now.getDate() - 6); start7d.setHours(0, 0, 0, 0);
+
+    const dayKeys = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
+    const dayMap = { T2: 0, T3: 0, T4: 0, T5: 0, T6: 0, T7: 0, CN: 0 };
+
+    let totalEarnings = 0, todayEarnings = 0, todayCount = 0, week7dEarnings = 0, week7dCount = 0;
     completedOrders.forEach(ord => {
-      const date = new Date(ord.createdAt);
-      const dayNum = date.getDay(); // 0: CN, 1: T2, 2: T3, ...
-      const dayKeys = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
-      const dayKey = dayKeys[dayNum];
-      dayMap[dayKey] += Number(ord.shippingFee);
+      const fee = Number(ord.shippingFee) || 0;
+      totalEarnings += fee;
+      const d = new Date(ord.createdAt);
+      dayMap[dayKeys[d.getDay()]] += fee;
+      if (d >= startToday) { todayEarnings += fee; todayCount++; }
+      if (d >= start7d) { week7dEarnings += fee; week7dCount++; }
     });
 
-    // Bố trí sắp xếp thứ tự hiển thị từ Thứ 2 đến Chủ nhật
-    const sortedChartData = [
-      { day: 'T2', amount: dayMap['T2'] },
-      { day: 'T3', amount: dayMap['T3'] },
-      { day: 'T4', amount: dayMap['T4'] },
-      { day: 'T5', amount: dayMap['T5'] },
-      { day: 'T6', amount: dayMap['T6'] },
-      { day: 'T7', amount: dayMap['T7'] },
-      { day: 'CN', amount: dayMap['CN'] }
-    ];
+    const sortedChartData = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'].map(k => ({ day: k, amount: dayMap[k] }));
 
-    // Tính điểm đánh giá sao trung bình thật của tài xế từ database
-    const ratedOrders = content.filter(ord => ord.reviewed && ord.shipperRating);
-    const totalShipperRating = ratedOrders.reduce((sum, ord) => sum + ord.shipperRating, 0);
-    const avgShipperRating = ratedOrders.length > 0 ? (totalShipperRating / ratedOrders.length).toFixed(1) : '5.0';
+    // Điểm đánh giá sao trung bình thật của tài xế (trên đơn đã có đánh giá)
+    const ratedOrders = completedOrders.filter(ord => ord.reviewed && ord.shipperRating);
+    const avgShipperRating = ratedOrders.length > 0
+      ? (ratedOrders.reduce((sum, o) => sum + o.shipperRating, 0) / ratedOrders.length).toFixed(1)
+      : '5.0';
 
     return {
-      totalEarnings: totalEarnings,
+      totalEarnings,
       completedCount: completedOrders.length,
+      todayEarnings, todayCount,
+      week7dEarnings, week7dCount,
+      ratedCount: ratedOrders.length,
       dailyData: sortedChartData,
-      rating: avgShipperRating
+      rating: avgShipperRating,
     };
   };
 
-  const { data: stats, loading, error, refetch } = useFetchData('/shipper/orders', {
+  // Lấy TOÀN BỘ đơn đã hoàn thành (size lớn) để tổng thu nhập chính xác — đơn của 1 shipper ít nên nhẹ.
+  const { data: stats, loading, error, refetch } = useFetchData('/shipper/orders?status=COMPLETED&size=1000', {
     mapFn: mapEarnings,
   });
 
@@ -81,6 +79,9 @@ export default function ShipperEarnings() {
   const earningsStats = stats || {
     totalEarnings: 0,
     completedCount: 0,
+    todayEarnings: 0, todayCount: 0,
+    week7dEarnings: 0, week7dCount: 0,
+    ratedCount: 0,
     dailyData: [],
     rating: '5.0'
   };
@@ -136,27 +137,49 @@ export default function ShipperEarnings() {
         </div>
       </div>
 
+      {/* ─── HÔM NAY · 7 NGÀY QUA (nổi bật, gradient màu) ────────────────────── */}
+      <div className="grid grid-cols-2 gap-3 md:gap-4">
+        <div className="relative overflow-hidden rounded-radius-xl p-4 md:p-5 border border-emerald-100 bg-gradient-to-br from-emerald-50 to-white shadow-sm animate-rise-in">
+          <div className="absolute -right-4 -top-4 w-16 h-16 rounded-full bg-emerald-400/10" />
+          <div className="relative flex items-center gap-2 text-emerald-600">
+            <Sun size={15} className="animate-pulse-slow" />
+            <span className="text-[10px] font-extrabold uppercase tracking-wide">Thu nhập hôm nay</span>
+          </div>
+          <p className="relative text-xl md:text-2xl font-black text-slate-800 mt-2 leading-none">{formatCurrency(earningsStats.todayEarnings)}</p>
+          <p className="relative text-[11px] text-slate-500 font-semibold mt-1.5">{earningsStats.todayCount} đơn hoàn thành hôm nay</p>
+        </div>
+        <div className="relative overflow-hidden rounded-radius-xl p-4 md:p-5 border border-teal-100 bg-gradient-to-br from-teal-50 to-white shadow-sm animate-rise-in" style={{ animationDelay: '80ms' }}>
+          <div className="absolute -right-4 -top-4 w-16 h-16 rounded-full bg-teal-400/10" />
+          <div className="relative flex items-center gap-2 text-teal-600">
+            <TrendingUp size={15} className="animate-float" />
+            <span className="text-[10px] font-extrabold uppercase tracking-wide">Thu nhập 7 ngày qua</span>
+          </div>
+          <p className="relative text-xl md:text-2xl font-black text-slate-800 mt-2 leading-none">{formatCurrency(earningsStats.week7dEarnings)}</p>
+          <p className="relative text-[11px] text-slate-500 font-semibold mt-1.5">{earningsStats.week7dCount} đơn trong 7 ngày</p>
+        </div>
+      </div>
+
       {/* ─── HÀNG KPI: đơn hoàn thành · TB mỗi đơn · đánh giá ─────────────────── */}
       <div className="grid grid-cols-3 gap-3 md:gap-4">
-        <div className="bg-white rounded-radius-xl p-4 border border-slate-200/60 shadow-sm flex flex-col items-start gap-2">
-          <div className="p-2 rounded-radius-md bg-emerald-50 text-emerald-500"><CheckCircle2 size={18} /></div>
+        <div className="group bg-white rounded-radius-xl p-4 border border-slate-200/60 shadow-sm flex flex-col items-start gap-2 hover:-translate-y-0.5 hover:shadow-md transition-all animate-rise-in" style={{ animationDelay: '120ms' }}>
+          <div className="p-2 rounded-radius-md bg-emerald-50 text-emerald-500 transition-transform group-hover:scale-110"><CheckCircle2 size={18} /></div>
           <div>
-            <span className="text-base md:text-lg font-black text-slate-800 block">{earningsStats.completedCount}</span>
+            <span className="text-base md:text-lg font-black text-slate-800 block tabular-nums">{earningsStats.completedCount}</span>
             <span className="text-[9px] md:text-[10px] text-slate-400 font-bold uppercase tracking-wide">Đơn hoàn thành</span>
           </div>
         </div>
-        <div className="bg-white rounded-radius-xl p-4 border border-slate-200/60 shadow-sm flex flex-col items-start gap-2">
-          <div className="p-2 rounded-radius-md bg-[#E8F5E9] text-md-tertiary"><Wallet size={18} /></div>
+        <div className="group bg-white rounded-radius-xl p-4 border border-slate-200/60 shadow-sm flex flex-col items-start gap-2 hover:-translate-y-0.5 hover:shadow-md transition-all animate-rise-in" style={{ animationDelay: '160ms' }}>
+          <div className="p-2 rounded-radius-md bg-[#E8F5E9] text-md-tertiary transition-transform group-hover:scale-110"><Wallet size={18} /></div>
           <div>
             <span className="text-base md:text-lg font-black text-slate-800 block">{formatCurrency(avgPerOrder)}</span>
             <span className="text-[9px] md:text-[10px] text-slate-400 font-bold uppercase tracking-wide">TB mỗi đơn</span>
           </div>
         </div>
-        <div className="bg-white rounded-radius-xl p-4 border border-slate-200/60 shadow-sm flex flex-col items-start gap-2">
-          <div className="p-2 rounded-radius-md bg-amber-50 text-amber-500"><Star size={18} className="fill-amber-400 text-amber-400" /></div>
+        <div className="group bg-white rounded-radius-xl p-4 border border-slate-200/60 shadow-sm flex flex-col items-start gap-2 hover:-translate-y-0.5 hover:shadow-md transition-all animate-rise-in" style={{ animationDelay: '200ms' }}>
+          <div className="p-2 rounded-radius-md bg-amber-50 text-amber-500 transition-transform group-hover:scale-110"><Star size={18} className="fill-amber-400 text-amber-400" /></div>
           <div>
             <span className="text-base md:text-lg font-black text-slate-800 block">{earningsStats.rating}</span>
-            <span className="text-[9px] md:text-[10px] text-slate-400 font-bold uppercase tracking-wide">Đánh giá TB</span>
+            <span className="text-[9px] md:text-[10px] text-slate-400 font-bold uppercase tracking-wide">{earningsStats.ratedCount > 0 ? `Từ ${earningsStats.ratedCount} đánh giá` : 'Đánh giá TB'}</span>
           </div>
         </div>
       </div>

@@ -721,20 +721,20 @@ export default function ShipperPickup() {
                     </div>
                   </div>
 
-                  <div className="flex items-center justify-between border-t border-slate-100 pt-3 mt-1 flex-nowrap gap-2">
-                    <div className="shrink-0">
+                  <div className="border-t border-slate-100 pt-3 mt-1">
+                    <div className="mb-3">
                       <span className="text-[9px] text-slate-400 block font-bold uppercase leading-none tracking-wider">Phí giao hàng</span>
-                      <span className="font-extrabold text-xs sm:text-sm text-md-tertiary mt-1 block leading-none">{formatCurrency(order.fee)}</span>
+                      <span className="font-extrabold text-base text-md-tertiary mt-1 block leading-none">{formatCurrency(order.fee)}</span>
                     </div>
 
-                    <div className="flex items-center gap-1.5 shrink-0">
-                      {/* Yêu cầu 2: Đồng bộ kiểu chữ của nút "Chi tiết" giống nút "Nhận đơn" */}
+                    {/* 2 nút chia đôi full-width — không bị ép/cắt chữ khi card hẹp (4 cột) */}
+                    <div className="grid grid-cols-2 gap-2">
                       <Button
                         onClick={() => handleOpenDetail(order)}
                         variant="outline"
                         size="sm"
                         icon={Eye}
-                        className="!rounded-radius-full !px-2.5 sm:!px-3 !py-2 text-[10px] sm:text-xs uppercase tracking-wider"
+                        className="w-full justify-center !rounded-radius-full !px-2 !py-2 text-[10px] sm:text-xs uppercase tracking-wider"
                       >
                         Chi tiết
                       </Button>
@@ -743,7 +743,7 @@ export default function ShipperPickup() {
                         variant="primary"
                         size="sm"
                         icon={Check}
-                        className="!bg-md-tertiary hover:!bg-opacity-95 !rounded-radius-full !px-3 sm:!px-4 !py-2 text-[10px] sm:text-xs uppercase tracking-wider"
+                        className="w-full justify-center !bg-md-tertiary hover:!bg-opacity-95 !rounded-radius-full !px-2 !py-2 text-[10px] sm:text-xs uppercase tracking-wider"
                       >
                         Nhận đơn
                       </Button>

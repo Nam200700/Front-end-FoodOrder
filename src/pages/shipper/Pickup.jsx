@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Map, MapPin, Navigation, Bike, DollarSign, Check, Phone, MessageSquare, Eye, X, Utensils, Home, AlertTriangle, FileText, Route, PowerOff } from 'lucide-react';
+import { Map, MapPin, Navigation, Bike, DollarSign, Check, Phone, MessageSquare, Eye, X, Utensils, Home, AlertTriangle, FileText, Route, PowerOff, RefreshCw, Zap, Bell } from 'lucide-react';
 import { formatCurrency } from '../../utils/format';
 import apiClient from '../../services/api';
 import Spinner from '../../components/common/Spinner';
@@ -449,6 +449,15 @@ export default function ShipperPickup() {
 
   const activeDistance = activeJob ? orderDistanceCache[activeJob.id] : null;
 
+  // Quét lại đơn khả dụng thủ công (nút "Làm mới") — icon xoay trong lúc quét.
+  const [refreshing, setRefreshing] = useState(false);
+  const handleRefreshAvailable = async () => {
+    if (refreshing) return;
+    setRefreshing(true);
+    try { await fetchAvailableOrders(); }
+    finally { setTimeout(() => setRefreshing(false), 500); }
+  };
+
   return (
     <div className="flex-1 p-4 md:p-8 max-w-4xl mx-auto w-full font-google-sans pb-24 space-y-6">
 
@@ -603,10 +612,22 @@ export default function ShipperPickup() {
       ) : (
         /* AVAILABLE JOBS LIST */
         <div className="space-y-4 animate-fade-in">
-          <h2 className="text-xs md:text-sm font-extrabold text-slate-800 uppercase tracking-wider flex items-center gap-1.5 mb-2">
-            <Navigation className="text-md-tertiary" size={18} />
-            Đơn hàng khả dụng ({availableOrders.length})
-          </h2>
+          <div className="flex items-center justify-between mb-2 gap-3">
+            <h2 className="text-xs md:text-sm font-extrabold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+              <Navigation className="text-md-tertiary" size={18} />
+              Đơn hàng khả dụng
+              <span className="text-white bg-md-tertiary px-2 py-0.5 rounded-full text-[11px] normal-case">{availableOrders.length}</span>
+            </h2>
+            {online && (
+              <button
+                onClick={handleRefreshAvailable}
+                disabled={refreshing}
+                className="inline-flex items-center gap-1.5 text-[11px] font-bold text-md-tertiary bg-emerald-50 hover:bg-emerald-100 px-3 py-1.5 rounded-full transition-all active:scale-95 cursor-pointer disabled:opacity-60"
+              >
+                <RefreshCw size={13} className={refreshing ? 'animate-spin' : ''} /> {refreshing ? 'Đang quét…' : 'Làm mới'}
+              </button>
+            )}
+          </div>
 
           {!online ? (
             <Card variant="elevated" className="!rounded-radius-xl p-10 text-center text-xs text-slate-400 font-semibold leading-relaxed flex flex-col items-center gap-3">

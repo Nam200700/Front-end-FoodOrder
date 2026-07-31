@@ -49,6 +49,7 @@ const AdminUsers = lazy(() => import('../pages/admin/Users'));
 const AdminOrders = lazy(() => import('../pages/admin/Orders'));
 const AdminReports = lazy(() => import('../pages/admin/Reports'));
 const AdminStats = lazy(() => import('../pages/admin/Stats'));
+const AdminVouchers = lazy(() => import('../pages/admin/Voucher'));
 
 function ProtectedRoute({ children, allowedRoles }) {
   const { isLoggedIn, role, user, hasHydrated, authReady } = useAuthStore();
@@ -216,6 +217,7 @@ export default function AppRoutes() {
         <Route path="orders" element={<AdminOrders />} />
         <Route path="reports" element={<AdminReports />} />
         <Route path="stats" element={<AdminStats />} />
+        <Route path="vouchers" element={<AdminVouchers />} />
       </Route>
 
       {/* Fallback NotFound */}

@@ -1,4 +1,4 @@
-import { getAvatarUrl } from './avatarHelper';
+import { getAvatarUrl, getRestaurantBannerUrl } from './avatarHelper';
 
 /**
  * Map dữ liệu thô từ API của Order về định dạng chuẩn dùng trên UI của Customer, Merchant và Shipper.

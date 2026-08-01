@@ -85,10 +85,12 @@ export default function RevenueAreaChart({
                 name={area.name}
                 dataKey={area.key}
                 stroke={c}
-                fill={`url(#${gradientId})`}
+                strokeDasharray={area.dashed ? '6 5' : undefined}
+                fill={area.dashed ? 'transparent' : `url(#${gradientId})`}
                 strokeWidth={dense ? 2 : 2.5}
                 strokeLinecap="round"
                 strokeLinejoin="round"
+                connectNulls={connectNulls}
                 dot={dense ? false : { r: 2.5, strokeWidth: 1.5, fill: '#fff', stroke: c }}
                 activeDot={{ r: 5, strokeWidth: 2, fill: '#fff', stroke: c }}
               />

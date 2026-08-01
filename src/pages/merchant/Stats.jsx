@@ -202,18 +202,12 @@ export default function MerchantStats() {
             </span>
             Báo Cáo Tài Chính Nhà Hàng
           </h1>
-          <p className="text-xs text-slate-400 mt-1 ml-11">Số liệu gộp tại máy chủ · chính xác toàn bộ đơn · {RANGE_LABEL[filterRange]}</p>
         </div>
         <FilterTabs
-          tabs={[
-            { id: '7days', label: '7 Ngày' },
-            { id: '30days', label: '30 Ngày' },
-            { id: 'thisMonth', label: 'Tháng Này' },
-            { id: 'all', label: 'Tất Cả' },
-          ]}
+          tabs={RANGE_TABS}
           activeTab={filterRange}
           onTabChange={setFilterRange}
-          className="self-start sm:self-center bg-slate-100 p-1 rounded-radius-lg border border-slate-200/40"
+          className="self-start sm:self-center bg-slate-100 p-1 rounded-radius-lg border border-slate-200/40 max-w-full"
           activeClassName="bg-md-secondary text-white shadow-sm shadow-md-secondary/25"
         />
       </div>

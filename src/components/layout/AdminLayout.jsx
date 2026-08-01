@@ -19,7 +19,8 @@ import {
   Settings,
   Menu,
   X,
-  Shield
+  Shield,
+  Ticket 
 } from 'lucide-react';
 
 import { useAvatarUpload } from '../../hooks/useAvatarUpload';
@@ -86,7 +87,7 @@ export default function AdminLayout() {
     { path: '/admin/shippers', name: 'Quản lý shipper', icon: Bike, badge: pendingShipperCount },
     { path: '/admin/users', name: 'Tài khoản', icon: Users },
     { path: '/admin/orders', name: 'Tất cả đơn', icon: Package },
-    { path: '/admin/vouchers', name: 'Voucher', icon: Package },
+    { path: '/admin/vouchers', name: 'Voucher', icon: Ticket  },
     { path: '/admin/reports', name: 'Báo cáo vi phạm', icon: AlertTriangle, badge: reportCount },
     { path: '/admin/stats', name: 'Thống kê hệ thống', icon: LineChart },
   ];

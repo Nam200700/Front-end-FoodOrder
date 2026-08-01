@@ -22,26 +22,8 @@ const RATING_META = {
 };
 const metaFor = (rating) => RATING_META[Math.min(5, Math.max(1, Math.round(rating)))] || RATING_META[5];
 
-// Phân loại cụm nhận xét thành KHEN / CẦN CẢI THIỆN — đồng bộ SHIPPER_TAGS bên customer (Reviews.jsx).
-const POS_TAGS = new Set([
-  'giao hàng nhanh', 'giao đúng giờ', 'tài xế thân thiện', 'vui vẻ nhiệt tình',
-  'cẩn thận với món', 'đóng gói nguyên vẹn', 'gọi điện lịch sự', 'giao tận nơi', 'chuyên nghiệp',
-]);
-const NEG_TAGS = new Set([
-  'giao hàng trễ', 'thái độ chưa tốt', 'làm rơi/hỏng món', 'khó liên lạc',
-  'giao sai địa chỉ', 'không gọi trước', 'món bị xáo trộn', 'thiếu chuyên nghiệp',
-]);
-const NEU_TAGS = new Set(['tạm ổn', 'bình thường', 'giao đúng nơi', 'liên lạc được']);
-// Từ khoá tiêu cực để bắt cả nhận xét khách tự gõ (không nằm trong tag gợi ý).
-const NEG_RE = /trễ|chậm|hỏng|rơi|sai|khó|thiếu|tệ|kém|lâu|xáo trộn|chưa tốt|thái độ|thô lỗ|bất lịch sự|không gọi|quên/;
-
-// 'good' = khen · 'bad' = cần cải thiện · 'skip' = trung tính, không tính vào đâu.
-function classifyPhrase(key) {
-  if (POS_TAGS.has(key)) return 'good';
-  if (NEG_TAGS.has(key) || NEG_RE.test(key)) return 'bad';
-  if (NEU_TAGS.has(key)) return 'skip';
-  return 'good'; // nhận xét tự do mặc định coi là tích cực
-}
+// Việc phân loại KHEN / CẦN CẢI THIỆN nay gộp ở SERVER (ReviewService.shipperReviewSummary)
+// → summary trả sẵn compliments/complaints, FE không phải tải hết đánh giá để tự tính.
 
 // Card đám chip highlight dùng chung cho cả Khen (xanh) lẫn Cần cải thiện (hổ phách).
 function HighlightCard({ title, items, tone }) {
@@ -133,95 +115,75 @@ const SORTS = [
   { id: 'low', label: 'Sao thấp nhất' },
 ];
 
+// Map id sắp xếp FE → tham số Spring Sort (server-side).
+const SORT_PARAM = { recent: 'createdAt,desc', oldest: 'createdAt,asc', high: 'shipperRating,desc', low: 'shipperRating,asc' };
+
 export default function ShipperReviews() {
   const [starFilter, setStarFilter] = useState('all');
   const [sortBy, setSortBy] = useState('recent');
   const [imageOnly, setImageOnly] = useState(false);
   const [selectedImage, setSelectedImage] = useState(null);
   const [page, setPage] = useState(0);
-  const size = 10;
+  const size = 8; // mỗi trang — KHÔNG tải hết một lượt
 
-  const mapReviews = (data) => {
-    const realData = data?.content || [];
-    return realData.map(rev => ({
-      id: rev.reviewId.toString(),
-      author: rev.customerName || 'Khách hàng',
-      rating: rev.shipperRating || 5,
-      ts: new Date(rev.createdAt).getTime(),
-      date: new Date(rev.createdAt).toLocaleDateString('vi-VN') + ' ' + new Date(rev.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }),
-      comment: rev.shipperComment || '',
-      images: rev.images || []
-    }));
-  };
-
-  // Tải TOÀN BỘ đánh giá (size lớn) để điểm TB, phân bố sao và bộ lọc tính trên tất cả — khớp với tổng hiển thị.
-  const { data: reviews, loading: loadingReviews, error: errorReviews, refetch } = useFetchData(
-    `/shipper/reviews?page=0&size=1000`,
-    { mapFn: mapReviews }
-  );
-
-  const loading = loadingReviews;
-  const reviewsList = reviews || []; // TẤT CẢ đánh giá
-  const totalReviews = reviewsList.length; // tổng THẬT = số đã tải
-
-  // Điểm trung bình + phân bố sao tính trên TOÀN BỘ đánh giá (nhất quán với tổng).
-  const avgRating = reviewsList.length ? reviewsList.reduce((s, r) => s + (r.rating || 0), 0) / reviewsList.length : 0;
-  const ratingDist = [5, 4, 3, 2, 1].map((star) => {
-    const count = reviewsList.filter((r) => Math.round(r.rating) === star).length;
-    return { star, count, pct: reviewsList.length ? (count / reviewsList.length) * 100 : 0 };
+  const mapRev = (rev) => ({
+    id: rev.reviewId.toString(),
+    author: rev.customerName || 'Khách hàng',
+    rating: rev.shipperRating || 5,
+    date: new Date(rev.createdAt).toLocaleDateString('vi-VN') + ' ' + new Date(rev.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }),
+    comment: rev.shipperComment || '',
+    images: rev.images || [],
   });
 
-  // ─── CHỈ SỐ NÂNG CAO: % hài lòng (4–5★) + điểm 30 ngày gần đây (Trustpilot/Airbnb style) ───
-  const positiveCount = reviewsList.filter((r) => r.rating >= 4).length;
-  const satisfaction = totalReviews ? Math.round((positiveCount / totalReviews) * 100) : 0;
-  const since30 = Date.now() - 30 * 86400000;
-  const recentReviews = reviewsList.filter((r) => r.ts >= since30);
-  const recentAvg = recentReviews.length
-    ? recentReviews.reduce((s, r) => s + (r.rating || 0), 0) / recentReviews.length
-    : 0;
-  const withImageCount = reviewsList.filter((r) => r.images && r.images.length > 0).length;
+  // ─── TÓM TẮT: gộp TOÀN BỘ ở server (điểm TB, phân bố sao, % hài lòng, 30 ngày, lời khen/phàn nàn) ───
+  const { data: summary, loading: loadingSummary, error: errorSummary, refetch: refetchSummary } =
+    useFetchData('/shipper/reviews/summary', { mapFn: (d) => d });
 
-  // ─── GOM NHẬN XÉT: tách cụm khách để lại → đếm tần suất → PHÂN thành KHEN vs CẦN CẢI THIỆN ───
-  const { compliments, complaints } = useMemo(() => {
-    const good = new Map();
-    const bad = new Map();
-    reviewsList.forEach((r) => {
-      if (!r.comment) return;
-      r.comment.split(/[,;·|/]+/).forEach((raw) => {
-        const t = raw.trim();
-        if (t.length < 3 || t.length > 30) return; // bỏ câu quá dài (không phải nhãn)
-        const key = t.toLowerCase();
-        const band = classifyPhrase(key);
-        if (band === 'skip') return;
-        const bucket = band === 'bad' ? bad : good;
-        const prev = bucket.get(key);
-        if (prev) prev.count += 1; else bucket.set(key, { text: t, count: 1 });
-      });
+  // ─── DANH SÁCH: phân trang THẬT ở server + lọc sao/ảnh + sắp xếp (payload nhỏ, không nghẽn) ───
+  const listUrl = useMemo(() => {
+    const p = new URLSearchParams({ page: String(page), size: String(size), sort: SORT_PARAM[sortBy] || SORT_PARAM.recent });
+    if (starFilter !== 'all') p.append('star', starFilter);
+    if (imageOnly) p.append('imageOnly', 'true');
+    return `/shipper/reviews?${p.toString()}`;
+  }, [page, sortBy, starFilter, imageOnly]);
+  const { data: listData, loading: loadingList, error: errorList, refetch: refetchList } =
+    useFetchData(listUrl, {
+      mapFn: (d) => ({
+        items: (d?.content || []).map(mapRev),
+        totalPages: Math.max(1, d?.totalPages || 1),
+        totalElements: d?.totalElements ?? 0,
+      }),
     });
-    const top = (m, n) => [...m.values()].sort((a, b) => b.count - a.count).slice(0, n);
-    return { compliments: top(good, 8), complaints: top(bad, 6) };
-  }, [reviewsList]);
+
+  const errorReviews = errorSummary || errorList;
+  const refetch = () => { refetchSummary(); refetchList(); };
+
+  // ─── Số liệu tổng quan lấy từ summary (không tự tính client trên 1000 dòng) ───
+  const s = summary || {};
+  const totalReviews = s.total || 0;
+  const avgRating = Number(s.avg || 0);
+  const ratingDist = (s.distribution && s.distribution.length
+    ? s.distribution
+    : [5, 4, 3, 2, 1].map((star) => ({ star, count: 0 }))
+  ).map((x) => ({ star: x.star, count: x.count || 0, pct: totalReviews ? ((x.count || 0) / totalReviews) * 100 : 0 }));
+
+  const positiveCount = s.positiveCount || 0;
+  const satisfaction = totalReviews ? Math.round((positiveCount / totalReviews) * 100) : 0;
+  const recentCount = s.recentCount || 0;
+  const recentAvg = Number(s.recentAvg || 0);
+  const withImageCount = s.withImageCount || 0;
+  const compliments = s.compliments || [];
+  const complaints = s.complaints || [];
   const hasHighlights = compliments.length > 0 || complaints.length > 0;
 
   const animatedAvg = useCountUp(Number(avgRating.toFixed(1)));
 
-  // ─── PIPELINE: lọc sao → lọc ảnh → sắp xếp → phân trang client ───
-  const processed = useMemo(() => {
-    let arr = reviewsList;
-    if (starFilter !== 'all') arr = arr.filter((r) => Math.round(r.rating) === Number(starFilter));
-    if (imageOnly) arr = arr.filter((r) => r.images && r.images.length > 0);
-    arr = [...arr].sort((a, b) => {
-      if (sortBy === 'oldest') return a.ts - b.ts;
-      if (sortBy === 'high') return b.rating - a.rating || b.ts - a.ts;
-      if (sortBy === 'low') return a.rating - b.rating || b.ts - a.ts;
-      return b.ts - a.ts; // recent
-    });
-    return arr;
-  }, [reviewsList, starFilter, imageOnly, sortBy]);
-
-  const totalPages = Math.max(1, Math.ceil(processed.length / size));
+  const list = listData || { items: [], totalPages: 1, totalElements: 0 };
+  const filteredReviews = list.items;
+  const totalPages = list.totalPages;
   const safePage = Math.min(page, totalPages - 1);
-  const filteredReviews = processed.slice(safePage * size, safePage * size + size);
+
+  const loading = loadingSummary || loadingList;
 
   // các setter đổi bộ lọc/sắp xếp đều về trang đầu
   const changeFilter = (v) => { setStarFilter(v); setPage(0); };
@@ -241,7 +203,7 @@ export default function ShipperReviews() {
     );
   }
 
-  if (loading && reviewsList.length === 0) {
+  if (loading && !summary && !listData) {
     return (
       <div className="flex-1 p-6 md:p-8 max-w-3xl mx-auto w-full font-google-sans"><Spinner /></div>
     );
@@ -298,16 +260,16 @@ export default function ShipperReviews() {
                 <TrendingUp size={13} /> 30 ngày qua
               </div>
               <p className="text-2xl font-black mt-1 leading-none flex items-center gap-1">
-                {recentReviews.length ? recentAvg.toFixed(1) : '—'}
-                {recentReviews.length > 0 && <Star size={15} className="fill-amber-300 text-amber-300" />}
+                {recentCount ? recentAvg.toFixed(1) : '—'}
+                {recentCount > 0 && <Star size={15} className="fill-amber-300 text-amber-300" />}
               </p>
-              <p className="text-[10px] text-white/70 font-semibold mt-1">{recentReviews.length} đánh giá gần đây</p>
+              <p className="text-[10px] text-white/70 font-semibold mt-1">{recentCount} đánh giá gần đây</p>
             </div>
           </div>
         </div>
       </div>
 
-      {reviewsList.length === 0 ? (
+      {totalReviews === 0 ? (
         <Card variant="elevated" className="bg-white rounded-xl border border-slate-100 shadow-sm p-4 md:p-5 flex flex-col text-center py-16">
           <Star size={48} className="mx-auto text-slate-300 mb-3.5" />
           <p className="text-sm font-bold text-slate-600">Bạn chưa có đánh giá nào</p>
@@ -419,7 +381,7 @@ export default function ShipperReviews() {
             </button>
 
             <p className="ml-auto text-xs font-semibold text-slate-500">
-              <span className="font-extrabold text-md-tertiary">{processed.length}</span> đánh giá
+              <span className="font-extrabold text-md-tertiary">{list.totalElements}</span> đánh giá
             </p>
           </div>
 

@@ -103,6 +103,43 @@ export function periodComparison(series, valueKey, countKey = 'orders', now = ne
 }
 
 /**
+ * SO SÁNH KỲ ĐANG CHỌN vs KỲ TRƯỚC TƯƠNG ĐƯƠNG cho trang Thống kê.
+ *   range: '7days' | '30days' | 'thisMonth' | 'all'  ('all' → null vì không có kỳ trước)
+ * Trả { cur, prev, curCount, prevCount, valueDelta, countDelta, label } hoặc null.
+ */
+export function rangeOverRange(series, valueKey, range, countKey = 'orders', now = new Date()) {
+  if (!range || range === 'all') return null;
+  const dayMap = toDayMap(series, valueKey, countKey);
+  const today = new Date(now); today.setHours(0, 0, 0, 0);
+  let curFrom, curTo, prevFrom, prevTo, label;
+
+  if (range === '7days' || range === '30days') {
+    const span = range === '7days' ? 7 : 30;
+    curTo = new Date(today);
+    curFrom = new Date(today); curFrom.setDate(curFrom.getDate() - (span - 1));
+    prevTo = new Date(curFrom); prevTo.setDate(prevTo.getDate() - 1);
+    prevFrom = new Date(prevTo); prevFrom.setDate(prevFrom.getDate() - (span - 1));
+    label = `${span} ngày trước đó`;
+  } else if (range === 'thisMonth') {
+    curFrom = new Date(today.getFullYear(), today.getMonth(), 1);
+    curTo = new Date(today);
+    const elapsed = today.getDate();
+    prevFrom = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+    prevTo = new Date(prevFrom); prevTo.setDate(prevTo.getDate() + elapsed - 1); // cùng số ngày đã trôi
+    label = 'cùng kỳ tháng trước';
+  } else {
+    return null;
+  }
+
+  const cur = sumBetween(dayMap, curFrom, curTo);
+  const prev = sumBetween(dayMap, prevFrom, prevTo);
+  return {
+    cur: cur.value, prev: prev.value, curCount: cur.count, prevCount: prev.count,
+    valueDelta: delta(cur.value, prev.value), countDelta: delta(cur.count, prev.count), label,
+  };
+}
+
+/**
  * DỰ BÁO CUỐI THÁNG theo tốc độ (run-rate): projected = tháng-đến-nay / ngày-đã-qua × ngày-trong-tháng.
  * So với THÁNG TRƯỚC (đủ tháng) để biết đang trên/dưới đà.
  */

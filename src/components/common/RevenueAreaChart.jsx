@@ -13,7 +13,8 @@ export default function RevenueAreaChart({
   chartType = 'area', // 'area' hoặc 'bar'
   brush = false,      // hiện thanh kéo trượt (scroll) để kéo dữ liệu qua lại
   brushWindow = 21,   // số điểm hiển thị mặc định khi có brush (mới nhất)
-  valueFormatter      // format giá trị trong tooltip; mặc định làm tròn số nguyên (không để lộ số lẻ)
+  valueFormatter,     // format giá trị trong tooltip; mặc định làm tròn số nguyên (không để lộ số lẻ)
+  connectNulls = false // nối qua điểm null (dùng cho đường forecast có đoạn null ở quá khứ)
 }) {
   // Mặc định: làm tròn về số nguyên + phân tách nghìn (khử số lẻ .22 & rác dấu phẩy động khi gom bucket).
   const fmtValue = valueFormatter || ((v) => {

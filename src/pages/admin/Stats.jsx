@@ -6,13 +6,15 @@ import Spinner from '../../components/common/Spinner';
 import KPICard from '../../components/common/KPICard';
 import DonutChart from '../../components/common/DonutChart';
 import {
-  TrendingUp, Users, Store, DollarSign, Percent, CreditCard, Shield,
+  TrendingUp, TrendingDown, Minus, Users, Store, DollarSign, Percent, CreditCard, Shield,
   BarChart3, AreaChart, Flame, Wallet, PackageCheck, XCircle, UserCheck,
+  Gauge, CalendarClock, CalendarRange, Search, Sparkles,
 } from 'lucide-react';
 import FilterTabs from '../../components/common/FilterTabs';
 import SeriesFilterBar from '../../components/common/SeriesFilterBar';
+import InfoTip from '../../components/common/InfoTip';
 import { aggregateDaily, pickGranularity, bucketLabel, granularityCaption } from '../../utils/chartAggregate';
-import { availablePeriods, filterSeries } from '../../utils/dashboardAnalytics';
+import { availablePeriods, filterSeries, rangeOverRange } from '../../utils/dashboardAnalytics';
 
 const COLORS = ['#8B5CF6', '#10B981', '#F43F5E', '#06B6D4', '#F59E0B', '#3B82F6'];
 const PAYMENT_LABELS = { PAID: 'Đã thanh toán', PENDING: 'Chờ thanh toán', REFUNDED: 'Đã hoàn tiền', FAILED: 'Thất bại' };
@@ -29,6 +31,9 @@ export default function AdminStats() {
   const [hiddenPaymentKeys, setHiddenPaymentKeys] = useState(new Set());
   const [hiddenUserKeys, setHiddenUserKeys] = useState(new Set());
   const [seriesFilter, setSeriesFilter] = useState({ year: 'ALL', month: 'ALL', weekday: 'ALL' });
+  const [insights, setInsights] = useState(null);
+  const [topQuery, setTopQuery] = useState('');
+  const [topExpanded, setTopExpanded] = useState(false);
 
   const toggleKey = (setter) => (name) => setter(prev => {
     const next = new Set(prev);

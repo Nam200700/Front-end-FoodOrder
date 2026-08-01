@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import RevenueAreaChart from '../../components/common/RevenueAreaChart';
 import { aggregateDaily, pickGranularity, bucketLabel, granularityCaption } from '../../utils/chartAggregate';
+import { availablePeriods, filterSeries } from '../../utils/dashboardAnalytics';
+import SeriesFilterBar from '../../components/common/SeriesFilterBar';
 import { formatCurrency } from '../../utils/format';
 import apiClient from '../../services/api';
 import Spinner from '../../components/common/Spinner';
@@ -34,6 +36,7 @@ export default function MerchantStats() {
   const [chartType, setChartType] = useState('area');
   const [hiddenPaymentKeys, setHiddenPaymentKeys] = useState(new Set());
   const [hiddenStatusKeys, setHiddenStatusKeys] = useState(new Set());
+  const [seriesFilter, setSeriesFilter] = useState({ year: 'ALL', month: 'ALL', weekday: 'ALL' });
 
   const toggleKey = (setter) => (name) => setter(prev => {
     const next = new Set(prev);
@@ -78,14 +81,18 @@ export default function MerchantStats() {
   const rate = report?.commissionRate != null ? Number(report.commissionRate) : 0.1;
   const ratePct = Math.round(rate * 100);
 
+  // Danh sách năm·tháng có trong dữ liệu (đầy đủ nhất khi range = "Tất cả").
+  const periods = useMemo(() => availablePeriods(report?.daily || []), [report]);
+  const seriesActive = seriesFilter.year !== 'ALL' || seriesFilter.month !== 'ALL' || seriesFilter.weekday !== 'ALL';
+
   // Chuỗi ngày cho biểu đồ (subtotal + thực nhận = subtotal*(1-rate)).
   // Gom theo ngày/tuần/tháng tuỳ độ dày để biểu đồ giãn ra, dễ đọc xu hướng.
   const { timelineData, chartGranularity } = useMemo(() => {
-    const raw = (report?.daily || []).map(d => ({
+    const raw = filterSeries((report?.daily || []).map(d => ({
       date: d.date,
       sub: Number(d.subtotal || 0),
       orders: Number(d.orders || 0),
-    }));
+    })), seriesFilter);
     const gran = pickGranularity(raw.length);
     const agg = aggregateDaily(raw, 'date', gran);
     const data = agg.map(d => ({
@@ -95,7 +102,7 @@ export default function MerchantStats() {
       orders: d.orders || 0,
     }));
     return { timelineData: data, chartGranularity: gran };
-  }, [report, rate]);
+  }, [report, rate, seriesFilter]);
 
   const paymentData = useMemo(() => {
     return (report?.paymentDist || []).map(b => ({
@@ -246,6 +253,13 @@ export default function MerchantStats() {
                   className="px-2 py-1.5 rounded bg-slate-50 border border-slate-200 text-slate-600 hover:text-md-secondary cursor-pointer text-[10px] font-bold transition-all flex items-center gap-1 shrink-0">
                   {chartType === 'area' ? (<><BarChart3 size={11} /> Dạng Cột</>) : (<><AreaChart size={11} /> Dạng Miền</>)}
                 </button>
+              </div>
+              {/* Bộ lọc chuỗi theo tháng · năm · thứ (đầy đủ nhất khi chọn range "Tất cả") */}
+              <div className="flex items-center justify-between gap-2 flex-wrap">
+                <SeriesFilterBar periods={periods} value={seriesFilter} onChange={setSeriesFilter} theme="light" />
+                {seriesActive && (
+                  <span className="text-[10px] text-slate-400 font-semibold">Đang lọc riêng biểu đồ xu hướng</span>
+                )}
               </div>
               {timelineData.length === 0 ? (
                 <div className="h-64 flex items-center justify-center text-xs font-bold text-slate-400">Chưa có dữ liệu giao dịch trong kỳ này.</div>

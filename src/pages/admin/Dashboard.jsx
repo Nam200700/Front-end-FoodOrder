@@ -311,6 +311,40 @@ export default function AdminDashboard() {
         </div>
       </div>
 
+      {/* ─── DỰ BÁO CUỐI THÁNG + ĐƯỜNG XU HƯỚNG 7 NGÀY TỚI ─── */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <ForecastCard forecast={forecast} formatValue={formatCurrency} theme="dark"
+          accent={{ text: 'text-purple-400', bar: 'bg-purple-500' }} title="Dự báo GTV cuối tháng" />
+
+        <div className="bg-slate-950 border border-slate-800 rounded-radius-xl p-5 lg:col-span-2 space-y-3">
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <h3 className="text-xs font-extrabold text-slate-200 uppercase tracking-wider flex items-center gap-1.5">
+              <TrendingUp className="text-purple-400" size={18} /> Xu hướng 30 ngày & dự báo 7 ngày tới
+            </h3>
+            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+              forecastChart.slope > 0 ? 'text-emerald-400 border-emerald-500/25 bg-emerald-950/20'
+              : forecastChart.slope < 0 ? 'text-red-400 border-red-500/25 bg-red-950/20'
+              : 'text-slate-400 border-slate-800 bg-slate-900'}`}>
+              {forecastChart.slope > 0 ? 'Đang tăng' : forecastChart.slope < 0 ? 'Đang giảm' : 'Đi ngang'}
+            </span>
+          </div>
+          <p className="text-[10px] text-slate-500 font-semibold -mt-1">
+            Đường nét đứt là ước tính theo hồi quy tuyến tính · chỉ mang tính tham khảo
+          </p>
+          <div className="h-56 w-full text-[10px] font-bold">
+            <RevenueAreaChart
+              data={forecastChart.data} xKey="label" height={224} showLegend connectNulls
+              yTickFormatter={(v) => v >= 1000000 ? `${v / 1000000}M` : `${v / 1000}k`}
+              valueFormatter={formatCurrency}
+              areas={[
+                { key: 'actual', name: 'Thực tế (30 ngày)', color: '#9334E6' },
+                { key: 'forecast', name: 'Dự báo (7 ngày tới)', color: '#c084fc', dashed: true },
+              ]}
+            />
+          </div>
+        </div>
+      </div>
+
       {/* ─── KIỂM DUYỆT + VẬN HÀNH + TOÀN VẸN THANH TOÁN ─── */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 

@@ -69,12 +69,12 @@ export const mapOrder = (ord) => {
       // Avatar thật của tài xế nếu có; rỗng thì dùng ảnh mặc định SVG (giống fallback của customer),
       // không hardcode ảnh người lạ nữa.
       avatar: getAvatarUrl(ord.shipperAvatar),
-      rating: 4.9,
+      rating: ord.shipperAvgRating ?? null,
       bike: ord.shipperVehicleType === 'MOTORBIKE' ? 'Xe máy (Motorbike)' :
             ord.shipperVehicleType === 'BICYCLE' ? 'Xe đạp (Bicycle)' :
             ord.shipperVehicleType === 'CAR' ? 'Ô tô (Car)' : 'Phương tiện giao hàng',
       plate: ord.shipperLicensePlate || 'Chưa cập nhật biển số',
-      phone: ord.shipperPhone || '0987654321',
+      phone: ord.shipperPhone || '',
     } : null
   };
 };

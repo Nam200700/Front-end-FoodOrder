@@ -40,6 +40,7 @@ const MerchantSettings = lazy(() => import('../pages/merchant/Settings'));
 const ShipperPickup = lazy(() => import('../pages/shipper/Pickup'));
 const ShipperHistory = lazy(() => import('../pages/shipper/ShipperHistory'));
 const ShipperEarnings = lazy(() => import('../pages/shipper/ShipperEarnings'));
+const ShipperReviews = lazy(() => import('../pages/shipper/ShipperReviews'));
 const ShipperProfile = lazy(() => import('../pages/shipper/ShipperProfile'));
 
 const AdminDashboard = lazy(() => import('../pages/admin/Dashboard'));
@@ -199,6 +200,7 @@ export default function AppRoutes() {
         <Route index element={<ShipperPickup />} />
         <Route path="history" element={<ShipperHistory />} />
         <Route path="earnings" element={<ShipperEarnings />} />
+        <Route path="reviews" element={<ShipperReviews />} />
         <Route path="profile" element={<ShipperProfile />} />
         <Route path="chat" element={<Chat />} />
         <Route path="chat/:convId" element={<Chat />} />

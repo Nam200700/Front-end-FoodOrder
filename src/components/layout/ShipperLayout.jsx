@@ -16,6 +16,7 @@ import {
   MessageSquare,
   Menu,
   X,
+  Star,
   Bike
 } from 'lucide-react';
 
@@ -56,6 +57,7 @@ export default function ShipperLayout() {
     { path: '/shipper/history', name: 'Lịch Sử', icon: History },
     { path: '/shipper/chat', name: 'Tin nhắn', icon: MessageSquare, badge: unreadChatCount },
     { path: '/shipper/earnings', name: 'Thu Nhập', icon: DollarSign },
+    { path: '/shipper/reviews', name: 'Đánh Giá', icon: Star },
     { path: '/shipper/profile', name: 'Hồ Sơ', icon: User },
   ];
 

@@ -446,6 +446,94 @@ export default function AdminDashboard() {
         </div>
       </div>
 
+      {/* ─── PHÂN TÍCH VOUCHER (30 ngày) ─── */}
+      {(() => {
+        const vch = voucherAnalytics || {};
+        const hasVoucher = (vch.totalVouchers || 0) > 0 || (vch.redeemedOrders || 0) > 0;
+        const kpi = [
+          { label: 'Lượt dùng (30 ngày)', value: `${(vch.redeemedOrders || 0).toLocaleString('vi-VN')} đơn`, icon: Gift, color: 'text-purple-400' },
+          { label: 'Chi phí giảm giá', value: formatCurrency(vch.discountCost || 0), icon: Percent, color: 'text-amber-400' },
+          { label: 'Doanh thu đơn có voucher', value: formatCurrency(vch.voucherRevenue || 0), icon: Wallet, color: 'text-emerald-400' },
+          { label: 'Giảm TB mỗi đơn', value: formatCurrency(vch.avgDiscountPerOrder || 0), icon: TrendingDown, color: 'text-cyan-400' },
+        ];
+        return (
+          <div className="bg-slate-950 border border-slate-800 rounded-radius-xl p-5 space-y-4">
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <h3 className="text-xs font-extrabold text-slate-200 uppercase tracking-wider flex items-center gap-1.5">
+                <Ticket className="text-purple-400" size={18} /> Phân tích Voucher · 30 ngày
+              </h3>
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] text-slate-400 font-bold">
+                  {(vch.totalVouchers || 0)} voucher · {(vch.activeVouchers || 0)} đang chạy
+                </span>
+                <button onClick={() => navigate('/admin/vouchers')} className="text-[11px] font-bold text-purple-400 hover:underline inline-flex items-center gap-1">
+                  Quản lý <ArrowRight size={12} />
+                </button>
+              </div>
+            </div>
+
+            {!hasVoucher ? (
+              <div className="py-10 text-center text-xs font-bold text-slate-500">Chưa có voucher nào được dùng trong 30 ngày qua.</div>
+            ) : (
+              <>
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                  {kpi.map((k, i) => {
+                    const Icon = k.icon;
+                    return (
+                      <div key={i} className="bg-slate-900 border border-slate-850 rounded-radius-lg p-3.5 flex items-center gap-2.5">
+                        <Icon size={18} className={`${k.color} shrink-0`} />
+                        <div className="min-w-0">
+                          <div className={`text-sm font-extrabold ${k.color} truncate`}>{k.value}</div>
+                          <div className="text-[9px] text-slate-500 font-bold uppercase tracking-wide truncate">{k.label}</div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                  {/* Top voucher theo lượt dùng */}
+                  <div className="space-y-2.5">
+                    <h4 className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">Top voucher hiệu quả</h4>
+                    {(vch.topVouchers || []).length === 0 ? (
+                      <div className="text-xs font-bold text-slate-500 py-4">Chưa có dữ liệu.</div>
+                    ) : (
+                      vch.topVouchers.map((v, i) => (
+                        <div key={v.code} className="flex items-center gap-2.5 rounded-radius-lg bg-slate-900 border border-slate-850 px-3 py-2">
+                          <span className={`w-5 h-5 rounded-full flex items-center justify-center font-extrabold text-[10px] shrink-0 ${
+                            i === 0 ? 'bg-purple-500/15 text-purple-400 border border-purple-500/25' : 'bg-slate-800 text-slate-400'}`}>#{i + 1}</span>
+                          <div className="min-w-0 flex-1">
+                            <div className="text-[11px] font-extrabold text-purple-300 truncate">{v.code}</div>
+                            <div className="text-[9px] text-slate-500 font-semibold truncate">{v.name}</div>
+                          </div>
+                          <div className="text-right shrink-0">
+                            <div className="text-[11px] font-extrabold text-slate-200">{v.uses} lượt</div>
+                            <div className="text-[9px] text-amber-400 font-bold">-{formatCurrency(v.discount || 0)}</div>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+
+                  {/* Lượt dùng theo ngày */}
+                  <div className="lg:col-span-2">
+                    <h4 className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider mb-2">Lượt dùng voucher theo ngày</h4>
+                    <div className="h-48 w-full text-[10px] font-bold">
+                      {voucherUsageChart.length === 0 ? (
+                        <div className="h-full flex items-center justify-center text-slate-500 text-xs font-semibold">Chưa có lượt dùng nào.</div>
+                      ) : (
+                        <RevenueAreaChart data={voucherUsageChart} dataKey="uses" xKey="day" color="#a855f7" height={192}
+                          chartType="bar" yTickFormatter={(v) => `${v}`} valueFormatter={(v) => `${v} lượt`} />
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+        );
+      })()}
+
       {/* ─── CTA sang phân tích chi tiết ─── */}
       <button
         onClick={() => navigate('/admin/stats')}

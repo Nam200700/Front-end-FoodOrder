@@ -90,11 +90,12 @@ export const mapRestaurant = (r) => {
   return {
     id: r.restaurantId?.toString() || r.id?.toString(),
     name: r.restaurantName || r.name || '',
-    image: r.imageUrl || r.restaurantImageUrl || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=600&q=80',
+    image: getRestaurantBannerUrl(r.imageUrl || r.restaurantImageUrl),
     address: r.address || r.restaurantAddress || '',
     latitude: r.latitude || r.restaurantLatitude,
     longitude: r.longitude || r.restaurantLongitude,
-    rating: Number(r.rating || r.averageRating || 5.0),
+    // Rating THẬT: 0 khi chưa có đánh giá (không bịa 5 sao). UI hiển thị "Mới" khi reviewsCount = 0.
+    rating: Number(r.rating ?? r.averageRating ?? 0),
     reviewsCount: r.reviewsCount || r.reviewCount || 0,
     orderCount: r.orderCount || 0,
     tags: [r.cuisineType || 'Ẩm thực'],

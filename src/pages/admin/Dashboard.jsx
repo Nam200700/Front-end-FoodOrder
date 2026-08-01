@@ -234,6 +234,9 @@ export default function AdminDashboard() {
         })}
       </div>
 
+      {/* ─── SO SÁNH KỲ: hôm nay · tuần · tháng (vs kỳ trước) ─── */}
+      <PeriodCompareStrip comparison={comparison} formatValue={formatCurrency} theme="dark" accent="text-purple-400" unit="đơn" />
+
       {/* ─── TĂNG TRƯỞNG HỆ THỐNG ─── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {growth.map((g, idx) => {

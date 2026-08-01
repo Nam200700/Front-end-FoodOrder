@@ -7,6 +7,9 @@ import {
 } from 'lucide-react';
 import RevenueAreaChart from '../../components/common/RevenueAreaChart';
 import { aggregateDaily, pickGranularity, bucketLabel, granularityCaption } from '../../utils/chartAggregate';
+import { periodComparison, monthEndForecast, forecastNextDays } from '../../utils/dashboardAnalytics';
+import PeriodCompareStrip from '../../components/common/PeriodCompareStrip';
+import ForecastCard from '../../components/common/ForecastCard';
 import { formatCurrency } from '../../utils/format';
 import Spinner from '../../components/common/Spinner';
 import { useFetchData } from '../../hooks/useFetchData';

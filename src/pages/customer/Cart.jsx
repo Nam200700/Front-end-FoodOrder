@@ -3,20 +3,18 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useCartStore } from '../../stores/cartStore';
 import { useAuthStore } from '../../stores/authStore';
 import { 
-  ArrowLeft, MapPin, Map, Phone, Store, XCircle, X, 
-  AlertTriangle, Clock, ShoppingBag, CheckSquare, Square, 
-  User, Truck, CreditCard, Coins, Trash2, FileText, Edit2, Plus
+  ArrowLeft, MapPin, Phone, Store, XCircle, X, 
+  ShoppingBag, CheckSquare, Square, 
+  User, Truck, Edit2, Plus, Tag
 } from 'lucide-react'; 
 import { formatCurrency } from '../../utils/format';
 import Button from '../../components/common/Button';
 import apiClient from '../../services/api';
-import MapModal from '../../components/common/MapModal';
 import Spinner from '../../components/common/Spinner';
 import { toast } from 'react-toastify';
 import Modal from '../../components/common/Modal';
 import Card from '../../components/common/Card'; 
 import { useModalState } from '../../hooks/useModalState';
-import axios from 'axios';
 import MapModal2 from '../../components/common/Map';
 import { formatDateTime } from '../../utils/format';
 
@@ -27,11 +25,10 @@ export default function Cart() {
   const { carts, loading, fetchCart, updateQty, removeItem, updateNote, clearCartOfRestaurant, shippingInfos, isCalculatingShipping, fetchShippingFees } = useCartStore();
   const { user, updateProfile } = useAuthStore();
 
-  //thông tin giao hàng
+  // thông tin giao hàng
   const [address, setAddress] = useState(user?.address || '');
   const [phone, setPhone] = useState(user?.phone || '');
   const [fullname, setFullname] = useState(user?.name || '');
-  const [isMapOpen, setIsMapOpen] = useState(false);
 
   const [deliveryLat, setDeliveryLat] = useState(user?.lat || null);
   const [deliveryLng, setDeliveryLng] = useState(user?.lng || null);
@@ -39,7 +36,7 @@ export default function Cart() {
   const [orderNotes, setOrderNotes] = useState('');
   const [submittingCartId, setSubmittingCartId] = useState(null);
 
-  //lưu các quán đã chọn
+  // lưu các quán đã chọn
   const [selectedRestaurantIds, setSelectedRestaurantIds] = useState([]);
   const [bulkOrderPayload, setBulkOrderPayload] = useState(null);
 
@@ -47,10 +44,10 @@ export default function Cart() {
   
   const [paymentMethod, setPaymentMethod] = useState('COD');
 
-  const confirmOrderModal = useModalState(); // Dùng cho modal đặt hàng
-  const deleteCartModal = useModalState({ restaurantId: null, restaurantName: '' }); // Dùng cho xóa giỏ hàng
+  const confirmOrderModal = useModalState(); // Modal đặt hàng
+  const deleteCartModal = useModalState({ restaurantId: null, restaurantName: '' }); // Modal xóa giỏ hàng
 
-  //id truyền từ RestaurantDetail.jsx
+  // id truyền từ RestaurantDetail.jsx
   const targetRestaurantId = location.state?.targetRestaurantId;
 
   // Các state và modal quản lý địa chỉ 
@@ -65,13 +62,17 @@ export default function Cart() {
     lng: user?.lng || 106.660172 
   });
 
-  // --- STATE QUẢN LÝ VOUCHER 
+  // --- STATE QUẢN LÝ VOUCHER THEO TỪNG QUÁN ---
   const voucherModal = useModalState();
   const [activeVoucherTab, setActiveVoucherTab] = useState('my'); 
   const [myVouchers, setMyVouchers] = useState([]);
   const [publicVouchers, setPublicVouchers] = useState([]);
-  const [selectedVoucher, setSelectedVoucher] = useState(null); // Voucher đang được chọn áp dụng cho đơn hàng
   const [loadingVouchers, setLoadingVouchers] = useState(false);
+
+  // Map lưu voucher đã chọn cho từng quán: { [restaurantId]: userVoucherObject }
+  const [selectedVouchers, setSelectedVouchers] = useState({});
+  // ID nhà hàng hiện đang chọn voucher trong Modal
+  const [selectingRestaurantId, setSelectingRestaurantId] = useState(null);
 
   const restaurantIds = React.useMemo(() => {
     return carts.map(cart => cart.restaurantId);
@@ -88,7 +89,7 @@ export default function Cart() {
     }
   }, [deliveryLat, deliveryLng, JSON.stringify(restaurantIds)]);
 
-  //tự động chọn và cuộn màn hình đến quán ăn được điều hướng từ RestaurantDetail
+  // Tự động chọn và cuộn màn hình đến quán ăn được điều hướng từ RestaurantDetail
   useEffect(() => {
     if (targetRestaurantId && carts.length > 0) {
       const numericId = Number(targetRestaurantId);
@@ -103,7 +104,6 @@ export default function Cart() {
           return prev;
         });
         
-        // Cuộn màn hình tới đúng quán đó 
         setTimeout(() => {
           const element = document.getElementById(`restaurant-card-${numericId}`);
           if (element) {
@@ -132,6 +132,15 @@ export default function Cart() {
       return;
     }
 
+    // Xây dựng map voucher cho từng quán được chọn { [restaurantId]: userVoucherId }
+    const restaurantVouchersMap = {};
+    selectedRestaurantIds.forEach(resId => {
+      const v = selectedVouchers[resId];
+      if (v) {
+        restaurantVouchersMap[resId] = v.userVoucherId;
+      }
+    });
+
     const payload = {
       deliveryAddress: address,
       restaurantId: selectedRestaurantIds.map(id => parseInt(id)),
@@ -139,14 +148,14 @@ export default function Cart() {
       deliveryLng: Number(deliveryLng),
       paymentMethod: paymentMethod,
       note: orderNotes,
-      userVoucherId: selectedVoucher.userVoucherId
+      restaurantVouchers: restaurantVouchersMap
     };
 
     setBulkOrderPayload(payload);
     confirmOrderModal.open();
   };
 
-  //đặt hàng
+  // Thực thi đặt hàng
   const executeBulkPlaceOrder = async () => {
     if (!bulkOrderPayload) return;
   
@@ -168,6 +177,7 @@ export default function Cart() {
       toast.success('Đặt hàng thành công!');
       setOrderNotes('');
       setSelectedRestaurantIds([]);
+      setSelectedVouchers({});
       await fetchCart();
       navigate('/orders');
     } catch(err) {
@@ -178,7 +188,7 @@ export default function Cart() {
     }
   };
 
-  //Chuyển đổi trạng thái chọn/bỏ chọn một quán
+  // Chuyển đổi trạng thái chọn/bỏ chọn một quán
   const handleToggleSelectRestaurant = (restaurantId) => {
     const numericId = Number(restaurantId);
     setSelectedRestaurantIds(prev =>
@@ -188,7 +198,6 @@ export default function Cart() {
 
   const isAllSelected = carts.length > 0 && selectedRestaurantIds.length === carts.length;
 
-  //Chuyển đổi trạng thái chọn tất cả hoặc bỏ chọn tất cả các quán
   const handleSelectAll = () => {
     if (isAllSelected) {
       setSelectedRestaurantIds([]);
@@ -197,32 +206,27 @@ export default function Cart() {
     }
   };
 
-  //mở modal xác nhận xóa
   const handleOpenDeleteCartModal = (restaurantId, restaurantName) => {
     deleteCartModal.open({ restaurantId, restaurantName });
   };
 
-  //Xóa giỏ hàng của quán và cập nhật lại danh sách đã chọn
   const handleDeleteCart = () => {
     const { restaurantId } = deleteCartModal.data;
     clearCartOfRestaurant(restaurantId);
     setSelectedRestaurantIds(prev => 
       prev.filter(id => Number(id) !== Number(restaurantId))
     );
+    // Xóa voucher đã chọn của quán nếu có
+    setSelectedVouchers(prev => {
+      const updated = { ...prev };
+      delete updated[restaurantId];
+      return updated;
+    });
     deleteCartModal.close();
     toast.success('Đã xóa giỏ hàng thành công!');
   };
 
-  //Tính toán tổng số lượng món và tổng chi phí của các quán đang chọn
-  const selectedCarts = carts.filter(c => selectedRestaurantIds.includes(Number(c.restaurantId)));
-  const totalItems = selectedCarts.reduce((s, c) => s + c.items.reduce((a, i) => a + i.quantity, 0), 0);
-  
-  const totalSubtotal = selectedCarts.reduce((s, c) => {
-    const fee = shippingInfos[c.restaurantId]?.shippingFee || 0;
-    return s + c.subtotal + fee;
-  }, 0);
-
-  //lấy danh sách địa chỉ
+  // Danh sách địa chỉ
   const fetchUserAddresses = async () => {
     try {
       const res = await apiClient.get('/addresses');
@@ -242,7 +246,6 @@ export default function Cart() {
     }
   };
 
-  // chọn địa chỉ mặc định
   const handleSelectAddressItem = async (item) => {
     setSelectedAddressId(item.addressId);
     setAddress(item.address);
@@ -329,7 +332,7 @@ export default function Cart() {
     }
   };
 
-  //VOUCHER
+  // --- HÀM XỬ LÝ VOUCHER CHO TỪNG QUÁN ---
   const fetchVouchersData = async () => {
     setLoadingVouchers(true);
     try {
@@ -346,13 +349,43 @@ export default function Cart() {
     }
   };
 
-  // Hàm mở modal và load dữ liệu voucher
-  const handleOpenVoucherModal = () => {
+  // Mở modal voucher dành riêng cho một nhà hàng cụ thể
+  const handleOpenVoucherModalForRestaurant = (restaurantId) => {
+    setSelectingRestaurantId(restaurantId);
     fetchVouchersData();
     voucherModal.open();
   };
 
-  // nhận voucher
+  // Chọn voucher cho nhà hàng đang mở modal
+  const handleSelectVoucherForRestaurant = (voucherItem) => {
+    if (!selectingRestaurantId) return;
+
+    // Kiểm tra xem voucher này đã chọn cho quán khác chưa
+    const isAlreadyUsedInOtherRes = Object.entries(selectedVouchers).some(
+      ([resId, v]) => Number(resId) !== Number(selectingRestaurantId) && v?.userVoucherId === voucherItem.userVoucherId
+    );
+
+    if (isAlreadyUsedInOtherRes) {
+      toast.warning('Voucher này đã được chọn áp dụng cho quán khác trong đơn!');
+      return;
+    }
+
+    setSelectedVouchers(prev => ({
+      ...prev,
+      [selectingRestaurantId]: voucherItem
+    }));
+    voucherModal.close();
+  };
+
+  // Hủy voucher của một quán
+  const handleRemoveVoucherForRestaurant = (restaurantId) => {
+    setSelectedVouchers(prev => {
+      const copy = { ...prev };
+      delete copy[restaurantId];
+      return copy;
+    });
+  };
+
   const handleClaimPublicVoucher = async (voucherId) => {
     try {
       await apiClient.post(`/vouchers/${voucherId}/claim`);
@@ -363,54 +396,55 @@ export default function Cart() {
     }
   };
 
-  // Lấy tổng tiền hàng của các quán được chọn (chưa gồm ship và giảm giá)
-  const selectedItemsSubtotal = useMemo(() => {
-    return carts
-      .filter(cart => selectedRestaurantIds.includes(Number(cart.restaurantId)))
-      .reduce((sum, cart) => {
-        const cartTotal = (cart.items || []).reduce((itemSum, item) => itemSum + (item.price * item.quantity), 0);
-        return sum + cartTotal;
-      }, 0);
+  // TÍNH TOÁN CÁC THÔNG SỐ CỦA CÁC QUÁN ĐANG ĐƯỢC CHỌN
+  const selectedCarts = useMemo(() => {
+    return carts.filter(c => selectedRestaurantIds.includes(Number(c.restaurantId)));
   }, [carts, selectedRestaurantIds]);
 
-// Tổng phí ship của các quán được chọn
+  const totalItems = useMemo(() => {
+    return selectedCarts.reduce((s, c) => s + c.items.reduce((a, i) => a + i.quantity, 0), 0);
+  }, [selectedCarts]);
+
+  const selectedItemsSubtotal = useMemo(() => {
+    return selectedCarts.reduce((sum, cart) => sum + cart.subtotal, 0);
+  }, [selectedCarts]);
+
   const totalShippingFee = useMemo(() => {
-    return carts
-      .filter(cart => selectedRestaurantIds.includes(Number(cart.restaurantId)))
-      .reduce((sum, cart) => {
-        const feeInfo = shippingInfos[cart.restaurantId];
-        return sum + (feeInfo?.shippingFee || 0);
-      }, 0);
-  }, [carts, selectedRestaurantIds, shippingInfos]);
+    return selectedCarts.reduce((sum, cart) => {
+      const feeInfo = shippingInfos[cart.restaurantId];
+      return sum + (feeInfo?.shippingFee || 0);
+    }, 0);
+  }, [selectedCarts, shippingInfos]);
 
-  // Tính số tiền giảm giá từ voucher
-  const discountAmount = useMemo(() => {
-    if (!selectedVoucher) return 0;
+  // Hàm tính tiền giảm của 1 voucher trên 1 quán
+  const calculateCartDiscount = (cart) => {
+    const voucher = selectedVouchers[cart.restaurantId];
+    if (!voucher) return 0;
 
-    // Lấy tổng tiền hàng của các quán được chọn
-    const subtotal = selectedItemsSubtotal; 
+    const subtotal = cart.subtotal;
+    const shipFee = shippingInfos[cart.restaurantId]?.shippingFee || 0;
+    const totalBefore = subtotal + shipFee;
 
-    if (selectedVoucher.discountType === 'FIXED') {
-      return Number(selectedVoucher.discountValue) || 0;
-    } 
-    else if (selectedVoucher.discountType === 'PERCENT') {
-      const discount = (subtotal * Number(selectedVoucher.discountValue)) / 100;
-      // Nếu có quy định mức giảm tối đa (maxDiscount) thì áp dụng thêm vào đây nếu cần
-      return discount;
-    } 
-    else if (selectedVoucher.discountType === 'FREESHIP') {
-      // FREESHIP thì giảm đúng bằng tổng phí vận chuyển hiện tại
-      return totalShippingFee;
+    let discount = 0;
+    if (voucher.discountType === 'FIXED') {
+      discount = Number(voucher.discountValue) || 0;
+    } else if (voucher.discountType === 'PERCENT') {
+      discount = (subtotal * Number(voucher.discountValue)) / 100;
+    } else if (voucher.discountType === 'FREESHIP') {
+      discount = shipFee;
     }
-    
-    return 0;
-  }, [selectedVoucher, selectedItemsSubtotal, totalShippingFee]);
+
+    return discount > totalBefore ? totalBefore : discount;
+  };
+
+  const totalDiscountAmount = useMemo(() => {
+    return selectedCarts.reduce((sum, cart) => sum + calculateCartDiscount(cart), 0);
+  }, [selectedCarts, selectedVouchers, shippingInfos]);
 
   const finalTotalAmount = useMemo(() => {
-    // Tiền hàng + Phí vận chuyển - Tiền giảm giá voucher
-    const total = (selectedItemsSubtotal + totalShippingFee) - discountAmount;
-    return total > 0 ? total : 0; // Tránh trường hợp tổng tiền bị âm
-  }, [selectedItemsSubtotal, totalShippingFee, discountAmount]);
+    const total = selectedItemsSubtotal + totalShippingFee - totalDiscountAmount;
+    return total > 0 ? total : 0;
+  }, [selectedItemsSubtotal, totalShippingFee, totalDiscountAmount]);
 
   if (loading && carts.length === 0) return <Spinner fullScreen />;
 
@@ -458,6 +492,7 @@ export default function Cart() {
       </div>
 
       <div className="flex flex-col lg:flex-row gap-5 items-start">
+        {/* CỘT TRÁI: DANH SÁCH GIỎ HÀNG THEO TỪNG QUÁN */}
         <div className="flex-1 space-y-4 w-full">
           {carts.map(cart => {
             const shipInfo = shippingInfos[cart.restaurantId] || { shippingFee: 0, distanceKm: 0, durationMinutes: 0 };
@@ -466,8 +501,12 @@ export default function Cart() {
             const duration = shipInfo.durationMinutes;
             
             const cartItemCount = cart.items.reduce((a, i) => a + i.quantity, 0);
-            const cartTotal = cart.subtotal + shippingFee;
             const isChecked = selectedRestaurantIds.includes(Number(cart.restaurantId));
+
+            // Voucher & tính tiền từng quán
+            const restaurantVoucher = selectedVouchers[cart.restaurantId];
+            const cartDiscount = calculateCartDiscount(cart);
+            const cartTotal = (cart.subtotal + shippingFee) - cartDiscount;
 
             return (
               <Card 
@@ -642,6 +681,40 @@ export default function Cart() {
                   })}
                 </div>
 
+                {/* --- KHU VỰC VOUCHER RIÊNG CHO QUÁN NÀY --- */}
+                <div className="px-4 py-2.5 bg-orange-50/40 border-t border-slate-100 flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-xs">
+                    <Tag size={15} className="text-[#ff6b35]" />
+                    <span className="font-bold text-slate-700">Voucher:</span>
+                  </div>
+
+                  {restaurantVoucher ? (
+                    <div className="flex items-center gap-2 bg-orange-100/80 border border-orange-200 rounded-lg px-2.5 py-1 text-xs">
+                      <span className="font-extrabold text-[#ff6b35]">🎟️ {restaurantVoucher.code}</span>
+                      <span className="text-[11px] font-semibold text-slate-600">
+                        ({restaurantVoucher.discountType === 'FIXED' && `Giảm ${formatCurrency(restaurantVoucher.discountValue)}`}
+                         {restaurantVoucher.discountType === 'PERCENT' && `Giảm ${restaurantVoucher.discountValue}%`}
+                         {restaurantVoucher.discountType === 'FREESHIP' && 'Freeship'})
+                      </span>
+                      <button 
+                        onClick={() => handleRemoveVoucherForRestaurant(cart.restaurantId)}
+                        className="text-slate-400 hover:text-red-500 font-bold ml-1 cursor-pointer"
+                        title="Bỏ chọn voucher"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => handleOpenVoucherModalForRestaurant(cart.restaurantId)}
+                      className="text-xs font-bold text-[#ff6b35] hover:underline cursor-pointer flex items-center gap-1"
+                    >
+                      Chọn voucher &gt;
+                    </button>
+                  )}
+                </div>
+
                 {/* Footer đơn hàng quán */}
                 <div className="border-t border-slate-100 px-4 py-3 bg-slate-50/40 space-y-3">             
                   <div className="flex items-center justify-between text-sm text-slate-600">
@@ -668,10 +741,16 @@ export default function Cart() {
                           {isCalculatingShipping || isUpdatingLocation ? 'Đang tính...' : formatCurrency(shippingFee)}
                         </span>
                       </div>
+                      {cartDiscount > 0 && (
+                        <div className="flex justify-between items-center text-emerald-600">
+                          <span className="text-xs font-bold">Giảm giá voucher:</span>
+                          <span className="font-bold text-xs">- {formatCurrency(cartDiscount)}</span>
+                        </div>
+                      )}
                       <div className="flex justify-between items-center pt-1 border-t border-slate-200/60 mt-1">
-                        <span className="text-xs font-bold text-slate-700">Tổng cộng:</span>
+                        <span className="text-xs font-bold text-slate-700">Tổng cộng quán:</span>
                         <span className="font-extrabold text-sm text-amber-600 md:text-[#ff6b35]">
-                          {isCalculatingShipping || isUpdatingLocation ? 'Đang tính...' : formatCurrency(cartTotal)}
+                          {isCalculatingShipping || isUpdatingLocation ? 'Đang tính...' : formatCurrency(cartTotal > 0 ? cartTotal : 0)}
                         </span>
                       </div>
                     </div>
@@ -684,6 +763,76 @@ export default function Cart() {
 
         {/* CỘT PHẢI: THÔNG TIN GIAO HÀNG & TỔNG QUAN ĐƠN HÀNG */}
         <aside className="w-full lg:w-80 shrink-0 lg:sticky lg:top-5 space-y-4">
+
+          {/* TỔNG QUAN ĐƠN HÀNG */}
+          <Card variant="flat" className="p-4 !border-slate-200 !rounded-xl flex flex-col space-y-3">
+            <h3 className="text-xs font-extrabold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+              <ShoppingBag size={15} className="text-[#ff6b35]" /> Tổng quan đơn hàng
+            </h3>
+            
+            <div className="flex items-center justify-between text-xs text-slate-600">
+              <span>Số quán đã chọn:</span>
+              <span className="font-extrabold text-slate-800">{selectedRestaurantIds.length} / {carts.length}</span>
+            </div>
+            
+            <div className="flex items-center justify-between text-xs text-slate-600">
+              <span>Tổng số món:</span>
+              <span className="font-extrabold text-slate-800">{totalItems} món</span>
+            </div>
+
+            {/* Hiển thị Tạm tính tiền hàng */}
+            <div className="flex items-center justify-between text-xs text-slate-600">
+              <span>Tiền hàng:</span>
+              <span className="font-bold text-slate-800">{formatCurrency(selectedItemsSubtotal)}</span>
+            </div>
+
+            {/* Hiển thị Phí vận chuyển */}
+            <div className="flex items-center justify-between text-xs text-slate-600">
+              <span>Phí vận chuyển:</span>
+              <span className="font-bold text-slate-800">
+                {isCalculatingShipping ? 'Đang tính...' : formatCurrency(totalShippingFee)}
+              </span>
+            </div>
+
+            {/* Tổng giảm giá từ tất cả voucher đã chọn */}
+            {totalDiscountAmount > 0 && (
+              <div className="flex items-center justify-between text-xs text-emerald-600 font-bold">
+                <span>Giảm giá từ Voucher:</span>
+                <span>- {formatCurrency(totalDiscountAmount)}</span>
+              </div>
+            )}
+
+            <div className="pt-2 border-t border-slate-100 mb-1">
+              <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5 mb-1.5">
+                Ghi chú đơn hàng
+              </label>
+              <textarea
+                rows={2}
+                value={orderNotes}
+                onChange={(e) => setOrderNotes(e.target.value)}
+                placeholder="Thêm ghi chú cho đơn hàng"
+                className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl bg-white text-slate-700 font-semibold focus:outline-none focus:border-[#ff6b35] focus:ring-1 focus:ring-orange-100 transition-all duration-200 resize-none"
+              />
+            </div>
+
+            {/* Tổng thanh toán cuối cùng */}
+            <div className="flex items-center justify-between text-sm text-slate-600 pt-1 border-t border-slate-100 mb-1 mt-1">
+              <span className="font-bold text-slate-700">Tổng thanh toán:</span>
+              <span className="font-black text-[#ff6b35] text-lg">
+                {isCalculatingShipping || isUpdatingLocation ? 'Đang tính...' : formatCurrency(finalTotalAmount)}
+              </span>
+            </div>
+
+            <Button
+              onClick={handleBulkPlaceOrder}
+              disabled={selectedRestaurantIds.length === 0 || submittingCartId === 'BULK_ORDER' || isUpdatingLocation || isCalculatingShipping}
+              loading={submittingCartId === 'BULK_ORDER'}
+              icon={ShoppingBag}
+              className="w-full !mt-0 !bg-orange-600 hover:!bg-orange-700 text-white font-bold py-3 rounded-xl flex items-center justify-center gap-2"
+            >
+              Đặt Hàng
+            </Button>
+          </Card>
           
           {/* THÔNG TIN GIAO HÀNG */}
           <Card variant="flat" className="p-5 !border-slate-200/80 !rounded-2xl space-y-4">
@@ -741,11 +890,8 @@ export default function Cart() {
                   onClick={() => {
                     if (!address) {
                       setEditingAddressId(null);
-                      setNewAddressText('');
-                      setNewAddressLat(null);
-                      setNewAddressLng(null);
                       setAddressLabel('Nhà riêng');
-                      addAddressModal.open();
+                      mapModal2.open();
                     } else {
                       addressListModal.open();
                     }
@@ -756,109 +902,6 @@ export default function Cart() {
                 </Button>
               </div>
             </div>
-          </Card>
-
-          {/* TỔNG QUAN ĐƠN HÀNG */}
-          <Card variant="flat" className="p-4 !border-slate-200 !rounded-xl flex flex-col space-y-3">
-            <h3 className="text-xs font-extrabold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
-              <ShoppingBag size={15} className="text-[#ff6b35]" /> Tổng quan đơn hàng
-            </h3>
-            
-            <div className="flex items-center justify-between text-xs text-slate-600">
-              <span>Số quán đã chọn:</span>
-              <span className="font-extrabold text-slate-800">{selectedRestaurantIds.length} / {carts.length}</span>
-            </div>
-            
-            <div className="flex items-center justify-between text-xs text-slate-600">
-              <span>Tổng số món:</span>
-              <span className="font-extrabold text-slate-800">{totalItems} món</span>
-            </div>
-
-            {/* Hiển thị Tạm tính tiền hàng */}
-            <div className="flex items-center justify-between text-xs text-slate-600">
-              <span>Tiền hàng:</span>
-              <span className="font-bold text-slate-800">{formatCurrency(selectedItemsSubtotal)}</span>
-            </div>
-
-            {/* Hiển thị Phí vận chuyển */}
-            <div className="flex items-center justify-between text-xs text-slate-600">
-              <span>Phí vận chuyển:</span>
-              <span className="font-bold text-slate-800">
-                {isCalculatingShipping ? 'Đang tính...' : formatCurrency(totalShippingFee)}
-              </span>
-            </div>
-
-            {/* --- NÚT CHỌN VOUCHER --- */}
-            <div className="pt-2 border-t border-slate-100">
-              <div className="flex items-center justify-between text-xs text-slate-600 mb-1.5">
-                <span className="font-bold text-slate-700">Mã giảm giá:</span>
-                <button 
-                  type="button"
-                  onClick={handleOpenVoucherModal}
-                  className="text-[#ff6b35] font-extrabold hover:underline cursor-pointer"
-                >
-                  {selectedVoucher ? (selectedVoucher.code || 'Đã chọn 1 voucher') : 'Chọn voucher >'}
-                </button>
-              </div>
-              
-              {selectedVoucher && (
-                <div className="flex items-center justify-between bg-orange-50 border border-orange-200 rounded-lg p-2 text-xs">
-                  <div className="flex items-center gap-1.5 overflow-hidden">
-                    <span className="font-bold text-orange-800 truncate">🎟️ {selectedVoucher.name || selectedVoucher.code}</span>
-                    <span className="text-[10px] bg-orange-200 text-orange-900 px-1.5 py-0.5 rounded font-bold shrink-0">
-                      {selectedVoucher.discountType === 'FIXED' && `Giảm ${formatCurrency(selectedVoucher.discountValue)}`}
-                      {selectedVoucher.discountType === 'PERCENT' && `Giảm ${selectedVoucher.discountValue}%`}
-                      {selectedVoucher.discountType === 'FREESHIP' && 'Freeship'}
-                    </span>
-                  </div>
-                  <button 
-                    onClick={() => setSelectedVoucher(null)} 
-                    className="text-slate-400 hover:text-red-500 font-bold ml-2 cursor-pointer shrink-0"
-                  >
-                    ✕
-                  </button>
-                </div>
-              )}
-            </div>
-
-            {/* Hiển thị số tiền được giảm (nếu có chọn voucher) */}
-            {selectedVoucher && discountAmount > 0 && (
-              <div className="flex items-center justify-between text-xs text-emerald-600 font-bold">
-                <span>Giảm giá từ Voucher:</span>
-                <span>- {formatCurrency(discountAmount)}</span>
-              </div>
-            )}
-
-            <div className="pt-2 border-t border-slate-100 mb-1">
-              <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5 mb-1.5">
-                Ghi chú đơn hàng
-              </label>
-              <textarea
-                rows={2}
-                value={orderNotes}
-                onChange={(e) => setOrderNotes(e.target.value)}
-                placeholder="Thêm ghi chú cho đơn hàng"
-                className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl bg-white text-slate-700 font-semibold focus:outline-none focus:border-[#ff6b35] focus:ring-1 focus:ring-orange-100 transition-all duration-200 resize-none"
-              />
-            </div>
-
-            {/* Tổng thanh toán cuối cùng */}
-            <div className="flex items-center justify-between text-sm text-slate-600 pt-1 border-t border-slate-100 mb-1 mt-1">
-              <span className="font-bold text-slate-700">Tổng thanh toán:</span>
-              <span className="font-black text-[#ff6b35] text-lg">
-                {isCalculatingShipping || isUpdatingLocation ? 'Đang tính...' : formatCurrency(finalTotalAmount)}
-              </span>
-            </div>
-
-            <Button
-              onClick={handleBulkPlaceOrder}
-              disabled={selectedRestaurantIds.length === 0 || submittingCartId === 'BULK_ORDER' || isUpdatingLocation || isCalculatingShipping}
-              loading={submittingCartId === 'BULK_ORDER'}
-              icon={ShoppingBag}
-              className="w-full !mt-0 !bg-orange-600 hover:!bg-orange-700 text-white font-bold py-3 rounded-xl flex items-center justify-center gap-2"
-            >
-              Đặt Hàng
-            </Button>
           </Card>
         </aside>
       </div>
@@ -1002,11 +1045,11 @@ export default function Cart() {
         </div>
       </Modal>
 
-      {/* ================= MODAL CHỌN & NHẬN VOUCHER ================= */}
+      {/* ================= MODAL CHỌN & NHẬN VOUCHER CHO QUÁN ================= */}
       <Modal 
         isOpen={voucherModal.isOpen} 
         onClose={voucherModal.close}
-        title="Mã Giảm Giá & Ưu Đãi"
+        title={`Voucher Cho Quán: ${carts.find(c => Number(c.restaurantId) === Number(selectingRestaurantId))?.restaurantName || ''}`}
         size="md"
         className="!rounded-3xl !shadow-2xl overflow-hidden !max-w-lg !w-[92vw]"
       >
@@ -1046,21 +1089,18 @@ export default function Cart() {
                 {activeVoucherTab === 'my' && (
                   <>
                     {myVouchers.map((item) => {
-                      const isSelected = selectedVoucher?.userVoucherId === item.userVoucherId;
+                      const isSelectedForThisRes = selectedVouchers[selectingRestaurantId]?.userVoucherId === item.userVoucherId;
                       return (
                         <div
                           key={item.userVoucherId}
-                          onClick={() => {
-                            setSelectedVoucher(item);
-                          }}
+                          onClick={() => handleSelectVoucherForRestaurant(item)}
                           className={`group relative p-3 sm:p-4 rounded-2xl border transition-all cursor-pointer flex items-center justify-between gap-3 overflow-hidden ${
-                            isSelected 
+                            isSelectedForThisRes 
                               ? 'border-[#ff6b35] bg-gradient-to-r from-orange-50/60 to-white shadow-md ring-1 ring-[#ff6b35]/30' 
                               : 'border-slate-200/80 hover:border-orange-300 hover:shadow-md bg-white'
                           }`}
                         >
-                          {/* Dải màu trang trí bên trái card */}
-                          <div className={`absolute left-0 top-0 bottom-0 w-1.5 ${isSelected ? 'bg-[#ff6b35]' : 'bg-slate-200 group-hover:bg-orange-300'} transition-colors`} />
+                          <div className={`absolute left-0 top-0 bottom-0 w-1.5 ${isSelectedForThisRes ? 'bg-[#ff6b35]' : 'bg-slate-200 group-hover:bg-orange-300'} transition-colors`} />
 
                           <div className="space-y-1 pl-2 min-w-0 flex-1">
                             <div className="flex flex-wrap items-center gap-1.5">
@@ -1070,7 +1110,6 @@ export default function Cart() {
                               <span className="font-bold text-xs sm:text-sm text-slate-800 truncate">{item.name}</span>
                             </div>
                             
-                            {/* Hiển thị badge phân loại giao diện tương ứng với discountType */}
                             <div className="flex items-center gap-2 pt-0.5">
                               <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-slate-100 text-slate-600">
                                 {item.discountType === 'FIXED' && `Giảm: ${formatCurrency(item.discountValue)}`}
@@ -1087,12 +1126,11 @@ export default function Cart() {
                             </div>
                           </div>
 
-                          {/* Custom Radio Icon không viền đen */}
                           <div className="flex items-center pr-1 shrink-0">
                             <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${
-                              isSelected ? 'border-[#ff6b35] bg-[#ff6b35]' : 'border-slate-300 bg-white group-hover:border-slate-400'
+                              isSelectedForThisRes ? 'border-[#ff6b35] bg-[#ff6b35]' : 'border-slate-300 bg-white group-hover:border-slate-400'
                             }`}>
-                              {isSelected && <div className="w-2 h-2 rounded-full bg-white" />}
+                              {isSelectedForThisRes && <div className="w-2 h-2 rounded-full bg-white" />}
                             </div>
                           </div>
                         </div>
@@ -1154,17 +1192,18 @@ export default function Cart() {
             )}
           </div>
 
-          {/* Footer chân modal gọn gàng */}
+          {/* Footer chân modal */}
           <div className="pt-2.5 border-t border-slate-100 flex items-center justify-between gap-2 shrink-0">
-            {selectedVoucher ? (
+            {selectedVouchers[selectingRestaurantId] ? (
               <button 
                 type="button" 
                 onClick={() => {
-                  setSelectedVoucher(null);
+                  handleRemoveVoucherForRestaurant(selectingRestaurantId);
+                  voucherModal.close();
                 }}
                 className="text-[11px] sm:text-xs text-rose-500 hover:text-rose-600 font-semibold transition-colors cursor-pointer py-1 truncate"
               >
-                Bỏ chọn voucher
+                Bỏ chọn voucher của quán này
               </button>
             ) : <div />}
             

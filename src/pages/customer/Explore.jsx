@@ -5,6 +5,7 @@ import { formatCurrency, removeVietnameseTones } from '../../utils/format';
 import { useAuthStore } from '../../stores/authStore';
 import apiClient from '../../services/api';
 import { mapRestaurant } from '../../utils/mappers';
+import { getFoodImageUrl } from '../../utils/avatarHelper';
 import { calculateHaversineDistance } from '../../utils/haversine';
 
 export default function Explore() {

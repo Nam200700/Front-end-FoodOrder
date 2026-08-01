@@ -44,7 +44,7 @@ export const mapOrder = (ord) => {
       note: i.note || '',
     })),
     itemsCount: (ord.items || ord.orderItems || []).reduce((sum, item) => sum + item.quantity, 0),
-    subtotalAmount: Number(ord.subtotalAmount),
+    subtotalAmount: Number(ord.subtotalAmount) || 0,
     total: Number(ord.totalAmount || ord.total || 0),
     shippingFee: Number(ord.shippingFee || ord.deliveryFee || 0),
     address: ord.deliveryAddress || ord.address || '',

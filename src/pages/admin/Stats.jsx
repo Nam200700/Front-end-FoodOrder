@@ -10,7 +10,9 @@ import {
   BarChart3, AreaChart, Flame, Wallet, PackageCheck, XCircle, UserCheck,
 } from 'lucide-react';
 import FilterTabs from '../../components/common/FilterTabs';
+import SeriesFilterBar from '../../components/common/SeriesFilterBar';
 import { aggregateDaily, pickGranularity, bucketLabel, granularityCaption } from '../../utils/chartAggregate';
+import { availablePeriods, filterSeries } from '../../utils/dashboardAnalytics';
 
 const COLORS = ['#8B5CF6', '#10B981', '#F43F5E', '#06B6D4', '#F59E0B', '#3B82F6'];
 const PAYMENT_LABELS = { PAID: 'Đã thanh toán', PENDING: 'Chờ thanh toán', REFUNDED: 'Đã hoàn tiền', FAILED: 'Thất bại' };
@@ -26,6 +28,7 @@ export default function AdminStats() {
   const [chartType, setChartType] = useState('area');
   const [hiddenPaymentKeys, setHiddenPaymentKeys] = useState(new Set());
   const [hiddenUserKeys, setHiddenUserKeys] = useState(new Set());
+  const [seriesFilter, setSeriesFilter] = useState({ year: 'ALL', month: 'ALL', weekday: 'ALL' });
 
   const toggleKey = (setter) => (name) => setter(prev => {
     const next = new Set(prev);
@@ -68,13 +71,17 @@ export default function AdminStats() {
   const rate = report?.commissionRate != null ? Number(report.commissionRate) : (overview?.commissionRate ?? 0.1);
   const ratePct = Math.round(rate * 100);
 
+  // Danh sách năm·tháng có trong dữ liệu (để đổ vào bộ lọc). Đầy đủ nhất khi range = "Tất cả".
+  const periods = useMemo(() => availablePeriods(report?.daily || []), [report]);
+  const seriesActive = seriesFilter.year !== 'ALL' || seriesFilter.month !== 'ALL' || seriesFilter.weekday !== 'ALL';
+
   // Gom theo ngày/tuần/tháng tuỳ độ dày để biểu đồ giãn ra, dễ đọc xu hướng.
   const { timelineData, chartGranularity } = useMemo(() => {
-    const raw = (report?.daily || []).map(d => ({
+    const raw = filterSeries((report?.daily || []).map(d => ({
       date: d.date,
       gtv: Number(d.gtv || 0),
       sub: Number(d.subtotal || 0),
-    }));
+    })), seriesFilter);
     const gran = pickGranularity(raw.length);
     const agg = aggregateDaily(raw, 'date', gran);
     const data = agg.map(d => ({

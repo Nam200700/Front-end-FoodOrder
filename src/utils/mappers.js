@@ -60,7 +60,7 @@ export const mapOrder = (ord) => {
     readyAt: formatTime(ord.readyAt),
     pickedUpAt: formatTime(ord.pickedUpAt),
     reviewed: ord.reviewed || false,
-    rating: ord.restaurantRating || 5,
+    rating: ord.restaurantRating ?? 0,
     note: ord.note || '',
     cancelReason: ord.cancelReason || '',
     shipper: ord.shipperId ? {

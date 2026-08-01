@@ -284,6 +284,29 @@ export default function MerchantStats() {
             })}
           </div>
 
+          {/* Dải chỉ số CHI TIẾT bổ sung: TB/ngày · ngày cao điểm · số ngày có đơn · tỷ lệ hoàn thành */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            {[
+              { label: 'Doanh thu TB/ngày', value: formatCurrency(dailyStats.avgPerDay), icon: TrendingUp, color: 'text-md-secondary', tip: 'Tiền món ăn trung bình mỗi ngày CÓ đơn trong kỳ đang xem.' },
+              { label: 'Ngày cao điểm', value: dailyStats.peak ? formatCurrency(dailyStats.peak.v) : '—', icon: Sparkles, color: 'text-amber-600', tip: dailyStats.peak ? `Ngày bán chạy nhất kỳ này: ${fmtDay(dailyStats.peak.date)}` : 'Chưa có dữ liệu.' },
+              { label: 'Số ngày có đơn', value: `${dailyStats.activeDays} ngày`, icon: CalendarClock, color: 'text-blue-600', tip: 'Số ngày có ít nhất 1 đơn hoàn tất trong kỳ.' },
+              { label: 'Tỷ lệ hoàn thành', value: `${completionRate.toFixed(1)}%`, icon: Gauge, color: completionRate < 70 ? 'text-orange-600' : 'text-emerald-600', tip: 'Đơn hoàn tất ÷ tổng đơn. Càng cao càng tốt.' },
+            ].map((c, i) => {
+              const Icon = c.icon;
+              return (
+                <div key={i} className="bg-white border border-slate-200/60 rounded-radius-xl p-3.5 shadow-sm flex items-center gap-2.5">
+                  <Icon size={18} className={`${c.color} shrink-0`} />
+                  <div className="min-w-0 flex-1">
+                    <div className={`text-sm font-extrabold ${c.color} truncate`}>{c.value}</div>
+                    <div className="text-[9px] text-slate-400 font-bold uppercase tracking-wide truncate flex items-center gap-1">
+                      {c.label} <InfoTip theme="light" size={11} text={c.tip} />
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
           {/* Phân bổ dòng tiền */}
           <div className="bg-slate-50 border border-slate-200/60 rounded-[1.25rem] p-5 space-y-3.5 shadow-sm">
             <div className="flex justify-between items-center border-b border-slate-200/60 pb-2">

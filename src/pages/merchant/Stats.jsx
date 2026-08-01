@@ -1,17 +1,18 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import RevenueAreaChart from '../../components/common/RevenueAreaChart';
 import { aggregateDaily, pickGranularity, bucketLabel, granularityCaption } from '../../utils/chartAggregate';
-import { availablePeriods, filterSeries } from '../../utils/dashboardAnalytics';
+import { availablePeriods, filterSeries, rangeOverRange } from '../../utils/dashboardAnalytics';
 import SeriesFilterBar from '../../components/common/SeriesFilterBar';
+import InfoTip from '../../components/common/InfoTip';
 import { formatCurrency } from '../../utils/format';
 import apiClient from '../../services/api';
 import Spinner from '../../components/common/Spinner';
 import KPICard from '../../components/common/KPICard';
 import GaugeChart from '../../components/common/GaugeChart';
 import {
-  ClipboardList, TrendingUp, ShoppingBag, Users, DollarSign,
+  ClipboardList, TrendingUp, TrendingDown, Minus, ShoppingBag, Users, DollarSign,
   Award, Calendar, CreditCard, Percent, Store, Flame, BarChart3, AreaChart,
-  Wallet, PackageCheck, XCircle, UserCheck,
+  Wallet, PackageCheck, XCircle, UserCheck, Gauge, CalendarClock, CalendarRange, Search, Sparkles,
 } from 'lucide-react';
 import FilterTabs from '../../components/common/FilterTabs';
 
@@ -37,6 +38,9 @@ export default function MerchantStats() {
   const [hiddenPaymentKeys, setHiddenPaymentKeys] = useState(new Set());
   const [hiddenStatusKeys, setHiddenStatusKeys] = useState(new Set());
   const [seriesFilter, setSeriesFilter] = useState({ year: 'ALL', month: 'ALL', weekday: 'ALL' });
+  const [insights, setInsights] = useState(null);
+  const [topQuery, setTopQuery] = useState('');
+  const [topExpanded, setTopExpanded] = useState(false);
 
   const toggleKey = (setter) => (name) => setter(prev => {
     const next = new Set(prev);
@@ -77,6 +81,13 @@ export default function MerchantStats() {
   }, [restaurantId, filterRange]);
 
   useEffect(() => { fetchReport(); }, [fetchReport]);
+
+  // Chuỗi doanh thu theo ngày (toàn lịch sử) — để so sánh kỳ hiện tại vs kỳ trước (endpoint đã có sẵn)
+  useEffect(() => {
+    if (!restaurantId) return;
+    apiClient.get(`/merchant/stats/insights?restaurantId=${restaurantId}`)
+      .then(r => setInsights(r.data?.data || null)).catch(() => {});
+  }, [restaurantId]);
 
   const rate = report?.commissionRate != null ? Number(report.commissionRate) : 0.1;
   const ratePct = Math.round(rate * 100);
@@ -120,7 +131,24 @@ export default function MerchantStats() {
     })).sort((a, b) => b.count - a.count);
   }, [report, pieMode]);
 
-  const topFoods = report?.topFoods || [];
+  // So sánh kỳ đang chọn vs kỳ trước tương đương (ẩn khi range = "Tất cả")
+  const rangeCompare = useMemo(() => rangeOverRange(insights?.dailyRevenue || [], 'revenue', filterRange), [insights, filterRange]);
+
+  // Chỉ số chi tiết suy từ chuỗi ngày của kỳ: số ngày có đơn, TB/ngày, ngày cao điểm (theo tiền món)
+  const dailyStats = useMemo(() => {
+    const d = report?.daily || [];
+    let peak = null, totalSub = 0;
+    d.forEach(x => { const v = Number(x.subtotal || 0); totalSub += v; if (!peak || v > peak.v) peak = { date: x.date, v }; });
+    return { activeDays: d.length, avgPerDay: d.length ? Math.round(totalSub / d.length) : 0, peak };
+  }, [report]);
+
+  // Top món: gắn hạng thật → lọc theo tìm kiếm → mặc định 5, mở rộng xem 10
+  const rankedTop = useMemo(() => (report?.topFoods || []).map((f, i) => ({ ...f, rank: i + 1 })), [report]);
+  const filteredTop = useMemo(() => {
+    const q = topQuery.trim().toLowerCase();
+    const matched = q ? rankedTop.filter(f => (f.name || '').toLowerCase().includes(q)) : rankedTop;
+    return topExpanded ? matched : matched.slice(0, 5);
+  }, [rankedTop, topQuery, topExpanded]);
 
   if (!restaurantId && !loadingRes) {
     return (
@@ -145,6 +173,8 @@ export default function MerchantStats() {
   const cancelledOrders = s.cancelledOrders || 0;
   const uniqueCustomers = s.uniqueCustomers || 0;
   const cancelRate = totalOrders > 0 ? ((cancelledOrders / totalOrders) * 100) : 0;
+  const completionRate = totalOrders > 0 ? ((completedOrders / totalOrders) * 100) : 0;
+  const fmtDay = (iso) => { if (!iso) return '—'; const [y, m, d] = String(iso).slice(0, 10).split('-'); return `${d}/${m}/${y}`; };
 
   return (
     <div className="flex-1 p-4 md:p-8 max-w-6xl mx-auto w-full font-google-sans space-y-6 pb-24 text-slate-800">
@@ -181,36 +211,73 @@ export default function MerchantStats() {
 
           {/* KPI dòng tiền (4) */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            <KPICard title="Doanh Thu Thực Nhận" value={formatCurrency(earnings)}
+            <KPICard title={<>Doanh Thu Thực Nhận <InfoTip theme="light" text={`Số tiền quán thực sự nhận được = tiền món ăn sau khi trừ ${ratePct}% hoa hồng sàn. Chưa gồm cước ship (thuộc về tài xế).`} /></>}
+              value={formatCurrency(earnings)}
               description={`Sau khi trừ ${ratePct}% hoa hồng sàn`} icon={DollarSign}
               color="border-md-secondary/15 bg-md-secondary-container/5 text-md-secondary bg-white" />
-            <KPICard title="Tổng Tiền Món Ăn" value={formatCurrency(subtotal)}
+            <KPICard title={<>Tổng Tiền Món Ăn <InfoTip theme="light" text="Tổng giá trị món ăn (subtotal) của các đơn hoàn tất, TRƯỚC khi trừ hoa hồng sàn." /></>}
+              value={formatCurrency(subtotal)}
               description="Doanh thu món trước chiết khấu" icon={ShoppingBag}
               color="border-blue-500/15 bg-blue-500/5 text-blue-600 bg-white" />
-            <KPICard title={`Chiết Khấu Sàn (${ratePct}%)`} value={formatCurrency(commission)}
+            <KPICard title={<>Chiết Khấu Sàn ({ratePct}%) <InfoTip theme="light" text={`Phần sàn giữ lại = ${ratePct}% tiền món ăn, để duy trì vận hành hệ thống.`} /></>}
+              value={formatCurrency(commission)}
               description="Khấu trừ duy trì hệ thống" icon={Percent}
               color="border-orange-500/15 bg-orange-500/5 text-orange-600 bg-white" />
-            <KPICard title="Dòng Tiền Giao Vận" value={formatCurrency(shipping)}
+            <KPICard title={<>Dòng Tiền Giao Vận <InfoTip theme="light" text="Tổng phí giao hàng khách trả — khoản này chuyển cho tài xế, không phải doanh thu của quán." /></>}
+              value={formatCurrency(shipping)}
               description="Phí giao hàng trả cho Shipper" icon={Users}
               color="border-purple-500/15 bg-purple-500/5 text-purple-600 bg-white" />
           </div>
 
+          {/* SO SÁNH KỲ ĐANG CHỌN vs KỲ TRƯỚC (ẩn khi range = Tất cả) */}
+          {rangeCompare && (
+            <div className="bg-white border border-slate-200/60 rounded-radius-xl p-4 shadow-sm">
+              <h3 className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider flex items-center gap-1.5 mb-3">
+                <CalendarRange size={13} className="text-md-secondary" /> So với {rangeCompare.label}
+                <InfoTip theme="light" text="So sánh kỳ đang chọn với kỳ liền trước có cùng độ dài, để thấy quán đang tăng hay giảm." />
+              </h3>
+              <div className="grid grid-cols-2 gap-3">
+                {[
+                  { label: 'Doanh thu món kỳ này', cur: formatCurrency(rangeCompare.cur), prev: formatCurrency(rangeCompare.prev), d: rangeCompare.valueDelta },
+                  { label: 'Đơn hoàn tất kỳ này', cur: rangeCompare.curCount.toLocaleString('vi-VN'), prev: rangeCompare.prevCount.toLocaleString('vi-VN'), d: rangeCompare.countDelta },
+                ].map((c, i) => {
+                  const Dir = c.d.dir === 'up' ? TrendingUp : c.d.dir === 'down' ? TrendingDown : Minus;
+                  const dc = !c.d.has ? 'text-slate-400' : c.d.dir === 'up' ? 'text-emerald-600' : c.d.dir === 'down' ? 'text-rose-500' : 'text-slate-500';
+                  return (
+                    <div key={i} className="bg-slate-50 border border-slate-100 rounded-radius-lg p-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[9px] font-bold uppercase tracking-wide text-slate-400">{c.label}</span>
+                        <span className={`inline-flex items-center gap-0.5 text-[11px] font-extrabold ${dc}`}>
+                          <Dir size={12} />{c.d.has ? `${c.d.pct >= 0 ? '+' : ''}${c.d.pct}%` : '—'}
+                        </span>
+                      </div>
+                      <div className="text-base font-black text-slate-800 mt-1 tabular-nums">{c.cur}</div>
+                      <div className="text-[9px] text-slate-400 font-semibold mt-0.5">Kỳ trước: {c.prev}</div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
           {/* Dải chỉ số vận hành (5) — chiều sâu thêm */}
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
             {[
-              { label: 'Tổng giá trị đơn (GTV)', value: formatCurrency(gtv), icon: Wallet, color: 'text-slate-800' },
-              { label: 'Giá trị đơn TB (AOV)', value: formatCurrency(aov), icon: BarChart3, color: 'text-blue-600' },
-              { label: 'Đơn hoàn tất', value: `${completedOrders}`, icon: PackageCheck, color: 'text-md-secondary' },
-              { label: 'Khách duy nhất', value: `${uniqueCustomers}`, icon: UserCheck, color: 'text-emerald-600' },
-              { label: 'Tỷ lệ huỷ', value: `${cancelRate.toFixed(1)}%`, icon: XCircle, color: cancelRate > 15 ? 'text-red-600' : 'text-slate-700' },
+              { label: 'Tổng giá trị đơn (GTV)', value: formatCurrency(gtv), icon: Wallet, color: 'text-slate-800', tip: 'GTV = tiền món + cước ship của các đơn hoàn tất. Là tổng dòng tiền qua quán.' },
+              { label: 'Giá trị đơn TB (AOV)', value: formatCurrency(aov), icon: BarChart3, color: 'text-blue-600', tip: 'AOV = tiền món ăn ÷ số đơn tạo doanh thu. Mỗi đơn trung bình đáng bao nhiêu.' },
+              { label: 'Đơn hoàn tất', value: `${completedOrders}`, icon: PackageCheck, color: 'text-md-secondary', tip: 'Số đơn đã giao xong (kể cả đơn sau đó hoàn tiền — vì đơn vẫn đã hoàn tất).' },
+              { label: 'Khách duy nhất', value: `${uniqueCustomers}`, icon: UserCheck, color: 'text-emerald-600', tip: 'Số khách KHÁC NHAU đã đặt đơn ở quán trong kỳ.' },
+              { label: 'Tỷ lệ huỷ', value: `${cancelRate.toFixed(1)}%`, icon: XCircle, color: cancelRate > 15 ? 'text-red-600' : 'text-slate-700', tip: 'Đơn huỷ ÷ tổng đơn. Trên 15% nên rà soát quy trình nhận/chuẩn bị đơn.' },
             ].map((c, i) => {
               const Icon = c.icon;
               return (
                 <div key={i} className="bg-white border border-slate-200/60 rounded-radius-xl p-3.5 shadow-sm flex items-center gap-2.5">
                   <Icon size={18} className={`${c.color} shrink-0`} />
-                  <div className="min-w-0">
+                  <div className="min-w-0 flex-1">
                     <div className={`text-sm font-extrabold ${c.color} truncate`}>{c.value}</div>
-                    <div className="text-[9px] text-slate-400 font-bold uppercase tracking-wide truncate">{c.label}</div>
+                    <div className="text-[9px] text-slate-400 font-bold uppercase tracking-wide truncate flex items-center gap-1">
+                      {c.label} <InfoTip theme="light" size={11} text={c.tip} />
+                    </div>
                   </div>
                 </div>
               );

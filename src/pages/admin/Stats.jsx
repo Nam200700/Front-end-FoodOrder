@@ -91,7 +91,7 @@ export default function AdminStats() {
       'Hoa hồng sàn': Math.round((d.sub || 0) * rate),
     }));
     return { timelineData: data, chartGranularity: gran };
-  }, [report, rate]);
+  }, [report, rate, seriesFilter]);
 
   const paymentData = useMemo(() => {
     return (report?.paymentDist || []).map(b => ({

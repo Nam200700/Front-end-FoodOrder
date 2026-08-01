@@ -123,7 +123,7 @@ export default function ShipperPickup() {
           distance: 'Bản đồ',
           fee: mappedOrder.shippingFee,
           total: mappedOrder.total,
-          phone: mappedOrder.customerPhone || '0901234567',
+          phone: mappedOrder.customerPhone || '',
           status: mappedOrder.status,
           step: (mappedOrder.status === 'PICKED_UP' || mappedOrder.status === 'DELIVERING') ? 'PICKED_UP' : 'ACCEPTED'
         });

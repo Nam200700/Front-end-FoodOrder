@@ -393,46 +393,67 @@ export default function MerchantStats() {
           {/* Top món + Trạng thái đơn */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="bg-white rounded-[1.25rem] p-5 border border-slate-200/60 shadow-sm lg:col-span-2 space-y-4">
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between gap-2 flex-wrap">
                 <h3 className="text-xs font-extrabold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
-                  <Award className="text-yellow-500" size={18} /> Top 5 Món Ăn Bán Chạy
+                  <Award className="text-yellow-500" size={18} /> Top Món Ăn Bán Chạy
+                  <InfoTip theme="light" text="Xếp theo doanh thu món trong kỳ. Tìm theo tên món, bấm 'Xem thêm' để xem tới top 10." />
                 </h3>
                 <span className="text-[9px] text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full font-extrabold flex items-center gap-1">
                   <Flame size={11} /> Best-Sellers
                 </span>
               </div>
-              {topFoods.length === 0 ? (
+              {/* Tìm kiếm món trong bảng xếp hạng */}
+              <div className="relative">
+                <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                <input
+                  value={topQuery}
+                  onChange={(e) => setTopQuery(e.target.value)}
+                  placeholder="Tìm món trong bảng xếp hạng..."
+                  className="w-full pl-8 pr-3 py-1.5 text-[11px] font-semibold bg-slate-50 border border-slate-200 rounded-radius-lg text-slate-700 placeholder:text-slate-400 focus:border-md-secondary focus:bg-white outline-none"
+                />
+              </div>
+              {rankedTop.length === 0 ? (
                 <div className="py-12 text-center text-xs font-bold text-slate-400">Chưa có món ăn bán thành công trong kỳ này.</div>
+              ) : filteredTop.length === 0 ? (
+                <div className="py-10 text-center text-xs font-bold text-slate-400">Không tìm thấy món khớp "{topQuery}".</div>
               ) : (
-                <div className="space-y-4.5">
-                  {topFoods.map((food, idx) => {
-                    const revenue = Number(food.revenue || 0);
-                    const pct = subtotal > 0 ? (revenue / subtotal) * 100 : 0;
-                    return (
-                      <div key={idx} className="space-y-1.5 text-xs font-bold">
-                        <div className="flex justify-between items-center text-slate-700">
-                          <div className="flex items-center gap-2 min-w-0">
-                            <span className={`w-5 h-5 rounded-full flex items-center justify-center font-extrabold text-[10px] shrink-0 ${
-                              idx === 0 ? 'bg-yellow-100 text-yellow-700' : idx === 1 ? 'bg-slate-100 text-slate-700' :
-                              idx === 2 ? 'bg-orange-100 text-orange-700' : 'bg-slate-50 text-slate-500'}`}>{idx + 1}</span>
-                            <span className="text-slate-800 font-extrabold truncate">{food.name}</span>
+                <>
+                  <div className="space-y-4.5">
+                    {filteredTop.map((food) => {
+                      const revenue = Number(food.revenue || 0);
+                      const pct = subtotal > 0 ? (revenue / subtotal) * 100 : 0;
+                      return (
+                        <div key={food.rank} className="space-y-1.5 text-xs font-bold">
+                          <div className="flex justify-between items-center text-slate-700">
+                            <div className="flex items-center gap-2 min-w-0">
+                              <span className={`w-5 h-5 rounded-full flex items-center justify-center font-extrabold text-[10px] shrink-0 ${
+                                food.rank === 1 ? 'bg-yellow-100 text-yellow-700' : food.rank === 2 ? 'bg-slate-100 text-slate-700' :
+                                food.rank === 3 ? 'bg-orange-100 text-orange-700' : 'bg-slate-50 text-slate-500'}`}>{food.rank}</span>
+                              <span className="text-slate-800 font-extrabold truncate">{food.name}</span>
+                            </div>
+                            <div className="flex items-center gap-3 shrink-0">
+                              <span className="text-slate-400">Đã bán: <b className="text-slate-700 font-extrabold">{food.qty}</b></span>
+                              <span className="text-md-secondary font-extrabold">{formatCurrency(revenue)}</span>
+                            </div>
                           </div>
-                          <div className="flex items-center gap-3 shrink-0">
-                            <span className="text-slate-400">Đã bán: <b className="text-slate-700 font-extrabold">{food.qty}</b></span>
-                            <span className="text-md-secondary font-extrabold">{formatCurrency(revenue)}</span>
+                          <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                            <div className="h-full bg-md-secondary rounded-full transition-all duration-500" style={{ width: `${pct}%` }} />
+                          </div>
+                          <div className="flex justify-between text-[9px] text-slate-400 font-medium mt-0.5">
+                            <span>Đóng góp doanh thu</span>
+                            <span>{pct.toFixed(1)}% của tổng tiền món ({formatCurrency(subtotal)})</span>
                           </div>
                         </div>
-                        <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                          <div className="h-full bg-md-secondary rounded-full transition-all duration-500" style={{ width: `${pct}%` }} />
-                        </div>
-                        <div className="flex justify-between text-[9px] text-slate-400 font-medium mt-0.5">
-                          <span>Đóng góp doanh thu</span>
-                          <span>{pct.toFixed(1)}% của tổng tiền món ({formatCurrency(subtotal)})</span>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
+                      );
+                    })}
+                  </div>
+                  {!topQuery && rankedTop.length > 5 && (
+                    <button onClick={() => setTopExpanded(v => !v)}
+                      className="w-full text-[11px] font-bold text-md-secondary hover:text-md-secondary/80 py-1.5 rounded-radius-lg border border-slate-200 hover:border-md-secondary/40 transition-colors cursor-pointer">
+                      {topExpanded ? 'Thu gọn' : `Xem thêm (top ${rankedTop.length})`}
+                    </button>
+                  )}
+                </>
               )}
             </div>
 

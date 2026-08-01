@@ -4,6 +4,7 @@ import {
   Users, Store, Bike, Package, AlertTriangle, TrendingUp, TrendingDown,
   Shield, RefreshCw, XCircle, Activity, Siren, UserPlus, Clock,
   CreditCard, CheckCircle2, RotateCcw, Ban, ArrowRight, BarChart3, ShieldAlert,
+  Ticket, Percent, Gift, Wallet,
 } from 'lucide-react';
 import RevenueAreaChart from '../../components/common/RevenueAreaChart';
 import { aggregateDaily, pickGranularity, bucketLabel, granularityCaption } from '../../utils/chartAggregate';
@@ -20,6 +21,8 @@ export default function AdminDashboard() {
   // Số liệu toàn hệ thống — TẤT CẢ tính ở server (không tải đơn size=2000 rồi tính client → tránh sai số toàn sàn)
   const { data: overviewStats, loading: loadingOverview, error: overviewError, refetch: refetchOverview } = useFetchData('/admin/stats/overview');
   const { data: insights, loading: loadingInsights, error: insightsError, refetch: refetchInsights } = useFetchData('/admin/stats/insights');
+  // Phân tích voucher 30 ngày (feature voucher của nhóm) — số thật từ đơn có gắn voucher
+  const { data: voucherAnalytics } = useFetchData('/admin/stats/vouchers?range=30days');
 
   const loading = loadingOverview || loadingInsights;
   const hasError = overviewError || insightsError;
@@ -52,6 +55,12 @@ export default function AdminDashboard() {
   const comparison = useMemo(() => periodComparison(ins.dailyGmv || [], 'gmv'), [ins.dailyGmv]);
   const forecast = useMemo(() => monthEndForecast(ins.dailyGmv || [], 'gmv'), [ins.dailyGmv]);
   const forecastChart = useMemo(() => forecastNextDays(ins.dailyGmv || [], 'gmv', { window: 30, horizon: 7 }), [ins.dailyGmv]);
+
+  // Chuỗi lượt dùng voucher theo ngày → bar chart nhỏ
+  const voucherUsageChart = useMemo(() => {
+    const label = (s) => { const [, m, d] = String(s).split('-'); return `${d}/${m}`; };
+    return (voucherAnalytics?.dailyUsage || []).map(x => ({ day: label(x.date), uses: Number(x.uses || 0) }));
+  }, [voucherAnalytics]);
 
   if (loading && !overviewStats) {
     return <Spinner fullScreen />;

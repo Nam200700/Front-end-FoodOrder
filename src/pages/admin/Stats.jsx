@@ -18,7 +18,22 @@ import { availablePeriods, filterSeries, rangeOverRange } from '../../utils/dash
 
 const COLORS = ['#8B5CF6', '#10B981', '#F43F5E', '#06B6D4', '#F59E0B', '#3B82F6'];
 const PAYMENT_LABELS = { PAID: 'Đã thanh toán', PENDING: 'Chờ thanh toán', REFUNDED: 'Đã hoàn tiền', FAILED: 'Thất bại' };
-const RANGE_LABEL = { '7days': '7 ngày qua', '30days': '30 ngày qua', thisMonth: 'Tháng này', all: 'Tất cả' };
+const RANGE_LABEL = {
+  today: 'Hôm nay', '7days': '7 ngày qua', '30days': '30 ngày qua', '90days': '90 ngày qua',
+  thisWeek: 'Tuần này', thisMonth: 'Tháng này', lastMonth: 'Tháng trước', thisYear: 'Năm nay', all: 'Tất cả',
+};
+// Các mốc thời gian cho bộ lọc (FilterTabs tự xuống dòng khi hẹp)
+const RANGE_TABS = [
+  { id: 'today', label: 'Hôm Nay' },
+  { id: '7days', label: '7 Ngày' },
+  { id: '30days', label: '30 Ngày' },
+  { id: '90days', label: '90 Ngày' },
+  { id: 'thisWeek', label: 'Tuần Này' },
+  { id: 'thisMonth', label: 'Tháng Này' },
+  { id: 'lastMonth', label: 'Tháng Trước' },
+  { id: 'thisYear', label: 'Năm Nay' },
+  { id: 'all', label: 'Tất Cả' },
+];
 
 export default function AdminStats() {
   const [overview, setOverview] = useState(null);
@@ -168,18 +183,12 @@ export default function AdminStats() {
           <h1 className="text-xl md:text-2xl font-bold text-slate-100 flex items-center gap-2">
             <Shield className="text-purple-400" size={24} /> Trung Tâm Phân Tích Doanh Thu
           </h1>
-          <p className="text-xs text-slate-400 mt-1">Gộp tại máy chủ · tách bạch Hoa hồng sàn · Thu nhập Quán & Shipper · {RANGE_LABEL[filterRange]}</p>
         </div>
         <FilterTabs
-          tabs={[
-            { id: '7days', label: '7 Ngày' },
-            { id: '30days', label: '30 Ngày' },
-            { id: 'thisMonth', label: 'Tháng Này' },
-            { id: 'all', label: 'Tất Cả' },
-          ]}
+          tabs={RANGE_TABS}
           activeTab={filterRange}
           onTabChange={setFilterRange}
-          className="self-start sm:self-center bg-slate-900 p-1 rounded-radius-lg border border-slate-800"
+          className="self-start sm:self-center bg-slate-900 p-1 rounded-radius-lg border border-slate-800 max-w-full"
           activeClassName="bg-purple-650 text-white shadow-sm shadow-purple-650/25"
         />
       </div>
@@ -273,27 +282,6 @@ export default function AdminStats() {
                   <div className="text-[9px] text-slate-500 font-bold uppercase tracking-wide truncate flex items-center gap-1">
                     {c.label} <InfoTip theme="dark" size={11} text={c.tip} />
                   </div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-
-        {/* Dải chỉ số vận hành (chiều sâu) */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          {[
-            { label: 'Giá trị đơn TB (AOV)', value: formatCurrency(aov), icon: BarChart3, color: 'text-blue-400' },
-            { label: 'Đơn hoàn tất', value: `${completedOrders.toLocaleString('vi-VN')}`, icon: PackageCheck, color: 'text-emerald-400' },
-            { label: 'Khách duy nhất', value: `${uniqueCustomers.toLocaleString('vi-VN')}`, icon: UserCheck, color: 'text-cyan-400' },
-            { label: 'Tỷ lệ huỷ', value: `${cancelRate.toFixed(1)}%`, icon: XCircle, color: cancelRate > 15 ? 'text-red-400' : 'text-slate-300' },
-          ].map((c, i) => {
-            const Icon = c.icon;
-            return (
-              <div key={i} className="bg-slate-950 border border-slate-800 rounded-radius-xl p-3.5 shadow-md flex items-center gap-2.5">
-                <Icon size={18} className={`${c.color} shrink-0`} />
-                <div className="min-w-0">
-                  <div className={`text-sm font-extrabold ${c.color} truncate`}>{c.value}</div>
-                  <div className="text-[9px] text-slate-500 font-bold uppercase tracking-wide truncate">{c.label}</div>
                 </div>
               </div>
             );

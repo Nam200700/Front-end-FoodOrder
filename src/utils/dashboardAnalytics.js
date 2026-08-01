@@ -111,22 +111,45 @@ export function rangeOverRange(series, valueKey, range, countKey = 'orders', now
   if (!range || range === 'all') return null;
   const dayMap = toDayMap(series, valueKey, countKey);
   const today = new Date(now); today.setHours(0, 0, 0, 0);
+  const addDays = (d, n) => { const x = new Date(d); x.setDate(x.getDate() + n); return x; };
   let curFrom, curTo, prevFrom, prevTo, label;
 
-  if (range === '7days' || range === '30days') {
-    const span = range === '7days' ? 7 : 30;
+  if (range === 'today') {
+    curFrom = new Date(today); curTo = new Date(today);
+    prevFrom = addDays(today, -1); prevTo = addDays(today, -1);
+    label = 'hôm qua';
+  } else if (range === '7days' || range === '30days' || range === '90days') {
+    const span = range === '7days' ? 7 : range === '30days' ? 30 : 90;
     curTo = new Date(today);
-    curFrom = new Date(today); curFrom.setDate(curFrom.getDate() - (span - 1));
-    prevTo = new Date(curFrom); prevTo.setDate(prevTo.getDate() - 1);
-    prevFrom = new Date(prevTo); prevFrom.setDate(prevFrom.getDate() - (span - 1));
+    curFrom = addDays(today, -(span - 1));
+    prevTo = addDays(curFrom, -1);
+    prevFrom = addDays(prevTo, -(span - 1));
     label = `${span} ngày trước đó`;
+  } else if (range === 'thisWeek') {
+    curFrom = startOfWeek(today); curTo = new Date(today);
+    const elapsed = Math.round((curTo - curFrom) / 86400000);
+    prevFrom = addDays(curFrom, -7);
+    prevTo = addDays(prevFrom, elapsed);
+    label = 'cùng kỳ tuần trước';
   } else if (range === 'thisMonth') {
     curFrom = new Date(today.getFullYear(), today.getMonth(), 1);
     curTo = new Date(today);
     const elapsed = today.getDate();
     prevFrom = new Date(today.getFullYear(), today.getMonth() - 1, 1);
-    prevTo = new Date(prevFrom); prevTo.setDate(prevTo.getDate() + elapsed - 1); // cùng số ngày đã trôi
+    prevTo = addDays(prevFrom, elapsed - 1); // cùng số ngày đã trôi
     label = 'cùng kỳ tháng trước';
+  } else if (range === 'lastMonth') {
+    curFrom = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+    curTo = new Date(today.getFullYear(), today.getMonth(), 0); // ngày cuối tháng trước
+    prevFrom = new Date(today.getFullYear(), today.getMonth() - 2, 1);
+    prevTo = new Date(today.getFullYear(), today.getMonth() - 1, 0);
+    label = 'tháng trước nữa';
+  } else if (range === 'thisYear') {
+    curFrom = new Date(today.getFullYear(), 0, 1); curTo = new Date(today);
+    const elapsed = Math.round((curTo - curFrom) / 86400000);
+    prevFrom = new Date(today.getFullYear() - 1, 0, 1);
+    prevTo = addDays(prevFrom, elapsed);
+    label = 'cùng kỳ năm trước';
   } else {
     return null;
   }

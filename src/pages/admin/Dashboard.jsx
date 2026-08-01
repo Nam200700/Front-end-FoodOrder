@@ -47,6 +47,12 @@ export default function AdminDashboard() {
     [ins.peakHours]
   );
 
+  // So sánh kỳ (hôm nay/tuần/tháng vs kỳ trước) + dự báo cuối tháng + đường xu hướng —
+  // tính client-side từ chuỗi GTV theo ngày server đã trả (số thật, chỉ gom lại theo kỳ).
+  const comparison = useMemo(() => periodComparison(ins.dailyGmv || [], 'gmv'), [ins.dailyGmv]);
+  const forecast = useMemo(() => monthEndForecast(ins.dailyGmv || [], 'gmv'), [ins.dailyGmv]);
+  const forecastChart = useMemo(() => forecastNextDays(ins.dailyGmv || [], 'gmv', { window: 30, horizon: 7 }), [ins.dailyGmv]);
+
   if (loading && !overviewStats) {
     return <Spinner fullScreen />;
   }

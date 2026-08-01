@@ -7,6 +7,9 @@ import {
 } from 'lucide-react';
 import RevenueAreaChart from '../../components/common/RevenueAreaChart';
 import { aggregateDaily, pickGranularity, bucketLabel, granularityCaption } from '../../utils/chartAggregate';
+import { periodComparison, monthEndForecast, forecastNextDays } from '../../utils/dashboardAnalytics';
+import PeriodCompareStrip from '../../components/common/PeriodCompareStrip';
+import ForecastCard from '../../components/common/ForecastCard';
 import { formatCurrency } from '../../utils/format';
 import apiClient from '../../services/api';
 import Spinner from '../../components/common/Spinner';
@@ -60,6 +63,11 @@ export default function MerchantDashboard() {
     const data = agg.map(d => ({ day: bucketLabel(d, gran, 'date', true), amount: d.revenue || 0 }));
     return { revenueData: data, chartGranularity: gran };
   }, [insightsData]);
+
+  // So sánh kỳ + dự báo cuối tháng + đường xu hướng — tính client-side từ chuỗi doanh thu theo ngày.
+  const comparison = useMemo(() => periodComparison(insightsData?.dailyRevenue || [], 'revenue'), [insightsData]);
+  const forecast = useMemo(() => monthEndForecast(insightsData?.dailyRevenue || [], 'revenue'), [insightsData]);
+  const forecastChart = useMemo(() => forecastNextDays(insightsData?.dailyRevenue || [], 'revenue', { window: 30, horizon: 7 }), [insightsData]);
 
   // Top 3 món bán chạy (rút gọn — bản đầy đủ ở trang Thống kê)
   const topFoods = useMemo(() => {
@@ -267,6 +275,9 @@ export default function MerchantDashboard() {
           );
         })}
       </div>
+
+      {/* ─── SO SÁNH KỲ: hôm nay · tuần · tháng (vs kỳ trước) ─── */}
+      <PeriodCompareStrip comparison={comparison} formatValue={formatCurrency} theme="light" accent="text-md-secondary" unit="đơn" />
 
       {/* ─── DOANH THU (rút gọn) + GIỜ CAO ĐIỂM ─── */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

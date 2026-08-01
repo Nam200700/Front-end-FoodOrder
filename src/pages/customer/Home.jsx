@@ -665,7 +665,7 @@ export default function Home() {
                           {/* Rating flag */}
                           <span className="absolute bottom-2.5 left-2.5 text-[10px] bg-black/75 backdrop-blur-sm text-white font-bold px-2 py-0.5 rounded flex items-center gap-1">
                             <Star size={11} className="fill-amber-400 text-amber-400" />
-                            {res.rating} ({res.reviewsCount})
+                            {res.reviewsCount > 0 ? `${res.rating} (${res.reviewsCount})` : 'Mới'}
                           </span>
                           {/* Status Tag */}
                           <span className={`absolute top-2.5 left-2.5 text-[10px] font-bold px-2 py-0.5 rounded shadow-sm text-white ${res.status !== false ? 'bg-emerald-600' : 'bg-slate-600'}`}>
@@ -788,7 +788,7 @@ export default function Home() {
                           />
                           <span className="absolute bottom-2.5 left-2.5 text-[10px] bg-black/75 backdrop-blur-sm text-white font-bold px-2 py-0.5 rounded flex items-center gap-1">
                             <Star size={11} className="fill-amber-400 text-amber-400" />
-                            {res.rating} ({res.reviewsCount})
+                            {res.reviewsCount > 0 ? `${res.rating} (${res.reviewsCount})` : 'Mới'}
                           </span>
                         </div>
 

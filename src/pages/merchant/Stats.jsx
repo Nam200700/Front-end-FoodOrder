@@ -25,7 +25,21 @@ const STATUS_LABELS = {
   COMPLETED: 'Thành công', CANCELLED: 'Đã huỷ', DELIVERING: 'Đang giao', PREPARING: 'Chuẩn bị',
   CONFIRMED: 'Đã nhận', PENDING: 'Chờ duyệt', READY_FOR_PICKUP: 'Chờ shipper', PICKED_UP: 'Shipper lấy',
 };
-const RANGE_LABEL = { '7days': '7 ngày qua', '30days': '30 ngày qua', thisMonth: 'Tháng này', all: 'Tất cả' };
+const RANGE_LABEL = {
+  today: 'Hôm nay', '7days': '7 ngày qua', '30days': '30 ngày qua', '90days': '90 ngày qua',
+  thisWeek: 'Tuần này', thisMonth: 'Tháng này', lastMonth: 'Tháng trước', thisYear: 'Năm nay', all: 'Tất cả',
+};
+const RANGE_TABS = [
+  { id: 'today', label: 'Hôm Nay' },
+  { id: '7days', label: '7 Ngày' },
+  { id: '30days', label: '30 Ngày' },
+  { id: '90days', label: '90 Ngày' },
+  { id: 'thisWeek', label: 'Tuần Này' },
+  { id: 'thisMonth', label: 'Tháng Này' },
+  { id: 'lastMonth', label: 'Tháng Trước' },
+  { id: 'thisYear', label: 'Năm Nay' },
+  { id: 'all', label: 'Tất Cả' },
+];
 
 export default function MerchantStats() {
   const [restaurantId, setRestaurantId] = useState(null);

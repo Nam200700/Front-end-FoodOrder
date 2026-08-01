@@ -104,8 +104,9 @@ export const mapRestaurant = (r) => {
     shipping: 'Miễn phí >99k',
     shippingFee: Number(r.deliveryFee || 15000),
     minOrderAmount: Number(r.minOrderAmount || 0),
-    avgPrice: 45000,
-    featured: r.rating >= 4.8 || (r.restaurantId ? r.restaurantId % 2 === 0 : false),
+    avgPrice: r.avgPrice ?? null,
+    // Nổi bật theo cờ thật của BE, hoặc suy từ rating cao thực tế — KHÔNG bịa theo id chẵn/lẻ.
+    featured: r.featured ?? (Number(r.rating ?? r.averageRating ?? 0) >= 4.8),
     description: r.description,
   };
 };

@@ -58,6 +58,7 @@ export default function RegistrationReviewShell({
   activeFilter,
   onFilterChange,
   guidelines = [],
+  pagination = null,
   children,
 }) {
   const chips = [
@@ -123,6 +124,7 @@ export default function RegistrationReviewShell({
         {/* Danh sách hồ sơ */}
         <div className="lg:col-span-2 space-y-4">
           {children}
+          {pagination && <ReviewPagination {...pagination} />}
         </div>
 
         {/* Cột phụ: cẩm nang + quy trình (lấp khoảng trống, thêm ngữ cảnh) */}

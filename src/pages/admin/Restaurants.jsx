@@ -79,6 +79,11 @@ export default function AdminRestaurants() {
 
   useEffect(() => { fetchCounts(); }, [fetchCounts]);
 
+  // Trang cuối vừa bị duyệt hết → lùi về trang trước cho khỏi trống
+  useEffect(() => {
+    if (!loading && requests && requests.length === 0 && page > 0) setPage(p => p - 1);
+  }, [loading, requests, page]);
+
   const refreshAll = () => { refetch(); fetchCounts(); };
 
   const handleApproveClick = (id) => {

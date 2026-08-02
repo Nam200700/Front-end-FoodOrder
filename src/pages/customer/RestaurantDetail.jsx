@@ -1,9 +1,9 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useCartStore } from '../../stores/cartStore';
 import { useChatStore } from '../../stores/chatStore';
 import { useAuthStore } from '../../stores/authStore';
-import { ArrowLeft, Star, Clock, MapPin, Phone, Search, ShoppingBag, Heart, Share2, Plus, Minus, MessageSquare, AlertTriangle, Bike, AlertCircle, X, ZoomIn, ChevronLeft, ChevronRight, Utensils, Info, Truck, Wallet, Timer } from 'lucide-react';
+import { ArrowLeft, Star, Clock, MapPin, Phone, Search, ShoppingBag, Heart, Share2, Plus, Minus, MessageSquare, AlertTriangle, Bike, AlertCircle, X, ZoomIn, ChevronLeft, ChevronRight, Utensils, Info, Truck, Wallet, Timer, Sparkles, TrendingUp, ThumbsUp, Award, ArrowDownUp, Camera, ChevronDown, Frown, Meh, Smile, Laugh, MessageSquareText, Store } from 'lucide-react';
 import { formatCurrency } from '../../utils/format';
 import { getFoodImageUrl, DEFAULT_FOOD_IMAGE } from '../../utils/avatarHelper';
 import Button from '../../components/common/Button';
@@ -15,6 +15,7 @@ import { calculateHaversineDistance } from '../../utils/haversine';
 import { toast } from 'react-toastify';
 import { mapRestaurant } from '../../utils/mappers';
 import { useModalState } from '../../hooks/useModalState';
+import { useFetchData } from '../../hooks/useFetchData';
 
 // Hàng 5 sao dùng chung — tô theo điểm (làm tròn), tuỳ chọn hiệu ứng pop cho sinh động.
 function StarRow({ value = 0, size = 14, animate = false, className = '' }) {
@@ -34,15 +35,416 @@ function StarRow({ value = 0, size = 14, animate = false, className = '' }) {
   );
 }
 
-// Lời nhận xét ngắn theo mức điểm trung bình (thân thiện, tông khách hàng).
-const ratingBlurb = (r) => {
-  const n = Number(r) || 0;
-  if (n >= 4.5) return 'Tuyệt vời! Quán được thực khách yêu thích và đánh giá rất cao.';
-  if (n >= 4) return 'Rất tốt — phần lớn khách hài lòng với món ăn và dịch vụ.';
-  if (n >= 3) return 'Khá ổn — quán đang được nhiều khách ủng hộ.';
-  if (n > 0) return 'Quán đang nỗ lực cải thiện chất lượng phục vụ.';
-  return 'Hãy là người đầu tiên đánh giá quán nhé!';
+// ─── Tài nguyên dùng riêng cho TAB ĐÁNH GIÁ (khách xem) — tông cam CUSTOMER (#FF6B35) ───
+const AVATAR_COLORS = [
+  'bg-blue-100 text-blue-700', 'bg-emerald-100 text-emerald-700', 'bg-amber-100 text-amber-800',
+  'bg-purple-100 text-purple-700', 'bg-rose-100 text-rose-700', 'bg-teal-100 text-teal-700',
+];
+const colorFor = (name) => AVATAR_COLORS[((name || '?').charCodeAt(0) || 0) % AVATAR_COLORS.length];
+
+// Nhãn cảm xúc theo số sao — đồng bộ với trang đánh giá owner/shipper
+const RATING_META = {
+  1: { label: 'Tệ', pill: 'bg-red-50 text-red-600 border-red-200', face: Frown },
+  2: { label: 'Không hài lòng', pill: 'bg-orange-50 text-orange-600 border-orange-200', face: Frown },
+  3: { label: 'Bình thường', pill: 'bg-amber-50 text-amber-600 border-amber-200', face: Meh },
+  4: { label: 'Hài lòng', pill: 'bg-lime-50 text-lime-700 border-lime-200', face: Smile },
+  5: { label: 'Tuyệt vời', pill: 'bg-emerald-50 text-emerald-700 border-emerald-200', face: Laugh },
 };
+const metaFor = (rating) => RATING_META[Math.min(5, Math.max(1, Math.round(rating)))] || RATING_META[5];
+
+const SORTS = [
+  { id: 'recent', label: 'Mới nhất' },
+  { id: 'oldest', label: 'Cũ nhất' },
+  { id: 'high', label: 'Sao cao nhất' },
+  { id: 'low', label: 'Sao thấp nhất' },
+];
+const SORT_PARAM = { recent: 'createdAt,desc', oldest: 'createdAt,asc', high: 'restaurantRating,desc', low: 'restaurantRating,asc' };
+
+const prefersReducedMotion = () =>
+  typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+
+// Đếm tăng dần cho điểm trung bình (0 → target)
+function useCountUp(target, duration = 900) {
+  const [val, setVal] = useState(target);
+  useEffect(() => {
+    if (prefersReducedMotion() || !target) { setVal(target); return; }
+    let raf; const start = performance.now();
+    const tick = (t) => {
+      const p = Math.min((t - start) / duration, 1);
+      setVal(target * (1 - Math.pow(1 - p, 3)));
+      if (p < 1) raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [target, duration]);
+  return val;
+}
+
+// Chip highlight dùng chung: Khen (xanh lá) & Cần cải thiện (hổ phách)
+function HighlightCard({ title, items, tone }) {
+  const good = tone === 'good';
+  const HeadIcon = good ? ThumbsUp : AlertTriangle;
+  const max = items[0]?.count || 1;
+  return (
+    <Card
+      variant="elevated"
+      className={`rounded-xl border shadow-sm p-4 md:p-5 h-full animate-rise-in ${
+        good ? 'bg-gradient-to-br from-emerald-50/70 to-white border-emerald-100' : 'bg-gradient-to-br from-amber-50/70 to-white border-amber-100'
+      }`}
+    >
+      <h3 className="text-xs font-extrabold text-slate-800 uppercase tracking-wider flex items-center gap-1.5 mb-3.5">
+        <HeadIcon size={15} className={good ? 'text-emerald-600' : 'text-amber-500'} /> {title}
+      </h3>
+      <div className="flex flex-wrap gap-2">
+        {items.map((c, i) => {
+          const strong = c.count >= Math.max(2, max * 0.6);
+          const ChipIcon = good ? ThumbsUp : AlertTriangle;
+          const strongCls = good ? 'bg-[#E8F5E9] text-emerald-700 border-[#C8E6C9] shadow-sm' : 'bg-amber-100 text-amber-700 border-amber-200 shadow-sm';
+          const badgeCls = good ? (strong ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-500') : (strong ? 'bg-amber-500 text-white' : 'bg-slate-100 text-slate-500');
+          return (
+            <span
+              key={c.text}
+              style={{ animationDelay: `${i * 45}ms` }}
+              className={`inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-full border animate-rise-in transition-transform hover:scale-105 ${strong ? strongCls : 'bg-white text-slate-600 border-slate-200'}`}
+            >
+              <ChipIcon size={12} className={strong ? (good ? 'text-emerald-600' : 'text-amber-500') : 'text-slate-400'} />
+              {c.text}
+              <span className={`text-[10px] font-black px-1.5 py-0.5 rounded-full ${badgeCls}`}>{c.count}</span>
+            </span>
+          );
+        })}
+      </div>
+    </Card>
+  );
+}
+
+/**
+ * TAB ĐÁNH GIÁ (khách xem quán) — cùng cấu trúc trang owner/shipper nhưng KHÁC BIỆT vì là KHÁCH:
+ * đọc-only (không phản hồi), tông cam CUSTOMER, tiêu đề hướng "cảm nhận của thực khách".
+ * Dùng summary + list LỌC/SORT phân trang server-side (endpoint công khai mới).
+ */
+function ReviewsTab({ restaurantId, globalRating, globalCount, restaurantName, onImageClick }) {
+  const [starFilter, setStarFilter] = useState('all');
+  const [sortBy, setSortBy] = useState('recent');
+  const [imageOnly, setImageOnly] = useState(false);
+  const [page, setPage] = useState(0);
+  const size = 8;
+
+  // Đổi quán → reset bộ lọc
+  useEffect(() => { setStarFilter('all'); setSortBy('recent'); setImageOnly(false); setPage(0); }, [restaurantId]);
+
+  const { data: summary } = useFetchData(`/restaurants/${restaurantId}/reviews/summary`, { mapFn: (d) => d, deps: [restaurantId] });
+
+  const listUrl = useMemo(() => {
+    const p = new URLSearchParams({ page: String(page), size: String(size), sort: SORT_PARAM[sortBy] || SORT_PARAM.recent });
+    if (starFilter !== 'all') p.append('star', starFilter);
+    if (imageOnly) p.append('imageOnly', 'true');
+    return `/restaurants/${restaurantId}/reviews?${p.toString()}`;
+  }, [restaurantId, page, sortBy, starFilter, imageOnly]);
+
+  const { data: listData, loading: loadingList } = useFetchData(listUrl, {
+    mapFn: (d) => ({
+      items: (d?.content || []).map((r) => ({
+        id: (r.reviewId ?? Math.random()).toString(),
+        author: r.customerName || 'Khách hàng',
+        rating: r.restaurantRating || 5,
+        date: new Date(r.createdAt).toLocaleDateString('vi-VN'),
+        comment: r.restaurantComment || '',
+        reply: r.merchantReply,
+        images: r.images || [],
+      })),
+      totalPages: Math.max(1, d?.totalPages || 1),
+      totalElements: d?.totalElements ?? 0,
+    }),
+    deps: [restaurantId],
+  });
+
+  const s = summary || {};
+  // Ưu tiên số toàn cục từ BE (đã hiển thị ở header) để đồng nhất; fallback từ summary
+  const totalReviews = Number(globalCount ?? s.total ?? 0);
+  const avgRating = Number(globalRating ?? s.avg ?? 0);
+  const ratingDist = (s.distribution && s.distribution.length
+    ? s.distribution
+    : [5, 4, 3, 2, 1].map((star) => ({ star, count: 0 }))
+  ).map((x) => ({ star: x.star, count: x.count || 0, pct: totalReviews ? ((x.count || 0) / totalReviews) * 100 : 0 }));
+
+  const positiveCount = s.positiveCount || 0;
+  const satisfaction = totalReviews ? Math.round((positiveCount / totalReviews) * 100) : 0;
+  const recentCount = s.recentCount || 0;
+  const recentAvg = Number(s.recentAvg || 0);
+  const withImageCount = s.withImageCount || 0;
+  const compliments = s.compliments || [];
+  const complaints = s.complaints || [];
+  const hasHighlights = compliments.length > 0 || complaints.length > 0;
+
+  const animatedAvg = useCountUp(Number(avgRating.toFixed(1)));
+
+  const list = listData || { items: [], totalPages: 1, totalElements: 0 };
+  const reviews = list.items;
+  const totalPages = list.totalPages;
+  const safePage = Math.min(page, totalPages - 1);
+
+  const changeFilter = (v) => { setStarFilter(v); setPage(0); };
+  const changeSort = (v) => { setSortBy(v); setPage(0); };
+  const toggleImageOnly = () => { setImageOnly((v) => !v); setPage(0); };
+  const hasActiveControls = starFilter !== 'all' || imageOnly || sortBy !== 'recent';
+
+  if (totalReviews === 0) {
+    return (
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 mt-8">
+        <Card variant="flat" className="text-center py-16">
+          <Star size={48} className="mx-auto text-md-outline/35 mb-3.5" />
+          <p className="text-base font-extrabold text-md-on-surface-variant">Chưa có đánh giá nào</p>
+          <p className="text-sm text-md-outline mt-1">Hãy đặt đơn và trở thành người đánh giá đầu tiên!</p>
+        </Card>
+      </div>
+    );
+  }
+
+  return (
+    <div className="max-w-5xl mx-auto px-4 sm:px-6 mt-8 space-y-6">
+
+      {/* ─── HERO CAM CUSTOMER: điểm TB đếm tăng + sao + hài lòng + 30 ngày ─── */}
+      <div className="relative overflow-hidden rounded-radius-xl bg-gradient-to-br from-[#E85A2A] to-[#FF6B35] text-white p-6 md:p-7 shadow-shadow-2 animate-rise-in">
+        <Star className="absolute -right-6 -bottom-7 text-white/10 fill-white/10" size={150} strokeWidth={1} />
+        <Sparkles className="absolute right-24 top-6 text-white/25 animate-twinkle" size={20} />
+        <Sparkles className="absolute right-10 bottom-8 text-white/15 animate-twinkle" size={13} style={{ animationDelay: '700ms' }} />
+        <div className="absolute inset-y-0 -left-1/3 w-1/4 bg-gradient-to-r from-transparent via-white/12 to-transparent animate-shine pointer-events-none" />
+
+        <div className="relative flex flex-col sm:flex-row sm:items-center gap-5 sm:gap-7">
+          <div className="flex flex-col items-center sm:items-start shrink-0 sm:border-r sm:border-white/20 sm:pr-7">
+            <span className="inline-flex items-center gap-1.5 text-[10px] font-bold bg-white/20 px-3 py-1 rounded-full uppercase tracking-wider mb-2">
+              <Store size={11} className="fill-white" /> Cảm nhận của thực khách
+            </span>
+            <div className="flex items-end gap-2">
+              <span className="text-5xl md:text-6xl font-black leading-none tracking-tight tabular-nums">{animatedAvg.toFixed(1)}</span>
+              <span className="text-white/70 text-sm font-bold mb-1.5">/ 5</span>
+            </div>
+            <div className="mt-2 flex items-center gap-0.5">
+              {[1, 2, 3, 4, 5].map((st) => (
+                <Star key={st} size={17} className={`${st <= Math.round(avgRating) ? 'fill-amber-300 text-amber-300 animate-star-pop' : 'text-white/30'}`} style={{ animationDelay: `${st * 90}ms` }} />
+              ))}
+            </div>
+            <span className="text-[12px] text-white/85 font-semibold mt-2">{totalReviews} lượt đánh giá từ khách hàng</span>
+          </div>
+
+          <div className="flex-1 grid grid-cols-2 gap-3">
+            <div className="rounded-radius-lg bg-white/12 backdrop-blur-sm px-3.5 py-3 border border-white/15">
+              <div className="flex items-center gap-1.5 text-white/85 text-[10px] font-bold uppercase tracking-wide"><ThumbsUp size={13} /> Hài lòng</div>
+              <p className="text-2xl font-black mt-1 leading-none">{satisfaction}<span className="text-base font-bold">%</span></p>
+              <p className="text-[10px] text-white/70 font-semibold mt-1">{positiveCount}/{totalReviews} đạt 4–5★</p>
+            </div>
+            <div className="rounded-radius-lg bg-white/12 backdrop-blur-sm px-3.5 py-3 border border-white/15">
+              <div className="flex items-center gap-1.5 text-white/85 text-[10px] font-bold uppercase tracking-wide"><TrendingUp size={13} /> 30 ngày qua</div>
+              <p className="text-2xl font-black mt-1 leading-none flex items-center gap-1">
+                {recentCount ? recentAvg.toFixed(1) : '—'}
+                {recentCount > 0 && <Star size={15} className="fill-amber-300 text-amber-300" />}
+              </p>
+              <p className="text-[10px] text-white/70 font-semibold mt-1">{recentCount} đánh giá gần đây</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ─── PHÂN BỐ SAO | KHEN + CẦN CẢI THIỆN ─── */}
+      <div className={`grid gap-6 items-start ${hasHighlights ? 'lg:grid-cols-2' : ''}`}>
+        <Card variant="elevated" className="bg-white rounded-xl border border-slate-100 shadow-sm p-4 md:p-5 h-full">
+          <h3 className="text-xs font-extrabold text-slate-800 uppercase tracking-wider flex items-center gap-1.5 mb-3.5">
+            <Award size={15} className="text-amber-500" /> Phân bố đánh giá
+          </h3>
+          <div className="space-y-2">
+            {ratingDist.map(({ star, count, pct }) => {
+              const isActive = starFilter === String(star);
+              return (
+                <button
+                  key={star}
+                  onClick={() => changeFilter(isActive ? 'all' : String(star))}
+                  className={`w-full flex items-center gap-3 text-xs font-bold rounded-lg px-2.5 py-1 transition-all cursor-pointer ${
+                    isActive ? 'bg-md-primary/10 text-md-primary ring-1 ring-md-primary/40' : 'hover:bg-slate-50 text-slate-600'
+                  }`}
+                  title={`Lọc đánh giá ${star} sao`}
+                >
+                  <span className="flex items-center gap-1 w-8 shrink-0">{star} <Star size={12} className="fill-amber-400 text-amber-400" /></span>
+                  <div className="flex-1 h-2.5 bg-slate-100 rounded-full overflow-hidden">
+                    <div className="h-full bg-gradient-to-r from-amber-400 to-amber-500 rounded-full transition-all duration-700" style={{ width: `${pct}%` }} />
+                  </div>
+                  <span className="text-slate-400 w-8 text-right shrink-0 font-medium">{count}</span>
+                </button>
+              );
+            })}
+          </div>
+        </Card>
+
+        {hasHighlights && (
+          <div className="space-y-6">
+            {compliments.length > 0 && <HighlightCard title="Khách khen nhiều nhất" items={compliments} tone="good" />}
+            {complaints.length > 0 && <HighlightCard title="Điểm khách hay góp ý" items={complaints} tone="bad" />}
+          </div>
+        )}
+      </div>
+
+      {/* ─── LỌC SAO NHANH ─── */}
+      <div className="flex gap-2 flex-wrap items-center">
+        <Button
+          onClick={() => changeFilter('all')}
+          variant={starFilter === 'all' ? 'primary' : 'outline'}
+          size="sm"
+          className={starFilter === 'all' ? 'shadow-sm' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'}
+        >
+          Tất cả ({totalReviews})
+        </Button>
+        {ratingDist.map(({ star, count }) => {
+          const isActive = starFilter === String(star);
+          return (
+            <Button
+              key={star}
+              onClick={() => changeFilter(String(star))}
+              variant={isActive ? 'primary' : 'outline'}
+              size="sm"
+              className={`inline-flex items-center gap-1.5 ${isActive ? 'shadow-sm' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'}`}
+            >
+              <span className="inline-flex items-center gap-1 leading-none">
+                <span>{star}</span>
+                <Star size={12} className={isActive ? 'fill-white text-white shrink-0' : 'fill-amber-400 text-amber-400 shrink-0'} />
+              </span>
+              <span className={isActive ? 'text-white/90' : 'text-slate-400'}>({count})</span>
+            </Button>
+          );
+        })}
+      </div>
+
+      {/* ─── SẮP XẾP + LỌC ẢNH + ĐẾM KẾT QUẢ ─── */}
+      <div className="flex flex-wrap items-center gap-2.5">
+        <div className="relative">
+          <ArrowDownUp size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+          <select
+            value={sortBy}
+            onChange={(e) => changeSort(e.target.value)}
+            className="appearance-none pl-8 pr-8 py-2 text-xs font-bold rounded-radius-lg bg-white border border-slate-200 text-slate-600 hover:border-md-primary/50 focus:border-md-primary focus:ring-2 focus:ring-md-primary/20 outline-none cursor-pointer transition-all"
+          >
+            {SORTS.map((so) => <option key={so.id} value={so.id}>{so.label}</option>)}
+          </select>
+          <ChevronDown size={14} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+        </div>
+
+        <button
+          onClick={toggleImageOnly}
+          disabled={withImageCount === 0}
+          className={`inline-flex items-center gap-1.5 text-xs font-bold px-3 py-2 rounded-radius-lg border transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed ${
+            imageOnly ? 'bg-md-primary text-white border-md-primary shadow-sm shadow-md-primary/25' : 'bg-white text-slate-600 border-slate-200 hover:border-md-primary/50'
+          }`}
+        >
+          <Camera size={14} /> Có ảnh ({withImageCount})
+        </button>
+
+        <p className="ml-auto text-xs font-semibold text-slate-500">
+          <span className="font-extrabold text-md-primary">{list.totalElements}</span> đánh giá
+        </p>
+      </div>
+
+      {/* ─── DANH SÁCH ĐÁNH GIÁ (đọc-only) ─── */}
+      {reviews.length === 0 ? (
+        <Card variant="elevated" className="bg-white rounded-xl border border-slate-100 shadow-sm p-4 md:p-5 flex flex-col text-center py-16">
+          <MessageSquareText size={44} className="mx-auto text-slate-300 mb-3.5 animate-float" />
+          <p className="text-sm font-bold text-slate-600">Không có đánh giá nào khớp bộ lọc</p>
+          <p className="text-xs text-slate-400 mt-1.5">Thử đổi mức sao, tắt lọc ảnh hoặc chọn cách sắp xếp khác.</p>
+          {hasActiveControls && (
+            <Button onClick={() => { setStarFilter('all'); setImageOnly(false); setSortBy('recent'); setPage(0); }} variant="text" size="sm" className="mt-3 text-md-primary">Xoá bộ lọc</Button>
+          )}
+        </Card>
+      ) : (
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 items-start">
+            {reviews.map((rev, idx) => {
+              const meta = metaFor(rev.rating);
+              const Face = meta.face;
+              return (
+                <Card
+                  key={rev.id}
+                  variant="elevated"
+                  style={{ animationDelay: `${idx * 55}ms` }}
+                  className={`group bg-white rounded-2xl border shadow-sm p-4 md:p-5 flex flex-col transition-all hover:shadow-md hover:-translate-y-0.5 animate-rise-in ${loadingList ? 'opacity-60' : ''} border-slate-100`}
+                >
+                  <div className="flex justify-between items-start gap-3">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className={`w-10 h-10 rounded-full font-bold flex items-center justify-center text-sm shrink-0 shadow-inner ${colorFor(rev.author)}`}>
+                        {rev.author.charAt(0).toUpperCase()}
+                      </div>
+                      <div className="min-w-0">
+                        <h4 className="font-bold text-sm text-slate-800 leading-tight truncate">{rev.author}</h4>
+                        <span className="text-[11px] text-slate-400 mt-0.5 block font-medium">{rev.date}</span>
+                      </div>
+                    </div>
+                    <div className="flex flex-col items-end gap-1.5 shrink-0">
+                      <span className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full border ${meta.pill}`}>
+                        <Face size={12} className="animate-star-pop group-hover:animate-bob" /> {meta.label}
+                      </span>
+                      <StarRow value={rev.rating} size={14} />
+                    </div>
+                  </div>
+
+                  <div className="mt-3.5">
+                    {rev.comment ? (
+                      <p className="text-xs font-medium text-slate-700 leading-relaxed bg-slate-50 p-3.5 rounded-xl border border-slate-100">{rev.comment}</p>
+                    ) : (
+                      <p className="text-xs italic text-slate-400 px-1">Khách không để lại nhận xét.</p>
+                    )}
+
+                    {rev.images && rev.images.length > 0 && (
+                      <div className="flex flex-wrap gap-2 mt-2.5">
+                        {rev.images.map((imgUrl, index) => (
+                          <div
+                            key={index}
+                            onClick={() => onImageClick(imgUrl)}
+                            className="relative group/img w-16 h-16 rounded-xl overflow-hidden border border-slate-200 hover:border-md-primary transition-all cursor-pointer shadow-sm"
+                          >
+                            <img src={imgUrl} alt={`Ảnh đánh giá ${index + 1}`} className="w-full h-full object-cover group-hover/img:scale-105 transition-transform duration-300" />
+                            <div className="absolute inset-0 bg-black/30 opacity-0 group-hover/img:opacity-100 transition-opacity flex items-center justify-center text-white"><ZoomIn size={16} /></div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Phản hồi từ quán (nếu có) — khách được xem, không sửa */}
+                  {rev.reply && (
+                    <div className="bg-md-primary/5 p-3.5 rounded-xl border border-md-primary/15 mt-3.5">
+                      <span className="font-bold text-md-primary flex items-center gap-1.5 text-xs mb-1">
+                        <Store size={14} /> Phản hồi từ quán
+                      </span>
+                      <p className="text-xs text-slate-700 leading-relaxed">{rev.reply}</p>
+                    </div>
+                  )}
+                </Card>
+              );
+            })}
+          </div>
+
+          {/* Phân trang */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-200/60">
+              <button
+                onClick={() => setPage(Math.max(safePage - 1, 0))}
+                disabled={safePage === 0}
+                className="flex items-center gap-1 px-3 py-1.5 rounded-radius-md text-xs font-bold bg-white border border-slate-200 text-slate-600 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-50 transition-all cursor-pointer"
+              >
+                <ChevronLeft size={16} />
+              </button>
+              <span className="text-xs font-bold text-slate-500 mr-1">Trang {safePage + 1} / {totalPages}</span>
+              <button
+                onClick={() => setPage(Math.min(safePage + 1, totalPages - 1))}
+                disabled={safePage >= totalPages - 1}
+                className="flex items-center gap-1 px-3 py-1.5 rounded-radius-md text-xs font-bold bg-white border border-slate-200 text-slate-600 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-50 transition-all cursor-pointer"
+              >
+                <ChevronRight size={16} />
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function RestaurantDetail() {
   const { id } = useParams();
@@ -70,15 +472,10 @@ export default function RestaurantDetail() {
 
   const menuSectionsRef = useRef({});
 
-  // State quản lý phóng to ảnh trong tab hiện tại 
+  // State quản lý phóng to ảnh trong tab hiện tại (dùng chung cho lightbox ảnh đánh giá)
   const [selectedImage, setSelectedImage] = useState(null);
 
-  // Khai báo state phân trang 
-  const [page, setPage] = useState(0);
-  const [totalPages, setTotalPages] = useState(0); 
-  const size = 10;
-
-  // Lấy và tính toán phí ship, khoảng cách, thời gian 
+  // Lấy và tính toán phí ship, khoảng cách, thời gian
   const cachedShipping = restaurantShippingCache[id];
   const shippingFee = cachedShipping?.shippingFee || 0;
   const distance = cachedShipping ? `${cachedShipping.distanceKm.toFixed(1)}km` : '--';
@@ -112,33 +509,14 @@ export default function RestaurantDetail() {
             fetchShippingForRestaurant(id, customerLat, customerLng);
           }
 
-          // Lấy đánh giá (chỉ để HIỂN THỊ danh sách theo trang). SỐ SAO & TỔNG ĐÁNH GIÁ
-          // lấy TOÀN CỤC từ BE (mapRestaurant → realRes.rating/reviewsCount) — KHÔNG tính lại từ
-          // 1 trang review (trước bị lệch: 3.7/10 thay vì 3.9/18 vì chỉ tính trên 10 review/trang).
-          let realReviews = [];
-          try {
-            const reviewsRes = await apiClient.get(`/restaurants/${id}/reviews?page=${page}&size=${size}`);
-            const reviewData = reviewsRes.data?.data;
-            realReviews = reviewData?.content || [];
-            setTotalPages(reviewData?.totalPages || 0);
-          } catch (reviewErr) {
-            console.warn('Lỗi khi tải đánh giá nhà hàng:', reviewErr);
-          }
-
-          // Map thông tin quán ăn (đã có rating & reviewsCount toàn cục từ BE)
+          // SỐ SAO & TỔNG ĐÁNH GIÁ lấy TOÀN CỤC từ BE (mapRestaurant → realRes.rating/reviewsCount).
+          // Danh sách đánh giá do tab Đánh giá (ReviewsTab) tự nạp có lọc/sắp xếp/phân trang server-side.
           const mapped = mapRestaurant(realRes);
           const mappedRes = {
             ...mapped,
             ownerId: realRes.ownerId,
             phone: realRes.phone,
             openTime: (realRes.opensAt && realRes.closesAt) ? `${realRes.opensAt.substring(0, 5)} - ${realRes.closesAt.substring(0, 5)}` : '--',
-            reviews: realReviews.map(r => ({
-              name: r.customerName,
-              rating: r.restaurantRating || 5,
-              comment: r.restaurantComment || '',
-              date: new Date(r.createdAt).toLocaleDateString('vi-VN'),
-              images: r.images 
-            }))
           };
 
           // Map menu
@@ -184,10 +562,7 @@ export default function RestaurantDetail() {
 
     fetchDetails();
     fetchFavoriteStatus();
-  }, [id, user?.lat, user?.lng, page]); // page: đổi trang → nạp lại danh sách đánh giá
-
-  // Đổi quán → về trang đánh giá đầu (tránh giữ số trang của quán trước)
-  useEffect(() => { setPage(0); }, [id]);
+  }, [id, user?.lat, user?.lng]);
 
   // Parallax scroll effect
   useEffect(() => {
@@ -402,23 +777,24 @@ export default function RestaurantDetail() {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-6 pt-6 border-t border-md-outline-variant/30 text-xs md:text-sm text-md-on-surface-variant text-left font-medium">
-            <div className="flex items-center gap-2 min-w-0">
-              <span className="flex items-center gap-1.5 font-extrabold text-md-on-surface shrink-0"><MapPin size={15} /> Địa chỉ:</span>
-              <span className="truncate">{restaurant.address}</span>
-            </div>
-            <div className="flex items-center gap-2 min-w-0">
-              <span className="flex items-center gap-1.5 font-extrabold text-md-on-surface shrink-0"><Clock size={15} /> Mở cửa:</span>
-              <span className="truncate">{restaurant.openTime}</span>
-            </div>
-            <div className="flex items-center gap-2 min-w-0">
-              <span className="flex items-center gap-1.5 font-extrabold text-md-on-surface shrink-0"><Phone size={15} /> Điện thoại:</span>
-              <span className="truncate">{restaurant.phone}</span>
-            </div>
-            <div className="flex items-center gap-2 min-w-0">
-              <span className="flex items-center gap-1.5 font-extrabold text-md-on-surface shrink-0"><Bike size={15} /> Phí ship:</span>
-              <span className="text-md-primary font-bold truncate">Từ {formatCurrency(shippingFee)}</span>
-            </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 mt-6 pt-6 border-t border-md-outline-variant/30 text-left">
+            {[
+              { icon: MapPin, color: 'text-rose-600 bg-rose-50', label: 'Địa chỉ', value: restaurant.address },
+              { icon: Clock, color: 'text-blue-600 bg-blue-50', label: 'Mở cửa', value: restaurant.openTime },
+              { icon: Phone, color: 'text-violet-600 bg-violet-50', label: 'Điện thoại', value: restaurant.phone },
+              { icon: Bike, color: 'text-emerald-600 bg-emerald-50', label: 'Phí ship', value: `Từ ${formatCurrency(shippingFee)}`, accent: true },
+            ].map((row, idx) => {
+              const RowIcon = row.icon;
+              return (
+                <div key={idx} className="flex items-center gap-2.5 min-w-0 rounded-radius-md bg-slate-50/70 hover:bg-slate-100/70 transition-colors px-2.5 py-2">
+                  <span className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${row.color}`}><RowIcon size={15} /></span>
+                  <div className="min-w-0">
+                    <span className="block text-[10px] font-black text-md-outline uppercase tracking-wide leading-none">{row.label}</span>
+                    <span className={`block text-xs md:text-sm font-bold truncate mt-0.5 ${row.accent ? 'text-md-primary' : 'text-md-on-surface'}`}>{row.value}</span>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </Card>
       </div>
@@ -592,16 +968,43 @@ export default function RestaurantDetail() {
           {/* giỏ hàng */}
           <aside className="hidden xl:block w-80 shrink-0 sticky top-24 self-start">
             <Card variant="elevated" className="p-5">
-              <h3 className="text-xs font-extrabold text-md-on-surface uppercase tracking-wider flex items-center gap-1.5 mb-3">
-                <ShoppingBag size={15} className="text-md-primary" /> Giỏ hàng
+              <h3 className="text-xs font-extrabold text-md-on-surface uppercase tracking-wider flex items-center justify-between gap-1.5 mb-3">
+                <span className="flex items-center gap-1.5"><ShoppingBag size={15} className="text-md-primary" /> Giỏ hàng</span>
+                {cartItems.length > 0 && (
+                  <span className="text-[10px] font-black text-white bg-md-primary px-2 py-0.5 rounded-full">{cartItems.reduce((s, i) => s + i.quantity, 0)} món</span>
+                )}
               </h3>
-              
+
               {cartItems.length === 0 ? (
-                <div className="flex flex-col items-center text-center py-6 gap-2">
-                  <span className="w-12 h-12 rounded-radius-full bg-orange-50 text-md-primary flex items-center justify-center animate-float">
-                    <ShoppingBag size={22} />
-                  </span>
-                  <p className="text-xs text-md-outline font-semibold">Chưa có món nào.<br />Hãy thêm món từ thực đơn.</p>
+                <div className="space-y-4">
+                  <div className="flex flex-col items-center text-center py-4 gap-2.5 rounded-radius-lg bg-gradient-to-b from-orange-50/70 to-transparent border border-dashed border-orange-200">
+                    <span className="w-14 h-14 rounded-radius-full bg-white text-md-primary flex items-center justify-center shadow-sm animate-float">
+                      <ShoppingBag size={24} />
+                    </span>
+                    <p className="text-xs text-md-on-surface-variant font-bold px-4">Giỏ hàng trống<br /><span className="font-medium text-md-outline">Chọn món từ thực đơn để bắt đầu</span></p>
+                  </div>
+
+                  {/* Thông tin giao hàng thực tế — lấp khoảng trống bằng dữ liệu hữu ích */}
+                  <div className="space-y-2 pt-1">
+                    <span className="text-[10px] font-black text-md-outline uppercase tracking-wider px-1">Giao đến khu vực bạn</span>
+                    {[
+                      { icon: Timer, color: 'text-orange-600 bg-orange-50', label: 'Thời gian dự kiến', value: durationText },
+                      { icon: MapPin, color: 'text-rose-600 bg-rose-50', label: 'Khoảng cách', value: distance },
+                      { icon: Bike, color: 'text-emerald-600 bg-emerald-50', label: 'Phí giao hàng', value: `Từ ${formatCurrency(shippingFee)}` },
+                      { icon: Wallet, color: 'text-violet-600 bg-violet-50', label: 'Thanh toán', value: 'Khi nhận hàng (COD)' },
+                    ].map((row, idx) => {
+                      const RowIcon = row.icon;
+                      return (
+                        <div key={idx} className="flex items-center gap-2.5 rounded-radius-md bg-slate-50/80 px-2.5 py-2">
+                          <span className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${row.color}`}><RowIcon size={14} /></span>
+                          <div className="min-w-0 flex-1">
+                            <span className="block text-[10px] text-md-outline font-bold leading-none">{row.label}</span>
+                            <span className="block text-xs font-extrabold text-md-on-surface truncate mt-0.5">{row.value}</span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
               ) : (
                 <>
@@ -649,103 +1052,13 @@ export default function RestaurantDetail() {
 
       {/* ─── TAB CONTENT: REVIEWS ──────────────────────────────────────────────── */}
       {activeTab === 'reviews' && (
-        <div className="max-w-3xl mx-auto px-4 sm:px-6 mt-8 space-y-5">
-          {restaurant.reviews.length === 0 ? (
-            <Card variant="flat" className="text-center py-16">
-              <Star size={48} className="mx-auto text-md-outline/35 mb-3.5" />
-              <p className="text-base font-extrabold text-md-on-surface-variant">Chưa có đánh giá nào</p>
-              <p className="text-sm text-md-outline mt-1">Hãy đặt đơn và trở thành người đánh giá đầu tiên!</p>
-            </Card>
-          ) : (
-            <>
-              {/* Tổng quan đánh giá (điểm toàn cục từ BE) */}
-              <Card variant="elevated" className="p-5 sm:p-6 flex items-center gap-5 bg-gradient-to-br from-amber-50/80 to-white border border-amber-100 animate-rise-in">
-                <div className="text-center shrink-0">
-                  <div className="text-4xl sm:text-5xl font-black text-amber-500 leading-none tracking-tight">{restaurant.rating}</div>
-                  <StarRow value={restaurant.rating} size={16} animate className="mt-2 justify-center" />
-                  <div className="text-[11px] text-md-outline font-bold mt-1.5">{restaurant.reviewsCount} đánh giá</div>
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm sm:text-base font-extrabold text-md-on-surface leading-snug">Cảm nhận của thực khách</p>
-                  <p className="text-xs sm:text-sm text-md-on-surface-variant font-medium mt-1 leading-relaxed">{ratingBlurb(restaurant.rating)}</p>
-                </div>
-              </Card>
-
-              {/* Danh sách các review */}
-              <div className="space-y-4">
-                {restaurant.reviews.map((rev, i) => (
-                  <Card key={i} variant="elevated" className="p-4 sm:p-5 space-y-3 animate-rise-in hover:shadow-md transition-shadow" style={{ animationDelay: `${i * 60}ms` }}>
-                    <div className="flex items-center justify-between gap-3">
-                      <div className="flex items-center gap-3 min-w-0">
-                        <span className="w-10 h-10 rounded-radius-full bg-gradient-to-br from-orange-400 to-orange-600 text-white font-black text-sm flex items-center justify-center shadow-sm shrink-0 uppercase">
-                          {(rev.name || '?').trim().charAt(0)}
-                        </span>
-                        <div className="min-w-0">
-                          <span className="font-extrabold text-sm sm:text-base text-md-on-surface block truncate leading-tight">{rev.name}</span>
-                          <StarRow value={rev.rating} size={13} className="mt-0.5" />
-                        </div>
-                      </div>
-                      <span className="text-[10px] sm:text-xs text-md-outline font-semibold shrink-0">{rev.date}</span>
-                    </div>
-                    <p className="text-xs sm:text-sm text-md-on-surface-variant leading-relaxed font-medium">
-                      {rev.comment}
-                    </p>
-
-                    {/* Hiển thị danh sách hình ảnh */}
-                    {rev.images && rev.images.length > 0 && (
-                      <div className="flex flex-wrap gap-2 pt-2">
-                        {rev.images.map((imgUrl, imgIndex) => (
-                          <div 
-                            key={imgIndex} 
-                            className="relative group w-16 h-16 xs:w-20 xs:h-20 rounded-radius-md overflow-hidden border border-slate-200 shadow-sm cursor-pointer hover:opacity-90 transition-opacity"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setSelectedImage(imgUrl);
-                            }}
-                          >
-                            <img 
-                              src={imgUrl} 
-                              alt={`Review image ${imgIndex + 1}`} 
-                              className="w-full h-full object-cover" 
-                            />
-                            <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white">
-                              <ZoomIn size={16} />
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </Card>
-                ))}
-              </div>
-
-              {/* Thanh phân trang*/}
-              {totalPages > 1 && (
-                <div className="flex items-center justify-end gap-3 pt-4 pb-6 border-t border-slate-200/60">
-                  <button
-                    onClick={() => setPage((prev) => Math.max(prev - 1, 0))}
-                    disabled={page === 0}
-                    className="flex items-center gap-1 px-3 py-1.5 rounded-radius-md text-xs font-bold bg-white border border-slate-200 text-slate-600 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-50 transition-all cursor-pointer"
-                  >
-                    <ChevronLeft size={16} />
-                  </button>
-
-                  <span className="text-xs font-bold text-slate-500 mx-1">
-                    Trang {page + 1} / {totalPages}
-                  </span>
-
-                  <button
-                    onClick={() => setPage((prev) => Math.min(prev + 1, totalPages - 1))}
-                    disabled={page >= totalPages - 1}
-                    className="flex items-center gap-1 px-3 py-1.5 rounded-radius-md text-xs font-bold bg-white border border-slate-200 text-slate-600 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-50 transition-all cursor-pointer"
-                  >
-                    <ChevronRight size={16} />
-                  </button>
-                </div>
-              )}
-            </>
-          )}
-        </div>
+        <ReviewsTab
+          restaurantId={id}
+          globalRating={restaurant.rating}
+          globalCount={restaurant.reviewsCount}
+          restaurantName={restaurant.name}
+          onImageClick={setSelectedImage}
+        />
       )}
 
       {/* ─── TAB CONTENT: INFO ─────────────────────────────────────────────────── */}

@@ -1,9 +1,11 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCartStore } from '../../stores/cartStore';
+import { useWebSocketContext } from '../../contexts/WebSocketContext';
 import {
   ShoppingBag, RefreshCw, Ban, AlertCircle, MessageSquare, Star, FileText, MapPin, CreditCard, Eye,
-  User, Phone, Bike, Wallet, StickyNote, CalendarClock, UtensilsCrossed, Package, BadgeCheck, Clock, Check
+  User, Phone, Bike, Wallet, StickyNote, CalendarClock, UtensilsCrossed, Package, BadgeCheck, Clock, Check,
+  Store, CheckCircle2, ChevronRight, Receipt
 } from 'lucide-react';
 import { formatCurrency } from '../../utils/format';
 import { getFoodImageUrl, DEFAULT_FOOD_IMAGE } from '../../utils/avatarHelper';
@@ -50,10 +52,69 @@ const STATUS_ICON = {
   CANCELLED: Ban,
 };
 
+// ─── Thanh tiến trình đơn đang xử lý (kiểu Grab/ShopeeFood) ───
+const PROGRESS_STEPS = [
+  { key: 'PENDING', label: 'Chờ xác nhận', icon: Clock },
+  { key: 'CONFIRMED', label: 'Đã xác nhận', icon: Check },
+  { key: 'PREPARING', label: 'Chuẩn bị', icon: UtensilsCrossed },
+  { key: 'DELIVERING', label: 'Đang giao', icon: Bike },
+  { key: 'COMPLETED', label: 'Hoàn tất', icon: BadgeCheck },
+];
+// Map trạng thái → chỉ số bước (READY_FOR_PICKUP/PICKED_UP nằm giữa chuẩn bị & giao)
+const STEP_INDEX = { PENDING: 0, CONFIRMED: 1, PREPARING: 2, READY_FOR_PICKUP: 2, PICKED_UP: 3, DELIVERING: 3, COMPLETED: 4 };
+const isActiveStatus = (s) => s !== 'COMPLETED' && s !== 'CANCELLED';
+
+// Câu thông báo khi trạng thái đơn đổi (realtime) — hiện toast cho khách
+const STATUS_TOAST = {
+  CONFIRMED: 'đã được quán xác nhận',
+  PREPARING: 'quán đang chuẩn bị món',
+  READY_FOR_PICKUP: 'đang chờ tài xế đến lấy',
+  PICKED_UP: 'tài xế đã lấy hàng',
+  DELIVERING: 'đang trên đường giao đến bạn',
+  COMPLETED: 'đã giao thành công',
+  CANCELLED: 'đã bị hủy',
+};
+
+function OrderProgress({ status }) {
+  const current = STEP_INDEX[status] ?? 0;
+  const pct = (current / (PROGRESS_STEPS.length - 1)) * 100;
+  return (
+    <div className="relative pt-1 pb-0.5">
+      {/* Đường nền + đường tiến trình cam */}
+      <div className="absolute left-3 right-3 top-[15px] h-[3px] bg-slate-100 rounded-full" />
+      <div className="absolute left-3 top-[15px] h-[3px] bg-gradient-to-r from-orange-400 to-orange-500 rounded-full transition-all duration-700" style={{ width: `calc((100% - 1.5rem) * ${pct / 100})` }} />
+      <div className="relative flex justify-between">
+        {PROGRESS_STEPS.map((step, i) => {
+          const done = i < current;
+          const active = i === current;
+          const StepIcon = step.icon;
+          return (
+            <div key={step.key} className="flex flex-col items-center gap-1 min-w-0">
+              <span className={`relative w-[26px] h-[26px] rounded-full flex items-center justify-center border-2 transition-all ${
+                active ? 'bg-orange-500 border-orange-500 text-white shadow-sm shadow-orange-200 scale-110'
+                  : done ? 'bg-orange-100 border-orange-300 text-orange-600'
+                  : 'bg-white border-slate-200 text-slate-300'
+              }`}>
+                {active && <span className="absolute w-[26px] h-[26px] rounded-full border-2 border-orange-400 animate-halo" />}
+                <StepIcon size={12} strokeWidth={2.6} />
+              </span>
+              <span className={`text-[8.5px] font-bold leading-none text-center ${active ? 'text-orange-600' : done ? 'text-slate-500' : 'text-slate-300'}`}>
+                {step.label}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 export default function OrderHistory() {
   const navigate = useNavigate();
   const replaceCart = useCartStore((state) => state.replaceCart);
+  const { subscribe, connected } = useWebSocketContext();
   const [activeTab, setActiveTab] = useState('ALL');
+  const prevStatusRef = useRef(null); // baseline trạng thái đơn để phát hiện thay đổi realtime
 
   // Các States xử lý dữ liệu và lỗi
   const [orders, setOrders] = useState([]);
@@ -61,6 +122,8 @@ export default function OrderHistory() {
   const [error, setError] = useState(null);
   // Đếm số đơn theo trạng thái để hiện badge số trên tab (dễ theo dõi)
   const [statusCounts, setStatusCounts] = useState({});
+  // Dải tổng quan: tổng đơn, đã giao thành công, tổng chi tiêu (đơn hoàn tất)
+  const [summary, setSummary] = useState({ total: 0, completed: 0, spent: 0 });
 
   // Các States xử lý nghiệp vụ hủy đơn hàng
   const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
@@ -112,9 +175,9 @@ export default function OrderHistory() {
     });
   };
 
-  const fetchOrderHistory = useCallback(async () => {
-    setLoading(true);
-    setError(null);
+  // background=true: làm mới ngầm (poll/WS) — KHÔNG bật skeleton, không nuốt trang khi lỗi mạng tạm thời
+  const fetchOrderHistory = useCallback(async (background = false) => {
+    if (!background) { setLoading(true); setError(null); }
     try {
       const statusParam = activeTab === 'ALL' ? {} : { status: activeTab};
       const response = await apiClient.get('/orders', { params: statusParam });
@@ -122,9 +185,9 @@ export default function OrderHistory() {
       setOrders(mappedData);
     } catch (err) {
       console.error('Lỗi khi lấy danh sách đơn hàng:', err);
-      setError(err);
+      if (!background) setError(err);
     } finally {
-      setLoading(false);
+      if (!background) setLoading(false);
     }
   }, [activeTab]);
 
@@ -132,23 +195,57 @@ export default function OrderHistory() {
     fetchOrderHistory();
   }, [fetchOrderHistory]);
 
-  // Đếm số đơn theo trạng thái (lấy toàn bộ đơn, không lọc) để hiện badge trên tab
-  const fetchStatusCounts = useCallback(async () => {
+  // Đồng bộ toàn bộ đơn: đếm badge + dải tổng quan, và PHÁT HIỆN đổi trạng thái (realtime).
+  // alert=true: toast khi trạng thái đơn đổi so với lần trước; alert=false: chỉ đồng bộ số liệu.
+  const syncOrders = useCallback(async (alert) => {
     try {
       const res = await apiClient.get('/orders', { params: { size: 1000 } });
       const all = res.data?.data?.content || res.data?.data || [];
       const counts = { ALL: all.length };
-      all.forEach((o) => { counts[o.orderStatus] = (counts[o.orderStatus] || 0) + 1; });
+      let spent = 0, completed = 0;
+      const statusMap = {};
+      all.forEach((o) => {
+        counts[o.orderStatus] = (counts[o.orderStatus] || 0) + 1;
+        statusMap[o.orderId] = o.orderStatus;
+        if (o.orderStatus === 'COMPLETED') { completed++; spent += Number(o.totalAmount || 0); }
+      });
       setStatusCounts(counts);
+      setSummary({ total: all.length, completed, spent });
+
+      const prev = prevStatusRef.current;
+      if (alert && prev) {
+        all.forEach((o) => {
+          const before = prev[o.orderId];
+          if (before && before !== o.orderStatus && STATUS_TOAST[o.orderStatus]) {
+            const msg = `Đơn #${o.orderId} ${STATUS_TOAST[o.orderStatus]}`;
+            if (o.orderStatus === 'COMPLETED') toast.success(msg);
+            else if (o.orderStatus === 'CANCELLED') toast.warn(msg);
+            else toast.info(msg);
+          }
+        });
+      }
+      prevStatusRef.current = statusMap;
     } catch (err) {
-      console.error('Lỗi đếm số đơn theo trạng thái:', err);
+      console.error('Lỗi đồng bộ đơn hàng:', err);
     }
   }, []);
 
-  // Refresh badge mỗi khi danh sách đơn thay đổi (sau huỷ đơn/tải lại)
+  // Đồng bộ số liệu + baseline mỗi khi danh sách đổi (không toast cho thao tác cục bộ)
+  useEffect(() => { syncOrders(false); }, [orders, syncOrders]);
+
+  // REALTIME tức thì qua WebSocket: quán/shipper đổi trạng thái là đơn tự cập nhật, khỏi reload
   useEffect(() => {
-    fetchStatusCounts();
-  }, [orders, fetchStatusCounts]);
+    const sub = subscribe('/user/queue/notify', () => { syncOrders(true); fetchOrderHistory(true); });
+    return () => { if (sub) sub.unsubscribe(); };
+  }, [subscribe, syncOrders, fetchOrderHistory]);
+
+  // Poll dự phòng 15s (khi tab mở) + kiểm tra ngay khi quay lại tab — WS rớt vẫn cập nhật
+  useEffect(() => {
+    const id = setInterval(() => { if (!document.hidden) { syncOrders(true); fetchOrderHistory(true); } }, 15000);
+    const onVisible = () => { if (!document.hidden) { syncOrders(true); fetchOrderHistory(true); } };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => { clearInterval(id); document.removeEventListener('visibilitychange', onVisible); };
+  }, [syncOrders, fetchOrderHistory]);
 
   // hiển thị modal hủy đơn
   const handleOpenCancelModal = (e, orderId) => {
@@ -257,7 +354,44 @@ export default function OrderHistory() {
   return (
     <div className="min-h-screen bg-gray-50 py-4 md:py-8 font-google-sans text-gray-800">
       <div className="max-w-[1400px] mx-auto px-4 md:px-6">
-        <h1 className="text-xl md:text-2xl font-bold mb-4 md:mb-6 text-gray-900">Đơn Hàng Của Tôi</h1>
+        <div className="flex items-center justify-between gap-3 mb-4">
+          <h1 className="text-xl md:text-2xl font-bold text-gray-900 flex items-center gap-2.5">
+            <span className="p-2 rounded-xl bg-orange-500/10 text-orange-500"><ShoppingBag size={20} /></span>
+            Đơn Hàng Của Tôi
+          </h1>
+          <span
+            className={`inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1.5 rounded-full border ${
+              connected ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-slate-100 text-slate-500 border-slate-200'
+            }`}
+            title={connected ? 'Đơn hàng tự cập nhật theo thời gian thực' : 'Mất kết nối realtime — vẫn tự làm mới mỗi 15 giây'}
+          >
+            <span className="relative flex h-2 w-2">
+              {connected && <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />}
+              <span className={`relative inline-flex rounded-full h-2 w-2 ${connected ? 'bg-emerald-500' : 'bg-slate-400'}`} />
+            </span>
+            {connected ? 'Cập nhật trực tiếp' : 'Tự làm mới'}
+          </span>
+        </div>
+
+        {/* Dải tổng quan: tổng đơn · đã giao · tổng chi tiêu */}
+        <div className="grid grid-cols-3 gap-3 mb-5">
+          {[
+            { icon: Receipt, label: 'Tổng đơn', value: summary.total, cls: 'text-slate-700', bg: 'bg-slate-100 text-slate-500' },
+            { icon: CheckCircle2, label: 'Đã giao', value: summary.completed, cls: 'text-emerald-600', bg: 'bg-emerald-100 text-emerald-600' },
+            { icon: Wallet, label: 'Đã chi tiêu', value: formatCurrency(summary.spent), cls: 'text-orange-500', bg: 'bg-orange-100 text-orange-500', wide: true },
+          ].map((st, i) => {
+            const SIcon = st.icon;
+            return (
+              <div key={i} className="bg-white rounded-2xl border border-slate-100 shadow-sm p-3 md:p-4 flex items-center gap-3 animate-rise-in" style={{ animationDelay: `${i * 70}ms` }}>
+                <span className={`w-9 h-9 md:w-10 md:h-10 rounded-xl flex items-center justify-center shrink-0 ${st.bg}`}><SIcon size={18} /></span>
+                <div className="min-w-0">
+                  <p className="text-[10px] md:text-[11px] font-bold text-slate-400 uppercase tracking-wide">{st.label}</p>
+                  <p className={`font-black leading-tight truncate ${st.wide ? 'text-sm md:text-lg' : 'text-lg md:text-xl'} ${st.cls}`}>{st.value}</p>
+                </div>
+              </div>
+            );
+          })}
+        </div>
 
         {/* Thanh điều hướng Tabs Trạng thái */}
         <div className="mb-6 overflow-x-auto scrollbar-none touch-pan-x border-b border-slate-200">
@@ -303,25 +437,42 @@ export default function OrderHistory() {
                   style={{ animationDelay: `${idx * 60}ms` }}
                   className={`animate-rise-in !border-slate-100 border-l-4 ${STATUS_ACCENT[order.status] || 'border-l-slate-200'} shadow-sm p-4 md:p-5 flex flex-col gap-4 group hover:-translate-y-0.5 hover:shadow-md hover:border-slate-200 !rounded-2xl cursor-pointer`}
                 >
-                  {/* Card Header */}
-                  <div className="flex flex-row justify-between items-center gap-2 border-b border-slate-100 pb-3 flex-wrap sm:flex-nowrap">
-                    <div className="text-[11px] sm:text-sm font-bold text-slate-800 uppercase tracking-wide whitespace-nowrap shrink-0">
-                      MÃ ĐƠN <span className="text-slate-900 font-extrabold">#{order.id}</span>
+                  {/* Card Header: tên quán + mã đơn + ngày · pill trạng thái có icon */}
+                  <div className="flex flex-row justify-between items-start gap-3 border-b border-slate-100 pb-3">
+                    <div className="min-w-0">
+                      <h3 className="font-extrabold text-slate-800 text-sm md:text-[15px] flex items-center gap-1.5 truncate">
+                        <Store size={15} className="text-orange-500 shrink-0" />
+                        <span className="truncate">{order.restaurantName || 'Nhà hàng'}</span>
+                      </h3>
+                      <div className="flex items-center gap-2 mt-1 text-[10px] sm:text-[11px] text-slate-400 font-medium">
+                        <span className="font-bold text-slate-500">MÃ ĐƠN #{order.id}</span>
+                        <span className="w-1 h-1 rounded-full bg-slate-300 shrink-0" />
+                        <span className="inline-flex items-center gap-1 whitespace-nowrap"><CalendarClock size={11} /> {order.createdAt}</span>
+                      </div>
                     </div>
-                    
-                    <div className="flex items-center gap-2 sm:gap-4 text-[10px] sm:text-xs text-slate-500 font-medium whitespace-nowrap">
-                      <span className="flex items-center gap-1 shrink-0">
-                        <svg className="w-3 h-3 sm:w-3.5 sm:h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                        </svg>
-                        {order.createdAt}
-                      </span>
-                      
-                      <span className={`px-2 py-0.5 sm:px-3 sm:py-1 rounded-full font-semibold text-[10px] sm:text-[11px] transition-colors shrink-0 ${getStatusStyles(order.status)}`}>
-                        {getStatusLabel(order.status)}
-                      </span>
-                    </div>
+
+                    {(() => {
+                      const SIcon = STATUS_ICON[order.status] || Clock;
+                      return (
+                        <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full font-bold text-[10px] sm:text-[11px] shrink-0 ${getStatusStyles(order.status)}`}>
+                          <SIcon size={12} /> {getStatusLabel(order.status)}
+                        </span>
+                      );
+                    })()}
                   </div>
+
+                  {/* Thanh tiến trình cho đơn đang xử lý (khách theo dõi ngay trên card) */}
+                  {isActiveStatus(order.status) && (
+                    <div onClick={(e) => e.stopPropagation()} className="bg-orange-50/40 border border-orange-100 rounded-xl px-3 pt-2 pb-2.5">
+                      <OrderProgress status={order.status} />
+                      <button
+                        onClick={() => navigate(`/orders/${order.id}`)}
+                        className="mt-2 w-full flex items-center justify-center gap-1 text-[11px] font-bold text-orange-600 hover:text-orange-700 transition-colors cursor-pointer"
+                      >
+                        Theo dõi đơn hàng <ChevronRight size={13} />
+                      </button>
+                    </div>
+                  )}
 
                   {/* danh sách món ăn */}
                   <div className="w-full">

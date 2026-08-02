@@ -104,6 +104,8 @@
   --animate-speed: speedline 0.7s ease-out infinite;
   /* Vòng halo lan toả quanh bước đang active của stepper */
   --animate-halo: haloPulse 1.8s ease-out infinite;
+  /* Rung lắc ngang khi nhập sai OTP */
+  --animate-shake: shake 0.4s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
   /* Drawer mobile trượt vào từ phải (trước đây hiện đột ngột) + item menu bung dần */
   --animate-slide-in-right: slideInRight 0.32s cubic-bezier(0.22, 1, 0.36, 1) both;
   --animate-nav-in: navIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) both;
@@ -355,6 +357,13 @@
   70% { opacity: 0; }
   100% { transform: scale(1.75); opacity: 0; }
 }
+/* Rung lắc ngang khi nhập sai OTP (báo lỗi trực quan) */
+@keyframes shake {
+  10%, 90% { transform: translateX(-1px); }
+  20%, 80% { transform: translateX(2px); }
+  30%, 50%, 70% { transform: translateX(-5px); }
+  40%, 60% { transform: translateX(5px); }
+}
 /* Drawer mobile trượt vào từ phải + item menu bung dần (mượt cả trên điện thoại) */
 @keyframes slideInRight {
   from { transform: translateX(100%); }
@@ -376,7 +385,7 @@
   .animate-ride, .animate-bob, .animate-steam, .animate-wiggle,
   .animate-courier, .animate-vroom, .animate-wheel, .animate-speed, .animate-halo,
   .animate-slide-in-right, .animate-nav-in, .animate-flow, .animate-star-pop,
-  .animate-heart-pop, .animate-heart-burst, .animate-heart-beat { animation: none !important; }
+  .animate-heart-pop, .animate-heart-burst, .animate-heart-beat, .animate-shake { animation: none !important; }
 }
 
 /* ─── Parallax Effect ────────────────────────────── */

@@ -210,19 +210,33 @@ export default function AdminStats() {
   return (
     <div className="flex-1 p-4 md:p-8 max-w-6xl mx-auto w-full font-google-sans space-y-6 pb-24 text-slate-100 bg-transparent">
 
-      {/* Header + Filter — DÍNH khi cuộn để lọc được mọi lúc (khỏi cuộn lên) */}
-      <div className="sticky top-16 md:top-0 z-30 -mx-4 md:-mx-8 px-4 md:px-8 py-3.5 bg-slate-950 border-b border-slate-800 shadow-lg shadow-black/20">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <h1 className="text-xl md:text-2xl font-bold text-slate-100 flex items-center gap-2">
-              <Shield className="text-purple-400" size={24} /> Trung Tâm Phân Tích Doanh Thu
-            </h1>
-          </div>
-          <div className="flex flex-wrap items-center gap-2 sm:justify-end">
+      {/* ─── DESKTOP: header + filter DÍNH (sticky) ─── */}
+      <div className="hidden md:block sticky top-0 z-30 -mx-8 px-8 py-3.5 bg-slate-950 border-b border-slate-800 shadow-lg shadow-black/20">
+        <div className="flex items-center justify-between gap-4">
+          <h1 className="text-2xl font-bold text-slate-100 flex items-center gap-2">
+            <Shield className="text-purple-400" size={24} /> Trung Tâm Phân Tích Doanh Thu
+          </h1>
+          <div className="flex flex-wrap items-center gap-2 justify-end">
             <RangeSelect options={RANGE_TABS} value={filterRange} onChange={setFilterRange} theme="dark" />
             <SeriesFilterBar periods={periods} value={seriesFilter} onChange={setSeriesFilter} theme="dark" />
           </div>
         </div>
+      </div>
+
+      {/* ─── MOBILE: thanh lọc FIXED ngay dưới header (luôn hiện khi cuộn) ─── */}
+      <div className="md:hidden fixed top-16 left-0 right-0 z-30 bg-slate-950 border-b border-slate-800 shadow-lg shadow-black/30 px-3 py-2 flex flex-wrap items-center gap-2">
+        <RangeSelect options={RANGE_TABS} value={filterRange} onChange={setFilterRange} theme="dark" />
+        <SeriesFilterBar periods={periods} value={seriesFilter} onChange={setSeriesFilter} theme="dark" />
+      </div>
+      {/* Placeholder giữ đúng chiều cao thanh fixed + tiêu đề mobile */}
+      <div className="md:hidden">
+        <div className="invisible px-3 py-2 flex flex-wrap items-center gap-2" aria-hidden="true">
+          <RangeSelect options={RANGE_TABS} value={filterRange} onChange={() => {}} theme="dark" />
+          <SeriesFilterBar periods={periods} value={seriesFilter} onChange={() => {}} theme="dark" />
+        </div>
+        <h1 className="mt-1 text-lg font-bold text-slate-100 flex items-center gap-2">
+          <Shield className="text-purple-400" size={20} /> Trung Tâm Phân Tích Doanh Thu
+        </h1>
       </div>
 
       <div className={`space-y-6 transition-opacity duration-200 ${loadingReport ? 'opacity-50' : 'opacity-100'}`}>

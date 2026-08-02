@@ -225,22 +225,39 @@ export default function MerchantStats() {
   return (
     <div className="flex-1 p-4 md:p-8 max-w-6xl mx-auto w-full font-google-sans space-y-6 pb-24 text-slate-800">
 
-      {/* Header + Filter — DÍNH khi cuộn để lọc được mọi lúc (khỏi cuộn lên) */}
-      <div className="sticky top-16 md:top-0 z-30 -mx-4 md:-mx-8 px-4 md:px-8 py-3.5 bg-white border-b border-slate-200 shadow-sm">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <h1 className="text-xl md:text-2xl font-bold text-slate-800 flex items-center gap-2">
-              <span className="w-9 h-9 rounded-radius-md bg-md-secondary/10 text-md-secondary flex items-center justify-center shrink-0">
-                <Store size={20} />
-              </span>
-              Báo Cáo Tài Chính Nhà Hàng
-            </h1>
-          </div>
-          <div className="flex flex-wrap items-center gap-2 sm:justify-end">
+      {/* ─── DESKTOP: header + filter DÍNH (sticky) ─── */}
+      <div className="hidden md:block sticky top-0 z-30 -mx-8 px-8 py-3.5 bg-white border-b border-slate-200 shadow-sm">
+        <div className="flex items-center justify-between gap-4">
+          <h1 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
+            <span className="w-9 h-9 rounded-radius-md bg-md-secondary/10 text-md-secondary flex items-center justify-center shrink-0">
+              <Store size={20} />
+            </span>
+            Báo Cáo Tài Chính Nhà Hàng
+          </h1>
+          <div className="flex flex-wrap items-center gap-2 justify-end">
             <RangeSelect options={RANGE_TABS} value={filterRange} onChange={setFilterRange} theme="light" />
             <SeriesFilterBar periods={periods} value={seriesFilter} onChange={setSeriesFilter} theme="light" />
           </div>
         </div>
+      </div>
+
+      {/* ─── MOBILE: thanh lọc FIXED ngay dưới header (luôn hiện khi cuộn) ─── */}
+      <div className="md:hidden fixed top-16 left-0 right-0 z-30 bg-white border-b border-slate-200 shadow-sm px-3 py-2 flex flex-wrap items-center gap-2">
+        <RangeSelect options={RANGE_TABS} value={filterRange} onChange={setFilterRange} theme="light" />
+        <SeriesFilterBar periods={periods} value={seriesFilter} onChange={setSeriesFilter} theme="light" />
+      </div>
+      {/* Placeholder giữ đúng chiều cao thanh fixed (tự khớp khi dropdown xuống dòng) + tiêu đề mobile */}
+      <div className="md:hidden">
+        <div className="invisible px-3 py-2 flex flex-wrap items-center gap-2" aria-hidden="true">
+          <RangeSelect options={RANGE_TABS} value={filterRange} onChange={() => {}} theme="light" />
+          <SeriesFilterBar periods={periods} value={seriesFilter} onChange={() => {}} theme="light" />
+        </div>
+        <h1 className="mt-1 text-lg font-bold text-slate-800 flex items-center gap-2">
+          <span className="w-8 h-8 rounded-radius-md bg-md-secondary/10 text-md-secondary flex items-center justify-center shrink-0">
+            <Store size={18} />
+          </span>
+          Báo Cáo Tài Chính Nhà Hàng
+        </h1>
       </div>
 
       {(loadingRes || (loadingReport && !report)) ? (

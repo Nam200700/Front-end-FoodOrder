@@ -106,7 +106,8 @@ export default function GaugeChart({ data, label, value, colors = [], size = 140
             style={{
               strokeDasharray: 100,
               strokeDashoffset: drawn ? 0 : 100,
-              transition: `stroke-dashoffset 1.4s cubic-bezier(0.16,1,0.3,1) ${i * 0.22}s`,
+              // easeInOutSine: trải đều chuyển động suốt thời lượng (không dồn về đầu) → vẽ chậm, mượt
+              transition: `stroke-dashoffset 2s cubic-bezier(0.37,0,0.63,1) ${i * 0.32}s`,
             }}
           />
         ))}
@@ -118,7 +119,7 @@ export default function GaugeChart({ data, label, value, colors = [], size = 140
         style={{
           opacity: drawn ? 1 : 0,
           transform: drawn ? 'scale(1)' : 'scale(0.82)',
-          transition: 'opacity 0.7s ease-out 0.35s, transform 0.9s cubic-bezier(0.16,1,0.3,1) 0.35s',
+          transition: 'opacity 0.9s ease-out 0.6s, transform 1s cubic-bezier(0.16,1,0.3,1) 0.6s',
         }}
       >
         <span className="donut-label text-[9px] font-extrabold uppercase tracking-wider leading-tight mb-1 text-center max-w-[85px] break-words">

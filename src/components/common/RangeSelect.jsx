@@ -38,14 +38,14 @@ export default function RangeSelect({ options, value, onChange, theme = 'light' 
         <ChevronDown size={14} className={`transition-transform opacity-70 ${open ? 'rotate-180' : ''}`} />
       </button>
       {open && (
-        <div className={`absolute right-0 mt-1.5 w-44 max-h-80 overflow-auto rounded-radius-lg border shadow-xl z-50 p-1 ${menuCls}`}>
+        <div className={`absolute left-0 sm:left-auto sm:right-0 mt-1.5 w-44 max-w-[calc(100vw-2rem)] max-h-80 overflow-auto rounded-radius-lg border shadow-xl z-50 p-1 ${menuCls}`}>
           {options.map(o => {
             const active = o.id === value;
             return (
               <button
                 key={o.id}
                 onClick={() => { onChange(o.id); setOpen(false); }}
-                className={`w-full flex items-center justify-between gap-2 px-3 py-2 rounded-radius-md text-xs font-bold text-left transition-colors cursor-pointer ${active ? itemActive : itemIdle}`}
+                className={`w-full flex items-center justify-between gap-2 px-3 py-2 rounded-radius-md text-xs font-bold text-left whitespace-nowrap transition-colors cursor-pointer ${active ? itemActive : itemIdle}`}
               >
                 {o.label} {active && <Check size={13} />}
               </button>

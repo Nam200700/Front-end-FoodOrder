@@ -35,14 +35,14 @@ function Dropdown({ options, value, onChange, theme }) {
         <ChevronDown size={12} className={`opacity-70 transition-transform ${open ? 'rotate-180' : ''}`} />
       </button>
       {open && (
-        <div className={`absolute right-0 mt-1.5 w-40 max-h-72 overflow-auto rounded-radius-lg border shadow-xl z-50 p-1 ${menuCls}`}>
+        <div className={`absolute left-0 sm:left-auto sm:right-0 mt-1.5 w-40 max-w-[calc(100vw-2rem)] max-h-72 overflow-auto rounded-radius-lg border shadow-xl z-50 p-1 ${menuCls}`}>
           {options.map(o => {
             const active = o.value === value;
             return (
               <button
                 key={o.value}
                 onClick={() => { onChange(o.value); setOpen(false); }}
-                className={`w-full flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-radius-md text-[11px] font-bold text-left transition-colors cursor-pointer ${active ? itemActive : itemIdle}`}
+                className={`w-full flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-radius-md text-[11px] font-bold text-left whitespace-nowrap transition-colors cursor-pointer ${active ? itemActive : itemIdle}`}
               >
                 {o.label} {active && <Check size={12} />}
               </button>

@@ -10,7 +10,7 @@ import {
   BarChart3, AreaChart, Flame, Wallet, PackageCheck, XCircle, UserCheck,
   Gauge, CalendarClock, CalendarRange, Search, Sparkles,
 } from 'lucide-react';
-import FilterTabs from '../../components/common/FilterTabs';
+import RangeSelect from '../../components/common/RangeSelect';
 import SeriesFilterBar from '../../components/common/SeriesFilterBar';
 import InfoTip from '../../components/common/InfoTip';
 import { aggregateDaily, pickGranularity, bucketLabel, granularityCaption } from '../../utils/chartAggregate';
@@ -138,13 +138,13 @@ export default function AdminStats() {
   // So sánh kỳ ĐANG CHỌN vs kỳ trước tương đương (ẩn khi range = "Tất cả")
   const rangeCompare = useMemo(() => rangeOverRange(insights?.dailyGmv || [], 'gmv', filterRange), [insights, filterRange]);
 
-  // Chỉ số chi tiết suy từ chuỗi ngày của kỳ: số ngày có đơn, TB/ngày, ngày cao điểm
+  // Chỉ số chi tiết suy từ chuỗi ngày của kỳ — TÔN TRỌNG bộ lọc Tháng/Năm/Thứ (lọc theo thứ chạy thật).
   const dailyStats = useMemo(() => {
-    const d = report?.daily || [];
+    const d = filterSeries(report?.daily || [], seriesFilter);
     let peak = null, totalGtv = 0;
     d.forEach(x => { const v = Number(x.gtv || 0); totalGtv += v; if (!peak || v > peak.v) peak = { date: x.date, v }; });
-    return { activeDays: d.length, avgPerDay: d.length ? Math.round(totalGtv / d.length) : 0, peak };
-  }, [report]);
+    return { activeDays: d.length, avgPerDay: d.length ? Math.round(totalGtv / d.length) : 0, peak, total: totalGtv };
+  }, [report, seriesFilter]);
 
   // Top quán: gắn hạng thật → lọc theo tìm kiếm → mặc định 5, mở rộng xem 10
   const rankedTop = useMemo(() => (report?.topRestaurants || []).map((r, i) => ({ ...r, rank: i + 1 })), [report]);
@@ -184,13 +184,10 @@ export default function AdminStats() {
             <Shield className="text-purple-400" size={24} /> Trung Tâm Phân Tích Doanh Thu
           </h1>
         </div>
-        <FilterTabs
-          tabs={RANGE_TABS}
-          activeTab={filterRange}
-          onTabChange={setFilterRange}
-          className="self-start sm:self-center bg-slate-900 p-1 rounded-radius-lg border border-slate-800 max-w-full"
-          activeClassName="bg-purple-650 text-white shadow-sm shadow-purple-650/25"
-        />
+        <div className="flex flex-wrap items-center gap-2 sm:justify-end">
+          <RangeSelect options={RANGE_TABS} value={filterRange} onChange={setFilterRange} theme="dark" />
+          <SeriesFilterBar periods={periods} value={seriesFilter} onChange={setSeriesFilter} theme="dark" />
+        </div>
       </div>
 
       <div className={`space-y-6 transition-opacity duration-200 ${loadingReport ? 'opacity-50' : 'opacity-100'}`}>
@@ -256,8 +253,8 @@ export default function AdminStats() {
                 <Icon size={18} className={`${c.color} shrink-0`} />
                 <div className="min-w-0 flex-1">
                   <div className={`text-sm font-extrabold ${c.color} truncate`}>{c.value}</div>
-                  <div className="text-[9px] text-slate-500 font-bold uppercase tracking-wide truncate flex items-center gap-1">
-                    {c.label} <InfoTip theme="dark" size={11} text={c.tip} />
+                  <div className="text-[9px] text-slate-500 font-bold uppercase tracking-wide flex items-center gap-1 min-w-0">
+                    <span className="truncate">{c.label}</span> <InfoTip theme="dark" size={11} text={c.tip} />
                   </div>
                 </div>
               </div>
@@ -279,8 +276,8 @@ export default function AdminStats() {
                 <Icon size={18} className={`${c.color} shrink-0`} />
                 <div className="min-w-0 flex-1">
                   <div className={`text-sm font-extrabold ${c.color} truncate`}>{c.value}</div>
-                  <div className="text-[9px] text-slate-500 font-bold uppercase tracking-wide truncate flex items-center gap-1">
-                    {c.label} <InfoTip theme="dark" size={11} text={c.tip} />
+                  <div className="text-[9px] text-slate-500 font-bold uppercase tracking-wide flex items-center gap-1 min-w-0">
+                    <span className="truncate">{c.label}</span> <InfoTip theme="dark" size={11} text={c.tip} />
                   </div>
                 </div>
               </div>
@@ -325,13 +322,9 @@ export default function AdminStats() {
                 {chartType === 'area' ? (<><BarChart3 size={13} /> Dạng Cột</>) : (<><AreaChart size={13} /> Dạng Miền</>)}
               </button>
             </div>
-            {/* Bộ lọc chuỗi theo tháng · năm · thứ (đầy đủ nhất khi chọn range "Tất cả") */}
-            <div className="flex items-center justify-between gap-2 flex-wrap">
-              <SeriesFilterBar periods={periods} value={seriesFilter} onChange={setSeriesFilter} theme="dark" />
-              {seriesActive && (
-                <span className="text-[10px] text-slate-500 font-semibold">Đang lọc riêng biểu đồ xu hướng</span>
-              )}
-            </div>
+            {seriesActive && (
+              <p className="text-[10px] text-purple-400/80 font-semibold">Biểu đồ đang lọc theo Tháng/Năm/Thứ chọn ở thanh lọc trên cùng.</p>
+            )}
             {timelineData.length === 0 ? (
               <div className="h-68 flex items-center justify-center text-xs font-bold text-slate-500">Chưa có dữ liệu giao dịch trong kỳ này.</div>
             ) : (
@@ -431,7 +424,7 @@ export default function AdminStats() {
             )}
           </div>
 
-          <div className="bg-slate-950 border border-slate-850 rounded-[1.25rem] p-5 shadow-md flex flex-col justify-between min-h-[280px] space-y-4">
+          <div className="bg-slate-950 border border-slate-850 rounded-[1.25rem] p-5 shadow-md flex flex-col justify-between min-h-[280px] space-y-4 self-start">
             <div className="flex items-center justify-between">
               <h3 className="text-xs font-extrabold text-slate-200 uppercase tracking-wider flex items-center gap-1.5">
                 <CreditCard className="text-purple-400" size={16} /> Trạng Thái Thanh Toán

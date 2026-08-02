@@ -3,6 +3,7 @@ import RevenueAreaChart from '../../components/common/RevenueAreaChart';
 import { aggregateDaily, pickGranularity, bucketLabel, granularityCaption } from '../../utils/chartAggregate';
 import { availablePeriods, filterSeries, rangeOverRange } from '../../utils/dashboardAnalytics';
 import SeriesFilterBar from '../../components/common/SeriesFilterBar';
+import RangeSelect from '../../components/common/RangeSelect';
 import InfoTip from '../../components/common/InfoTip';
 import { formatCurrency } from '../../utils/format';
 import apiClient from '../../services/api';
@@ -14,7 +15,6 @@ import {
   Award, Calendar, CreditCard, Percent, Store, Flame, BarChart3, AreaChart,
   Wallet, PackageCheck, XCircle, UserCheck, Gauge, CalendarClock, CalendarRange, Search, Sparkles,
 } from 'lucide-react';
-import FilterTabs from '../../components/common/FilterTabs';
 
 // Bảng màu báo cáo Merchant: DẪN ĐẦU xanh dương #1A73E8 (thương hiệu merchant),
 // KHÔNG dùng cam #FF6B35 của Customer. Màu sau mang ý nghĩa (xanh lá=tốt, vàng=chờ, đỏ=huỷ).
@@ -203,13 +203,10 @@ export default function MerchantStats() {
             Báo Cáo Tài Chính Nhà Hàng
           </h1>
         </div>
-        <FilterTabs
-          tabs={RANGE_TABS}
-          activeTab={filterRange}
-          onTabChange={setFilterRange}
-          className="self-start sm:self-center bg-slate-100 p-1 rounded-radius-lg border border-slate-200/40 max-w-full"
-          activeClassName="bg-md-secondary text-white shadow-sm shadow-md-secondary/25"
-        />
+        <div className="flex flex-wrap items-center gap-2 sm:justify-end">
+          <RangeSelect options={RANGE_TABS} value={filterRange} onChange={setFilterRange} theme="light" />
+          <SeriesFilterBar periods={periods} value={seriesFilter} onChange={setSeriesFilter} theme="light" />
+        </div>
       </div>
 
       {(loadingRes || (loadingReport && !report)) ? (
@@ -283,8 +280,8 @@ export default function MerchantStats() {
                   <Icon size={18} className={`${c.color} shrink-0`} />
                   <div className="min-w-0 flex-1">
                     <div className={`text-sm font-extrabold ${c.color} truncate`}>{c.value}</div>
-                    <div className="text-[9px] text-slate-400 font-bold uppercase tracking-wide truncate flex items-center gap-1">
-                      {c.label} <InfoTip theme="light" size={11} text={c.tip} />
+                    <div className="text-[9px] text-slate-400 font-bold uppercase tracking-wide flex items-center gap-1 min-w-0">
+                      <span className="truncate">{c.label}</span> <InfoTip theme="light" size={11} text={c.tip} />
                     </div>
                   </div>
                 </div>
@@ -306,8 +303,8 @@ export default function MerchantStats() {
                   <Icon size={18} className={`${c.color} shrink-0`} />
                   <div className="min-w-0 flex-1">
                     <div className={`text-sm font-extrabold ${c.color} truncate`}>{c.value}</div>
-                    <div className="text-[9px] text-slate-400 font-bold uppercase tracking-wide truncate flex items-center gap-1">
-                      {c.label} <InfoTip theme="light" size={11} text={c.tip} />
+                    <div className="text-[9px] text-slate-400 font-bold uppercase tracking-wide flex items-center gap-1 min-w-0">
+                      <span className="truncate">{c.label}</span> <InfoTip theme="light" size={11} text={c.tip} />
                     </div>
                   </div>
                 </div>
@@ -352,13 +349,9 @@ export default function MerchantStats() {
                   {chartType === 'area' ? (<><BarChart3 size={11} /> Dạng Cột</>) : (<><AreaChart size={11} /> Dạng Miền</>)}
                 </button>
               </div>
-              {/* Bộ lọc chuỗi theo tháng · năm · thứ (đầy đủ nhất khi chọn range "Tất cả") */}
-              <div className="flex items-center justify-between gap-2 flex-wrap">
-                <SeriesFilterBar periods={periods} value={seriesFilter} onChange={setSeriesFilter} theme="light" />
-                {seriesActive && (
-                  <span className="text-[10px] text-slate-400 font-semibold">Đang lọc riêng biểu đồ xu hướng</span>
-                )}
-              </div>
+              {seriesActive && (
+                <p className="text-[10px] text-md-secondary/80 font-semibold">Biểu đồ đang lọc theo Tháng/Năm/Thứ chọn ở thanh lọc trên cùng.</p>
+              )}
               {timelineData.length === 0 ? (
                 <div className="h-64 flex items-center justify-center text-xs font-bold text-slate-400">Chưa có dữ liệu giao dịch trong kỳ này.</div>
               ) : (
@@ -426,7 +419,7 @@ export default function MerchantStats() {
                 <div className="py-10 text-center text-xs font-bold text-slate-400">Không tìm thấy món khớp "{topQuery}".</div>
               ) : (
                 <>
-                  <div className="space-y-4.5">
+                  <div className={`space-y-4.5 ${topExpanded ? 'max-h-[440px] overflow-y-auto pr-1' : ''}`}>
                     {filteredTop.map((food) => {
                       const revenue = Number(food.revenue || 0);
                       const pct = subtotal > 0 ? (revenue / subtotal) * 100 : 0;
@@ -466,7 +459,7 @@ export default function MerchantStats() {
             </div>
 
             {/* Trạng thái đơn donut */}
-            <div className="bg-white rounded-[1.25rem] p-5 border border-slate-200/60 shadow-sm flex flex-col justify-between min-h-[300px] space-y-4">
+            <div className="bg-white rounded-[1.25rem] p-5 border border-slate-200/60 shadow-sm flex flex-col justify-between min-h-[300px] space-y-4 self-start">
               <h3 className="text-xs font-extrabold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
                 <Calendar className="text-purple-500" size={16} /> Tỷ Lệ Trạng Thái Đơn
               </h3>

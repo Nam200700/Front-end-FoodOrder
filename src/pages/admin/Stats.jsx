@@ -210,16 +210,18 @@ export default function AdminStats() {
   return (
     <div className="flex-1 p-4 md:p-8 max-w-6xl mx-auto w-full font-google-sans space-y-6 pb-24 text-slate-100 bg-transparent">
 
-      {/* Header + Filter */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800 pb-5">
-        <div>
-          <h1 className="text-xl md:text-2xl font-bold text-slate-100 flex items-center gap-2">
-            <Shield className="text-purple-400" size={24} /> Trung Tâm Phân Tích Doanh Thu
-          </h1>
-        </div>
-        <div className="flex flex-wrap items-center gap-2 sm:justify-end">
-          <RangeSelect options={RANGE_TABS} value={filterRange} onChange={setFilterRange} theme="dark" />
-          <SeriesFilterBar periods={periods} value={seriesFilter} onChange={setSeriesFilter} theme="dark" />
+      {/* Header + Filter — DÍNH khi cuộn để lọc được mọi lúc (khỏi cuộn lên) */}
+      <div className="sticky top-0 z-30 -mx-4 md:-mx-8 px-4 md:px-8 -mt-4 md:-mt-8 pt-4 md:pt-8 pb-4 bg-slate-950/85 backdrop-blur-md border-b border-slate-800">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h1 className="text-xl md:text-2xl font-bold text-slate-100 flex items-center gap-2">
+              <Shield className="text-purple-400" size={24} /> Trung Tâm Phân Tích Doanh Thu
+            </h1>
+          </div>
+          <div className="flex flex-wrap items-center gap-2 sm:justify-end">
+            <RangeSelect options={RANGE_TABS} value={filterRange} onChange={setFilterRange} theme="dark" />
+            <SeriesFilterBar periods={periods} value={seriesFilter} onChange={setSeriesFilter} theme="dark" />
+          </div>
         </div>
       </div>
 

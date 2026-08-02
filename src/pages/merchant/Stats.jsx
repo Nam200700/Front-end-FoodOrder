@@ -225,19 +225,21 @@ export default function MerchantStats() {
   return (
     <div className="flex-1 p-4 md:p-8 max-w-6xl mx-auto w-full font-google-sans space-y-6 pb-24 text-slate-800">
 
-      {/* Header + Filter */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-5">
-        <div>
-          <h1 className="text-xl md:text-2xl font-bold text-slate-800 flex items-center gap-2">
-            <span className="w-9 h-9 rounded-radius-md bg-md-secondary/10 text-md-secondary flex items-center justify-center shrink-0">
-              <Store size={20} />
-            </span>
-            Báo Cáo Tài Chính Nhà Hàng
-          </h1>
-        </div>
-        <div className="flex flex-wrap items-center gap-2 sm:justify-end">
-          <RangeSelect options={RANGE_TABS} value={filterRange} onChange={setFilterRange} theme="light" />
-          <SeriesFilterBar periods={periods} value={seriesFilter} onChange={setSeriesFilter} theme="light" />
+      {/* Header + Filter — DÍNH khi cuộn để lọc được mọi lúc (khỏi cuộn lên) */}
+      <div className="sticky top-0 z-30 -mx-4 md:-mx-8 px-4 md:px-8 -mt-4 md:-mt-8 pt-4 md:pt-8 pb-4 bg-white/85 backdrop-blur-md border-b border-slate-100">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h1 className="text-xl md:text-2xl font-bold text-slate-800 flex items-center gap-2">
+              <span className="w-9 h-9 rounded-radius-md bg-md-secondary/10 text-md-secondary flex items-center justify-center shrink-0">
+                <Store size={20} />
+              </span>
+              Báo Cáo Tài Chính Nhà Hàng
+            </h1>
+          </div>
+          <div className="flex flex-wrap items-center gap-2 sm:justify-end">
+            <RangeSelect options={RANGE_TABS} value={filterRange} onChange={setFilterRange} theme="light" />
+            <SeriesFilterBar periods={periods} value={seriesFilter} onChange={setSeriesFilter} theme="light" />
+          </div>
         </div>
       </div>
 

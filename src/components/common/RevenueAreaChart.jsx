@@ -109,9 +109,9 @@ export default function RevenueAreaChart({
                 dot={dense ? false : { r: 2.5, strokeWidth: 1.5, fill: '#fff', stroke: c }}
                 activeDot={{ r: 5, strokeWidth: 2, fill: '#fff', stroke: c }}
                 isAnimationActive={animate}
-                animationDuration={900}
+                animationDuration={1300}
                 animationEasing="ease-out"
-                animationBegin={idx * 150}
+                animationBegin={idx * 220}
               />
             );
           })}

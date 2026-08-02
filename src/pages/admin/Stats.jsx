@@ -353,9 +353,9 @@ export default function AdminStats() {
                 <RevenueAreaChart data={timelineData} xKey="dateStr" height={272} showLegend
                   yTickFormatter={(v) => v >= 1000000 ? `${v / 1000000}M` : `${v / 1000}k`} valueFormatter={formatCurrency} chartType={chartType}
                   areas={[
-                    { key: 'Tổng GTV', name: 'Tổng giao dịch (GTV)', color: '#8B5CF6' },
-                    { key: 'Quán đối tác', name: 'Quán đối tác thực nhận', color: '#3B82F6' },
-                    { key: 'Hoa hồng sàn', name: `Hoa hồng sàn (${ratePct}%)`, color: '#10B981' },
+                    { key: 'Tổng GTV', name: 'Tổng giao dịch (GTV)', color: '#C4B5FD' },
+                    { key: 'Quán đối tác', name: 'Quán đối tác thực nhận', color: '#3B82F6', noFill: true },
+                    { key: 'Hoa hồng sàn', name: `Hoa hồng sàn (${ratePct}%)`, color: '#10B981', noFill: true },
                   ]} />
               </div>
             )}

@@ -35,16 +35,6 @@ function StarRow({ value = 0, size = 14, animate = false, className = '' }) {
   );
 }
 
-// Lời nhận xét ngắn theo mức điểm trung bình (thân thiện, tông khách hàng).
-const ratingBlurb = (r) => {
-  const n = Number(r) || 0;
-  if (n >= 4.5) return 'Tuyệt vời! Quán được thực khách yêu thích và đánh giá rất cao.';
-  if (n >= 4) return 'Rất tốt — phần lớn khách hài lòng với món ăn và dịch vụ.';
-  if (n >= 3) return 'Khá ổn — quán đang được nhiều khách ủng hộ.';
-  if (n > 0) return 'Quán đang nỗ lực cải thiện chất lượng phục vụ.';
-  return 'Hãy là người đầu tiên đánh giá quán nhé!';
-};
-
 // ─── Tài nguyên dùng riêng cho TAB ĐÁNH GIÁ (khách xem) — tông cam CUSTOMER (#FF6B35) ───
 const AVATAR_COLORS = [
   'bg-blue-100 text-blue-700', 'bg-emerald-100 text-emerald-700', 'bg-amber-100 text-amber-800',

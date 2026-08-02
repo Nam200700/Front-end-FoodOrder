@@ -14,7 +14,8 @@ export default function RevenueAreaChart({
   brush = false,      // hiện thanh kéo trượt (scroll) để kéo dữ liệu qua lại
   brushWindow = 21,   // số điểm hiển thị mặc định khi có brush (mới nhất)
   valueFormatter,     // format giá trị trong tooltip; mặc định làm tròn số nguyên (không để lộ số lẻ)
-  connectNulls = false // nối qua điểm null (dùng cho đường forecast có đoạn null ở quá khứ)
+  connectNulls = false, // nối qua điểm null (dùng cho đường forecast có đoạn null ở quá khứ)
+  animate = true       // animation vẽ đường/cột khi render
 }) {
   // Mặc định: làm tròn về số nguyên + phân tách nghìn (khử số lẻ .22 & rác dấu phẩy động khi gom bucket).
   const fmtValue = valueFormatter || ((v) => {
@@ -32,7 +33,16 @@ export default function RevenueAreaChart({
   const showBrush = brush && pointCount > brushWindow;
   const brushStart = showBrush ? pointCount - brushWindow : 0;
   // Nhiều đường chồng nhau → fill nhạt hơn để không bị đục màu; ít đường thì đậm cho nổi khối.
-  const fillTop = activeAreas.length > 1 ? 0.12 : 0.22;
+  const fillTop = activeAreas.length > 1 ? 0.16 : 0.22;
+  // Khi có 2 đường sát nhau (vd gross vs net 90%) mà không cấu hình fill riêng:
+  // chỉ tô vùng cho đường ĐẦU (bao ngoài), các đường sau để line trơn → hết đục màu, tách bạch rõ.
+  const someFillConfigured = activeAreas.some(a => a.noFill != null || a.dashed);
+  const shouldFill = (area, idx) => {
+    if (area.dashed) return false;          // đường forecast: luôn line trơn
+    if (area.noFill != null) return !area.noFill;
+    if (someFillConfigured) return true;
+    return activeAreas.length > 1 ? idx === 0 : true;
+  };
 
   return (
     <div style={{ width: '100%', height }}>
@@ -68,6 +78,7 @@ export default function RevenueAreaChart({
           {activeAreas.map((area, idx) => {
             const gradientId = `gradient-area-${idx}`;
             const c = area.color || color;
+            const filled = shouldFill(area, idx);
             return chartType === 'bar' ? (
               <Bar
                 key={idx}
@@ -77,6 +88,10 @@ export default function RevenueAreaChart({
                 radius={[4, 4, 0, 0]}
                 barSize={dense ? undefined : 18}
                 maxBarSize={18}
+                isAnimationActive={animate}
+                animationDuration={800}
+                animationEasing="ease-out"
+                animationBegin={idx * 120}
               />
             ) : (
               <Area
@@ -86,13 +101,17 @@ export default function RevenueAreaChart({
                 dataKey={area.key}
                 stroke={c}
                 strokeDasharray={area.dashed ? '6 5' : undefined}
-                fill={area.dashed ? 'transparent' : `url(#${gradientId})`}
+                fill={filled ? `url(#${gradientId})` : 'transparent'}
                 strokeWidth={dense ? 2 : 2.5}
                 strokeLinecap="round"
                 strokeLinejoin="round"
                 connectNulls={connectNulls}
                 dot={dense ? false : { r: 2.5, strokeWidth: 1.5, fill: '#fff', stroke: c }}
                 activeDot={{ r: 5, strokeWidth: 2, fill: '#fff', stroke: c }}
+                isAnimationActive={animate}
+                animationDuration={900}
+                animationEasing="ease-out"
+                animationBegin={idx * 150}
               />
             );
           })}

@@ -1,6 +1,7 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCartStore } from '../../stores/cartStore';
+import { useWebSocketContext } from '../../contexts/WebSocketContext';
 import {
   ShoppingBag, RefreshCw, Ban, AlertCircle, MessageSquare, Star, FileText, MapPin, CreditCard, Eye,
   User, Phone, Bike, Wallet, StickyNote, CalendarClock, UtensilsCrossed, Package, BadgeCheck, Clock, Check,
@@ -63,6 +64,17 @@ const PROGRESS_STEPS = [
 const STEP_INDEX = { PENDING: 0, CONFIRMED: 1, PREPARING: 2, READY_FOR_PICKUP: 2, PICKED_UP: 3, DELIVERING: 3, COMPLETED: 4 };
 const isActiveStatus = (s) => s !== 'COMPLETED' && s !== 'CANCELLED';
 
+// Câu thông báo khi trạng thái đơn đổi (realtime) — hiện toast cho khách
+const STATUS_TOAST = {
+  CONFIRMED: 'đã được quán xác nhận',
+  PREPARING: 'quán đang chuẩn bị món',
+  READY_FOR_PICKUP: 'đang chờ tài xế đến lấy',
+  PICKED_UP: 'tài xế đã lấy hàng',
+  DELIVERING: 'đang trên đường giao đến bạn',
+  COMPLETED: 'đã giao thành công',
+  CANCELLED: 'đã bị hủy',
+};
+
 function OrderProgress({ status }) {
   const current = STEP_INDEX[status] ?? 0;
   const pct = (current / (PROGRESS_STEPS.length - 1)) * 100;
@@ -100,7 +112,9 @@ function OrderProgress({ status }) {
 export default function OrderHistory() {
   const navigate = useNavigate();
   const replaceCart = useCartStore((state) => state.replaceCart);
+  const { subscribe, connected } = useWebSocketContext();
   const [activeTab, setActiveTab] = useState('ALL');
+  const prevStatusRef = useRef(null); // baseline trạng thái đơn để phát hiện thay đổi realtime
 
   // Các States xử lý dữ liệu và lỗi
   const [orders, setOrders] = useState([]);
@@ -161,9 +175,9 @@ export default function OrderHistory() {
     });
   };
 
-  const fetchOrderHistory = useCallback(async () => {
-    setLoading(true);
-    setError(null);
+  // background=true: làm mới ngầm (poll/WS) — KHÔNG bật skeleton, không nuốt trang khi lỗi mạng tạm thời
+  const fetchOrderHistory = useCallback(async (background = false) => {
+    if (!background) { setLoading(true); setError(null); }
     try {
       const statusParam = activeTab === 'ALL' ? {} : { status: activeTab};
       const response = await apiClient.get('/orders', { params: statusParam });
@@ -171,9 +185,9 @@ export default function OrderHistory() {
       setOrders(mappedData);
     } catch (err) {
       console.error('Lỗi khi lấy danh sách đơn hàng:', err);
-      setError(err);
+      if (!background) setError(err);
     } finally {
-      setLoading(false);
+      if (!background) setLoading(false);
     }
   }, [activeTab]);
 
@@ -181,28 +195,57 @@ export default function OrderHistory() {
     fetchOrderHistory();
   }, [fetchOrderHistory]);
 
-  // Đếm số đơn theo trạng thái (lấy toàn bộ đơn, không lọc) để hiện badge trên tab
-  const fetchStatusCounts = useCallback(async () => {
+  // Đồng bộ toàn bộ đơn: đếm badge + dải tổng quan, và PHÁT HIỆN đổi trạng thái (realtime).
+  // alert=true: toast khi trạng thái đơn đổi so với lần trước; alert=false: chỉ đồng bộ số liệu.
+  const syncOrders = useCallback(async (alert) => {
     try {
       const res = await apiClient.get('/orders', { params: { size: 1000 } });
       const all = res.data?.data?.content || res.data?.data || [];
       const counts = { ALL: all.length };
       let spent = 0, completed = 0;
+      const statusMap = {};
       all.forEach((o) => {
         counts[o.orderStatus] = (counts[o.orderStatus] || 0) + 1;
+        statusMap[o.orderId] = o.orderStatus;
         if (o.orderStatus === 'COMPLETED') { completed++; spent += Number(o.totalAmount || 0); }
       });
       setStatusCounts(counts);
       setSummary({ total: all.length, completed, spent });
+
+      const prev = prevStatusRef.current;
+      if (alert && prev) {
+        all.forEach((o) => {
+          const before = prev[o.orderId];
+          if (before && before !== o.orderStatus && STATUS_TOAST[o.orderStatus]) {
+            const msg = `Đơn #${o.orderId} ${STATUS_TOAST[o.orderStatus]}`;
+            if (o.orderStatus === 'COMPLETED') toast.success(msg);
+            else if (o.orderStatus === 'CANCELLED') toast.warn(msg);
+            else toast.info(msg);
+          }
+        });
+      }
+      prevStatusRef.current = statusMap;
     } catch (err) {
-      console.error('Lỗi đếm số đơn theo trạng thái:', err);
+      console.error('Lỗi đồng bộ đơn hàng:', err);
     }
   }, []);
 
-  // Refresh badge mỗi khi danh sách đơn thay đổi (sau huỷ đơn/tải lại)
+  // Đồng bộ số liệu + baseline mỗi khi danh sách đổi (không toast cho thao tác cục bộ)
+  useEffect(() => { syncOrders(false); }, [orders, syncOrders]);
+
+  // REALTIME tức thì qua WebSocket: quán/shipper đổi trạng thái là đơn tự cập nhật, khỏi reload
   useEffect(() => {
-    fetchStatusCounts();
-  }, [orders, fetchStatusCounts]);
+    const sub = subscribe('/user/queue/notify', () => { syncOrders(true); fetchOrderHistory(true); });
+    return () => { if (sub) sub.unsubscribe(); };
+  }, [subscribe, syncOrders, fetchOrderHistory]);
+
+  // Poll dự phòng 15s (khi tab mở) + kiểm tra ngay khi quay lại tab — WS rớt vẫn cập nhật
+  useEffect(() => {
+    const id = setInterval(() => { if (!document.hidden) { syncOrders(true); fetchOrderHistory(true); } }, 15000);
+    const onVisible = () => { if (!document.hidden) { syncOrders(true); fetchOrderHistory(true); } };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => { clearInterval(id); document.removeEventListener('visibilitychange', onVisible); };
+  }, [syncOrders, fetchOrderHistory]);
 
   // hiển thị modal hủy đơn
   const handleOpenCancelModal = (e, orderId) => {
@@ -311,10 +354,24 @@ export default function OrderHistory() {
   return (
     <div className="min-h-screen bg-gray-50 py-4 md:py-8 font-google-sans text-gray-800">
       <div className="max-w-[1400px] mx-auto px-4 md:px-6">
-        <h1 className="text-xl md:text-2xl font-bold mb-4 text-gray-900 flex items-center gap-2.5">
-          <span className="p-2 rounded-xl bg-orange-500/10 text-orange-500"><ShoppingBag size={20} /></span>
-          Đơn Hàng Của Tôi
-        </h1>
+        <div className="flex items-center justify-between gap-3 mb-4">
+          <h1 className="text-xl md:text-2xl font-bold text-gray-900 flex items-center gap-2.5">
+            <span className="p-2 rounded-xl bg-orange-500/10 text-orange-500"><ShoppingBag size={20} /></span>
+            Đơn Hàng Của Tôi
+          </h1>
+          <span
+            className={`inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1.5 rounded-full border ${
+              connected ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-slate-100 text-slate-500 border-slate-200'
+            }`}
+            title={connected ? 'Đơn hàng tự cập nhật theo thời gian thực' : 'Mất kết nối realtime — vẫn tự làm mới mỗi 15 giây'}
+          >
+            <span className="relative flex h-2 w-2">
+              {connected && <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />}
+              <span className={`relative inline-flex rounded-full h-2 w-2 ${connected ? 'bg-emerald-500' : 'bg-slate-400'}`} />
+            </span>
+            {connected ? 'Cập nhật trực tiếp' : 'Tự làm mới'}
+          </span>
+        </div>
 
         {/* Dải tổng quan: tổng đơn · đã giao · tổng chi tiêu */}
         <div className="grid grid-cols-3 gap-3 mb-5">

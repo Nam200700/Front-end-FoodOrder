@@ -226,7 +226,7 @@ export default function MerchantStats() {
     <div className="flex-1 p-4 md:p-8 max-w-6xl mx-auto w-full font-google-sans space-y-6 pb-24 text-slate-800">
 
       {/* Header + Filter — DÍNH khi cuộn để lọc được mọi lúc (khỏi cuộn lên) */}
-      <div className="sticky top-16 md:top-0 z-30 -mx-4 md:-mx-8 px-4 md:px-8 -mt-4 md:-mt-8 pt-4 md:pt-8 pb-4 bg-white/90 backdrop-blur-md border-b border-slate-100">
+      <div className="sticky top-16 md:top-0 z-30 -mx-4 md:-mx-8 px-4 md:px-8 py-3.5 bg-white border-b border-slate-200 shadow-sm">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <h1 className="text-xl md:text-2xl font-bold text-slate-800 flex items-center gap-2">

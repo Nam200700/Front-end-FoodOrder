@@ -212,6 +212,21 @@ export const useAuthStore = create(
         user: state.user ? { ...state.user, ...updatedFields } : null
       })),
 
+      // Lấy lại hồ sơ hiện tại từ server (dùng để tự phát hiện Admin đã duyệt/từ chối
+      // đối tác mà KHÔNG cần user F5). Cập nhật user + role, giữ nguyên token trong bộ nhớ.
+      refreshProfile: async () => {
+        try {
+          const res = await apiClient.get('/users/me');
+          const raw = res.data?.data;
+          if (!raw) return { success: false };
+          const mapped = mapUserFromApi(raw);
+          set({ user: mapped, role: raw.role });
+          return { success: true, registerStatus: raw.registerStatus ?? null, status: raw.status };
+        } catch (error) {
+          return { success: false, error };
+        }
+      },
+
       setRole: (role) => set({ role }), // Để RoleSwitcher hoạt động
     }),
     {

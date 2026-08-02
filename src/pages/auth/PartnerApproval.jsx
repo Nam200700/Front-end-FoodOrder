@@ -1,11 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../stores/authStore';
 import {
   LogOut,
   Clock,
   AlertTriangle,
-  CheckCircle,
   Check,
   Store,
   Bike,
@@ -13,19 +12,25 @@ import {
   MapPin,
   Phone,
   ChevronRight,
-  Loader2
+  Loader2,
+  RefreshCw,
+  RadioTower,
+  PartyPopper
 } from 'lucide-react';
 import Input from '../../components/common/Input';
 import MapModal from '../../components/common/MapModal';
+import apiClient from '../../services/api';
 import { toast } from 'react-toastify';
 import { validatePhone, validateIdCard } from '../../utils/validation';
 
 export default function PartnerApproval() {
   const navigate = useNavigate();
-  const { user, role, logout, ownerReRegister, shipperReRegister } = useAuthStore();
+  const { user, role, logout, ownerReRegister, shipperReRegister, refreshProfile } = useAuthStore();
 
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+  const [checking, setChecking] = useState(false);   // đang gọi kiểm tra trạng thái duyệt
+  const [approved, setApproved] = useState(false);    // vừa phát hiện đã duyệt → hiện màn chúc mừng rồi chuyển
   
   // Owner fields for re-register
   const [restaurantName, setRestaurantName] = useState(user?.restaurantName || '');
@@ -106,6 +111,48 @@ export default function PartnerApproval() {
   const isPending = user?.registerStatus === 'PENDING';
   const isRejected = user?.registerStatus === 'REJECTED';
 
+  // ─── TỰ ĐỘNG PHÁT HIỆN ADMIN ĐÃ DUYỆT (khỏi cần user F5) ───────────────────────
+  // Peek /users/me: nếu registerStatus không còn PENDING/REJECTED nghĩa là đã duyệt →
+  // hiện màn chúc mừng ~1.8s rồi cập nhật store; guard (ProtectedRoute) tự điều hướng
+  // sang /merchant hoặc /shipper. Nếu bị từ chối → cập nhật store để chuyển sang form gửi lại.
+  const committedRef = useRef(false);
+  const checkApproval = useCallback(async (manual = false) => {
+    if (committedRef.current) return;
+    if (manual) setChecking(true);
+    let raw;
+    try {
+      const r = await apiClient.get('/users/me'); // peek: chưa đụng store để kịp hiện màn chúc mừng
+      raw = r.data?.data;
+    } catch {
+      if (manual) { setChecking(false); toast.error('Không kiểm tra được trạng thái lúc này. Thử lại sau nhé!'); }
+      return;
+    }
+    if (manual) setChecking(false);
+    if (!raw) return;
+    const st = raw.registerStatus;
+    const isApprovedNow = raw.status === true || (st !== 'PENDING' && st !== 'REJECTED');
+    if (isApprovedNow) {
+      committedRef.current = true;
+      setApproved(true);
+      // để màn chúc mừng hiển thị rồi mới cập nhật store → guard tự điều hướng
+      setTimeout(() => { refreshProfile(); }, 1800);
+    } else if (st === 'REJECTED') {
+      committedRef.current = true;
+      refreshProfile(); // đồng bộ store → render form gửi lại
+    } else if (manual) {
+      toast.info('Hồ sơ vẫn đang chờ Admin duyệt. Bạn sẽ được chuyển ngay khi được phê duyệt.');
+    }
+  }, [refreshProfile]);
+
+  // Poll định kỳ + kiểm tra lại mỗi khi quay lại tab, chỉ khi đang chờ duyệt
+  useEffect(() => {
+    if (!isPending) return;
+    const id = setInterval(() => { if (!document.hidden) checkApproval(false); }, 12000);
+    const onVisible = () => { if (!document.hidden) checkApproval(false); };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => { clearInterval(id); document.removeEventListener('visibilitychange', onVisible); };
+  }, [isPending, checkApproval]);
+
   // Định nghĩa màu sắc thương hiệu
   const themeColor = role === 'SHIPPER' ? '#34A853' : '#1A73E8'; // Xanh lá cho Shipper, Xanh dương cho Owner
   const bgSoft = role === 'SHIPPER' ? 'bg-[#34A853]/5' : 'bg-[#1A73E8]/5';
@@ -153,11 +200,36 @@ export default function PartnerApproval() {
             </button>
           </div>
 
-          {/* ─── CASE 1: PENDING (CHỜ DUYỆT HỒ SƠ) ─────────────────────────────────── */}
-          {isPending && (
-            <div className="space-y-6 text-center py-4">
+          {/* ─── CASE 0: VỪA ĐƯỢC DUYỆT — màn chúc mừng trước khi điều hướng ─────────── */}
+          {isPending && approved && (
+            <div className="space-y-6 text-center py-8 animate-rise-in">
               <div className="flex justify-center">
-                <div className={`w-20 h-20 rounded-full ${bgSoft} flex items-center justify-center border-2 border-dashed ${borderActive} relative`}>
+                <div className="relative">
+                  <span className="absolute inset-0 rounded-full animate-halo" style={{ border: '2px solid #10B981' }} />
+                  <div className="w-24 h-24 rounded-full bg-emerald-500 text-white flex items-center justify-center shadow-xl shadow-emerald-500/30 animate-scale-up">
+                    <PartyPopper size={46} strokeWidth={2} />
+                  </div>
+                </div>
+              </div>
+              <div className="max-w-md mx-auto space-y-2">
+                <h3 className="text-2xl font-black text-emerald-600">Hồ sơ đã được duyệt! 🎉</h3>
+                <p className="text-sm text-slate-500 font-semibold leading-relaxed">
+                  Chúc mừng bạn đã trở thành đối tác chính thức của
+                  <span className="text-[#FF6B35] font-extrabold"> Meal</span><span className="text-[#1A73E8] font-extrabold">Dash</span>.
+                  Đang chuyển tới trang quản lý...
+                </p>
+              </div>
+              <div className="flex items-center justify-center gap-2 text-xs font-bold text-emerald-600">
+                <Loader2 size={16} className="animate-spin" /> Đang chuyển hướng
+              </div>
+            </div>
+          )}
+
+          {/* ─── CASE 1: PENDING (CHỜ DUYỆT HỒ SƠ) ─────────────────────────────────── */}
+          {isPending && !approved && (
+            <div className="space-y-6 text-center py-4">
+              <div className="flex justify-center animate-rise-in">
+                <div className={`w-20 h-20 rounded-full ${bgSoft} flex items-center justify-center border-2 border-dashed ${borderActive} relative animate-float`}>
                   <Clock size={40} className={`${textTheme} animate-spin-slow`} />
                   <span className="absolute -top-1.5 -right-1.5 flex h-4 w-4">
                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
@@ -166,7 +238,7 @@ export default function PartnerApproval() {
                 </div>
               </div>
 
-              <div className="max-w-md mx-auto space-y-2">
+              <div className="max-w-md mx-auto space-y-2 animate-rise-in" style={{ animationDelay: '80ms' }}>
                 <h3 className="text-xl font-extrabold text-slate-800">Hồ sơ đang được xét duyệt!</h3>
                 <p className="text-xs sm:text-sm text-slate-500 leading-relaxed font-semibold">
                   Cảm ơn bạn đã đăng ký làm đối tác của <span className="text-[#FF6B35] font-extrabold">Meal</span><span className="text-[#1A73E8] font-extrabold">Dash</span>. Đơn đăng ký của bạn đang được Admin xem xét và phê duyệt (thường mất từ 1-2 ngày làm việc).
@@ -174,11 +246,14 @@ export default function PartnerApproval() {
               </div>
 
               {/* Approval Timeline UI */}
-              <div className="bg-slate-50 border border-slate-100 rounded-radius-2xl p-6 max-w-md mx-auto mt-6">
+              <div className="bg-slate-50 border border-slate-100 rounded-radius-2xl p-6 max-w-md mx-auto mt-6 animate-rise-in" style={{ animationDelay: '140ms' }}>
                 <div className="relative flex items-center justify-between">
                   {/* Progress line */}
                   <div className="absolute left-4 right-4 top-1/2 -translate-y-1/2 h-[3px] bg-slate-200 z-0"></div>
-                  <div className={`absolute left-4 w-1/2 top-1/2 -translate-y-1/2 h-[3px] ${role === 'SHIPPER' ? 'bg-[#34A853]/60' : 'bg-[#1A73E8]/60'} z-0`}></div>
+                  <div className={`absolute left-4 w-1/2 top-1/2 -translate-y-1/2 h-[3px] ${role === 'SHIPPER' ? 'bg-[#34A853]/60' : 'bg-[#1A73E8]/60'} z-0 overflow-hidden`}>
+                    {/* vệt sáng chảy dọc thanh tiến trình cho có "nhịp sống" */}
+                    <span className="absolute inset-y-0 w-1/3 bg-white/60 animate-flow" />
+                  </div>
 
                   {/* Step 1: Register */}
                   <div className="flex flex-col items-center z-10 relative">
@@ -190,7 +265,8 @@ export default function PartnerApproval() {
 
                   {/* Step 2: Pending */}
                   <div className="flex flex-col items-center z-10 relative">
-                    <div className={`w-8 h-8 rounded-full ${borderActive} bg-white flex items-center justify-center shadow-md font-bold text-xs border-2`}>
+                    <div className={`w-8 h-8 rounded-full ${borderActive} bg-white flex items-center justify-center shadow-md font-bold text-xs border-2 relative`}>
+                      <span className="absolute inset-0 rounded-full animate-halo" style={{ border: `2px solid ${themeColor}` }} />
                       <span className={`w-2.5 h-2.5 rounded-full ${role === 'SHIPPER' ? 'bg-[#34A853]' : 'bg-[#1A73E8]'} animate-pulse`}></span>
                     </div>
                     <span className={`text-[10px] font-extrabold ${textTheme} mt-2`}>Đang xét duyệt</span>
@@ -206,8 +282,24 @@ export default function PartnerApproval() {
                 </div>
               </div>
 
-              <div className="text-[10px] text-slate-400 font-bold uppercase tracking-wider pt-4">
-                Hệ thống sẽ tự động cập nhật ngay khi được phê duyệt
+              {/* Chỉ báo đang theo dõi trực tiếp + nút kiểm tra thủ công */}
+              <div className="flex flex-col items-center gap-3 pt-2 animate-rise-in" style={{ animationDelay: '200ms' }}>
+                <div className="inline-flex items-center gap-2 text-[11px] font-bold text-slate-500 bg-slate-50 border border-slate-200 rounded-full px-3 py-1.5">
+                  <span className="relative flex h-2 w-2">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+                  </span>
+                  <RadioTower size={13} className="text-emerald-600" />
+                  Đang theo dõi trực tiếp — tự chuyển ngay khi được duyệt
+                </div>
+                <button
+                  onClick={() => checkApproval(true)}
+                  disabled={checking}
+                  className={`inline-flex items-center gap-1.5 text-xs font-bold px-4 py-2 rounded-full border bg-white hover:bg-slate-50 transition-all cursor-pointer disabled:opacity-60 ${borderActive} ${textTheme}`}
+                >
+                  <RefreshCw size={13} className={checking ? 'animate-spin' : ''} />
+                  {checking ? 'Đang kiểm tra...' : 'Kiểm tra ngay'}
+                </button>
               </div>
             </div>
           )}

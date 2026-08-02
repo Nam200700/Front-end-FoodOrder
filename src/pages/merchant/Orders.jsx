@@ -1,7 +1,8 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   ClipboardList, ShoppingBag, Check, X, Ban, Eye, Clock, AlertCircle,
-  User, Phone, MapPin, Bike, Wallet, StickyNote, CalendarClock, UtensilsCrossed, Package, BadgeCheck
+  User, Phone, MapPin, Bike, Wallet, StickyNote, CalendarClock, UtensilsCrossed, Package, BadgeCheck,
+  Bell, Volume2, VolumeX, RefreshCw, Wifi, WifiOff, Sparkles
 } from 'lucide-react';
 import { formatCurrency } from '../../utils/format';
 import apiClient from '../../services/api';
@@ -79,7 +80,62 @@ export default function MerchantOrders() {
   // STATE HỦY ĐƠN HÀNG MODAL
   const cancelModal = useModalState();
 
-  const { subscribe } = useWebSocketContext();
+  const { subscribe, connected } = useWebSocketContext();
+
+  // ─── HỖ TRỢ KHÔNG BỎ SÓT ĐƠN: báo động đơn mới + auto-refresh ───
+  const [soundOn, setSoundOn] = useState(() => localStorage.getItem('merchant-order-sound') !== 'off');
+  const [newOrderIds, setNewOrderIds] = useState(new Set()); // đơn PENDING vừa tới → gắn nhãn "MỚI"
+  const [lastUpdated, setLastUpdated] = useState(null);
+  const prevPendingIdsRef = useRef(null); // baseline id đơn chờ để phát hiện đơn mới
+  const audioCtxRef = useRef(null);
+
+  useEffect(() => { localStorage.setItem('merchant-order-sound', soundOn ? 'on' : 'off'); }, [soundOn]);
+
+  // Xin quyền hiện thông báo trình duyệt (để owner thấy đơn mới cả khi đang ở tab khác)
+  useEffect(() => {
+    if ('Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission().catch(() => {});
+    }
+  }, []);
+
+  // Tiếng "ting" báo đơn mới (Web Audio — không cần file âm thanh)
+  const playBeep = useCallback(() => {
+    if (!soundOn) return;
+    try {
+      const Ctx = window.AudioContext || window.webkitAudioContext;
+      if (!Ctx) return;
+      const ctx = audioCtxRef.current || (audioCtxRef.current = new Ctx());
+      if (ctx.state === 'suspended') ctx.resume();
+      const now = ctx.currentTime;
+      [880, 1175].forEach((freq, i) => { // 2 nốt cho dễ nhận biết
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.value = freq;
+        const t = now + i * 0.18;
+        gain.gain.setValueAtTime(0.0001, t);
+        gain.gain.exponentialRampToValueAtTime(0.35, t + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.16);
+        osc.connect(gain); gain.connect(ctx.destination);
+        osc.start(t); osc.stop(t + 0.18);
+      });
+    } catch { /* bỏ qua nếu trình duyệt chặn */ }
+  }, [soundOn]);
+
+  // Báo động 1 đơn mới: chuông + toast + thông báo trình duyệt (khi ở tab khác)
+  const alertNewOrder = useCallback((o) => {
+    playBeep();
+    toast.info(`Đơn mới #${o.orderId}${o.customerName ? ` từ ${o.customerName}` : ''} · ${formatCurrency(Number(o.totalAmount || 0))}`, { autoClose: 6000 });
+    if ('Notification' in window && Notification.permission === 'granted' && document.hidden) {
+      try {
+        const n = new Notification('🔔 Đơn hàng mới', {
+          body: `Đơn #${o.orderId}${o.customerName ? ` · ${o.customerName}` : ''} · ${formatCurrency(Number(o.totalAmount || 0))}`,
+          tag: `order-${o.orderId}`,
+        });
+        n.onclick = () => { window.focus(); n.close(); };
+      } catch { /* ignore */ }
+    }
+  }, [playBeep]);
 
   // Reset về trang 1 khi đổi tab
   useEffect(() => {
@@ -165,8 +221,9 @@ export default function MerchantOrders() {
     fetchOrders();
   }, [fetchOrders]);
 
-  // Đếm số đơn theo trạng thái (lấy toàn bộ đơn của quán, không phân trang) để hiện badge trên tab
-  const fetchStatusCounts = useCallback(async () => {
+  // Đếm số đơn theo trạng thái + PHÁT HIỆN ĐƠN MỚI (so baseline id đơn chờ).
+  // alert=true: kêu chuông/toast khi có đơn PENDING mới; alert=false: chỉ đồng bộ số đếm.
+  const watchPending = useCallback(async (alert) => {
     if (!restaurantId) return;
     try {
       const res = await apiClient.get('/merchant/orders', { params: { restaurantId, size: 1000 } });
@@ -174,35 +231,59 @@ export default function MerchantOrders() {
       const counts = { ALL: all.length };
       all.forEach((o) => { counts[o.orderStatus] = (counts[o.orderStatus] || 0) + 1; });
       setStatusCounts(counts);
+      setLastUpdated(new Date());
+
+      const pending = all.filter((o) => o.orderStatus === 'PENDING');
+      const pendingIds = pending.map((o) => o.orderId);
+      const prev = prevPendingIdsRef.current;
+      if (alert && prev !== null) {
+        const fresh = pending.filter((o) => !prev.includes(o.orderId));
+        if (fresh.length) {
+          fresh.forEach(alertNewOrder);
+          setNewOrderIds((s) => {
+            const n = new Set(s);
+            fresh.forEach((o) => n.add(o.orderId.toString()));
+            return n;
+          });
+          // Nhãn "MỚI" tự tắt sau 2 phút nếu owner chưa thao tác
+          fresh.forEach((o) => setTimeout(() => {
+            setNewOrderIds((s) => { const n = new Set(s); n.delete(o.orderId.toString()); return n; });
+          }, 120000));
+          fetchOrders(); // làm mới danh sách đang xem để đơn mới hiện ngay
+        }
+      }
+      prevPendingIdsRef.current = pendingIds;
     } catch (err) {
-      console.error('Lỗi đếm số đơn theo trạng thái:', err);
+      console.error('Lỗi theo dõi đơn mới:', err);
     }
-  }, [restaurantId]);
+  }, [restaurantId, fetchOrders, alertNewOrder]);
 
-  // Refresh badge mỗi khi danh sách đơn thay đổi (sau xác nhận/từ chối/WS) để số luôn khớp thực tế
-  useEffect(() => {
-    fetchStatusCounts();
-  }, [orders, fetchStatusCounts]);
+  // Đồng bộ số đếm mỗi khi danh sách đổi (không kêu chuông cho thao tác cục bộ)
+  useEffect(() => { watchPending(false); }, [orders, watchPending]);
 
-  // Lắng nghe thông báo Đơn hàng mới qua WebSocket 
+  // AUTO-POLL dự phòng: quán bận không cần reload — cứ 12s tự kiểm tra đơn mới (khi tab đang mở)
   useEffect(() => {
     if (!restaurantId) return;
+    const id = setInterval(() => {
+      if (!document.hidden) { watchPending(true); fetchOrders(); }
+    }, 12000);
+    return () => clearInterval(id);
+  }, [restaurantId, watchPending, fetchOrders]);
 
+  // Kiểm tra ngay khi owner quay lại tab
+  useEffect(() => {
+    const onVisible = () => { if (!document.hidden) { watchPending(true); fetchOrders(); } };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
+  }, [watchPending, fetchOrders]);
+
+  // Realtime tức thì qua WebSocket (khi hoạt động) — có đơn là kêu ngay, không đợi poll
+  useEffect(() => {
+    if (!restaurantId) return;
     const destination = `/user/queue/notify`;
-    console.log('[Merchant Orders WebSocket]: Subscribing to ' + destination);
-
-    const sub = subscribe(destination, (event) => {
-      console.log('[Merchant Orders WebSocket]: Received event', event);
-      fetchOrders();
-    });
-
-    return () => {
-      if (sub) {
-        console.log('[Merchant Orders WebSocket]: Unsubscribing from ' + destination);
-        sub.unsubscribe();
-      }
-    };
-  }, [restaurantId, fetchOrders, subscribe]);
+    const sub = subscribe(destination, () => { watchPending(true); fetchOrders(); });
+    return () => { if (sub) sub.unsubscribe(); };
+  }, [restaurantId, fetchOrders, subscribe, watchPending]);
 
   // Xác nhận đơn hàng
   const handleConfirm = async (e, orderId) => {
@@ -211,6 +292,7 @@ export default function MerchantOrders() {
     try {
       await apiClient.patch(`/merchant/orders/${orderId}/confirm`);
       toast.success(`Đã xác nhận thành công đơn hàng #${orderId}`);
+      setNewOrderIds((s) => { const n = new Set(s); n.delete(orderId.toString()); return n; });
       if (detailModal.data && detailModal.data.orderId.toString() === orderId.toString()) {
         detailModal.close();
       }
@@ -286,6 +368,7 @@ export default function MerchantOrders() {
         rejectReason: cancelReasonInput.trim()
       });
       toast.success(`Đã từ chối thành công đơn hàng #${orderIdToCancel}`);
+      setNewOrderIds((s) => { const n = new Set(s); n.delete(orderIdToCancel.toString()); return n; });
       cancelModal.close();
       if (detailModal.data && detailModal.data.orderId.toString() === orderIdToCancel.toString()) {
         detailModal.close();
@@ -365,8 +448,77 @@ export default function MerchantOrders() {
       )}
 
       <div className="max-w-[1400px] mx-auto px-4 md:px-6">
-        <h1 className="text-xl md:text-2xl font-bold mb-4 md:mb-6 text-gray-900">Quản Lý Đơn Hàng</h1>
-        
+        {/* Header: tiêu đề + trạng thái realtime + chuông + làm mới */}
+        <div className="flex flex-wrap items-center justify-between gap-3 mb-4 md:mb-5">
+          <h1 className="text-xl md:text-2xl font-bold text-gray-900 flex items-center gap-2.5">
+            <span className="p-2 rounded-xl bg-blue-600/10 text-blue-600"><ClipboardList size={20} /></span>
+            Quản Lý Đơn Hàng
+          </h1>
+          <div className="flex items-center gap-2">
+            {/* Trạng thái realtime */}
+            <span
+              className={`inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1.5 rounded-full border ${
+                connected ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-slate-100 text-slate-500 border-slate-200'
+              }`}
+              title={connected ? 'Đang nhận đơn theo thời gian thực' : 'Mất kết nối realtime — vẫn tự làm mới mỗi 12 giây'}
+            >
+              {connected ? <Wifi size={13} /> : <WifiOff size={13} />}
+              <span className="relative flex h-2 w-2">
+                {connected && <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />}
+                <span className={`relative inline-flex rounded-full h-2 w-2 ${connected ? 'bg-emerald-500' : 'bg-slate-400'}`} />
+              </span>
+              {connected ? 'Trực tuyến' : 'Ngoại tuyến'}
+            </span>
+            {/* Bật/tắt chuông báo đơn mới */}
+            <button
+              onClick={() => setSoundOn((v) => !v)}
+              className={`inline-flex items-center justify-center w-9 h-9 rounded-full border transition-all cursor-pointer ${
+                soundOn ? 'bg-blue-600 text-white border-blue-600 shadow-sm shadow-blue-200' : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50'
+              }`}
+              title={soundOn ? 'Đang bật chuông báo đơn mới — bấm để tắt' : 'Đang tắt chuông — bấm để bật'}
+            >
+              {soundOn ? <Volume2 size={16} /> : <VolumeX size={16} />}
+            </button>
+            {/* Làm mới thủ công */}
+            <button
+              onClick={() => { fetchOrders(); watchPending(true); }}
+              disabled={loading}
+              className="inline-flex items-center gap-1.5 text-xs font-bold px-3 h-9 rounded-full border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 hover:border-blue-300 hover:text-blue-600 transition-all cursor-pointer disabled:opacity-50"
+              title="Làm mới danh sách đơn"
+            >
+              <RefreshCw size={14} className={loading ? 'animate-spin' : ''} /> Làm mới
+            </button>
+          </div>
+        </div>
+
+        {lastUpdated && (
+          <p className="text-[11px] text-slate-400 font-medium -mt-2 mb-4">
+            Cập nhật lúc {String(lastUpdated.getHours()).padStart(2, '0')}:{String(lastUpdated.getMinutes()).padStart(2, '0')}:{String(lastUpdated.getSeconds()).padStart(2, '0')} · tự làm mới mỗi 12 giây
+          </p>
+        )}
+
+        {/* Banner nhắc đơn chờ xác nhận — nổi bật để owner không bỏ sót */}
+        {(statusCounts.PENDING || 0) > 0 && (
+          <div className="mb-5 flex items-center gap-3 rounded-2xl border border-amber-200 bg-gradient-to-r from-amber-50 to-white p-3.5 md:p-4 shadow-sm animate-rise-in">
+            <span className="relative shrink-0 w-11 h-11 rounded-xl bg-amber-100 text-amber-600 flex items-center justify-center">
+              <Bell size={20} className="animate-bob" />
+              <span className="absolute -top-1 -right-1 flex h-4 w-4">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
+                <span className="relative inline-flex rounded-full h-4 w-4 bg-amber-500 text-white text-[9px] font-black items-center justify-center flex">{statusCounts.PENDING}</span>
+              </span>
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-extrabold text-slate-800">Bạn có {statusCounts.PENDING} đơn đang chờ xác nhận</p>
+              <p className="text-[11px] text-slate-500 font-medium">Xác nhận sớm để khách không phải chờ lâu — giữ trải nghiệm tốt.</p>
+            </div>
+            {activeTab !== 'PENDING' && (
+              <Button variant="primary" size="sm" onClick={() => setActiveTab('PENDING')} className="!bg-amber-500 hover:!bg-amber-600 shrink-0 rounded-lg text-xs !py-2">
+                Xem ngay
+              </Button>
+            )}
+          </div>
+        )}
+
         <div className="mb-6 border-b border-slate-200 pb-3 overflow-x-auto scrollbar-none w-full">
           <FilterTabs
             tabs={ORDER_STATUS_TABS}
@@ -397,18 +549,27 @@ export default function MerchantOrders() {
             </div>
           ) : (
             <div className="space-y-4">
-              {orders.map((order, idx) => (
+              {orders.map((order, idx) => {
+                const isNew = newOrderIds.has(order.id);
+                return (
                 <div
                   key={order.id}
                   onClick={() => handleViewDetails(order.id)}
                   style={{ animationDelay: `${idx * 60}ms` }}
-                  className={`animate-rise-in bg-white rounded-xl border border-slate-100 border-l-4 ${STATUS_ACCENT[order.status] || 'border-l-slate-200'} shadow-sm p-4 md:p-5 flex flex-col gap-4 cursor-pointer group transition-all duration-200 hover:shadow-md hover:-translate-y-0.5 hover:border-slate-200`}
+                  className={`animate-rise-in bg-white rounded-xl border border-l-4 ${STATUS_ACCENT[order.status] || 'border-l-slate-200'} shadow-sm p-4 md:p-5 flex flex-col gap-4 cursor-pointer group transition-all duration-200 hover:shadow-md hover:-translate-y-0.5 ${
+                    isNew ? 'border-amber-300 ring-2 ring-amber-300/60 shadow-amber-100' : 'border-slate-100 hover:border-slate-200'
+                  }`}
                 >
                   <div className="flex flex-row justify-between items-center gap-2 border-b border-slate-100 pb-3 flex-wrap sm:flex-nowrap">
-                    <div className="text-[11px] sm:text-sm font-bold text-slate-800 uppercase tracking-wide whitespace-nowrap shrink-0">
-                      MÃ ĐƠN <span className="text-slate-900 font-extrabold">#{order.id}</span>
+                    <div className="text-[11px] sm:text-sm font-bold text-slate-800 uppercase tracking-wide whitespace-nowrap shrink-0 flex items-center gap-2">
+                      <span>MÃ ĐƠN <span className="text-slate-900 font-extrabold">#{order.id}</span></span>
+                      {isNew && (
+                        <span className="inline-flex items-center gap-1 text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-amber-500 text-white shadow-sm animate-pulse">
+                          <Sparkles size={10} /> Mới
+                        </span>
+                      )}
                     </div>
-                    
+
                     <div className="flex items-center gap-2 sm:gap-4 text-[10px] sm:text-xs text-slate-500 font-medium whitespace-nowrap">
                       <span className="flex items-center gap-1 shrink-0">
                         <Clock size={13} />
@@ -530,7 +691,8 @@ export default function MerchantOrders() {
                     </div>
                   </div>
                 </div>
-              ))}
+                );
+              })}
 
               {/* PAGINATION */}
               {totalPages > 1 && (

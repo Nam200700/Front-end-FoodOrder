@@ -9,7 +9,22 @@ import {
   TrendingUp, TrendingDown, Minus, Users, Store, DollarSign, Percent, CreditCard, Shield,
   BarChart3, AreaChart, Flame, Wallet, PackageCheck, XCircle, UserCheck,
   Gauge, CalendarClock, CalendarRange, Search, Sparkles,
+  CheckCircle2, Clock, RotateCcw, ChefHat, Truck, Circle,
 } from 'lucide-react';
+
+// Đoán icon theo tên trạng thái (payment/order) để trang trí legend cho sinh động.
+function statusIcon(name = '') {
+  const n = name.toLowerCase();
+  if (n.includes('hoàn tiền') || n.includes('hoàn trả')) return RotateCcw;
+  if (n.includes('thất bại')) return XCircle;
+  if (n.includes('chờ')) return Clock;
+  if (n.includes('thanh toán')) return CheckCircle2;
+  if (n.includes('thành công') || n.includes('hoàn tất')) return CheckCircle2;
+  if (n.includes('huỷ') || n.includes('hủy')) return XCircle;
+  if (n.includes('chuẩn bị') || n.includes('đang làm')) return ChefHat;
+  if (n.includes('giao') || n.includes('vận chuyển')) return Truck;
+  return Circle;
+}
 import RangeSelect from '../../components/common/RangeSelect';
 import SeriesFilterBar from '../../components/common/SeriesFilterBar';
 import InfoTip from '../../components/common/InfoTip';
@@ -479,22 +494,28 @@ export default function AdminStats() {
 function AdminLegend({ data, hidden, onToggle, colors, mode, unit }) {
   const visibleSum = data.filter(i => !hidden.has(i.name)).reduce((s, i) => s + i.value, 0);
   return (
-    <div className="space-y-1.5 w-full font-semibold text-[10px]">
+    <div className="space-y-1 w-full font-semibold text-[10px]">
       {data.map((item, idx) => {
         const isHidden = hidden.has(item.name);
         const pct = !isHidden && visibleSum > 0 ? ((item.value / visibleSum) * 100).toFixed(0) : 0;
         const display = mode
           ? (mode === 'count' ? `${item.count} đơn` : formatCurrency(item.amount))
           : `${item.value} ${unit || ''}`.trim();
+        const color = colors[idx % colors.length];
+        const SIcon = statusIcon(item.name);
         return (
           <div key={idx} onClick={() => onToggle(item.name)}
-            className={`flex justify-between items-center py-1 border-b border-slate-900 last:border-b-0 cursor-pointer rounded px-1 transition-all hover:bg-slate-900/50 ${isHidden ? 'opacity-40' : ''}`}
+            className={`group flex justify-between items-center py-1.5 border-b border-slate-900 last:border-b-0 cursor-pointer rounded-lg px-1.5 transition-all hover:bg-slate-900/50 hover:translate-x-0.5 animate-rise-in ${isHidden ? 'opacity-40' : ''}`}
+            style={{ animationDelay: `${idx * 55}ms` }}
             title={isHidden ? 'Click để hiện lại' : 'Click để ẩn'}>
-            <div className="flex items-center gap-1.5 min-w-0">
-              <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: colors[idx % colors.length], opacity: isHidden ? 0.3 : 1 }} />
+            <div className="flex items-center gap-2 min-w-0">
+              <span className="w-5 h-5 rounded-lg flex items-center justify-center shrink-0 transition-transform group-hover:scale-110"
+                style={{ backgroundColor: isHidden ? 'transparent' : `${color}26`, color, border: `1px solid ${color}40` }}>
+                <SIcon size={11} strokeWidth={2.4} />
+              </span>
               <span className={`truncate ${isHidden ? 'line-through text-slate-600' : 'text-slate-400'}`}>{item.name}:</span>
             </div>
-            <span className={`font-extrabold shrink-0 ml-2 ${isHidden ? 'text-slate-600' : 'text-slate-100'}`}>
+            <span className={`font-extrabold shrink-0 ml-2 tabular-nums ${isHidden ? 'text-slate-600' : 'text-slate-100'}`}>
               {isHidden ? '—' : `${display} (${pct}%)`}
             </span>
           </div>

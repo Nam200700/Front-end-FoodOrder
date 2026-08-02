@@ -1,21 +1,25 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../../stores/authStore';
-import { ShieldCheck, ArrowLeft, RefreshCw } from 'lucide-react';
+import { ShieldCheck, ArrowLeft, RefreshCw, Mail, Lock, CheckCircle2, Clock } from 'lucide-react';
 import apiClient from '../../services/api';
 import { toast } from 'react-toastify';
+
+// Màu nhấn theo vai trò — đồng bộ với trang Đăng ký / Đăng nhập
+const ROLE_THEME = { CUSTOMER: '#FF6B35', OWNER: '#1A73E8', SHIPPER: '#34A853' };
+const ROLE_LABEL = { CUSTOMER: 'Khách hàng', OWNER: 'Quán ăn', SHIPPER: 'Tài xế' };
 
 export default function Otp() {
   const navigate = useNavigate();
   const location = useLocation();
-  const login = useAuthStore((state) => state.login);
-  
-  const { email, role, name, phone, fromLogin } = location.state || {
+
+  const { email, role, fromLogin } = location.state || {
     email: 'khachhang@gmail.com',
     role: 'CUSTOMER',
-    name: 'Nguyễn Văn A',
-    phone: '0901234567'
   };
+
+  const accent = ROLE_THEME[role] || ROLE_THEME.CUSTOMER;
+  const roleLabel = ROLE_LABEL[role] || 'Người dùng';
 
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
   /* Đến từ Login (tài khoản đăng ký trước đó chưa verify): KHÔNG tự gửi OTP để tránh
@@ -25,6 +29,8 @@ export default function Otp() {
   */
   const [timer, setTimer] = useState(fromLogin ? 0 : 59);
   const [loading, setLoading] = useState(false);
+  const [focusIdx, setFocusIdx] = useState(0);
+  const [shake, setShake] = useState(false);
   const inputRefs = useRef([]);
 
   useEffect(() => {
@@ -93,6 +99,8 @@ export default function Otp() {
       console.error('[Otp]: Verification failed', err);
       toast.error(err.response?.data?.message || 'Mã OTP không đúng hoặc đã hết hạn.');
       setOtp(['', '', '', '', '', '']);
+      setShake(true);
+      setTimeout(() => setShake(false), 450);
       inputRefs.current[0]?.focus();
     } finally {
       setLoading(false);
@@ -129,80 +137,155 @@ export default function Otp() {
     }
   };
 
+  const filledCount = otp.filter(Boolean).length;
+  const complete = filledCount === 6;
+  const attemptsLeft = MAX_RESEND - resendCount;
+
   return (
-    <div className="min-h-screen bg-md-surface-1 flex items-center justify-center p-4 font-google-sans">
-      <div className="w-full max-w-md bg-white rounded-radius-xl p-8 border border-md-outline-variant/30 shadow-shadow-4 relative overflow-hidden">
-        
-        <button 
-          onClick={() => navigate('/register')}
-          className="absolute left-6 top-6 p-2 rounded-radius-full hover:bg-slate-100 text-md-on-surface-variant transition-colors"
-        >
-          <ArrowLeft size={18} />
-        </button>
+    <div className="min-h-screen flex items-center justify-center p-4 font-google-sans relative overflow-hidden bg-md-surface-1">
+      {/* ─── Nền trang trí: blob gradient theo màu vai trò + brand ─── */}
+      <div className="pointer-events-none absolute -top-40 -left-40 w-[30rem] h-[30rem] rounded-full blur-3xl opacity-50 animate-pulse-slow"
+        style={{ background: `radial-gradient(circle, ${accent}33, transparent 70%)` }} />
+      <div className="pointer-events-none absolute -bottom-48 -right-40 w-[32rem] h-[32rem] rounded-full blur-3xl opacity-40"
+        style={{ background: `radial-gradient(circle, ${accent}22, transparent 70%)` }} />
+      <div className="pointer-events-none absolute top-1/3 right-10 w-2 h-2 rounded-full animate-twinkle" style={{ backgroundColor: accent }} />
+      <div className="pointer-events-none absolute bottom-24 left-16 w-1.5 h-1.5 rounded-full animate-twinkle" style={{ backgroundColor: accent, animationDelay: '0.8s' }} />
 
-        <div className="flex flex-col items-center mb-8 mt-4">
-          <div className="w-12 h-12 bg-md-primary/10 text-md-primary rounded-radius-full flex items-center justify-center mb-4">
-            <ShieldCheck size={26} />
-          </div>
-          <h2 className="text-xl font-bold text-md-on-surface">Xác thực OTP</h2>
-          <p className="text-sm text-md-on-surface-variant text-center mt-2 px-4 leading-relaxed">
-            Mã OTP gồm 6 chữ số đã được gửi đến email: <br/>
-            <span className="font-bold text-md-on-surface">{email}</span>
-          </p>
-          {/* Nếu User chưa xác thực mà đăng nhập sẽ qua trang OTP nhưng ko đc tự động resend tránh bị lợi dụng
-          kẽ hở spawn mã OTP thay vào đó thì user thủ công bấm gửi mã
-          */}
-          {fromLogin && (
-            <p className="text-xs text-md-primary bg-md-primary/5 border border-md-primary/15 rounded-radius-md px-3 py-2 mt-3 text-center font-semibold leading-relaxed">
-              Tài khoản chưa xác thực. Mã trước đó có thể đã hết hạn — hãy bấm <span className="font-bold">"Gửi lại ngay"</span> bên dưới để nhận mã mới.
-            </p>
-          )}
-        </div>
+      <div className="w-full max-w-md bg-white rounded-3xl border border-md-outline-variant/30 shadow-shadow-4 relative overflow-hidden animate-rise-in">
+        {/* Dải màu vai trò chạy trên đỉnh card */}
+        <div className="h-1.5 w-full" style={{ background: `linear-gradient(90deg, ${accent}, ${accent}99)` }} />
 
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <div className="flex justify-between gap-2 max-w-xs mx-auto" onPaste={handlePaste}>
-            {otp.map((digit, index) => (
-              <input
-                key={index}
-                type="text"
-                maxLength={1}
-                value={digit}
-                ref={(el) => (inputRefs.current[index] = el)}
-                onChange={(e) => handleChange(index, e.target.value)}
-                onKeyDown={(e) => handleKeyDown(index, e)}
-                className="w-12 h-14 text-center text-xl font-bold bg-md-surface-variant/20 border-2 border-md-outline-variant rounded-radius-lg focus:outline-none focus:border-md-primary focus:ring-4 focus:ring-md-primary/10 transition-all text-md-on-surface"
-              />
-            ))}
-          </div>
-
+        <div className="p-8">
           <button
-            type="submit"
-            disabled={loading || otp.join('').length < 6}
-            className="w-full bg-md-primary text-white font-bold py-3.5 px-4 rounded-radius-full shadow-shadow-2 hover:shadow-shadow-3 hover:translate-y-[-1px] transition-all flex items-center justify-center gap-2 text-sm uppercase tracking-wider disabled:opacity-50 disabled:pointer-events-none"
+            onClick={() => navigate('/register')}
+            className="absolute left-5 top-6 p-2 rounded-radius-full hover:bg-slate-100 text-md-on-surface-variant transition-colors cursor-pointer"
+            aria-label="Quay lại"
           >
-            {loading ? (
-              <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
-            ) : (
-              'Xác Nhận & Kích Hoạt'
-            )}
+            <ArrowLeft size={18} />
           </button>
-        </form>
 
-        <div className="mt-8 text-center text-xs text-md-on-surface-variant">
-          Chưa nhận được mã?{' '}
-          {timer > 0 ? (
-            <span className="font-bold text-md-on-surface">Gửi lại sau {timer}s</span>
-          ) : (
-            <button 
-              onClick={handleResend}
-              className="text-md-primary font-bold hover:underline inline-flex items-center gap-1"
+          {/* Badge vai trò */}
+          <div className="flex justify-center mb-5">
+            <span className="text-[10px] font-extrabold uppercase tracking-widest px-3 py-1 rounded-full animate-rise-in"
+              style={{ color: accent, backgroundColor: `${accent}12`, border: `1px solid ${accent}2e`, animationDelay: '60ms' }}>
+              Kích hoạt tài khoản {roleLabel}
+            </span>
+          </div>
+
+          {/* Icon khiên có halo + float */}
+          <div className="flex flex-col items-center mb-6">
+            <div className="relative mb-4">
+              <span className="absolute inset-0 rounded-full animate-halo pointer-events-none" style={{ border: `2px solid ${accent}` }} />
+              <div className="w-16 h-16 rounded-full flex items-center justify-center animate-float shadow-lg"
+                style={{ backgroundColor: `${accent}14`, color: accent, boxShadow: `0 10px 30px ${accent}33` }}>
+                <ShieldCheck size={30} strokeWidth={2.2} />
+              </div>
+            </div>
+            <h2 className="text-2xl font-black text-md-on-surface tracking-tight animate-rise-in" style={{ animationDelay: '90ms' }}>Xác thực OTP</h2>
+            <p className="text-sm text-md-on-surface-variant text-center mt-2 leading-relaxed animate-rise-in" style={{ animationDelay: '120ms' }}>
+              Mã gồm 6 chữ số đã được gửi tới email của bạn
+            </p>
+            {/* Chip email */}
+            <div className="mt-3 inline-flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-full pl-3 pr-3.5 py-1.5 max-w-full animate-rise-in" style={{ animationDelay: '150ms' }}>
+              <Mail size={13} style={{ color: accent }} className="shrink-0" />
+              <span className="text-xs font-bold text-md-on-surface truncate">{email}</span>
+            </div>
+
+            {fromLogin && (
+              <p className="text-xs mt-4 px-3 py-2 rounded-radius-md text-center font-semibold leading-relaxed animate-rise-in"
+                style={{ color: accent, backgroundColor: `${accent}0d`, border: `1px solid ${accent}26`, animationDelay: '180ms' }}>
+                Tài khoản chưa xác thực. Mã trước có thể đã hết hạn — bấm <span className="font-extrabold">"Gửi lại ngay"</span> để nhận mã mới.
+              </p>
+            )}
+          </div>
+
+          <form onSubmit={handleSubmit} className="space-y-5">
+            {/* 6 ô OTP — trạng thái điền/đang focus tô theo màu vai trò, rung khi sai */}
+            <div className={`flex justify-center gap-2.5 ${shake ? 'animate-shake' : ''}`} onPaste={handlePaste}>
+              {otp.map((digit, index) => {
+                const isFilled = digit !== '';
+                const isFocus = focusIdx === index;
+                const active = isFilled || isFocus;
+                return (
+                  <input
+                    key={index}
+                    type="text"
+                    inputMode="numeric"
+                    maxLength={1}
+                    value={digit}
+                    ref={(el) => (inputRefs.current[index] = el)}
+                    onChange={(e) => handleChange(index, e.target.value)}
+                    onKeyDown={(e) => handleKeyDown(index, e)}
+                    onFocus={() => setFocusIdx(index)}
+                    onBlur={() => setFocusIdx(-1)}
+                    className="w-12 h-14 text-center text-2xl font-black rounded-2xl border-2 outline-none transition-all duration-200 text-md-on-surface"
+                    style={{
+                      borderColor: active ? accent : '#e2e8f0',
+                      backgroundColor: isFilled ? `${accent}0f` : '#f8fafc',
+                      boxShadow: isFocus ? `0 0 0 4px ${accent}1f` : 'none',
+                      transform: isFocus ? 'translateY(-2px)' : 'none',
+                    }}
+                  />
+                );
+              })}
+            </div>
+
+            {/* Chỉ báo tiến trình nhập (6 chấm) */}
+            <div className="flex justify-center gap-1.5">
+              {otp.map((d, i) => (
+                <span key={i} className="h-1 rounded-full transition-all duration-300"
+                  style={{ width: d ? 18 : 10, backgroundColor: d ? accent : '#e2e8f0' }} />
+              ))}
+            </div>
+
+            <button
+              type="submit"
+              disabled={loading || !complete}
+              className="w-full text-white font-bold py-3.5 px-4 rounded-radius-full shadow-shadow-2 hover:shadow-shadow-3 hover:-translate-y-0.5 active:translate-y-0 transition-all flex items-center justify-center gap-2 text-sm uppercase tracking-wider disabled:opacity-45 disabled:pointer-events-none cursor-pointer"
+              style={{ backgroundColor: accent }}
             >
-              <RefreshCw size={12} className="animate-spin-slow" />
-              Gửi lại ngay
+              {loading ? (
+                <>
+                  <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  Đang xác thực...
+                </>
+              ) : (
+                <>
+                  <CheckCircle2 size={16} /> Xác nhận & Kích hoạt
+                </>
+              )}
             </button>
-          )}
-        </div>
+          </form>
 
+          {/* Gửi lại mã */}
+          <div className="mt-6 text-center text-xs text-md-on-surface-variant">
+            Chưa nhận được mã?{' '}
+            {timer > 0 ? (
+              <span className="font-bold text-md-on-surface inline-flex items-center gap-1">
+                <Clock size={12} /> Gửi lại sau {timer}s
+              </span>
+            ) : (
+              <button
+                onClick={handleResend}
+                disabled={loading || attemptsLeft <= 0}
+                className="font-bold hover:underline inline-flex items-center gap-1 disabled:opacity-50 disabled:no-underline cursor-pointer"
+                style={{ color: accent }}
+              >
+                <RefreshCw size={12} className={loading ? 'animate-spin' : 'animate-spin-slow'} />
+                Gửi lại ngay
+              </button>
+            )}
+            {resendCount > 0 && attemptsLeft > 0 && (
+              <span className="block mt-1 text-[10px] text-md-on-surface-variant/70">Còn {attemptsLeft} lượt gửi lại</span>
+            )}
+          </div>
+
+          {/* Ghi chú bảo mật */}
+          <div className="mt-6 pt-4 border-t border-slate-100 flex items-start gap-2 text-[10px] text-md-on-surface-variant/80 leading-relaxed">
+            <Lock size={12} className="shrink-0 mt-0.5 text-slate-400" />
+            <span>Tuyệt đối <b className="text-md-on-surface">không chia sẻ</b> mã OTP cho bất kỳ ai. Đội ngũ hệ thống sẽ không bao giờ hỏi mã của bạn.</span>
+          </div>
+        </div>
       </div>
     </div>
   );

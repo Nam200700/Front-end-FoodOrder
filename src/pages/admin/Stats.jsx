@@ -14,7 +14,7 @@ import RangeSelect from '../../components/common/RangeSelect';
 import SeriesFilterBar from '../../components/common/SeriesFilterBar';
 import InfoTip from '../../components/common/InfoTip';
 import { aggregateDaily, pickGranularity, bucketLabel, granularityCaption } from '../../utils/chartAggregate';
-import { availablePeriods, filterSeries, rangeOverRange } from '../../utils/dashboardAnalytics';
+import { availablePeriods, rangeOverRange, WEEKDAY_OPTIONS } from '../../utils/dashboardAnalytics';
 
 const COLORS = ['#8B5CF6', '#10B981', '#F43F5E', '#06B6D4', '#F59E0B', '#3B82F6'];
 const PAYMENT_LABELS = { PAID: 'Đã thanh toán', PENDING: 'Chờ thanh toán', REFUNDED: 'Đã hoàn tiền', FAILED: 'Thất bại' };
@@ -78,35 +78,48 @@ export default function AdminStats() {
     apiClient.get('/admin/stats/insights').then(r => setInsights(r.data?.data || null)).catch(() => {});
   }, []);
 
-  // Báo cáo gộp ở server theo range (thay cho tải size=2000 đơn) → nhanh, chính xác
+  // Quy đổi bộ lọc Tháng/Năm/Thứ → tham số server (dow: MySQL DAYOFWEEK 1=CN..7=T7)
+  const reportParams = useMemo(() => {
+    const p = {};
+    if (seriesFilter.month !== 'ALL') { const [y, m] = seriesFilter.month.split('-'); p.year = Number(y); p.month = Number(m); }
+    else if (seriesFilter.year !== 'ALL') { p.year = Number(seriesFilter.year); }
+    if (seriesFilter.weekday !== 'ALL') p.dow = Number(seriesFilter.weekday) + 1;
+    return p;
+  }, [seriesFilter]);
+
+  // Báo cáo gộp ở server theo range + bộ lọc Tháng/Năm/Thứ → TOÀN BỘ số liệu đều theo bộ lọc
   const fetchReport = useCallback(async () => {
     try {
       setLoadingReport(true);
-      const res = await apiClient.get(`/admin/stats/report?range=${filterRange}`);
+      const qs = new URLSearchParams({ range: filterRange });
+      if (reportParams.dow) qs.append('dow', reportParams.dow);
+      if (reportParams.month) qs.append('month', reportParams.month);
+      if (reportParams.year) qs.append('year', reportParams.year);
+      const res = await apiClient.get(`/admin/stats/report?${qs.toString()}`);
       setReport(res.data?.data || null);
     } catch (err) {
       console.error('Lỗi tải báo cáo admin:', err);
     } finally {
       setLoadingReport(false);
     }
-  }, [filterRange]);
+  }, [filterRange, reportParams]);
 
   useEffect(() => { fetchReport(); }, [fetchReport]);
 
   const rate = report?.commissionRate != null ? Number(report.commissionRate) : (overview?.commissionRate ?? 0.1);
   const ratePct = Math.round(rate * 100);
 
-  // Danh sách năm·tháng có trong dữ liệu (để đổ vào bộ lọc). Đầy đủ nhất khi range = "Tất cả".
-  const periods = useMemo(() => availablePeriods(report?.daily || []), [report]);
+  // Danh sách năm·tháng đổ vào bộ lọc — lấy từ chuỗi ĐẦY ĐỦ (insights), không phải report đã lọc.
+  const periods = useMemo(() => availablePeriods(insights?.dailyGmv || []), [insights]);
   const seriesActive = seriesFilter.year !== 'ALL' || seriesFilter.month !== 'ALL' || seriesFilter.weekday !== 'ALL';
 
-  // Gom theo ngày/tuần/tháng tuỳ độ dày để biểu đồ giãn ra, dễ đọc xu hướng.
+  // Biểu đồ xu hướng — report.daily ĐÃ được server lọc theo Tháng/Năm/Thứ, chỉ cần gom mốc.
   const { timelineData, chartGranularity } = useMemo(() => {
-    const raw = filterSeries((report?.daily || []).map(d => ({
+    const raw = (report?.daily || []).map(d => ({
       date: d.date,
       gtv: Number(d.gtv || 0),
       sub: Number(d.subtotal || 0),
-    })), seriesFilter);
+    }));
     const gran = pickGranularity(raw.length);
     const agg = aggregateDaily(raw, 'date', gran);
     const data = agg.map(d => ({
@@ -116,7 +129,7 @@ export default function AdminStats() {
       'Hoa hồng sàn': Math.round((d.sub || 0) * rate),
     }));
     return { timelineData: data, chartGranularity: gran };
-  }, [report, rate, seriesFilter]);
+  }, [report, rate]);
 
   const paymentData = useMemo(() => {
     return (report?.paymentDist || []).map(b => ({
@@ -138,13 +151,13 @@ export default function AdminStats() {
   // So sánh kỳ ĐANG CHỌN vs kỳ trước tương đương (ẩn khi range = "Tất cả")
   const rangeCompare = useMemo(() => rangeOverRange(insights?.dailyGmv || [], 'gmv', filterRange), [insights, filterRange]);
 
-  // Chỉ số chi tiết suy từ chuỗi ngày của kỳ — TÔN TRỌNG bộ lọc Tháng/Năm/Thứ (lọc theo thứ chạy thật).
+  // Chỉ số chi tiết suy từ chuỗi ngày (report.daily đã được server lọc theo Tháng/Năm/Thứ).
   const dailyStats = useMemo(() => {
-    const d = filterSeries(report?.daily || [], seriesFilter);
+    const d = report?.daily || [];
     let peak = null, totalGtv = 0;
     d.forEach(x => { const v = Number(x.gtv || 0); totalGtv += v; if (!peak || v > peak.v) peak = { date: x.date, v }; });
     return { activeDays: d.length, avgPerDay: d.length ? Math.round(totalGtv / d.length) : 0, peak, total: totalGtv };
-  }, [report, seriesFilter]);
+  }, [report]);
 
   // Top quán: gắn hạng thật → lọc theo tìm kiếm → mặc định 5, mở rộng xem 10
   const rankedTop = useMemo(() => (report?.topRestaurants || []).map((r, i) => ({ ...r, rank: i + 1 })), [report]);
@@ -173,6 +186,11 @@ export default function AdminStats() {
   const takeRate = gtv > 0 ? (commission / gtv) * 100 : 0; // % hoa hồng thực tế trên GTV
   const totalUsers = overview?.totalUsers ?? userRolesData.reduce((a, b) => a + b.value, 0);
   const fmtDay = (iso) => { if (!iso) return '—'; const [y, m, d] = String(iso).slice(0, 10).split('-'); return `${d}/${m}/${y}`; };
+  const filterSummary = [
+    seriesFilter.month !== 'ALL' ? `Tháng ${Number(seriesFilter.month.split('-')[1])}/${seriesFilter.month.split('-')[0]}`
+      : (seriesFilter.year !== 'ALL' ? `Năm ${seriesFilter.year}` : null),
+    seriesFilter.weekday !== 'ALL' ? WEEKDAY_OPTIONS.find(o => o.value === seriesFilter.weekday)?.label : null,
+  ].filter(Boolean).join(' · ');
 
   return (
     <div className="flex-1 p-4 md:p-8 max-w-6xl mx-auto w-full font-google-sans space-y-6 pb-24 text-slate-100 bg-transparent">
@@ -192,6 +210,12 @@ export default function AdminStats() {
 
       <div className={`space-y-6 transition-opacity duration-200 ${loadingReport ? 'opacity-50' : 'opacity-100'}`}>
 
+        {seriesActive && (
+          <div className="flex items-center gap-2 rounded-radius-lg bg-purple-950/30 border border-purple-900/40 px-3.5 py-2 text-[11px] font-bold text-purple-300">
+            <CalendarRange size={13} /> Toàn bộ số liệu đang lọc theo: <span className="text-purple-200">{filterSummary || 'bộ lọc đã chọn'}</span>
+          </div>
+        )}
+
         {/* 4 KPI dòng tiền */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           <KPICard title={<>Tổng giao dịch sàn (GTV) <InfoTip theme="dark" text="GTV = tổng giá trị mọi đơn hoàn tất (tiền món + cước ship), loại đơn đã hoàn tiền. Là dòng tiền lưu chuyển qua sàn, chưa trừ chi phí." /></>}
@@ -208,8 +232,8 @@ export default function AdminStats() {
             icon={Users} color="border-rose-500/20 bg-rose-950/10 text-rose-400 bg-slate-950" valueClassName="text-slate-100" />
         </div>
 
-        {/* SO SÁNH KỲ ĐANG CHỌN vs KỲ TRƯỚC (ẩn khi range = Tất cả) */}
-        {rangeCompare && (
+        {/* SO SÁNH KỲ ĐANG CHỌN vs KỲ TRƯỚC (ẩn khi range = Tất cả hoặc đang lọc Tháng/Năm/Thứ) */}
+        {rangeCompare && !seriesActive && (
           <div className="bg-slate-950 border border-slate-800 rounded-radius-xl p-4 shadow-md">
             <h3 className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider flex items-center gap-1.5 mb-3">
               <CalendarRange size={13} className="text-purple-400" /> So với {rangeCompare.label}
@@ -262,13 +286,13 @@ export default function AdminStats() {
           })}
         </div>
 
-        {/* Dải chỉ số CHI TIẾT bổ sung: take rate · TB/ngày · ngày cao điểm · số ngày có đơn */}
+        {/* Dải chỉ số CHI TIẾT bổ sung — tất cả đều theo range + bộ lọc Tháng/Năm/Thứ */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           {[
-            { label: 'Take rate thực tế', value: `${takeRate.toFixed(1)}%`, icon: Gauge, color: 'text-purple-400', tip: 'Tỷ lệ hoa hồng sàn thực thu trên GTV = chiết khấu ÷ GTV. Cho biết sàn giữ lại bao nhiêu % dòng tiền.' },
-            { label: 'Doanh thu TB/ngày', value: formatCurrency(dailyStats.avgPerDay), icon: TrendingUp, color: 'text-emerald-400', tip: 'GTV trung bình mỗi ngày CÓ đơn trong kỳ đang xem.' },
-            { label: 'Ngày cao điểm', value: dailyStats.peak ? formatCurrency(dailyStats.peak.v) : '—', icon: Sparkles, color: 'text-amber-400', tip: dailyStats.peak ? `Ngày GTV cao nhất kỳ này: ${fmtDay(dailyStats.peak.date)}` : 'Chưa có dữ liệu.' },
-            { label: 'Số ngày có đơn', value: `${dailyStats.activeDays.toLocaleString('vi-VN')} ngày`, icon: CalendarClock, color: 'text-cyan-400', tip: 'Số ngày có ít nhất 1 đơn hoàn tất trong kỳ.' },
+            { label: 'Take rate thực tế', value: `${takeRate.toFixed(1)}%`, icon: Gauge, color: 'text-purple-400', tip: 'Tỷ lệ hoa hồng sàn thực thu trên GTV = chiết khấu ÷ GTV.' },
+            { label: 'Doanh thu TB/ngày', value: formatCurrency(dailyStats.avgPerDay), icon: TrendingUp, color: 'text-emerald-400', tip: 'GTV trung bình mỗi ngày CÓ đơn trong phạm vi đang lọc.' },
+            { label: 'Ngày cao điểm', value: dailyStats.peak ? formatCurrency(dailyStats.peak.v) : '—', icon: Sparkles, color: 'text-amber-400', tip: dailyStats.peak ? `Ngày GTV cao nhất: ${fmtDay(dailyStats.peak.date)}` : 'Chưa có dữ liệu khớp bộ lọc.' },
+            { label: 'Số ngày có đơn', value: `${dailyStats.activeDays.toLocaleString('vi-VN')} ngày`, icon: CalendarClock, color: 'text-cyan-400', tip: 'Số ngày có ít nhất 1 đơn trong phạm vi đang lọc.' },
           ].map((c, i) => {
             const Icon = c.icon;
             return (
@@ -322,9 +346,6 @@ export default function AdminStats() {
                 {chartType === 'area' ? (<><BarChart3 size={13} /> Dạng Cột</>) : (<><AreaChart size={13} /> Dạng Miền</>)}
               </button>
             </div>
-            {seriesActive && (
-              <p className="text-[10px] text-purple-400/80 font-semibold">Biểu đồ đang lọc theo Tháng/Năm/Thứ chọn ở thanh lọc trên cùng.</p>
-            )}
             {timelineData.length === 0 ? (
               <div className="h-68 flex items-center justify-center text-xs font-bold text-slate-500">Chưa có dữ liệu giao dịch trong kỳ này.</div>
             ) : (

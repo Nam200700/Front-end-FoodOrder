@@ -357,6 +357,13 @@
   70% { opacity: 0; }
   100% { transform: scale(1.75); opacity: 0; }
 }
+/* Rung lắc ngang khi nhập sai OTP (báo lỗi trực quan) */
+@keyframes shake {
+  10%, 90% { transform: translateX(-1px); }
+  20%, 80% { transform: translateX(2px); }
+  30%, 50%, 70% { transform: translateX(-5px); }
+  40%, 60% { transform: translateX(5px); }
+}
 /* Drawer mobile trượt vào từ phải + item menu bung dần (mượt cả trên điện thoại) */
 @keyframes slideInRight {
   from { transform: translateX(100%); }

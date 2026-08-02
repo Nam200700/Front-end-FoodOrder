@@ -402,23 +402,24 @@ export default function RestaurantDetail() {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-6 pt-6 border-t border-md-outline-variant/30 text-xs md:text-sm text-md-on-surface-variant text-left font-medium">
-            <div className="flex items-center gap-2 min-w-0">
-              <span className="flex items-center gap-1.5 font-extrabold text-md-on-surface shrink-0"><MapPin size={15} /> Địa chỉ:</span>
-              <span className="truncate">{restaurant.address}</span>
-            </div>
-            <div className="flex items-center gap-2 min-w-0">
-              <span className="flex items-center gap-1.5 font-extrabold text-md-on-surface shrink-0"><Clock size={15} /> Mở cửa:</span>
-              <span className="truncate">{restaurant.openTime}</span>
-            </div>
-            <div className="flex items-center gap-2 min-w-0">
-              <span className="flex items-center gap-1.5 font-extrabold text-md-on-surface shrink-0"><Phone size={15} /> Điện thoại:</span>
-              <span className="truncate">{restaurant.phone}</span>
-            </div>
-            <div className="flex items-center gap-2 min-w-0">
-              <span className="flex items-center gap-1.5 font-extrabold text-md-on-surface shrink-0"><Bike size={15} /> Phí ship:</span>
-              <span className="text-md-primary font-bold truncate">Từ {formatCurrency(shippingFee)}</span>
-            </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 mt-6 pt-6 border-t border-md-outline-variant/30 text-left">
+            {[
+              { icon: MapPin, color: 'text-rose-600 bg-rose-50', label: 'Địa chỉ', value: restaurant.address },
+              { icon: Clock, color: 'text-blue-600 bg-blue-50', label: 'Mở cửa', value: restaurant.openTime },
+              { icon: Phone, color: 'text-violet-600 bg-violet-50', label: 'Điện thoại', value: restaurant.phone },
+              { icon: Bike, color: 'text-emerald-600 bg-emerald-50', label: 'Phí ship', value: `Từ ${formatCurrency(shippingFee)}`, accent: true },
+            ].map((row, idx) => {
+              const RowIcon = row.icon;
+              return (
+                <div key={idx} className="flex items-center gap-2.5 min-w-0 rounded-radius-md bg-slate-50/70 hover:bg-slate-100/70 transition-colors px-2.5 py-2">
+                  <span className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${row.color}`}><RowIcon size={15} /></span>
+                  <div className="min-w-0">
+                    <span className="block text-[10px] font-black text-md-outline uppercase tracking-wide leading-none">{row.label}</span>
+                    <span className={`block text-xs md:text-sm font-bold truncate mt-0.5 ${row.accent ? 'text-md-primary' : 'text-md-on-surface'}`}>{row.value}</span>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </Card>
       </div>
@@ -592,16 +593,43 @@ export default function RestaurantDetail() {
           {/* giỏ hàng */}
           <aside className="hidden xl:block w-80 shrink-0 sticky top-24 self-start">
             <Card variant="elevated" className="p-5">
-              <h3 className="text-xs font-extrabold text-md-on-surface uppercase tracking-wider flex items-center gap-1.5 mb-3">
-                <ShoppingBag size={15} className="text-md-primary" /> Giỏ hàng
+              <h3 className="text-xs font-extrabold text-md-on-surface uppercase tracking-wider flex items-center justify-between gap-1.5 mb-3">
+                <span className="flex items-center gap-1.5"><ShoppingBag size={15} className="text-md-primary" /> Giỏ hàng</span>
+                {cartItems.length > 0 && (
+                  <span className="text-[10px] font-black text-white bg-md-primary px-2 py-0.5 rounded-full">{cartItems.reduce((s, i) => s + i.quantity, 0)} món</span>
+                )}
               </h3>
-              
+
               {cartItems.length === 0 ? (
-                <div className="flex flex-col items-center text-center py-6 gap-2">
-                  <span className="w-12 h-12 rounded-radius-full bg-orange-50 text-md-primary flex items-center justify-center animate-float">
-                    <ShoppingBag size={22} />
-                  </span>
-                  <p className="text-xs text-md-outline font-semibold">Chưa có món nào.<br />Hãy thêm món từ thực đơn.</p>
+                <div className="space-y-4">
+                  <div className="flex flex-col items-center text-center py-4 gap-2.5 rounded-radius-lg bg-gradient-to-b from-orange-50/70 to-transparent border border-dashed border-orange-200">
+                    <span className="w-14 h-14 rounded-radius-full bg-white text-md-primary flex items-center justify-center shadow-sm animate-float">
+                      <ShoppingBag size={24} />
+                    </span>
+                    <p className="text-xs text-md-on-surface-variant font-bold px-4">Giỏ hàng trống<br /><span className="font-medium text-md-outline">Chọn món từ thực đơn để bắt đầu</span></p>
+                  </div>
+
+                  {/* Thông tin giao hàng thực tế — lấp khoảng trống bằng dữ liệu hữu ích */}
+                  <div className="space-y-2 pt-1">
+                    <span className="text-[10px] font-black text-md-outline uppercase tracking-wider px-1">Giao đến khu vực bạn</span>
+                    {[
+                      { icon: Timer, color: 'text-orange-600 bg-orange-50', label: 'Thời gian dự kiến', value: durationText },
+                      { icon: MapPin, color: 'text-rose-600 bg-rose-50', label: 'Khoảng cách', value: distance },
+                      { icon: Bike, color: 'text-emerald-600 bg-emerald-50', label: 'Phí giao hàng', value: `Từ ${formatCurrency(shippingFee)}` },
+                      { icon: Wallet, color: 'text-violet-600 bg-violet-50', label: 'Thanh toán', value: 'Khi nhận hàng (COD)' },
+                    ].map((row, idx) => {
+                      const RowIcon = row.icon;
+                      return (
+                        <div key={idx} className="flex items-center gap-2.5 rounded-radius-md bg-slate-50/80 px-2.5 py-2">
+                          <span className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${row.color}`}><RowIcon size={14} /></span>
+                          <div className="min-w-0 flex-1">
+                            <span className="block text-[10px] text-md-outline font-bold leading-none">{row.label}</span>
+                            <span className="block text-xs font-extrabold text-md-on-surface truncate mt-0.5">{row.value}</span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
               ) : (
                 <>

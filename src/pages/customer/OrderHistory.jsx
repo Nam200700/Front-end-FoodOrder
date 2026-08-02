@@ -78,7 +78,7 @@ function OrderProgress({ status }) {
           const StepIcon = step.icon;
           return (
             <div key={step.key} className="flex flex-col items-center gap-1 min-w-0">
-              <span className={`w-[26px] h-[26px] rounded-full flex items-center justify-center border-2 transition-all ${
+              <span className={`relative w-[26px] h-[26px] rounded-full flex items-center justify-center border-2 transition-all ${
                 active ? 'bg-orange-500 border-orange-500 text-white shadow-sm shadow-orange-200 scale-110'
                   : done ? 'bg-orange-100 border-orange-300 text-orange-600'
                   : 'bg-white border-slate-200 text-slate-300'

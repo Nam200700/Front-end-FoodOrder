@@ -7,96 +7,39 @@ import ErrorState from '../../components/common/ErrorState';
 import { SkeletonOrderCard } from '../../components/common/SkeletonCard';
 
 export default function ShipperEarnings() {
-  const mapEarnings = (data) => {
-    // Đã lọc status=COMPLETED + size lớn ở query → content là TOÀN BỘ đơn đã hoàn thành
-    // (không còn bị chặn 1 trang như trước, nên tổng thu nhập/đơn/biểu đồ mới ĐÚNG).
-    const completedOrders = (data?.content || []).filter(ord => ord.orderStatus === 'COMPLETED');
-
-    const now = new Date();
-    const startToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const start7d = new Date(now); start7d.setDate(now.getDate() - 6); start7d.setHours(0, 0, 0, 0);
-    // Tuần HIỆN TẠI: từ Thứ 2 (00:00) đến trước Thứ 2 tuần sau — chỉ đơn trong khoảng này mới lên biểu đồ.
-    const dow = (now.getDay() + 6) % 7; // Thứ 2 = 0
-    const weekStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() - dow);
-    const weekEnd = new Date(weekStart.getFullYear(), weekStart.getMonth(), weekStart.getDate() + 7);
-
-    // Tháng HIỆN TẠI + tháng TRƯỚC (để so sánh tăng/giảm).
-    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-    const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-
-    const dayKeys = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
-    const dayMap = { T2: 0, T3: 0, T4: 0, T5: 0, T6: 0, T7: 0, CN: 0 };
-    const weekdayAll = { T2: 0, T3: 0, T4: 0, T5: 0, T6: 0, T7: 0, CN: 0 }; // gom theo thứ TẤT CẢ lịch sử
-    const hourTotals = new Array(24).fill(0); // thu nhập theo giờ trong ngày → tìm khung giờ vàng
-
-    // 6 tháng gần đây (kể cả tháng hiện tại) cho biểu đồ xu hướng.
-    const months = [];
-    for (let i = 5; i >= 0; i--) {
-      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-      months.push({ key: `${d.getFullYear()}-${d.getMonth()}`, label: `${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`, amount: 0 });
-    }
-    const monthIndex = new Map(months.map((m, i) => [m.key, i]));
-
-    let totalEarnings = 0, todayEarnings = 0, todayCount = 0, week7dEarnings = 0, week7dCount = 0, thisWeekEarnings = 0;
-    let thisMonthEarnings = 0, thisMonthCount = 0, lastMonthEarnings = 0, maxFee = 0;
-    const activeDays = new Set(); // các ngày trong tháng này có chạy đơn
-    completedOrders.forEach(ord => {
-      const fee = Number(ord.shippingFee) || 0;
-      totalEarnings += fee;
-      if (fee > maxFee) maxFee = fee;
-      const d = new Date(ord.createdAt);
-      const wk = dayKeys[d.getDay()];
-      weekdayAll[wk] += fee;
-      hourTotals[d.getHours()] += fee;
-      // Biểu đồ theo thứ: CHỈ tính đơn thuộc tuần hiện tại (không dồn cả lịch sử vào 7 cột).
-      if (d >= weekStart && d < weekEnd) { dayMap[wk] += fee; thisWeekEarnings += fee; }
-      if (d >= startToday) { todayEarnings += fee; todayCount++; }
-      if (d >= start7d) { week7dEarnings += fee; week7dCount++; }
-      if (d >= monthStart) { thisMonthEarnings += fee; thisMonthCount++; activeDays.add(d.getDate()); }
-      else if (d >= lastMonthStart && d < monthStart) { lastMonthEarnings += fee; }
-      const mk = `${d.getFullYear()}-${d.getMonth()}`;
-      if (monthIndex.has(mk)) months[monthIndex.get(mk)].amount += fee;
-    });
-
-    const sortedChartData = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'].map(k => ({ day: k, amount: dayMap[k] }));
-
-    // Thứ kiếm tốt nhất (cả lịch sử)
-    const bestWeekday = Object.entries(weekdayAll).reduce((b, [k, v]) => (v > b.amount ? { day: k, amount: v } : b), { day: null, amount: 0 });
-    // Khung giờ vàng: giờ có tổng thu cao nhất
-    const peakHourIdx = hourTotals.reduce((bi, v, i, arr) => (v > arr[bi] ? i : bi), 0);
-    const peakHourAmount = hourTotals[peakHourIdx];
-    // % thay đổi so tháng trước
-    const monthDelta = lastMonthEarnings > 0
-      ? Math.round(((thisMonthEarnings - lastMonthEarnings) / lastMonthEarnings) * 100)
-      : (thisMonthEarnings > 0 ? 100 : 0);
-    const activeDayCount = activeDays.size;
-    const avgPerActiveDay = activeDayCount > 0 ? thisMonthEarnings / activeDayCount : 0;
-
-    // Điểm đánh giá sao trung bình thật của tài xế (trên đơn đã có đánh giá)
-    const ratedOrders = completedOrders.filter(ord => ord.reviewed && ord.shipperRating);
-    const avgShipperRating = ratedOrders.length > 0
-      ? (ratedOrders.reduce((sum, o) => sum + o.shipperRating, 0) / ratedOrders.length).toFixed(1)
-      : '5.0';
-
+  // Nhận DTO tổng hợp từ server (/shipper/stats/insights) → map về đúng shape UI đang dùng.
+  // Ưu điểm: BE gộp trên TOÀN BỘ đơn (không bị chặn 1000), rating lấy từ shipper.avgRating đã lưu.
+  const mapInsights = (d) => {
+    if (!d) return null;
     return {
-      totalEarnings,
-      completedCount: completedOrders.length,
-      todayEarnings, todayCount,
-      week7dEarnings, week7dCount,
-      thisWeekEarnings,
-      thisMonthEarnings, thisMonthCount, lastMonthEarnings, monthDelta,
-      activeDayCount, avgPerActiveDay,
-      bestWeekday, peakHourIdx, peakHourAmount, maxFee,
-      monthlyData: months,
-      ratedCount: ratedOrders.length,
-      dailyData: sortedChartData,
-      rating: avgShipperRating,
+      totalEarnings: d.totalEarnings || 0,
+      completedCount: d.completedCount || 0,
+      todayEarnings: d.todayEarnings || 0,
+      todayCount: d.todayCount || 0,
+      week7dEarnings: d.week7dEarnings || 0,
+      week7dCount: d.week7dCount || 0,
+      thisWeekEarnings: d.thisWeekEarnings || 0,
+      thisMonthEarnings: d.thisMonthEarnings || 0,
+      thisMonthCount: d.thisMonthCount || 0,
+      lastMonthEarnings: d.lastMonthEarnings || 0,
+      monthDelta: d.monthDelta || 0,
+      activeDayCount: d.activeDayCount || 0,
+      avgPerActiveDay: d.avgPerActiveDay || 0,
+      bestWeekday: { day: d.bestWeekday || null, amount: d.bestWeekdayAmount || 0 },
+      peakHourIdx: d.peakHourIdx || 0,
+      peakHourAmount: d.peakHourAmount || 0,
+      maxFee: d.maxFee || 0,
+      monthlyData: (d.monthly || []).map(m => ({ label: m.label, amount: m.amount || 0 })),
+      ratedCount: d.ratedCount || 0,
+      dailyData: (d.daily || []).map(x => ({ day: x.day, amount: x.amount || 0 })),
+      rating: Number(d.rating || 0) > 0 ? Number(d.rating).toFixed(1) : '5.0',
     };
   };
 
-  // Lấy TOÀN BỘ đơn đã hoàn thành (size lớn) để tổng thu nhập chính xác — đơn của 1 shipper ít nên nhẹ.
-  const { data: stats, loading, error, refetch } = useFetchData('/shipper/orders?status=COMPLETED&size=1000', {
-    mapFn: mapEarnings,
+
+  // Gọi API tổng hợp thu nhập (gộp server-side) thay cho tải size=1000 rồi tự cộng.
+  const { data: stats, loading, error, refetch } = useFetchData('/shipper/stats/insights', {
+    mapFn: mapInsights,
   });
 
   // Mục tiêu thu nhập tháng do tài xế tự đặt (lưu localStorage — nhớ giữa các lần vào).

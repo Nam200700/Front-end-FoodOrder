@@ -5,6 +5,7 @@ import { formatCurrency, removeVietnameseTones } from '../../utils/format';
 import { useAuthStore } from '../../stores/authStore';
 import apiClient from '../../services/api';
 import { mapRestaurant } from '../../utils/mappers';
+import { getFoodImageUrl } from '../../utils/avatarHelper';
 import { calculateHaversineDistance } from '../../utils/haversine';
 
 export default function Explore() {
@@ -77,10 +78,10 @@ export default function Explore() {
               name: food.foodName || food.name, 
               price: food.price,
               description: food.description,
-              image: food.imageUrl || food.image || res.imageUrl || res.image || "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=150&q=80",
+              image: getFoodImageUrl(food.imageUrl || food.image || res.imageUrl || res.image),
               restaurantId: resId,
               restaurantName: res.restaurantName || res.name,
-              rating: res.rating || res.ratingScore || 5.0,
+              rating: Number(res.rating ?? res.ratingScore ?? 0),
               distance: distanceStr,
               distanceVal: distanceValue || 999,
               orderCount: food.orderCount || 0
@@ -313,7 +314,7 @@ export default function Explore() {
                                 <Utensils size={11} /> {res.cuisineType}
                               </p>
                               <div className="flex items-center gap-2 text-[9px] text-slate-450 font-bold uppercase mt-2.5">
-                                <span className="flex items-center gap-0.5 text-amber-500">★ {res.rating}</span>
+                                <span className="flex items-center gap-0.5 text-amber-500">{res.rating > 0 ? `★ ${res.rating}` : 'Mới'}</span>
                                 <span className="flex items-center gap-0.5 text-slate-450"><MapPin size={12} /> {res.distance}</span>
                               </div>
                             </div>
@@ -352,7 +353,7 @@ export default function Explore() {
                               <div className="flex items-center justify-between mt-2.5">
                                 <span className="text-xs font-extrabold text-[#FF6B35]">{formatCurrency(item.price)}</span>
                                 <div className="flex items-center gap-2.5 text-[9px] text-slate-450 font-bold uppercase tracking-wider">
-                                  <span className="flex items-center gap-0.5 text-amber-500 font-extrabold">★ {item.rating}</span>
+                                  <span className="flex items-center gap-0.5 text-amber-500 font-extrabold">{item.rating > 0 ? `★ ${item.rating}` : 'Mới'}</span>
                                   <span className="flex items-center gap-0.5 text-slate-400"><MapPin size={12} /> {item.distance}</span>
                                 </div>
                               </div>
@@ -450,7 +451,7 @@ export default function Explore() {
                           {res.name}
                         </h4>
                         <p className="text-[8px] sm:text-[9px] text-slate-450 font-bold uppercase mt-1">
-                          QC · {res.distance} · ★ {res.rating}
+                          QC · {res.distance} · {res.rating > 0 ? `★ ${res.rating}` : 'Mới'}
                         </p>
                       </div>
                     ))}

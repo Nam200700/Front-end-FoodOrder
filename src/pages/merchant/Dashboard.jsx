@@ -7,6 +7,9 @@ import {
 } from 'lucide-react';
 import RevenueAreaChart from '../../components/common/RevenueAreaChart';
 import { aggregateDaily, pickGranularity, bucketLabel, granularityCaption } from '../../utils/chartAggregate';
+import { periodComparison, monthEndForecast, forecastNextDays } from '../../utils/dashboardAnalytics';
+import PeriodCompareStrip from '../../components/common/PeriodCompareStrip';
+import ForecastCard from '../../components/common/ForecastCard';
 import { formatCurrency } from '../../utils/format';
 import apiClient from '../../services/api';
 import Spinner from '../../components/common/Spinner';
@@ -60,6 +63,11 @@ export default function MerchantDashboard() {
     const data = agg.map(d => ({ day: bucketLabel(d, gran, 'date', true), amount: d.revenue || 0 }));
     return { revenueData: data, chartGranularity: gran };
   }, [insightsData]);
+
+  // So sánh kỳ + dự báo cuối tháng + đường xu hướng — tính client-side từ chuỗi doanh thu theo ngày.
+  const comparison = useMemo(() => periodComparison(insightsData?.dailyRevenue || [], 'revenue'), [insightsData]);
+  const forecast = useMemo(() => monthEndForecast(insightsData?.dailyRevenue || [], 'revenue'), [insightsData]);
+  const forecastChart = useMemo(() => forecastNextDays(insightsData?.dailyRevenue || [], 'revenue', { window: 30, horizon: 7 }), [insightsData]);
 
   // Top 3 món bán chạy (rút gọn — bản đầy đủ ở trang Thống kê)
   const topFoods = useMemo(() => {
@@ -268,6 +276,9 @@ export default function MerchantDashboard() {
         })}
       </div>
 
+      {/* ─── SO SÁNH KỲ: hôm nay · tuần · tháng (vs kỳ trước) ─── */}
+      <PeriodCompareStrip comparison={comparison} formatValue={formatCurrency} theme="light" accent="text-md-secondary" unit="đơn" />
+
       {/* ─── DOANH THU (rút gọn) + GIỜ CAO ĐIỂM ─── */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Doanh thu tuần rút gọn */}
@@ -311,6 +322,40 @@ export default function MerchantDashboard() {
             ) : (
               <RevenueAreaChart data={peakData} dataKey="count" xKey="label" color="#1A73E8" height={200} chartType="bar" yTickFormatter={(v) => `${v}`} />
             )}
+          </div>
+        </div>
+      </div>
+
+      {/* ─── DỰ BÁO CUỐI THÁNG + ĐƯỜNG XU HƯỚNG 7 NGÀY TỚI ─── */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <ForecastCard forecast={forecast} formatValue={formatCurrency} theme="light"
+          accent={{ text: 'text-md-secondary', bar: 'bg-md-secondary' }} title="Dự báo doanh thu cuối tháng" />
+
+        <div className="bg-white rounded-radius-xl p-5 border border-slate-200/60 shadow-sm lg:col-span-2 space-y-3">
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+              <TrendingUp className="text-md-secondary" size={18} /> Xu hướng 30 ngày & dự báo 7 ngày tới
+            </h3>
+            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+              forecastChart.slope > 0 ? 'text-emerald-700 border-emerald-200 bg-emerald-50'
+              : forecastChart.slope < 0 ? 'text-rose-600 border-rose-200 bg-rose-50'
+              : 'text-slate-500 border-slate-200 bg-slate-50'}`}>
+              {forecastChart.slope > 0 ? 'Đang tăng' : forecastChart.slope < 0 ? 'Đang giảm' : 'Đi ngang'}
+            </span>
+          </div>
+          <p className="text-[10px] text-slate-400 font-semibold -mt-1">
+            Đường nét đứt là ước tính theo hồi quy tuyến tính · chỉ mang tính tham khảo
+          </p>
+          <div className="h-56 w-full text-[10px] font-bold">
+            <RevenueAreaChart
+              data={forecastChart.data} xKey="label" height={224} showLegend connectNulls
+              yTickFormatter={(v) => v >= 1000000 ? `${v / 1000000}M` : `${v / 1000}k`}
+              valueFormatter={formatCurrency}
+              areas={[
+                { key: 'actual', name: 'Thực tế (30 ngày)', color: '#1A73E8' },
+                { key: 'forecast', name: 'Dự báo (7 ngày tới)', color: '#93c5fd', dashed: true },
+              ]}
+            />
           </div>
         </div>
       </div>

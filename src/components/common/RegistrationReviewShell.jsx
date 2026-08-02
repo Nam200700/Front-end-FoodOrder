@@ -1,6 +1,7 @@
 import React from 'react';
 import { Clock, CheckCircle2, XCircle, ShieldCheck, ClipboardCheck, ArrowRight, Sparkles } from 'lucide-react';
 import FilterTabs from './FilterTabs';
+import ReviewPagination from './ReviewPagination';
 
 /**
  * Khung trang duyệt hồ sơ đối tác (Admin) — dùng chung cho Quán ăn & Shipper.
@@ -25,12 +26,26 @@ export default function RegistrationReviewShell({
   activeFilter,
   onFilterChange,
   guidelines = [],
+  pagination = null,
   children,
 }) {
   const chips = [
-    { id: 'pending', label: 'Chờ duyệt', value: counts.pending, icon: Clock, color: 'text-amber-400', dot: 'bg-amber-400' },
-    { id: 'approved', label: 'Đã duyệt', value: counts.approved, icon: CheckCircle2, color: 'text-emerald-400', dot: 'bg-emerald-400' },
-    { id: 'rejected', label: 'Từ chối', value: counts.rejected, icon: XCircle, color: 'text-red-400', dot: 'bg-red-400' },
+    {
+      id: 'pending', label: 'Chờ duyệt', value: counts.pending, icon: Clock,
+      color: 'text-amber-400', ring: 'bg-amber-500/15 border-amber-500/30 text-amber-400',
+      card: 'bg-slate-900 border-amber-500/30 hover:border-amber-500/60 hover:shadow-amber-950/40',
+      pulse: (counts.pending ?? 0) > 0, // còn hồ sơ chờ → nhấp nháy nhắc việc
+    },
+    {
+      id: 'approved', label: 'Đã duyệt', value: counts.approved, icon: CheckCircle2,
+      color: 'text-emerald-400', ring: 'bg-emerald-500/15 border-emerald-500/30 text-emerald-400',
+      card: 'bg-slate-900 border-emerald-500/30 hover:border-emerald-500/60 hover:shadow-emerald-950/40',
+    },
+    {
+      id: 'rejected', label: 'Từ chối', value: counts.rejected, icon: XCircle,
+      color: 'text-red-400', ring: 'bg-red-500/15 border-red-500/30 text-red-400',
+      card: 'bg-slate-900 border-red-500/30 hover:border-red-500/60 hover:shadow-red-950/40',
+    },
   ];
 
   return (
@@ -55,14 +70,27 @@ export default function RegistrationReviewShell({
             </div>
           </div>
 
-          {/* Chip thống kê 3 trạng thái */}
+          {/* Chip thống kê 3 trạng thái — nền theo màu trạng thái + animation */}
           <div className="grid grid-cols-3 gap-2.5 shrink-0">
-            {chips.map((c) => {
+            {chips.map((c, i) => {
               const CIcon = c.icon;
               return (
-                <div key={c.id} className="rounded-2xl bg-slate-900 border border-slate-800 px-3.5 py-2.5 text-center min-w-[84px]">
-                  <CIcon size={15} className={`mx-auto mb-1 ${c.color}`} />
-                  <div className={`text-lg font-black leading-none ${c.color}`}>{c.value ?? 0}</div>
+                <div
+                  key={c.id}
+                  className={`group relative rounded-2xl border px-3.5 py-3 text-center min-w-[86px] shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-lg animate-rise-in ${c.card}`}
+                  style={{ animationDelay: `${i * 90}ms` }}
+                >
+                  {/* chấm nhấp nháy khi còn hồ sơ chờ duyệt */}
+                  {c.pulse && (
+                    <span className="absolute top-2 right-2 flex h-2 w-2">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
+                      <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-400" />
+                    </span>
+                  )}
+                  <div className={`mx-auto mb-1.5 w-8 h-8 rounded-xl border flex items-center justify-center transition-transform duration-300 group-hover:scale-110 ${c.ring}`}>
+                    <CIcon size={15} />
+                  </div>
+                  <div className={`text-xl font-black leading-none tabular-nums ${c.color}`}>{c.value ?? 0}</div>
                   <div className="text-[9px] text-slate-500 font-bold uppercase tracking-wide mt-1">{c.label}</div>
                 </div>
               );
@@ -90,6 +118,7 @@ export default function RegistrationReviewShell({
         {/* Danh sách hồ sơ */}
         <div className="lg:col-span-2 space-y-4">
           {children}
+          {pagination && <ReviewPagination {...pagination} />}
         </div>
 
         {/* Cột phụ: cẩm nang + quy trình (lấp khoảng trống, thêm ngữ cảnh) */}

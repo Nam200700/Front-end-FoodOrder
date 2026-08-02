@@ -665,7 +665,7 @@ export default function Home() {
                           {/* Rating flag */}
                           <span className="absolute bottom-2.5 left-2.5 text-[10px] bg-black/75 backdrop-blur-sm text-white font-bold px-2 py-0.5 rounded flex items-center gap-1">
                             <Star size={11} className="fill-amber-400 text-amber-400" />
-                            {res.rating} ({res.reviewsCount})
+                            {res.reviewsCount > 0 ? `${res.rating} (${res.reviewsCount})` : 'Mới'}
                           </span>
                           {/* Status Tag */}
                           <span className={`absolute top-2.5 left-2.5 text-[10px] font-bold px-2 py-0.5 rounded shadow-sm text-white ${res.status !== false ? 'bg-emerald-600' : 'bg-slate-600'}`}>
@@ -788,7 +788,7 @@ export default function Home() {
                           />
                           <span className="absolute bottom-2.5 left-2.5 text-[10px] bg-black/75 backdrop-blur-sm text-white font-bold px-2 py-0.5 rounded flex items-center gap-1">
                             <Star size={11} className="fill-amber-400 text-amber-400" />
-                            {res.rating} ({res.reviewsCount})
+                            {res.reviewsCount > 0 ? `${res.rating} (${res.reviewsCount})` : 'Mới'}
                           </span>
                         </div>
 
@@ -871,7 +871,7 @@ export default function Home() {
                       <div className="w-full h-24 sm:h-28 rounded-xl overflow-hidden bg-slate-100 relative">
                         <img src={res.image} alt={res.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
                         <span className="absolute left-2 top-2 text-[10px] bg-[#FF6B35] text-white font-bold px-1.5 py-0.5 rounded shadow-sm">
-                          ★ {res.rating}
+                          {res.reviewsCount > 0 ? `★ ${res.rating}` : 'Mới'}
                         </span>
                       </div>
                       
@@ -932,7 +932,7 @@ export default function Home() {
                       <h3 className="font-bold text-xs text-slate-800 truncate mt-2 group-hover:text-[#FF6B35] transition-colors">{res.name}</h3>
                     </div>
                     <div className="flex items-center justify-between text-[10px] text-slate-500 font-medium mt-2 pt-2 border-t border-slate-100">
-                      <span className="font-bold text-amber-500">★ {res.rating}</span>
+                      <span className="font-bold text-amber-500">{res.reviewsCount > 0 ? `★ ${res.rating}` : 'Mới'}</span>
                       <span>{res.distance}</span>
                       <span>{res.time}</span>
                     </div>

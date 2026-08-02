@@ -123,7 +123,7 @@ export default function ShipperPickup() {
           distance: 'Bản đồ',
           fee: mappedOrder.shippingFee,
           total: mappedOrder.total,
-          phone: mappedOrder.customerPhone || '0901234567',
+          phone: mappedOrder.customerPhone || '',
           status: mappedOrder.status,
           step: (mappedOrder.status === 'PICKED_UP' || mappedOrder.status === 'DELIVERING') ? 'PICKED_UP' : 'ACCEPTED'
         });
@@ -804,8 +804,8 @@ export default function ShipperPickup() {
                   <span className="inline-flex items-center gap-1 text-[11px] font-bold text-white bg-md-tertiary px-2.5 py-1 rounded-full"><PhoneCall size={11} /> Gọi</span>
                 </a>
               ) : (
-                <div className="flex items-center gap-1.5 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 text-amber-700 text-[11px]">
-                  <AlertTriangle size={13} /> Đơn chưa có số điện thoại khách — hãy cẩn thận khi giao.
+                <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-slate-500 text-[11px]">
+                  <ShieldCheck size={13} className="text-md-tertiary" /> Số điện thoại khách sẽ hiện sau khi bạn nhận đơn (bảo mật thông tin khách).
                 </div>
               )}
             </div>

@@ -18,17 +18,19 @@ const SHIPPER_GUIDELINES = [
   { icon: ShieldCheck, text: 'Không trùng với hồ sơ tài xế đã tồn tại trên hệ thống.' },
 ];
 
+const PAGE_SIZE = 5; // số hồ sơ mỗi trang
+
 export default function AdminShippers() {
   const [activeFilter, setActiveFilter] = useState('pending'); // pending, approved, rejected
+  const [page, setPage] = useState(0);
   const [confirmApproveState, setConfirmApproveState] = useState({ open: false, id: null, name: '' });
   const [actionLoading, setActionLoading] = useState(false);
   const [counts, setCounts] = useState({ pending: 0, approved: 0, rejected: 0 });
 
   const statusParam = activeFilter === 'approved' ? 'APPROVED' : activeFilter === 'rejected' ? 'REJECTED' : 'PENDING';
 
-  const mapShipperRequests = (data) => {
-    const allRegs = data?.content || [];
-    return allRegs.map(reg => {
+  const mapShipperRequests = (data) => ({
+    items: (data?.content || []).map(reg => {
       let vehicleLabel = 'Xe máy';
       if (reg.vehicleType === 'BICYCLE') vehicleLabel = 'Xe đạp';
       else if (reg.vehicleType === 'CAR') vehicleLabel = 'Ô tô';
@@ -48,13 +50,22 @@ export default function AdminShippers() {
         activeDelivery: reg.activeDelivery || 0,
         totalDelivery: reg.totalDelivery || 0
       };
-    });
-  };
-
-  const { data: requests, loading, error, refetch } = useFetchData(`/admin/shipper-registers?status=${statusParam}&size=100`, {
-    mapFn: mapShipperRequests,
-    deps: [activeFilter],
+    }),
+    totalPages: data?.totalPages || 1,
+    totalElements: data?.totalElements || 0,
   });
+
+  const { data: pageData, loading, error, refetch } = useFetchData(`/admin/shipper-registers?status=${statusParam}&page=${page}&size=${PAGE_SIZE}`, {
+    mapFn: mapShipperRequests,
+    deps: [activeFilter, page],
+  });
+
+  const requests = pageData?.items;
+  const totalPages = pageData?.totalPages || 1;
+  const totalElements = pageData?.totalElements || 0;
+
+  // Đổi bộ lọc → về trang đầu
+  const handleFilterChange = (f) => { setActiveFilter(f); setPage(0); };
 
   // Đếm số hồ sơ mỗi trạng thái (size=1 → totalElements) cho chip thống kê + badge tab
   const fetchCounts = useCallback(async () => {
@@ -75,6 +86,11 @@ export default function AdminShippers() {
   }, []);
 
   useEffect(() => { fetchCounts(); }, [fetchCounts]);
+
+  // Trang cuối vừa bị duyệt hết → lùi về trang trước cho khỏi trống
+  useEffect(() => {
+    if (!loading && requests && requests.length === 0 && page > 0) setPage(p => p - 1);
+  }, [loading, requests, page]);
 
   const refreshAll = () => { refetch(); fetchCounts(); };
 
@@ -138,8 +154,13 @@ export default function AdminShippers() {
       subtitle="Xét duyệt hồ sơ tài xế gia nhập đội giao hàng. Đối chiếu giấy tờ & phương tiện trước khi kích hoạt."
       counts={counts}
       activeFilter={activeFilter}
-      onFilterChange={setActiveFilter}
+      onFilterChange={handleFilterChange}
       guidelines={SHIPPER_GUIDELINES}
+      pagination={{
+        page, totalPages, totalElements,
+        currentCount: list.length, unit: 'hồ sơ tài xế',
+        onPage: setPage, loading,
+      }}
     >
       {list.length === 0 ? (
         <div className="text-center py-16 px-6 bg-slate-950 rounded-3xl border border-dashed border-slate-800 text-slate-400 shadow-md flex flex-col items-center gap-3">

@@ -18,17 +18,19 @@ const OWNER_GUIDELINES = [
   { icon: Phone, text: 'Số điện thoại liên hệ chính xác để đối soát khi cần.' },
 ];
 
+const PAGE_SIZE = 5; // số hồ sơ mỗi trang
+
 export default function AdminRestaurants() {
   const [activeFilter, setActiveFilter] = useState('pending'); // pending, approved, rejected
+  const [page, setPage] = useState(0);
   const [confirmApproveState, setConfirmApproveState] = useState({ open: false, id: null, name: '' });
   const [actionLoading, setActionLoading] = useState(false);
   const [counts, setCounts] = useState({ pending: 0, approved: 0, rejected: 0 });
 
   const statusParam = activeFilter === 'approved' ? 'APPROVED' : activeFilter === 'rejected' ? 'REJECTED' : 'PENDING';
 
-  const mapRestaurantRequests = (data) => {
-    const allRegs = data?.content || [];
-    return allRegs.map(reg => ({
+  const mapRestaurantRequests = (data) => ({
+    items: (data?.content || []).map(reg => ({
       id: reg.registerId,
       ownerId: reg.ownerId,
       ownerName: reg.ownerName || 'Chủ quán đối tác',
@@ -40,13 +42,22 @@ export default function AdminRestaurants() {
       createdAt: reg.createdAt,
       status: reg.status,
       rejectedReason: reg.rejectedReason
-    }));
-  };
-
-  const { data: requests, loading, error, refetch } = useFetchData(`/admin/restaurant-registers?status=${statusParam}&size=100`, {
-    mapFn: mapRestaurantRequests,
-    deps: [activeFilter],
+    })),
+    totalPages: data?.totalPages || 1,
+    totalElements: data?.totalElements || 0,
   });
+
+  const { data: pageData, loading, error, refetch } = useFetchData(`/admin/restaurant-registers?status=${statusParam}&page=${page}&size=${PAGE_SIZE}`, {
+    mapFn: mapRestaurantRequests,
+    deps: [activeFilter, page],
+  });
+
+  const requests = pageData?.items;
+  const totalPages = pageData?.totalPages || 1;
+  const totalElements = pageData?.totalElements || 0;
+
+  // Đổi bộ lọc → về trang đầu
+  const handleFilterChange = (f) => { setActiveFilter(f); setPage(0); };
 
   // Đếm số hồ sơ mỗi trạng thái (size=1 → đọc totalElements) cho chip thống kê + badge tab
   const fetchCounts = useCallback(async () => {
@@ -125,8 +136,13 @@ export default function AdminRestaurants() {
       subtitle="Xét duyệt hồ sơ đối tác cửa hàng. Phê duyệt để kích hoạt quán, hoặc từ chối kèm lý do minh bạch."
       counts={counts}
       activeFilter={activeFilter}
-      onFilterChange={setActiveFilter}
+      onFilterChange={handleFilterChange}
       guidelines={OWNER_GUIDELINES}
+      pagination={{
+        page, totalPages, totalElements,
+        currentCount: list.length, unit: 'hồ sơ quán',
+        onPage: setPage, loading,
+      }}
     >
       {list.length === 0 ? (
         <div className="text-center py-16 px-6 bg-slate-950 rounded-3xl border border-dashed border-slate-800 text-slate-400 shadow-md flex flex-col items-center gap-3">

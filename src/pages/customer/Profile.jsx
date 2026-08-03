@@ -276,18 +276,24 @@ export default function Profile() {
     <div className="flex-1 p-4 md:p-8 max-w-4xl mx-auto w-full font-google-sans pb-24 space-y-6">
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
       {/* ─── CỘT TRÁI: thẻ thành viên + thẻ truy cập nhanh ───────────────────────── */}
-      <div className="space-y-6">
+      <div className="flex flex-col gap-6">
 
       {/* ─── THẺ THÀNH VIÊN ẨM THỰC (membership card, accent cam) ─────────────────── */}
       <div className="relative overflow-hidden rounded-radius-xl p-6 shadow-shadow-2 bg-gradient-to-br from-md-primary to-[#FF8C42] text-white animate-fade-in">
         <Utensils className="absolute -right-4 -bottom-4 text-white/10 animate-float-slow" size={120} strokeWidth={1.2} />
+        {/* Vệt sáng quét ngang (frame-by-frame) + lấp lánh trang trí */}
+        <div className="absolute inset-y-0 -left-1/3 w-1/4 bg-gradient-to-r from-transparent via-white/15 to-transparent animate-shine pointer-events-none" />
+        <Sparkles className="absolute right-6 top-5 text-white/30 animate-twinkle" size={14} style={{ animationDelay: '600ms' }} />
+        <Sparkles className="absolute right-28 bottom-7 text-white/20 animate-twinkle" size={11} style={{ animationDelay: '1100ms' }} />
 
         <div className="relative flex items-center gap-5">
           <div className="relative shrink-0">
+            {/* Vòng nhịp quanh avatar */}
+            <span className="absolute -inset-1 rounded-radius-full ring-2 ring-white/40 animate-halo pointer-events-none" />
             <img
               src={getAvatarUrl(user.avatar)}
               alt="Avatar"
-              className="w-20 h-20 rounded-radius-full border-4 border-white/30 object-cover shadow-sm"
+              className="relative w-20 h-20 rounded-radius-full border-4 border-white/30 object-cover shadow-sm"
             />
             <button
               type="button"
@@ -327,31 +333,32 @@ export default function Profile() {
         </div>
       </div>
 
-      <Card className="p-5 border border-md-outline-variant/20 shadow-sm">
+      <Card className="p-5 border border-md-outline-variant/20 shadow-sm flex-1">
         <h3 className="text-sm font-extrabold text-md-on-surface flex items-center gap-2 pb-3 mb-2 border-b border-md-outline-variant/20">
-          <Sparkles size={16} className="text-md-primary" /> Truy cập nhanh
+          <Sparkles size={16} className="text-md-primary animate-twinkle" /> Truy cập nhanh
         </h3>
-        <div className="space-y-1">
+        <div className="space-y-1.5">
           {[
-            { icon: ShoppingBag, label: 'Đơn hàng của tôi', desc: 'Theo dõi & lịch sử đơn', to: '/orders' },
-            { icon: Heart, label: 'Quán yêu thích', desc: 'Bộ sưu tập ẩm thực', to: '/favorites' },
-            { icon: Bell, label: 'Thông báo', desc: 'Cập nhật & ưu đãi', to: '/notifications' },
-            { icon: MessageCircle, label: 'Tin nhắn', desc: 'Trò chuyện với quán', to: '/chat' },
-          ].map(({ icon: ItemIcon, label, desc, to }) => (
+            { icon: ShoppingBag, label: 'Đơn hàng của tôi', desc: 'Theo dõi & lịch sử đơn', to: '/orders', chip: 'bg-blue-100 text-blue-600', fill: 'group-hover:bg-blue-500', hover: 'hover:bg-blue-50/70', arrow: 'group-hover:text-blue-500' },
+            { icon: Heart, label: 'Quán yêu thích', desc: 'Bộ sưu tập ẩm thực', to: '/favorites', chip: 'bg-rose-100 text-rose-600', fill: 'group-hover:bg-rose-500', hover: 'hover:bg-rose-50/70', arrow: 'group-hover:text-rose-500' },
+            { icon: Bell, label: 'Thông báo', desc: 'Cập nhật & ưu đãi', to: '/notifications', chip: 'bg-amber-100 text-amber-600', fill: 'group-hover:bg-amber-500', hover: 'hover:bg-amber-50/70', arrow: 'group-hover:text-amber-500' },
+            { icon: MessageCircle, label: 'Tin nhắn', desc: 'Trò chuyện với quán', to: '/chat', chip: 'bg-violet-100 text-violet-600', fill: 'group-hover:bg-violet-500', hover: 'hover:bg-violet-50/70', arrow: 'group-hover:text-violet-500' },
+          ].map(({ icon: ItemIcon, label, desc, to, chip, fill, hover, arrow }, idx) => (
             <button
               key={to}
               type="button"
               onClick={() => navigate(to)}
-              className="w-full flex items-center gap-3 p-2.5 rounded-radius-lg hover:bg-md-primary/5 transition-colors text-left cursor-pointer group"
+              style={{ animationDelay: `${idx * 70}ms` }}
+              className={`animate-rise-in w-full flex items-center gap-3 p-2.5 rounded-radius-lg border border-transparent hover:border-slate-100 ${hover} transition-all duration-200 text-left cursor-pointer group active:scale-[0.98]`}
             >
-              <span className="p-2 bg-md-primary/10 text-md-primary rounded-radius-md shrink-0 transition-all group-hover:bg-md-primary group-hover:text-white group-hover:scale-110 group-hover:-rotate-6">
+              <span className={`p-2 rounded-radius-md shrink-0 transition-all duration-300 ${chip} ${fill} group-hover:text-white group-hover:scale-110 group-hover:-rotate-6 group-hover:shadow-sm`}>
                 <ItemIcon size={16} />
               </span>
               <span className="flex-1 min-w-0">
                 <span className="block text-xs font-extrabold text-md-on-surface truncate">{label}</span>
                 <span className="block text-[11px] text-md-on-surface-variant font-medium truncate">{desc}</span>
               </span>
-              <ChevronRight size={16} className="text-md-outline group-hover:text-md-primary group-hover:translate-x-0.5 transition-all shrink-0" />
+              <ChevronRight size={16} className={`text-md-outline ${arrow} group-hover:translate-x-1 transition-all shrink-0`} />
             </button>
           ))}
         </div>
@@ -372,7 +379,7 @@ export default function Profile() {
             Họ và tên
           </label>
           <div className="relative group">
-            <User className="absolute left-3.5 top-1/2 -translate-y-1/2 text-md-outline group-focus-within:text-md-primary group-focus-within:scale-110 transition-all duration-200" size={16} />
+            <User className="absolute left-3.5 top-1/2 -translate-y-1/2 text-indigo-500 group-focus-within:scale-110 transition-all duration-200" size={16} />
             <input
               type="text"
               value={name}
@@ -387,7 +394,7 @@ export default function Profile() {
             Địa chỉ Email
           </label>
           <div className="relative group">
-            <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 text-md-outline group-focus-within:text-md-primary group-focus-within:scale-110 transition-all duration-200" size={16} />
+            <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 text-blue-500 group-focus-within:scale-110 transition-all duration-200" size={16} />
             <input
               type="text"
               value={email}
@@ -402,7 +409,7 @@ export default function Profile() {
             <span className="inline-flex items-center gap-0.5 text-[9px] text-slate-400 normal-case font-semibold"><Lock size={9} /> Không đổi</span>
           </label>
           <div className="relative group">
-            <Phone className="absolute left-3.5 top-1/2 -translate-y-1/2 text-md-outline" size={16} />
+            <Phone className="absolute left-3.5 top-1/2 -translate-y-1/2 text-emerald-500" size={16} />
             <input
               type="tel"
               readOnly

@@ -157,7 +157,7 @@ export default function Explore() {
     try {
       const res = await apiClient.get('/restaurants', { params: { page: pageNum, size: FEED_SIZE } });
       const data = res.data?.data;
-      const list = (data?.content || []).map((r) => withDistance(mapRestaurant(r), userLat, userLng));
+      const list = (data?.content || []).map((r) => decorate(mapRestaurant(r), r, userLat, userLng));
       setTotalPages(data?.totalPages || 1);
       setFeed((prev) => (append ? [...prev, ...list] : list));
     } catch (err) {
@@ -214,7 +214,7 @@ export default function Explore() {
           apiClient.get('/foods/search', { params: { keyword: kw, limit: 20 } }),
         ]);
         if (cancelled) return;
-        const restaurants = (resR.data?.data?.content || []).map((r) => withDistance(mapRestaurant(r), userLat, userLng));
+        const restaurants = (resR.data?.data?.content || []).map((r) => decorate(mapRestaurant(r), r, userLat, userLng));
         const foods = (resF.data?.data || []).map((f) => ({
           id: f.id,
           name: f.foodName,

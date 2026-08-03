@@ -467,43 +467,76 @@ export default function ShipperPickup() {
   return (
     <div className="flex-1 p-4 md:p-8 max-w-7xl mx-auto w-full font-google-sans pb-24 space-y-6">
 
-      {/* Header with online toggle */}
-      <Card variant="elevated" className={`!rounded-radius-xl p-5 flex items-center justify-between transition-all duration-300 border ${
-        online 
-          ? 'bg-gradient-to-r from-emerald-50/50 via-white to-white border-emerald-200/60' 
-          : 'bg-white border-slate-100'
+      {/* ── HERO điều khiển tài xế: trạng thái online + công tắc + thanh đơn khả dụng ── */}
+      <div className={`relative overflow-hidden rounded-radius-xl border transition-all duration-500 ${
+        online
+          ? 'bg-gradient-to-br from-emerald-500 via-emerald-600 to-green-700 border-emerald-600/50 shadow-lg shadow-emerald-500/25'
+          : 'bg-gradient-to-br from-slate-100 to-white border-slate-200'
       }`}>
-        <div className="flex items-center gap-3">
-          <div className={`p-2.5 rounded-radius-lg flex items-center justify-center transition-colors ${
-            online ? 'bg-emerald-100 text-emerald-600' : 'bg-slate-100 text-slate-400'
-          }`}>
-            <Bike size={24} />
-          </div>
-          <div>
-            <h1 className="text-lg md:text-xl font-extrabold text-slate-800 tracking-tight">
-              Shipper Hub
-            </h1>
-            <div className="flex items-center gap-1.5 mt-0.5">
-              <span className={`w-2 h-2 rounded-full inline-block ${
-                online ? 'bg-emerald-500 animate-pulse' : 'bg-slate-300'
-              }`} />
-              <p className="text-[11px] text-slate-500 font-bold uppercase tracking-wider">
-                {online ? 'Sẵn sàng nhận đơn giao hàng' : 'Đang tạm dừng nhận đơn'}
-              </p>
+        {/* hoạ tiết sóng radar mờ ở góc khi online */}
+        {online && (
+          <>
+            <span className="pointer-events-none absolute -right-12 -top-12 w-44 h-44 rounded-full bg-white/10" />
+            <span className="pointer-events-none absolute -right-2 -bottom-20 w-44 h-44 rounded-full bg-white/[0.06]" />
+          </>
+        )}
+
+        <div className="relative p-5 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3.5 min-w-0">
+            <div className={`relative w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 transition-colors ${
+              online ? 'bg-white/20 text-white backdrop-blur-sm' : 'bg-white text-slate-400 shadow-sm'
+            }`}>
+              <Bike size={26} />
+              {online && <span className="absolute inset-0 rounded-2xl ring-2 ring-white/40 animate-ping" />}
+            </div>
+            <div className="min-w-0">
+              <h1 className={`text-lg md:text-xl font-extrabold tracking-tight truncate ${online ? 'text-white' : 'text-slate-800'}`}>
+                Trung tâm tài xế
+              </h1>
+              <div className="flex items-center gap-1.5 mt-1">
+                <span className={`w-2 h-2 rounded-full inline-block ${online ? 'bg-emerald-200 animate-pulse' : 'bg-slate-300'}`} />
+                <p className={`text-[11px] font-bold uppercase tracking-wider truncate ${online ? 'text-emerald-50' : 'text-slate-500'}`}>
+                  {online ? 'Đang online · sẵn sàng nhận đơn' : 'Đang offline · tạm dừng'}
+                </p>
+              </div>
             </div>
           </div>
+
+          {/* Công tắc kiểu iOS: chấm icon trượt trong pill */}
+          <button
+            onClick={handleToggleOnline}
+            className={`relative flex items-center gap-2 rounded-radius-full font-extrabold text-[11px] uppercase tracking-wider pl-1.5 pr-3.5 py-1.5 shrink-0 transition-all shadow-sm hover:scale-[1.03] active:scale-95 cursor-pointer ${
+              online ? 'bg-white text-emerald-600' : 'bg-slate-200 text-slate-500'
+            }`}
+          >
+            <span className={`w-7 h-7 rounded-full flex items-center justify-center transition-colors ${
+              online ? 'bg-md-tertiary text-white' : 'bg-white text-slate-400'
+            }`}>
+              {online ? <Zap size={14} className="animate-pulse" /> : <PowerOff size={14} />}
+            </span>
+            {online ? 'Online' : 'Offline'}
+          </button>
         </div>
 
-        <Button
-          onClick={handleToggleOnline}
-          className="px-4 py-2.5 text-xs font-extrabold rounded-radius-full transition-all shadow-sm flex items-center gap-2 hover:scale-[1.03] active:scale-[0.97] cursor-pointer !bg-md-tertiary text-white shadow-emerald-200"
-        >
-          <span className={`w-2 h-2 rounded-full inline-block ${
-            online ? 'bg-white animate-ping' : 'bg-slate-400'
-          }`} />
-          {online ? 'ĐANG BẬT ONLINE' : 'ĐANG TẮT OFFLINE'}
-        </Button>
-      </Card>
+        {/* Thanh đáy: số đơn khả dụng THẬT + nút quét (chỉ khi online & đang ở màn chờ đơn) */}
+        {online && !activeJob && (
+          <div className="relative border-t border-white/15 px-5 py-2.5 flex items-center justify-between">
+            <span className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-white/90">
+              <Navigation size={13} />
+              {availableOrders.length > 0
+                ? `${availableOrders.length} đơn đang chờ quanh bạn`
+                : 'Đang quét đơn quanh bạn…'}
+            </span>
+            <button
+              onClick={handleRefreshAvailable}
+              disabled={refreshing}
+              className="inline-flex items-center gap-1.5 text-[11px] font-bold text-white/95 bg-white/15 hover:bg-white/25 px-3 py-1.5 rounded-full transition-all active:scale-95 cursor-pointer disabled:opacity-60"
+            >
+              <RefreshCw size={12} className={refreshing ? 'animate-spin' : ''} /> {refreshing ? 'Đang quét…' : 'Làm mới'}
+            </button>
+          </div>
+        )}
+      </div>
 
       {/* ACTIVE JOB SCREEN */}
       {activeJob ? (
@@ -618,22 +651,16 @@ export default function ShipperPickup() {
       ) : (
         /* AVAILABLE JOBS LIST */
         <div className="space-y-4 animate-fade-in">
-          <div className="flex items-center justify-between mb-2 gap-3">
-            <h2 className="text-xs md:text-sm font-extrabold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
-              <Navigation className="text-md-tertiary" size={18} />
-              Đơn hàng khả dụng
-              <span className="text-white bg-md-tertiary px-2 py-0.5 rounded-full text-[11px] normal-case">{availableOrders.length}</span>
-            </h2>
-            {online && (
-              <button
-                onClick={handleRefreshAvailable}
-                disabled={refreshing}
-                className="inline-flex items-center gap-1.5 text-[11px] font-bold text-md-tertiary bg-emerald-50 hover:bg-emerald-100 px-3 py-1.5 rounded-full transition-all active:scale-95 cursor-pointer disabled:opacity-60"
-              >
-                <RefreshCw size={13} className={refreshing ? 'animate-spin' : ''} /> {refreshing ? 'Đang quét…' : 'Làm mới'}
-              </button>
-            )}
-          </div>
+          {online && availableOrders.length > 0 && (
+            <div className="flex items-center gap-2">
+              <h2 className="text-xs md:text-sm font-extrabold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+                <Navigation className="text-md-tertiary" size={16} />
+                Đơn hàng khả dụng
+              </h2>
+              <span className="text-white bg-md-tertiary px-2 py-0.5 rounded-full text-[11px] font-bold">{availableOrders.length}</span>
+              <span className="flex-1 h-px bg-gradient-to-r from-emerald-200 to-transparent" />
+            </div>
+          )}
 
           {!online ? (
             <Card variant="elevated" className="!rounded-radius-xl p-10 text-center text-xs text-slate-400 font-semibold leading-relaxed flex flex-col items-center gap-3">
@@ -695,69 +722,90 @@ export default function ShipperPickup() {
             </Card>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
-              {availableOrders.map((order) => (
+              {availableOrders.map((order, idx) => {
+                const dist = orderDistanceCache[order.id];
+                const isCOD = String(order.paymentMethod || 'COD').toUpperCase() === 'COD';
+                return (
                 <Card
                   key={order.id}
                   variant="elevated"
                   hoverEffect
-                  className="!rounded-radius-xl p-5 flex flex-col justify-between animate-fade-in"
+                  className="!rounded-radius-xl !p-0 overflow-hidden flex flex-col animate-rise-in"
+                  style={{ animationDelay: `${idx * 60}ms` }}
                 >
-                  <div className="mt-0 pt-0 mb-2">
-                    <div className="flex items-center justify-between border-b border-slate-100 pb-2">
-                      <div>
-                        <span className="text-[10px] text-slate-400 font-bold uppercase leading-none">MÃ ĐƠN #{order.id}</span>
-                      </div>
-                      <div className="text-right">
-                        <span className="text-[10px] text-[#2E7D32] bg-[#E8F5E9] font-extrabold px-2.5 py-1 rounded-full uppercase tracking-wider leading-none shadow-sm inline-block">
-                          {orderDistanceCache[order.id]?.distanceKm != null
-                            ? `${orderDistanceCache[order.id].distanceKm.toFixed(1)} km`
-                            : 'Đang tính...'}
-                        </span>
-                      </div>
+                  {/* Đầu thẻ: phí NỔI BẬT (thứ tài xế quan tâm nhất) + khoảng cách + COD */}
+                  <div className="relative px-5 pt-4 pb-3.5 bg-gradient-to-br from-emerald-50/70 via-white to-white border-b border-slate-100">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider leading-none">Đơn #{order.id}</span>
+                      <span className="inline-flex items-center gap-1 text-[10px] text-emerald-700 bg-emerald-100 font-extrabold px-2 py-0.5 rounded-full tracking-wider leading-none">
+                        <Route size={11} />
+                        {dist?.distanceKm != null ? `${dist.distanceKm.toFixed(1)} km` : '…'}
+                        {dist?.durationMinutes ? ` · ${Math.round(dist.durationMinutes)}p` : ''}
+                      </span>
                     </div>
-
-                    <div className="space-y-3 my-3 text-xs font-semibold text-slate-700">
-                      <div className="flex items-center gap-2">
-                        <Utensils size={14} className="text-md-tertiary shrink-0" />
-                        <span className=""><b>Quán:</b> Địa chỉ: {order.resAddress}</span>
+                    <div className="flex items-end justify-between">
+                      <div>
+                        <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider block leading-none">Bạn nhận</span>
+                        <span className="font-black text-2xl text-md-tertiary mt-1 block leading-none tabular-nums">{formatCurrency(order.fee)}</span>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <MapPin size={14} className="text-md-primary shrink-0" />
-                        <span className=""><b>Khách hàng:</b> Địa chỉ: {order.custAddress}</span>
+                      {isCOD ? (
+                        <span className="inline-flex items-center gap-1 text-[9px] font-extrabold text-amber-700 bg-amber-100 px-2 py-1 rounded-full uppercase tracking-wide">
+                          <Banknote size={11} /> Thu hộ COD
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 text-[9px] font-extrabold text-blue-600 bg-blue-50 px-2 py-1 rounded-full uppercase tracking-wide">
+                          <ShieldCheck size={11} /> Đã trả
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Timeline điểm lấy → điểm giao (kiểu app giao hàng) */}
+                  <div className="px-5 py-4 flex-1">
+                    <div className="relative pl-7">
+                      {/* đường nối dọc quán → khách */}
+                      <span className="absolute left-[9px] top-3 bottom-3 w-0.5 bg-gradient-to-b from-md-tertiary to-md-primary" />
+                      <div className="relative mb-4">
+                        <span className="absolute -left-7 top-0 w-[19px] h-[19px] rounded-full bg-md-tertiary text-white flex items-center justify-center ring-4 ring-emerald-100">
+                          <Utensils size={10} />
+                        </span>
+                        <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wide leading-none">Điểm lấy hàng</p>
+                        <p className="text-[11px] font-semibold text-slate-700 leading-snug mt-1 line-clamp-2">{order.resAddress}</p>
+                      </div>
+                      <div className="relative">
+                        <span className="absolute -left-7 top-0 w-[19px] h-[19px] rounded-full bg-md-primary text-white flex items-center justify-center ring-4 ring-orange-100">
+                          <MapPin size={10} />
+                        </span>
+                        <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wide leading-none">Điểm giao khách</p>
+                        <p className="text-[11px] font-semibold text-slate-700 leading-snug mt-1 line-clamp-2">{order.custAddress}</p>
                       </div>
                     </div>
                   </div>
 
-                  <div className="border-t border-slate-100 pt-3 mt-1">
-                    <div className="mb-3">
-                      <span className="text-[9px] text-slate-400 block font-bold uppercase leading-none tracking-wider">Phí giao hàng</span>
-                      <span className="font-extrabold text-base text-md-tertiary mt-1 block leading-none">{formatCurrency(order.fee)}</span>
-                    </div>
-
-                    {/* 2 nút chia đôi full-width — không bị ép/cắt chữ khi card hẹp (4 cột) */}
-                    <div className="grid grid-cols-2 gap-2">
-                      <Button
-                        onClick={() => handleOpenDetail(order)}
-                        variant="outline"
-                        size="sm"
-                        icon={Eye}
-                        className="w-full justify-center !rounded-radius-full !px-2 !py-2 text-[10px] sm:text-xs uppercase tracking-wider"
-                      >
-                        Chi tiết
-                      </Button>
-                      <Button
-                        onClick={() => handleAcceptJob(order)}
-                        variant="primary"
-                        size="sm"
-                        icon={Check}
-                        className="w-full justify-center !bg-md-tertiary hover:!bg-opacity-95 !rounded-radius-full !px-2 !py-2 text-[10px] sm:text-xs uppercase tracking-wider"
-                      >
-                        Nhận đơn
-                      </Button>
-                    </div>
+                  {/* 2 nút chia đôi full-width — không bị ép/cắt chữ khi card hẹp (4 cột) */}
+                  <div className="px-5 pb-4 grid grid-cols-2 gap-2">
+                    <Button
+                      onClick={() => handleOpenDetail(order)}
+                      variant="outline"
+                      size="sm"
+                      icon={Eye}
+                      className="w-full justify-center !rounded-radius-full !px-2 !py-2 text-[10px] sm:text-xs uppercase tracking-wider"
+                    >
+                      Chi tiết
+                    </Button>
+                    <Button
+                      onClick={() => handleAcceptJob(order)}
+                      variant="primary"
+                      size="sm"
+                      icon={Check}
+                      className="w-full justify-center !bg-md-tertiary hover:!bg-opacity-95 !rounded-radius-full !px-2 !py-2 text-[10px] sm:text-xs uppercase tracking-wider"
+                    >
+                      Nhận đơn
+                    </Button>
                   </div>
                 </Card>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>

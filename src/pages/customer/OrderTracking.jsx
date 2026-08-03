@@ -190,7 +190,8 @@ export default function OrderTracking() {
     if (!mapRef.current) {
       const map = L.map(mapContainerRef.current, {
         zoomControl: true,
-        scrollWheelZoom: false 
+        scrollWheelZoom: false,
+        attributionControl: false 
       }).setView([(rLat + cLat) / 2, (rLng + cLng) / 2], 14);
       mapRef.current = map;
       // Nền bản đồ chuẩn chủ quyền VN (Goong nếu có key, không thì CARTO + nhãn đỏ)
@@ -789,12 +790,12 @@ export default function OrderTracking() {
                 <span className="flex items-center gap-2"><Truck size={15} className="text-blue-500" /> Phí giao hàng</span>
                 <span className="font-bold text-md-on-surface">{formatCurrency(displayOrder.shippingFee)}</span>
               </div>
-              <div className="flex justify-between items-center text-md-on-surface-variant">
-                <span className="flex items-center gap-2"><Banknote size={15} className="text-emerald-500" /> Phương thức</span>
-                <span className="font-extrabold text-emerald-700 bg-emerald-50 border border-emerald-100 px-2.5 py-0.5 rounded-full text-xs">
-                  {displayOrder.paymentMethod}
-                </span>
-              </div>
+              {displayOrder.voucherCode && (
+                <div className="flex justify-between items-center text-md-on-surface-variant">
+                  <span className="flex items-center gap-2"><Banknote size={15} className="text-emerald-500" /> Voucher ({displayOrder.voucherCode})</span>
+                  <span className="font-bold text-md-on-surface">-{formatCurrency(displayOrder.discountAmount)}</span>
+                </div>
+              )}
               <div className="flex justify-between items-center pt-3.5 mt-1 rounded-xl bg-gradient-to-r from-orange-50 to-amber-50 border border-orange-100 px-3.5 py-3 flex-wrap gap-2">
                 <span className="flex items-center gap-2 text-base font-extrabold text-md-on-surface">
                   <Wallet size={18} className="text-orange-500" /> Tổng thanh toán

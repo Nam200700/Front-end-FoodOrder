@@ -172,8 +172,18 @@ export default function ShipperLayout() {
       </button>
     </header>
 
-    {/* ─── MOBILE BOTTOM NAVIGATION (component dùng chung, tông xanh shipper) ─────── */}
-    <MobileTabBar items={menuItems} accent="#34A853" rootPath="/shipper" />
+    {/* ─── MOBILE BOTTOM NAVIGATION (5 mục, "Nhận Đơn" nổi bật ở giữa) ─────── */}
+    <MobileTabBar
+      accent="#34A853"
+      rootPath="/shipper"
+      items={[
+        menuItems[1],                        // Lịch Sử
+        menuItems[3],                        // Thu Nhập
+        { ...menuItems[0], primary: true },  // Nhận Đơn — nút nổi trung tâm
+        menuItems[2],                        // Tin nhắn
+        menuItems[5],                        // Hồ Sơ
+      ]}
+    />
 
     {/* ─── MOBILE SHIPPER DRAWER ────────────────────────────────────────────── */}
     <MobileDrawer

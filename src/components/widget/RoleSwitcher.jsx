@@ -132,12 +132,16 @@ export default function RoleSwitcher() {
   const CurrentIcon = currentRoleObj.icon;
   const quickLinks = getQuickLinks(role || 'CUSTOMER');
 
+  // Trang chi tiết quán có thanh giỏ hàng nổi ở đáy (mobile) → nâng widget cao hơn để không đè lên.
+  const hasBottomBar = /^\/restaurants\/[^/]+/.test(location.pathname);
+  const anchorClass = `${hasBottomBar ? 'bottom-44' : 'bottom-20'} right-4 md:bottom-24 md:right-6`;
+
   // Trả về nút siêu nhỏ mờ khi người dùng chọn ẩn widget
   if (isHidden) {
     return (
       <button
         onClick={handleRestore}
-        className="fixed bottom-20 right-4 md:bottom-24 md:right-6 z-[9999] w-7 h-7 rounded-full bg-slate-500/20 hover:bg-slate-500/40 text-slate-500/50 hover:text-slate-700 backdrop-blur-sm border border-slate-200/20 flex items-center justify-center cursor-pointer transition-all duration-200 opacity-40 hover:opacity-100 shadow-sm"
+        className={`fixed ${anchorClass} z-[9999] w-7 h-7 rounded-full bg-slate-500/20 hover:bg-slate-500/40 text-slate-500/50 hover:text-slate-700 backdrop-blur-sm border border-slate-200/20 flex items-center justify-center cursor-pointer transition-all duration-200 opacity-40 hover:opacity-100 shadow-sm`}
         title="Hiện bảng điều khiển nhanh"
       >
         <Eye size={12} />
@@ -146,7 +150,7 @@ export default function RoleSwitcher() {
   }
 
   return (
-    <div className="fixed bottom-20 right-4 md:bottom-24 md:right-6 z-[9999] flex flex-col items-end gap-3 font-google-sans select-none">
+    <div className={`fixed ${anchorClass} z-[9999] flex flex-col items-end gap-3 font-google-sans select-none`}>
 
       {/* Expanded Panel */}
       {expanded && (

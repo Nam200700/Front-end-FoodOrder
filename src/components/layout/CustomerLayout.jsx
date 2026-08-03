@@ -248,12 +248,15 @@ export default function CustomerLayout() {
         </button>
       </header>
 
-      {/* ─── MOBILE BOTTOM NAV (component dùng chung, animation + pill chỉ báo) ───── */}
+      {/* ─── MOBILE BOTTOM NAV (5 mục, Giỏ hàng nổi bật ở giữa) ───── */}
       <MobileTabBar
         accent="#FF6B35"
         rootPath="/"
         items={[
-          ...menuItems.slice(0, 4),
+          menuItems[0],                          // Trang chủ
+          menuItems[1],                          // Khám phá
+          { ...menuItems[2], primary: true },    // Giỏ hàng — nút nổi trung tâm
+          menuItems[3],                          // Đơn hàng
           { name: 'Thêm', icon: Menu, action: openMobileDrawer },
         ]}
       />

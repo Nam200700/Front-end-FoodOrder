@@ -249,10 +249,10 @@ export default function MerchantLayout() {
         accent="#1A73E8"
         rootPath="/merchant"
         items={[
-          menuItems[0],                        // Dashboard
-          menuItems[2],                        // Quản lý menu
-          { ...menuItems[1], primary: true },  // Đơn hàng — nút nổi trung tâm
-          menuItems[4],                        // Đánh giá
+          { ...menuItems[0], name: 'Tổng quan' },   // Dashboard
+          { ...menuItems[2], name: 'Thực đơn' },    // Quản lý menu
+          { ...menuItems[1], primary: true },       // Đơn hàng — nút nổi trung tâm
+          menuItems[4],                             // Đánh giá
           { name: 'Thêm', icon: Menu, action: openMobileDrawer },
         ]}
       />

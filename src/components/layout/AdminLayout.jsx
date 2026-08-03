@@ -27,6 +27,7 @@ import { useAvatarUpload } from '../../hooks/useAvatarUpload';
 import { useLayoutNav } from '../../hooks/useLayoutNav';
 import NavMenuList from './NavMenuList';
 import MobileDrawer from './MobileDrawer';
+import MobileTabBar from './MobileTabBar';
 
 export default function AdminLayout() {
   const navigate = useNavigate();
@@ -214,6 +215,19 @@ export default function AdminLayout() {
 
 
 
+      {/* ─── MOBILE BOTTOM NAV (giúp thấy rõ điều hướng, "Tổng quan" nổi giữa) ───── */}
+      <MobileTabBar
+        accent="#9333EA"
+        rootPath="/admin"
+        items={[
+          { ...menuItems[1], name: 'Quán' },                    // Quản lý quán
+          { ...menuItems[2], name: 'Shipper' },                 // Quản lý shipper
+          { ...menuItems[0], name: 'Tổng quan', primary: true },// Dashboard — nút nổi trung tâm
+          { ...menuItems[6], name: 'Báo cáo' },                 // Báo cáo vi phạm
+          { name: 'Thêm', icon: Menu, action: openMobileDrawer },
+        ]}
+      />
+
       {/* ─── MOBILE ADMIN DRAWER ────────────────────────────────────────────── */}
       <MobileDrawer
         isOpen={isMobileDrawerOpen}
@@ -291,7 +305,7 @@ export default function AdminLayout() {
       </MobileDrawer>
 
       {/* ─── MAIN ADMIN PORT ───────────────────────────────────────────────────── */}
-      <main className={`flex-1 flex flex-col min-w-0 pt-16 md:pt-0 h-screen overflow-y-auto relative transition-colors duration-250 ${
+      <main className={`flex-1 flex flex-col min-w-0 pt-16 md:pt-0 pb-16 md:pb-0 h-screen overflow-y-auto relative transition-colors duration-250 ${
         theme === 'light' ? 'bg-slate-50' : 'bg-slate-900'
       }`}>
         <Outlet />

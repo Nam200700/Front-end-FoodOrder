@@ -197,13 +197,21 @@ export default function RoleSwitcher() {
 
           {/* Quick Navigation Links */}
           {quickLinks.length > 0 && (
-            <div className="bg-slate-50/60 border border-slate-100 rounded-2xl p-3.5 space-y-2.5 max-h-[200px] overflow-y-auto scrollbar-thin">
-              <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block">
-                Liên kết đi nhanh
-              </span>
+            <div className="bg-slate-50/60 border border-slate-100 rounded-2xl p-3.5 space-y-2.5 max-h-[320px] overflow-y-auto scrollbar-thin">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block">
+                  Liên kết đi nhanh
+                </span>
+                <span className={`text-[9px] font-black px-1.5 py-0.5 rounded-full ${currentRoleObj.chip}`}>
+                  {quickLinks.length} mục
+                </span>
+              </div>
               <div className="flex flex-col gap-1.5">
                 {quickLinks.map((link, idx) => {
                   const LinkIcon = link.icon;
+                  const isCurrent = link.path === '/' || link.path === '/shipper' || link.path === '/merchant' || link.path === '/admin'
+                    ? location.pathname === link.path
+                    : location.pathname === link.path || location.pathname.startsWith(link.path);
                   return (
                     <button
                       key={idx}
@@ -212,13 +220,25 @@ export default function RoleSwitcher() {
                         setExpanded(false);
                       }}
                       style={{ animationDelay: `${idx * 40}ms` }}
-                      className="animate-rise-in w-full flex items-center justify-between text-left px-3 py-2 rounded-xl hover:bg-white hover:shadow-sm text-xs font-semibold text-slate-700 hover:text-slate-900 border border-transparent hover:border-slate-100 transition-all duration-200 group cursor-pointer"
+                      className={`animate-rise-in w-full flex items-center justify-between text-left px-2.5 py-2 rounded-xl text-xs font-semibold border transition-all duration-200 group cursor-pointer ${
+                        isCurrent
+                          ? `${currentRoleObj.linkActive} shadow-sm`
+                          : 'text-slate-700 hover:text-slate-900 border-transparent hover:bg-white hover:shadow-sm hover:border-slate-100'
+                      }`}
                     >
-                      <div className="flex items-center gap-2">
-                        <LinkIcon size={14} className="text-slate-400 group-hover:text-slate-600" />
-                        <span>{link.label}</span>
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <span className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 transition-transform duration-200 group-hover:scale-110 ${
+                          isCurrent ? 'bg-white/70' : currentRoleObj.chip
+                        }`}>
+                          <LinkIcon size={14} />
+                        </span>
+                        <span className="truncate">{link.label}</span>
                       </div>
-                      <ArrowRight size={12} className="text-slate-300 opacity-0 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all duration-200" />
+                      {isCurrent ? (
+                        <span className="w-1.5 h-1.5 rounded-full bg-current animate-pulse shrink-0 mr-1" />
+                      ) : (
+                        <ArrowRight size={12} className="text-slate-300 opacity-0 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all duration-200 shrink-0" />
+                      )}
                     </button>
                   );
                 })}

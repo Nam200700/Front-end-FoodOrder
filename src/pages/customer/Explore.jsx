@@ -1,545 +1,495 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, Flame, TrendingUp, Compass, Clock, Star, MapPin, Store, ArrowLeft, Utensils } from 'lucide-react';
-import { formatCurrency, removeVietnameseTones } from '../../utils/format';
+import {
+  Search, Flame, TrendingUp, Compass, Clock, Star, MapPin, Store, ArrowLeft, Utensils,
+  ChevronRight, Loader2, Sparkles, PackageSearch, X, ShoppingBag,
+} from 'lucide-react';
+import { formatCurrency } from '../../utils/format';
 import { useAuthStore } from '../../stores/authStore';
 import apiClient from '../../services/api';
 import { mapRestaurant } from '../../utils/mappers';
 import { getFoodImageUrl } from '../../utils/avatarHelper';
 import { calculateHaversineDistance } from '../../utils/haversine';
 
+const FEED_SIZE = 8;
+
+// Gắn khoảng cách thật (Haversine) vào quán đã map — dùng chung feed + kết quả tìm kiếm.
+const withDistance = (mapped, userLat, userLng) => {
+  const d = calculateHaversineDistance(userLat, userLng, mapped.latitude, mapped.longitude);
+  return { ...mapped, distanceVal: d ?? 999, distance: d ? `${d}km` : '—', cuisineType: mapped.tags?.[0] || 'Ẩm thực' };
+};
+
+// ─── Thẻ "bài viết" quán ăn (kiểu feed GrabFood/UberEats) ───
+function RestaurantPost({ res, onClick, style }) {
+  const isNew = res.reviewsCount === 0;
+  return (
+    <article
+      onClick={onClick}
+      style={style}
+      className="group bg-white rounded-2xl border border-slate-150 shadow-sm overflow-hidden cursor-pointer transition-all duration-300 hover:shadow-lg hover:-translate-y-1 animate-rise-in"
+    >
+      {/* Ảnh bìa */}
+      <div className="relative h-36 sm:h-40 overflow-hidden bg-slate-100">
+        <img
+          src={res.image}
+          alt={res.name}
+          loading="lazy"
+          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-black/5 to-transparent" />
+
+        {/* Trạng thái mở cửa */}
+        <span className={`absolute top-2.5 left-2.5 inline-flex items-center gap-1 text-[10px] font-black px-2 py-1 rounded-full backdrop-blur-sm ${
+          res.isOpen ? 'bg-emerald-500/90 text-white' : 'bg-slate-700/80 text-white'
+        }`}>
+          <span className={`w-1.5 h-1.5 rounded-full ${res.isOpen ? 'bg-white animate-pulse' : 'bg-slate-300'}`} />
+          {res.isOpen ? 'Đang mở' : 'Đã đóng'}
+        </span>
+
+        {res.featured && (
+          <span className="absolute top-2.5 right-2.5 inline-flex items-center gap-1 text-[10px] font-black px-2 py-1 rounded-full bg-amber-400/95 text-amber-950 shadow-sm">
+            <Sparkles size={11} /> Nổi bật
+          </span>
+        )}
+
+        {/* Chip điểm + khoảng cách nổi trên ảnh */}
+        <div className="absolute bottom-2.5 left-2.5 right-2.5 flex items-center gap-2">
+          <span className="inline-flex items-center gap-1 text-[11px] font-black px-2 py-1 rounded-full bg-white/95 text-amber-600 shadow-sm">
+            <Star size={12} className="fill-amber-400 text-amber-400" />
+            {isNew ? 'Mới' : res.rating.toFixed(1)}
+          </span>
+          <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-1 rounded-full bg-white/95 text-slate-600 shadow-sm">
+            <MapPin size={12} className="text-[#FF6B35]" /> {res.distance}
+          </span>
+        </div>
+      </div>
+
+      {/* Nội dung */}
+      <div className="p-3.5">
+        <h3 className="font-extrabold text-sm text-slate-800 truncate leading-tight group-hover:text-[#FF6B35] transition-colors">
+          {res.name}
+        </h3>
+        <p className="text-[11px] text-slate-500 font-medium mt-1 line-clamp-2 leading-relaxed min-h-[2rem]">
+          {res.description?.trim() || `${res.cuisineType} · ${res.address || 'Đang cập nhật địa chỉ'}`}
+        </p>
+
+        <div className="flex items-center justify-between mt-2.5 pt-2.5 border-t border-slate-100">
+          <span className="inline-flex items-center gap-1 text-[10px] font-bold text-slate-500 uppercase tracking-wide">
+            <Utensils size={12} className="text-[#1A73E8]" /> {res.cuisineType}
+          </span>
+          <span className="inline-flex items-center gap-1 text-[11px] font-extrabold text-[#FF6B35]">
+            Xem quán <ChevronRight size={13} className="transition-transform group-hover:translate-x-0.5" />
+          </span>
+        </div>
+      </div>
+    </article>
+  );
+}
+
+// Khung xương thẻ quán khi đang tải
+function PostSkeleton() {
+  return (
+    <div className="bg-white rounded-2xl border border-slate-150 shadow-sm overflow-hidden animate-pulse">
+      <div className="h-36 sm:h-40 bg-slate-200" />
+      <div className="p-3.5 space-y-2">
+        <div className="h-3.5 bg-slate-200 rounded w-2/3" />
+        <div className="h-2.5 bg-slate-100 rounded w-full" />
+        <div className="h-2.5 bg-slate-100 rounded w-1/2" />
+      </div>
+    </div>
+  );
+}
+
 export default function Explore() {
   const navigate = useNavigate();
   const user = useAuthStore((state) => state.user);
-  
-  // Tọa độ người dùng thực tế
   const userLat = user?.latitude || user?.lat;
   const userLng = user?.longitude || user?.lng;
 
   const [query, setQuery] = useState('');
-  const [searching, setSearching] = useState(false);
+  const [debouncedQuery, setDebouncedQuery] = useState('');
   const [isSearchFocused, setIsSearchFocused] = useState(false);
-  const [activeTab, setActiveTab] = useState('DELIVERY');
+
+  // Feed quán (phân trang server-side)
+  const [feed, setFeed] = useState([]);
+  const [page, setPage] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
+  const [loadingFeed, setLoadingFeed] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+
+  // Mục xu hướng + từ khoá hot (từ /foods/popular — dữ liệu THẬT)
+  const [trendingFoods, setTrendingFoods] = useState([]);
+  const [hotKeywords, setHotKeywords] = useState([]);
+
+  // Kết quả tìm kiếm server-side
+  const [searchResults, setSearchResults] = useState({ restaurants: [], foods: [] });
+  const [searching, setSearching] = useState(false);
+
   const [recentSearches, setRecentSearches] = useState(() => {
     try {
       const saved = localStorage.getItem('meal_dash_recent_searches');
       return saved ? JSON.parse(saved) : [];
-    } catch (e) {
-      return [];
-    }
+    } catch { return []; }
   });
-  const [loading, setLoading] = useState(false);
 
-  // States lưu dữ liệu thật nạp từ Backend
-  const [restaurants, setRestaurants] = useState([]);
-  const [allFoods, setAllFoods] = useState([]);
-  const [hotKeywords, setHotKeywords] = useState([]);
-  const [trendingFoods, setTrendingFoods] = useState([]);
+  const isSearchMode = debouncedQuery.trim().length > 0;
 
-  // Tải danh sách quán ăn & món ăn thật từ Backend
-  useEffect(() => {
-    const fetchAllData = async () => {
-      setLoading(true);
-      try {
-        // 1. Tải toàn bộ danh sách quán ăn đang mở cửa
-        const resResponse = await apiClient.get('/restaurants');
-        const resList = resResponse.data?.data?.content || resResponse.data?.data || [];
-
-        // Ánh xạ dữ liệu quán ăn bằng mapRestaurant dùng chung
-        const mappedRestaurants = resList.map(res => {
-          const mapped = mapRestaurant(res);
-          const distanceValue = calculateHaversineDistance(userLat, userLng, mapped.latitude, mapped.longitude);
-          const distanceStr = distanceValue ? `${distanceValue}km` : '0.8km';
-          return {
-            ...mapped,
-            distance: distanceStr,
-            distanceVal: distanceValue || 999,
-            cuisineType: mapped.tags[0] || 'Ẩm thực'
-          };
-        });
-        setRestaurants(mappedRestaurants);
-
-        // 2. Tải song song thực đơn của từng quán ăn
-        const foodPromises = resList.map(async (res) => {
-          try {
-            const resId = res.restaurantId || res.id;
-            const menuRes = await apiClient.get(`/restaurants/${resId}/foods`);
-            const foodList = menuRes.data?.data || [];
-            
-            // Tính khoảng cách Haversine thực tế từ Khách hàng tới Quán ăn này
-            const resLat = res.latitude || res.lat;
-            const resLng = res.longitude || res.lng;
-            const distanceValue = calculateHaversineDistance(userLat, userLng, resLat, resLng);
-            const distanceStr = distanceValue ? `${distanceValue}km` : '0.8km';
-
-            // Ánh xạ từng món ăn (Lấy đúng trường foodName từ Backend)
-            return foodList.map(food => ({
-              id: food.id || food.foodId,
-              name: food.foodName || food.name, 
-              price: food.price,
-              description: food.description,
-              image: getFoodImageUrl(food.imageUrl || food.image || res.imageUrl || res.image),
-              restaurantId: resId,
-              restaurantName: res.restaurantName || res.name,
-              rating: Number(res.rating ?? res.ratingScore ?? 0),
-              distance: distanceStr,
-              distanceVal: distanceValue || 999,
-              orderCount: food.orderCount || 0
-            }));
-          } catch (err) {
-            console.warn(`Lỗi khi nạp menu cho quán ${res.restaurantName || res.name}:`, err);
-            return [];
-          }
-        });
-
-        const allFoodsNested = await Promise.all(foodPromises);
-        // Lọc bỏ triệt để các món ăn không hợp lệ hoặc thiếu tên
-        const allFoodsFlattened = allFoodsNested.flat().filter(f => f && f.name && f.name.trim() !== '');
-
-        setAllFoods(allFoodsFlattened);
-
-        // 3. Xây dựng "Từ khóa hot hôm nay" thật từ dữ liệu
-        if (allFoodsFlattened.length > 0) {
-          const uniqueNames = Array.from(new Set(allFoodsFlattened.map(f => f.name))).filter(Boolean);
-          const selectedTags = uniqueNames.slice(0, 6);
-          setHotKeywords(selectedTags);
-        } else {
-          setHotKeywords(['Cơm tấm', 'Trà sữa', 'Pizza', 'Salad', 'Bún bò', 'Bánh mì']);
-        }
-
-        // 4. Xây dựng "Món ăn xu hướng gần bạn" thật từ dữ liệu (sắp xếp theo orderCount thật giảm dần)
-        if (allFoodsFlattened.length > 0) {
-          const sortedByOrders = [...allFoodsFlattened].sort((a, b) => (b.orderCount || 0) - (a.orderCount || 0));
-          const slicedTrends = sortedByOrders.slice(0, 3);
-          
-          const mockTrends = slicedTrends.map((food, index) => {
-            const ranks = ['01', '02', '03'];
-            const orderCount = food.orderCount || 0;
-            const changes = [
-              `+24%`,
-              `+18%`,
-              `+12%`
-            ];
-            return {
-              rank: ranks[index] || `0${index + 1}`,
-              name: food.name,
-              order: `${orderCount} lượt đặt`,
-              change: changes[index],
-              restaurantId: food.restaurantId,
-              food: food
-            };
-          });
-          setTrendingFoods(mockTrends);
-        }
-
-      } catch (err) {
-        console.error('[Explore]: Không tải được dữ liệu thực tế.', err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchAllData();
+  // ─── Nạp lần đầu: 1 trang feed + top món xu hướng (KHÔNG nạp toàn bộ menu mọi quán) ───
+  const fetchFeed = useCallback(async (pageNum, append) => {
+    if (append) setLoadingMore(true); else setLoadingFeed(true);
+    try {
+      const res = await apiClient.get('/restaurants', { params: { page: pageNum, size: FEED_SIZE } });
+      const data = res.data?.data;
+      const list = (data?.content || []).map((r) => withDistance(mapRestaurant(r), userLat, userLng));
+      setTotalPages(data?.totalPages || 1);
+      setFeed((prev) => (append ? [...prev, ...list] : list));
+    } catch (err) {
+      console.error('[Explore] Lỗi tải feed quán:', err);
+    } finally {
+      if (append) setLoadingMore(false); else setLoadingFeed(false);
+    }
   }, [userLat, userLng]);
 
-  // Bộ lọc tìm kiếm thông minh phía client-side cho cả Món ăn và Quán ăn
-  const searchResults = useMemo(() => {
-    if (!query.trim()) return { foods: [], restaurants: [] };
-    const queryNorm = removeVietnameseTones(query);
-    
-    const filteredFoods = allFoods.filter(food => {
-      const foodNameNorm = removeVietnameseTones(food.name);
-      const resNameNorm = removeVietnameseTones(food.restaurantName);
-      const descNorm = removeVietnameseTones(food.description);
-      return foodNameNorm.includes(queryNorm) || resNameNorm.includes(queryNorm) || descNorm.includes(queryNorm);
-    });
+  useEffect(() => {
+    setPage(0);
+    fetchFeed(0, false);
+  }, [fetchFeed]);
 
-    const filteredRestaurants = restaurants.filter(res => {
-      const resNameNorm = removeVietnameseTones(res.name);
-      const cuisineNorm = removeVietnameseTones(res.cuisineType);
-      return resNameNorm.includes(queryNorm) || cuisineNorm.includes(queryNorm);
-    });
+  useEffect(() => {
+    const fetchPopular = async () => {
+      try {
+        const res = await apiClient.get('/foods/popular', { params: { limit: 8 } });
+        const foods = (res.data?.data || []).map((f) => ({
+          id: f.id,
+          name: f.foodName,
+          restaurantId: f.restaurantId,
+          restaurantName: f.restaurantName,
+          image: getFoodImageUrl(f.imageUrl),
+          price: f.price,
+          orderCount: f.orderCount || 0,
+        }));
+        setTrendingFoods(foods.slice(0, 5));
+        const names = Array.from(new Set(foods.map((f) => f.name))).filter(Boolean).slice(0, 6);
+        setHotKeywords(names);
+      } catch (err) {
+        console.warn('[Explore] Lỗi tải món xu hướng:', err);
+      }
+    };
+    fetchPopular();
+  }, []);
 
-    return { foods: filteredFoods, restaurants: filteredRestaurants };
-  }, [query, allFoods, restaurants]);
+  // ─── Debounce từ khoá ───
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedQuery(query), 350);
+    return () => clearTimeout(t);
+  }, [query]);
 
-  const searchSuggestions = useMemo(() => {
-    const suggestions = [];
-    if (restaurants.length > 0) {
-      restaurants.slice(0, 3).forEach(res => {
-        if (res.name) suggestions.push(res.name);
-      });
-    }
-    if (allFoods.length > 0) {
-      const foodNames = Array.from(new Set(allFoods.map(f => f.name)));
-      foodNames.slice(0, 4).forEach(name => {
-        if (name && !suggestions.includes(name)) {
-          suggestions.push(name);
-        }
-      });
-    }
-    if (suggestions.length === 0) {
-      return ['Cơm tấm', 'Trà sữa', 'Bún riêu', 'Mì Quảng', 'Gà rán'];
-    }
-    return suggestions;
-  }, [restaurants, allFoods]);
+  // ─── Tìm kiếm server-side (quán + món) khi có từ khoá ───
+  useEffect(() => {
+    const kw = debouncedQuery.trim();
+    if (!kw) { setSearchResults({ restaurants: [], foods: [] }); return; }
+    let cancelled = false;
+    setSearching(true);
+    (async () => {
+      try {
+        const [resR, resF] = await Promise.all([
+          apiClient.get('/restaurants', { params: { keyword: kw, page: 0, size: 12 } }),
+          apiClient.get('/foods/search', { params: { keyword: kw, limit: 20 } }),
+        ]);
+        if (cancelled) return;
+        const restaurants = (resR.data?.data?.content || []).map((r) => withDistance(mapRestaurant(r), userLat, userLng));
+        const foods = (resF.data?.data || []).map((f) => ({
+          id: f.id,
+          name: f.foodName,
+          restaurantId: f.restaurantId,
+          restaurantName: f.restaurantName,
+          image: getFoodImageUrl(f.imageUrl),
+          price: f.price,
+        }));
+        setSearchResults({ restaurants, foods });
+      } catch (err) {
+        console.error('[Explore] Lỗi tìm kiếm:', err);
+        if (!cancelled) setSearchResults({ restaurants: [], foods: [] });
+      } finally {
+        if (!cancelled) setSearching(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [debouncedQuery, userLat, userLng]);
+
+  // ─── Infinite scroll cho feed (chỉ ở chế độ mặc định) ───
+  const sentinelRef = useRef(null);
+  useEffect(() => {
+    if (isSearchMode || isSearchFocused) return;
+    const el = sentinelRef.current;
+    if (!el) return;
+    const io = new IntersectionObserver((entries) => {
+      if (entries[0].isIntersecting && page + 1 < totalPages && !loadingMore && !loadingFeed) {
+        const next = page + 1;
+        setPage(next);
+        fetchFeed(next, true);
+      }
+    }, { rootMargin: '400px' });
+    io.observe(el);
+    return () => io.disconnect();
+  }, [isSearchMode, isSearchFocused, page, totalPages, loadingMore, loadingFeed, fetchFeed]);
 
   const saveSearchKeyword = (keyword) => {
-    if (!keyword || !keyword.trim()) return;
-    const cleanKw = keyword.trim();
-    setRecentSearches(prev => {
-      const updated = [cleanKw, ...prev.filter(k => k !== cleanKw)].slice(0, 8);
+    const cleanKw = (keyword || '').trim();
+    if (!cleanKw) return;
+    setRecentSearches((prev) => {
+      const updated = [cleanKw, ...prev.filter((k) => k !== cleanKw)].slice(0, 8);
       localStorage.setItem('meal_dash_recent_searches', JSON.stringify(updated));
       return updated;
     });
   };
+  const clearRecentSearches = () => { setRecentSearches([]); localStorage.removeItem('meal_dash_recent_searches'); };
 
-  const clearRecentSearches = () => {
-    setRecentSearches([]);
-    localStorage.removeItem('meal_dash_recent_searches');
-  };
-
-  const handleSearch = (txt) => {
-    if (!txt || txt.trim() === '') return;
+  const runSearch = (txt) => {
     setQuery(txt);
-    setSearching(true);
+    setDebouncedQuery(txt);
     setIsSearchFocused(true);
     saveSearchKeyword(txt);
   };
+  const exitSearch = () => { setQuery(''); setDebouncedQuery(''); setIsSearchFocused(false); };
 
-  const hasResults = searchResults.foods.length > 0 || searchResults.restaurants.length > 0;
+  const suggestions = useMemo(() => {
+    const s = [...hotKeywords, ...feed.slice(0, 4).map((r) => r.name)].filter(Boolean);
+    return Array.from(new Set(s)).slice(0, 8);
+  }, [hotKeywords, feed]);
+
+  const hasSearchResults = searchResults.restaurants.length > 0 || searchResults.foods.length > 0;
 
   return (
     <div className="p-4 md:p-8 max-w-6xl mx-auto w-full font-google-sans pb-24 relative overflow-x-hidden">
-      
-      {/* ─── PREMIUM BACKGROUND MESH GLOWS ────────────────────────────────────── */}
-      <div className="absolute -top-48 -left-48 w-96 h-96 bg-gradient-to-tr from-[#FF6B35]/10 to-[#FF6B35]/2 rounded-full blur-3xl opacity-50 pointer-events-none"></div>
-      <div className="absolute -bottom-48 -right-48 w-[28rem] h-[28rem] bg-gradient-to-tr from-[#1A73E8]/8 to-[#1A73E8]/2 rounded-full blur-3xl opacity-40 pointer-events-none"></div>
+      {/* Nền mờ trang trí */}
+      <div className="absolute -top-40 -left-40 w-96 h-96 bg-gradient-to-tr from-[#FF6B35]/10 to-transparent rounded-full blur-3xl opacity-50 pointer-events-none" />
+      <div className="absolute -bottom-40 -right-40 w-[28rem] h-[28rem] bg-gradient-to-tr from-[#1A73E8]/8 to-transparent rounded-full blur-3xl opacity-40 pointer-events-none" />
 
-      {/* ─── TITLE & COMPASS ICON ─────────────────────────────────────────────── */}
-      <h1 className="text-xl sm:text-2xl font-extrabold text-slate-800 mb-6 flex items-center gap-2.5 relative z-10">
-        <div className="w-9 h-9 bg-gradient-to-tr from-[#FF6B35] to-[#FF6B35]/85 rounded-xl flex items-center justify-center text-white shadow-sm shrink-0">
+      {/* Tiêu đề */}
+      <h1 className="text-xl sm:text-2xl font-extrabold text-slate-800 mb-5 flex items-center gap-2.5 relative z-10">
+        <span className="w-9 h-9 bg-gradient-to-tr from-[#FF6B35] to-[#FF8B5E] rounded-xl flex items-center justify-center text-white shadow-sm shrink-0">
           <Compass size={18} className="animate-spin-slow" />
-        </div>
+        </span>
         Khám phá ẩm thực
       </h1>
 
-      {/* ─── SEARCH INPUT (Pill Shape & Focus Highlight) ────────────────────── */}
-      <div className="flex items-center gap-3 mb-8 relative z-10">
-        {isSearchFocused && (
-          <button 
-            onClick={() => {
-              setQuery('');
-              setSearching(false);
-              setIsSearchFocused(false);
-            }}
+      {/* Thanh tìm kiếm */}
+      <div className="flex items-center gap-3 mb-6 relative z-10">
+        {(isSearchFocused || isSearchMode) && (
+          <button
+            onClick={exitSearch}
             className="p-2 hover:bg-slate-100 rounded-full text-slate-600 transition-colors shrink-0 cursor-pointer"
             title="Quay lại"
           >
             <ArrowLeft size={20} className="stroke-[2.5px]" />
           </button>
         )}
-        
-        <div className="flex-1 flex items-center bg-white border border-slate-200 rounded-full px-5 py-3.5 shadow-sm focus-within:border-[#FF6B35] focus-within:ring-4 focus-within:ring-[#FF6B35]/8 transition-all">
-          <Search size={18} className="text-slate-400 shrink-0" />
+        <div className="flex-1 flex items-center bg-white border border-slate-200 rounded-full px-5 py-3.5 shadow-sm focus-within:border-[#FF6B35] focus-within:ring-4 focus-within:ring-[#FF6B35]/10 transition-all">
+          {searching ? <Loader2 size={18} className="text-[#FF6B35] shrink-0 animate-spin" /> : <Search size={18} className="text-slate-400 shrink-0" />}
           <input
             type="text"
             value={query}
             onFocus={() => setIsSearchFocused(true)}
-            onChange={(e) => {
-              setQuery(e.target.value);
-              setSearching(e.target.value.length > 0);
-            }}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                handleSearch(query);
-              }
-            }}
-            placeholder="Bạn có muốn ăn gì không?"
-            className="w-full bg-transparent border-none outline-none pl-4 text-xs sm:text-sm font-semibold text-slate-700 placeholder-slate-350"
+            onChange={(e) => setQuery(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter' && query.trim()) runSearch(query.trim()); }}
+            placeholder="Tìm quán ăn, món ăn bạn thèm..."
+            className="w-full bg-transparent border-none outline-none pl-4 text-xs sm:text-sm font-semibold text-slate-700 placeholder-slate-400"
           />
           {query && (
-            <button 
-              onClick={() => { setQuery(''); setSearching(false); }}
-              className="text-xs font-bold text-slate-400 hover:text-slate-600 transition-colors cursor-pointer shrink-0"
-            >
-              Xóa
+            <button onClick={() => { setQuery(''); setDebouncedQuery(''); }} className="text-slate-400 hover:text-slate-600 transition-colors cursor-pointer shrink-0">
+              <X size={16} />
             </button>
           )}
         </div>
       </div>
 
-      {/* ─── LOADING STATE ────────────────────────────────────────────────────── */}
-      {loading && (
-        <div className="flex flex-col items-center justify-center py-16 space-y-3 relative z-10">
-          <div className="w-10 h-10 border-4 border-[#FF6B35] border-t-transparent rounded-full animate-spin"></div>
-          <p className="text-xs text-slate-400 font-bold uppercase tracking-wider">Đang tải dữ liệu thật...</p>
-        </div>
-      )}
-
-      {/* ─── MAIN PORT ────────────────────────────────────────────────────────── */}
-      {!loading && (
-        <>
-          {searching ? (
-            /* ─── SEARCH RESULTS STATE ─── */
-            <div className="space-y-6 relative z-10 animate-fade-in">
-              
-              {hasResults ? (
-                <div className="space-y-6">
-                  
-                  {/* ─── MATCHING RESTAURANTS (QUÁN ĂN PHÙ HỢP) ─────────────────────── */}
-                  {searchResults.restaurants.length > 0 && (
-                    <div className="space-y-3">
-                      <h3 className="text-[10px] font-extrabold text-[#1A73E8] uppercase tracking-widest pl-1">
-                        Quán ăn phù hợp ({searchResults.restaurants.length})
-                      </h3>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        {searchResults.restaurants.map((res) => (
-                          <div
-                            key={res.id}
-                            onClick={() => navigate(`/restaurants/${res.id}`)}
-                            className="p-3 bg-white border border-slate-150 rounded-radius-xl hover:shadow-shadow-1 hover:scale-[1.01] active:scale-[0.99] transition-all duration-200 cursor-pointer flex gap-3.5 items-center"
-                          >
-                            <img 
-                              src={res.image} 
-                              alt={res.name} 
-                              loading="lazy"
-                              className="w-14 h-14 rounded-radius-lg object-cover shrink-0 border border-slate-100 shadow-sm"
-                            />
-                            <div className="min-w-0 flex-1">
-                              <h4 className="font-extrabold text-xs sm:text-sm text-slate-800 truncate leading-tight flex items-center gap-1">
-                                {res.name}
-                              </h4>
-                              <p className="text-[10px] text-slate-400 font-bold uppercase mt-1 truncate flex items-center gap-1">
-                                <Utensils size={11} /> {res.cuisineType}
-                              </p>
-                              <div className="flex items-center gap-2 text-[9px] text-slate-450 font-bold uppercase mt-2.5">
-                                <span className="flex items-center gap-0.5 text-amber-500">{res.rating > 0 ? `★ ${res.rating}` : 'Mới'}</span>
-                                <span className="flex items-center gap-0.5 text-slate-450"><MapPin size={12} /> {res.distance}</span>
-                              </div>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* ─── MATCHING FOODS (MÓN ĂN PHÙ HỢP) ───────────────────────────── */}
-                  {searchResults.foods.length > 0 && (
-                    <div className="space-y-3">
-                      <h3 className="text-[10px] font-extrabold text-[#FF6B35] uppercase tracking-widest pl-1">
-                        Món ăn phù hợp ({searchResults.foods.length})
-                      </h3>
-                      <div className="space-y-3.5">
-                        {searchResults.foods.map((item) => (
-                          <div 
-                            key={item.id}
-                            onClick={() => navigate(`/restaurants/${item.restaurantId}`)}
-                            className="p-1 bg-slate-50/50 hover:bg-slate-50 border border-slate-100 rounded-radius-xl hover:shadow-shadow-1 hover:scale-[1.01] active:scale-[0.99] transition-all duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] cursor-pointer flex gap-4"
-                          >
-                            <img 
-                              src={item.image} 
-                              alt={item.name} 
-                              loading="lazy"
-                              className="w-18 h-18 sm:w-20 sm:h-20 rounded-radius-lg object-cover shrink-0 border border-slate-100 shadow-sm" 
-                            />
-                            <div className="flex-1 min-w-0 flex flex-col justify-between py-1.5 pr-3">
-                              <div>
-                                <h4 className="font-extrabold text-xs sm:text-sm text-slate-800 truncate leading-snug">{item.name}</h4>
-                                <p className="text-[10px] text-[#1A73E8] font-extrabold truncate mt-1 flex items-center gap-1">
-                                  <Store size={12} /> {item.restaurantName}
-                                </p>
-                              </div>
-                              <div className="flex items-center justify-between mt-2.5">
-                                <span className="text-xs font-extrabold text-[#FF6B35]">{formatCurrency(item.price)}</span>
-                                <div className="flex items-center gap-2.5 text-[9px] text-slate-450 font-bold uppercase tracking-wider">
-                                  <span className="flex items-center gap-0.5 text-amber-500 font-extrabold">{item.rating > 0 ? `★ ${item.rating}` : 'Mới'}</span>
-                                  <span className="flex items-center gap-0.5 text-slate-400"><MapPin size={12} /> {item.distance}</span>
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                </div>
-              ) : (
-                <div className="text-center py-16 bg-white border border-slate-200/50 rounded-radius-xl p-8 shadow-sm">
-                  <p className="text-slate-450 font-extrabold text-xs sm:text-sm">
-                     Không tìm thấy món ăn hay quán ăn nào khớp với từ khóa "{query}"
-                  </p>
-                  <p className="text-[10px] text-slate-400 mt-2 font-bold uppercase tracking-wider">
-                    Thử tìm từ khóa khác như "cơm", "bún", "trà sữa"...
-                  </p>
-                </div>
-              )}
+      {/* ═══ CHẾ ĐỘ TÌM KIẾM ═══ */}
+      {isSearchMode ? (
+        <div className="space-y-6 relative z-10 animate-fade-in">
+          {searching && !hasSearchResults ? (
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+              {Array.from({ length: 4 }).map((_, i) => <PostSkeleton key={i} />)}
             </div>
-          ) : isSearchFocused ? (
-            /* ─── SEARCH OVERLAY VIEW STATE (Ảnh 3) ─── */
-            <div className="space-y-6 relative z-10 animate-fade-in">
-              
-              {/* Đã tìm kiếm gần đây */}
-              {recentSearches.length > 0 && (
-                <div>
-                  <div className="flex justify-between items-center mb-3">
-                    <h3 className="text-xs sm:text-sm font-extrabold text-slate-800 flex items-center gap-1.5 pl-1">
-                      Đã tìm kiếm gần đây
-                    </h3>
-                    <button 
-                      onClick={clearRecentSearches}
-                      className="text-[10px] text-red-500 hover:underline font-extrabold cursor-pointer"
-                    >
-                      Xóa hết
-                    </button>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    {recentSearches.map((tag) => (
-                      <button
-                        key={tag}
-                        onClick={() => handleSearch(tag)}
-                        className="px-3.5 py-1.5 bg-[#f4f7f6] hover:bg-slate-100 border border-slate-200 rounded-full text-xs font-semibold flex items-center gap-1.5 transition-all text-slate-750 cursor-pointer"
-                      >
-                        <Clock size={12} className="text-slate-400" />
-                        {tag}
-                      </button>
+          ) : hasSearchResults ? (
+            <>
+              {searchResults.restaurants.length > 0 && (
+                <section className="space-y-3">
+                  <h3 className="text-[11px] font-black text-[#1A73E8] uppercase tracking-widest pl-1 flex items-center gap-1.5">
+                    <Store size={13} /> Quán ăn phù hợp ({searchResults.restaurants.length})
+                  </h3>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                    {searchResults.restaurants.map((res, i) => (
+                      <RestaurantPost key={res.id} res={res} onClick={() => navigate(`/restaurants/${res.id}`)} style={{ animationDelay: `${i * 40}ms` }} />
                     ))}
                   </div>
-                </div>
+                </section>
               )}
 
-              {/* Gợi ý tìm kiếm */}
-              <div>
-                <h3 className="text-xs sm:text-sm font-extrabold text-slate-800 flex items-center gap-1.5 pl-1 mb-3">
-                  Gợi ý tìm kiếm
-                </h3>
-                <div className="flex flex-wrap gap-2">
-                  {searchSuggestions.map((tag) => (
-                    <button
-                      key={tag}
-                      onClick={() => handleSearch(tag)}
-                      className="px-3.5 py-1.5 bg-[#f4f7f6] hover:bg-slate-100 border border-slate-200 rounded-full text-xs font-semibold flex items-center gap-1.5 transition-all text-slate-750 cursor-pointer"
-                    >
-                      <TrendingUp size={12} className="text-orange-500" />
-                      {tag}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Được đề xuất */}
-              {restaurants.length > 0 && (
-                <div>
-                  <h3 className="text-xs sm:text-sm font-extrabold text-slate-800 pl-1 mb-3.5 flex items-center gap-1.5">
-                    Được đề xuất
+              {searchResults.foods.length > 0 && (
+                <section className="space-y-3">
+                  <h3 className="text-[11px] font-black text-[#FF6B35] uppercase tracking-widest pl-1 flex items-center gap-1.5">
+                    <Utensils size={13} /> Món ăn phù hợp ({searchResults.foods.length})
                   </h3>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-6">
-                    {restaurants.map((res) => (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {searchResults.foods.map((item, i) => (
                       <div
-                        key={res.id}
-                        onClick={() => navigate(`/restaurants/${res.id}`)}
-                        className="flex flex-col cursor-pointer hover:scale-[1.02] active:scale-[0.98] transition-all duration-250 group"
+                        key={item.id}
+                        onClick={() => navigate(`/restaurants/${item.restaurantId}`)}
+                        className="p-2 bg-white hover:bg-slate-50 border border-slate-150 rounded-xl hover:shadow-sm transition-all cursor-pointer flex gap-3 items-center animate-rise-in"
+                        style={{ animationDelay: `${i * 30}ms` }}
                       >
-                        <img
-                          src={res.image}
-                          alt={res.name}
-                          loading="lazy"
-                          className="w-full aspect-square object-cover rounded-[1.25rem] border border-slate-100 shadow-sm group-hover:shadow-md transition-all"
-                        />
-                        <h4 className="font-extrabold text-slate-800 text-[10px] sm:text-xs mt-2 line-clamp-2 leading-tight group-hover:text-md-primary transition-colors">
-                          {res.name}
-                        </h4>
-                        <p className="text-[8px] sm:text-[9px] text-slate-450 font-bold uppercase mt-1">
-                          QC · {res.distance} · {res.rating > 0 ? `★ ${res.rating}` : 'Mới'}
-                        </p>
+                        <img src={item.image} alt={item.name} loading="lazy" className="w-16 h-16 rounded-lg object-cover shrink-0 border border-slate-100" />
+                        <div className="flex-1 min-w-0">
+                          <h4 className="font-extrabold text-xs sm:text-sm text-slate-800 truncate leading-snug">{item.name}</h4>
+                          <p className="text-[10px] text-[#1A73E8] font-bold truncate mt-1 flex items-center gap-1"><Store size={11} /> {item.restaurantName}</p>
+                          <span className="text-xs font-extrabold text-[#FF6B35] mt-1 block">{formatCurrency(item.price)}</span>
+                        </div>
+                        <ChevronRight size={16} className="text-slate-300 shrink-0" />
                       </div>
                     ))}
                   </div>
-                </div>
+                </section>
               )}
-
-            </div>
+            </>
           ) : (
-            /* ─── DEFAULT VIEW STATE ─── */
-            <div className="space-y-8 relative z-10 animate-fade-in">
-              
-              {/* Quick Suggestion Tags */}
-              {hotKeywords.length > 0 && (
-                <div>
-                  <h3 className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest pl-1 mb-3.5 flex items-center gap-1.5">
-                    <Flame size={14} className="text-orange-500 fill-orange-500 animate-pulse" />
-                    Từ khóa hot hôm nay
-                  </h3>
-                  <div className="flex flex-wrap gap-2">
-                    {hotKeywords.map((tag) => (
-                      <button
-                        key={tag}
-                        onClick={() => handleSearch(tag)}
-                        className="px-4 py-2 bg-white border border-slate-250/70 hover:border-[#FF6B35] hover:text-[#FF6B35] rounded-full text-xs font-bold transition-all shadow-sm hover:scale-102 active:scale-98 cursor-pointer text-slate-650"
-                      >
-                        {tag}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Trending Food List (Double-Bezel Layout) */}
-              {trendingFoods.length > 0 && (
-                <div className="p-2 bg-slate-100/70 border border-slate-200/50 rounded-[2.25rem] shadow-shadow-2 relative overflow-hidden">
-                  
-                  {/* Inner Container */}
-                  <div className="bg-white rounded-[calc(2.25rem-0.625rem)] p-6 border border-slate-100/50">
-                    
-                    <h3 className="text-xs font-extrabold text-slate-800 border-b border-slate-100 pb-4.5 mb-2 flex items-center gap-1.5">
-                      <TrendingUp size={16} className="text-[#1A73E8] stroke-[2.5px]" />
-                      Món ăn xu hướng gần bạn
-                    </h3>
-                    
-                    {/* Bảng xếp hạng: 1 cột ở màn nhỏ, 2 cột ở desktop (lg+) cho đỡ trống */}
-                    <div className="grid grid-cols-1 lg:grid-cols-2 lg:gap-x-8">
-                      {trendingFoods.map((item) => (
-                        <div
-                          key={item.rank}
-                          onClick={() => navigate(`/restaurants/${item.restaurantId}`)}
-                          className="py-4.5 flex items-center justify-between text-xs hover:bg-slate-50/50 rounded-radius-lg px-2 transition-all cursor-pointer group border-b border-slate-50"
-                        >
-                          <div className="flex items-center gap-3.5 min-w-0">
-                            <span className="font-display-medium text-slate-200 text-base leading-none font-extrabold group-hover:text-[#1A73E8] transition-colors">
-                              {item.rank}
-                            </span>
-                            <div className="flex flex-col min-w-0">
-                              <span className="font-extrabold text-slate-700 leading-snug truncate group-hover:text-slate-900 transition-colors">
-                                {item.name}
-                              </span>
-                              <span className="text-[9px] text-[#1A73E8] font-extrabold uppercase mt-1 truncate flex items-center gap-1">
-                                <Store size={11} /> {item.food?.restaurantName}
-                              </span>
-                            </div>
-                          </div>
-                          
-                          <div className="text-right shrink-0 ml-4">
-                            <span className="font-extrabold text-slate-650 block text-[11px]">
-                              {item.order}
-                            </span>
-                            <span className="text-[9px] text-emerald-600 font-extrabold block mt-1 tracking-wide">
-                              {item.change}
-                            </span>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-
-                  </div>
-                </div>
-              )}
-
+            <div className="text-center py-16 bg-white border border-slate-200/60 rounded-2xl px-8 shadow-sm">
+              <PackageSearch size={44} className="mx-auto text-slate-300 mb-3" />
+              <p className="text-slate-600 font-extrabold text-sm">Không tìm thấy kết quả cho "{debouncedQuery}"</p>
+              <p className="text-[11px] text-slate-400 mt-2 font-bold uppercase tracking-wider">Thử từ khoá khác như "cơm", "bún", "trà sữa"...</p>
             </div>
           )}
-        </>
-      )}
+        </div>
+      ) : isSearchFocused ? (
+        /* ═══ OVERLAY KHI FOCUS Ô TÌM (chưa gõ) ═══ */
+        <div className="space-y-6 relative z-10 animate-fade-in">
+          {recentSearches.length > 0 && (
+            <div>
+              <div className="flex justify-between items-center mb-3">
+                <h3 className="text-xs sm:text-sm font-extrabold text-slate-800 flex items-center gap-1.5 pl-1"><Clock size={14} className="text-slate-400" /> Tìm gần đây</h3>
+                <button onClick={clearRecentSearches} className="text-[10px] text-red-500 hover:underline font-extrabold cursor-pointer">Xóa hết</button>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {recentSearches.map((tag) => (
+                  <button key={tag} onClick={() => runSearch(tag)} className="px-3.5 py-1.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-full text-xs font-semibold flex items-center gap-1.5 transition-all text-slate-700 cursor-pointer">
+                    <Clock size={12} className="text-slate-400" /> {tag}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+          <div>
+            <h3 className="text-xs sm:text-sm font-extrabold text-slate-800 flex items-center gap-1.5 pl-1 mb-3"><TrendingUp size={14} className="text-[#FF6B35]" /> Gợi ý cho bạn</h3>
+            <div className="flex flex-wrap gap-2">
+              {suggestions.map((tag) => (
+                <button key={tag} onClick={() => runSearch(tag)} className="px-3.5 py-1.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-full text-xs font-semibold flex items-center gap-1.5 transition-all text-slate-700 cursor-pointer">
+                  <Sparkles size={12} className="text-[#FF6B35]" /> {tag}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      ) : (
+        /* ═══ CHẾ ĐỘ MẶC ĐỊNH: hot keywords + xu hướng + feed quán ═══ */
+        <div className="space-y-7 relative z-10 animate-fade-in">
+          {/* Từ khoá hot */}
+          {hotKeywords.length > 0 && (
+            <section>
+              <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1 mb-3 flex items-center gap-1.5">
+                <Flame size={14} className="text-orange-500 fill-orange-500 animate-pulse" /> Từ khoá hot hôm nay
+              </h3>
+              <div className="flex flex-wrap gap-2">
+                {hotKeywords.map((tag) => (
+                  <button key={tag} onClick={() => runSearch(tag)} className="px-4 py-2 bg-white border border-slate-200 hover:border-[#FF6B35] hover:text-[#FF6B35] rounded-full text-xs font-bold transition-all shadow-sm hover:scale-105 active:scale-95 cursor-pointer text-slate-700">
+                    {tag}
+                  </button>
+                ))}
+              </div>
+            </section>
+          )}
 
+          {/* Món ăn xu hướng — lượt đặt THẬT */}
+          {trendingFoods.length > 0 && (
+            <section className="rounded-3xl bg-gradient-to-br from-[#1A73E8]/6 via-white to-white border border-slate-150 shadow-sm p-5 sm:p-6">
+              <h3 className="text-sm font-extrabold text-slate-800 flex items-center gap-2 mb-4">
+                <span className="w-7 h-7 rounded-lg bg-[#1A73E8]/10 text-[#1A73E8] flex items-center justify-center"><TrendingUp size={16} className="stroke-[2.5px]" /></span>
+                Món ăn xu hướng gần bạn
+                <span className="ml-auto text-[10px] font-bold text-slate-400 normal-case tracking-normal">Theo lượt đặt thật</span>
+              </h3>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-8 gap-y-1">
+                {trendingFoods.map((item, idx) => (
+                  <div
+                    key={item.id}
+                    onClick={() => navigate(`/restaurants/${item.restaurantId}`)}
+                    className="py-2.5 flex items-center gap-3.5 hover:bg-white rounded-xl px-2 transition-all cursor-pointer group border-b border-slate-100/70 last:border-0"
+                  >
+                    <span className={`text-lg font-black leading-none w-6 shrink-0 tabular-nums ${idx === 0 ? 'text-[#FF6B35]' : 'text-slate-300 group-hover:text-[#1A73E8]'} transition-colors`}>
+                      {String(idx + 1).padStart(2, '0')}
+                    </span>
+                    <img src={item.image} alt={item.name} loading="lazy" className="w-11 h-11 rounded-lg object-cover shrink-0 border border-slate-100 shadow-sm" />
+                    <div className="flex flex-col min-w-0 flex-1">
+                      <span className="font-extrabold text-xs text-slate-700 leading-snug truncate group-hover:text-slate-900 transition-colors">{item.name}</span>
+                      <span className="text-[10px] text-[#1A73E8] font-bold uppercase mt-0.5 truncate flex items-center gap-1"><Store size={10} /> {item.restaurantName}</span>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <span className="inline-flex items-center gap-1 text-[11px] font-extrabold text-slate-600"><ShoppingBag size={11} className="text-emerald-500" /> {item.orderCount}</span>
+                      <span className="block text-[9px] text-slate-400 font-bold uppercase mt-0.5">lượt đặt</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+
+          {/* Feed quán ngon gần bạn — phân trang / cuộn vô hạn */}
+          <section>
+            <h3 className="text-sm font-extrabold text-slate-800 flex items-center gap-2 mb-4 pl-1">
+              <span className="w-7 h-7 rounded-lg bg-[#FF6B35]/10 text-[#FF6B35] flex items-center justify-center"><Store size={16} /></span>
+              Quán ngon gần bạn
+            </h3>
+
+            {loadingFeed ? (
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                {Array.from({ length: FEED_SIZE }).map((_, i) => <PostSkeleton key={i} />)}
+              </div>
+            ) : feed.length === 0 ? (
+              <div className="text-center py-16 bg-white border border-slate-200/60 rounded-2xl shadow-sm">
+                <Store size={44} className="mx-auto text-slate-300 mb-3" />
+                <p className="text-slate-600 font-extrabold text-sm">Chưa có quán nào đang mở</p>
+              </div>
+            ) : (
+              <>
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                  {feed.map((res, i) => (
+                    <RestaurantPost key={res.id} res={res} onClick={() => navigate(`/restaurants/${res.id}`)} style={{ animationDelay: `${(i % FEED_SIZE) * 40}ms` }} />
+                  ))}
+                </div>
+
+                {/* Sentinel cuộn vô hạn + trạng thái tải thêm */}
+                <div ref={sentinelRef} className="h-8" />
+                {loadingMore && (
+                  <div className="flex items-center justify-center gap-2 py-4 text-slate-400 text-xs font-bold">
+                    <Loader2 size={16} className="animate-spin text-[#FF6B35]" /> Đang tải thêm quán...
+                  </div>
+                )}
+                {!loadingMore && page + 1 < totalPages && (
+                  <div className="flex justify-center pt-4">
+                    <button
+                      onClick={() => { const next = page + 1; setPage(next); fetchFeed(next, true); }}
+                      className="px-6 py-2.5 rounded-full bg-white border border-slate-200 text-slate-700 text-xs font-extrabold shadow-sm hover:border-[#FF6B35] hover:text-[#FF6B35] transition-all cursor-pointer"
+                    >
+                      Xem thêm quán
+                    </button>
+                  </div>
+                )}
+                {page + 1 >= totalPages && feed.length > FEED_SIZE && (
+                  <p className="text-center text-[11px] text-slate-400 font-bold pt-4">Bạn đã xem hết quán rồi 🎉</p>
+                )}
+              </>
+            )}
+          </section>
+        </div>
+      )}
     </div>
   );
 }

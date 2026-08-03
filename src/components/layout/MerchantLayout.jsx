@@ -326,7 +326,7 @@ export default function MerchantLayout() {
       </MobileDrawer>
 
       {/* ─── MAIN MERCHANT VIEWPORT ──────────────────────────────────────────────── */}
-      <main className="flex-1 flex flex-col min-w-0 pt-16 md:pt-0 h-screen overflow-y-auto relative bg-slate-50">
+      <main className="flex-1 flex flex-col min-w-0 pt-16 md:pt-0 pb-16 md:pb-0 h-screen overflow-y-auto relative bg-slate-50">
         <Outlet />
       </main>
 

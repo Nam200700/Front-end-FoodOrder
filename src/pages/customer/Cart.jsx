@@ -388,7 +388,7 @@ export default function Cart() {
 
   const handleClaimPublicVoucher = async (voucherId) => {
     try {
-      await apiClient.post(`/vouchers/${voucherId}/claim`);
+      await apiClient.post(`/vouchers/${voucherId}/add`);
       toast.success('Nhận voucher thành công!');
       fetchVouchersData(); 
     } catch (err) {

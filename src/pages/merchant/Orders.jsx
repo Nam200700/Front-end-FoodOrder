@@ -44,6 +44,46 @@ const STATUS_PILL = {
   CANCELLED: { bg: 'bg-rose-100', text: 'text-rose-700', icon: Ban },
 };
 
+// Đơn PENDING sẽ TỰ HUỶ sau 2 phút nếu quán chưa xác nhận (khớp scheduler BE: cutoff now-2 phút).
+const PENDING_AUTO_CANCEL_MS = 2 * 60 * 1000;
+
+// Đồng hồ đếm ngược tự huỷ cho đơn chờ xác nhận — nhắc owner xác nhận trước khi hệ thống huỷ.
+function AutoCancelCountdown({ createdAtMs }) {
+  const [remaining, setRemaining] = useState(() =>
+    Math.max(0, (createdAtMs || 0) + PENDING_AUTO_CANCEL_MS - Date.now())
+  );
+  useEffect(() => {
+    if (!createdAtMs) return;
+    const tick = () => setRemaining(Math.max(0, createdAtMs + PENDING_AUTO_CANCEL_MS - Date.now()));
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, [createdAtMs]);
+
+  if (!createdAtMs) return null;
+  const totalSec = Math.ceil(remaining / 1000);
+  const mm = Math.floor(totalSec / 60);
+  const ss = totalSec % 60;
+  const expired = remaining <= 0;
+  const urgent = remaining <= 30000; // ≤30s → đỏ, nhấp nháy
+
+  return (
+    <span
+      className={`inline-flex items-center gap-1 text-[10px] sm:text-[11px] font-bold px-2 py-0.5 sm:py-1 rounded-full border shrink-0 ${
+        expired
+          ? 'bg-slate-100 text-slate-500 border-slate-200'
+          : urgent
+          ? 'bg-rose-50 text-rose-600 border-rose-200 animate-pulse'
+          : 'bg-amber-50 text-amber-700 border-amber-200'
+      }`}
+      title="Đơn tự động huỷ nếu quán không xác nhận kịp"
+    >
+      <Clock size={12} className="shrink-0" />
+      {expired ? 'Đang tự huỷ…' : `Tự huỷ sau ${mm}:${String(ss).padStart(2, '0')}`}
+    </span>
+  );
+}
+
 const ORDER_STATUS_TABS = [
   { id: 'ALL', label: 'Tất cả' },
   { id: 'PENDING', label: 'Chờ xác nhận' },
@@ -202,6 +242,7 @@ export default function MerchantOrders() {
           })),
           total: Number(ord.totalAmount),
           createdAt: formatOrderDate(ord.createdAt),
+          createdAtMs: ord.createdAt ? new Date(ord.createdAt).getTime() : null, // mốc thật để đếm ngược tự huỷ
           phone: ord.customerPhone,
           status: ord.orderStatus,
           shipper: ord.shipperName ? `${ord.shipperName} (${ord.shipperPhone || ''})` : null
@@ -570,7 +611,8 @@ export default function MerchantOrders() {
                       )}
                     </div>
 
-                    <div className="flex items-center gap-2 sm:gap-4 text-[10px] sm:text-xs text-slate-500 font-medium whitespace-nowrap">
+                    <div className="flex items-center gap-2 sm:gap-3 text-[10px] sm:text-xs text-slate-500 font-medium whitespace-nowrap">
+                      {order.status === 'PENDING' && <AutoCancelCountdown createdAtMs={order.createdAtMs} />}
                       <span className="flex items-center gap-1 shrink-0">
                         <Clock size={13} />
                         {order.createdAt}
@@ -837,9 +879,14 @@ export default function MerchantOrders() {
                 <span className="inline-flex items-center gap-1.5 text-xs text-slate-400 font-medium">
                   <CalendarClock size={14} /> Đặt lúc {formatOrderDate(d.createdAt)}
                 </span>
-                <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-extrabold ${pill.bg} ${pill.text}`}>
-                  <PillIcon size={13} /> {getStatus(status)}
-                </span>
+                <div className="flex items-center gap-2">
+                  {status === 'PENDING' && d.createdAt && (
+                    <AutoCancelCountdown createdAtMs={new Date(d.createdAt).getTime()} />
+                  )}
+                  <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-extrabold ${pill.bg} ${pill.text}`}>
+                    <PillIcon size={13} /> {getStatus(status)}
+                  </span>
+                </div>
               </div>
 
               {/* 2 thẻ thông tin: khách hàng & giao hàng (có icon, thoáng hơn) */}

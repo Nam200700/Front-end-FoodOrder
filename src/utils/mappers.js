@@ -63,6 +63,8 @@ export const mapOrder = (ord) => {
     rating: ord.restaurantRating ?? 0,
     note: ord.note || '',
     cancelReason: ord.cancelReason || '',
+    voucherCode: ord.voucherCode,
+    discountAmount: ord.discountAmount,
     shipper: ord.shipperId ? {
       id: ord.shipperId,
       name: ord.shipperName || 'Tài xế',

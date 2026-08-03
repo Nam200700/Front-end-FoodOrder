@@ -623,7 +623,7 @@ export default function Cart() {
                             </div>
 
                             <div className="w-full flex items-center gap-2">
-                              <span className="text-[10px] font-bold text-slate-400 shrink-0 uppercase tracking-wider">Ghi chú:</span>
+                              <span className="text-[10px] font-bold text-slate-400 shrink-0 uppercase tracking-wider inline-flex items-center gap-1"><StickyNote size={11} className="text-[#ff6b35]" /> Ghi chú:</span>
                               <input type="text" placeholder="Thêm ghi chú cho món ăn này" value={item.note || ''}
                                 onChange={(e) => updateNote(item.foodId, e.target.value)}
                                 className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl bg-white text-slate-700 font-medium focus:outline-none focus:border-[#ff6b35] focus:ring-1 focus:ring-orange-100 transition-all duration-200"
@@ -680,7 +680,7 @@ export default function Cart() {
                           </div>
 
                           <div className="w-full flex items-center gap-2">
-                            <span className="text-[10px] font-bold text-slate-400 shrink-0 uppercase tracking-wider">Ghi chú:</span>
+                            <span className="text-[10px] font-bold text-slate-400 shrink-0 uppercase tracking-wider inline-flex items-center gap-1"><StickyNote size={11} className="text-[#ff6b35]" /> Ghi chú:</span>
                             <input type="text" placeholder="Thêm ghi chú cho món ăn này" value={item.note || ''}
                               onChange={(e) => updateNote(item.foodId, e.target.value)}
                               className="w-full max-w-md px-3 py-1.5 text-xs border border-slate-200 rounded-xl bg-white text-slate-700 font-medium focus:outline-none focus:border-[#ff6b35] focus:ring-1 focus:ring-orange-100 transition-all duration-200"
@@ -693,35 +693,35 @@ export default function Cart() {
                 </div>
 
                 {/* --- KHU VỰC VOUCHER RIÊNG CHO QUÁN NÀY --- */}
-                <div className="px-4 py-2.5 bg-orange-50/40 border-t border-slate-100 flex items-center justify-between">
-                  <div className="flex items-center gap-2 text-xs">
-                    <Tag size={15} className="text-[#ff6b35]" />
-                    <span className="font-bold text-slate-700">Voucher:</span>
+                <div className="px-4 py-2.5 bg-orange-50/40 border-t border-slate-100 flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2 text-xs shrink-0">
+                    <BadgePercent size={15} className="text-[#ff6b35]" />
+                    <span className="font-bold text-slate-700">Ưu đãi:</span>
                   </div>
 
                   {restaurantVoucher ? (
-                    <div className="flex items-center gap-2 bg-orange-100/80 border border-orange-200 rounded-lg px-2.5 py-1 text-xs">
-                      <span className="font-extrabold text-[#ff6b35]">🎟️ {restaurantVoucher.code}</span>
-                      <span className="text-[11px] font-semibold text-slate-600">
-                        ({restaurantVoucher.discountType === 'FIXED' && `Giảm ${formatCurrency(restaurantVoucher.discountValue)}`}
-                         {restaurantVoucher.discountType === 'PERCENT' && `Giảm ${restaurantVoucher.discountValue}%`}
-                         {restaurantVoucher.discountType === 'FREESHIP' && 'Freeship'})
+                    <div className="flex items-center gap-2 bg-white border border-orange-200 rounded-lg pl-2.5 pr-1.5 py-1 text-xs min-w-0 shadow-sm">
+                      <span className="inline-flex items-center gap-1 font-extrabold text-[#ff6b35] shrink-0"><Tag size={12} /> {restaurantVoucher.code}</span>
+                      <span className="text-[11px] font-semibold text-emerald-600 truncate">
+                        {restaurantVoucher.discountType === 'FIXED' && `-${formatCurrency(restaurantVoucher.discountValue)}`}
+                        {restaurantVoucher.discountType === 'PERCENT' && `-${restaurantVoucher.discountValue}%`}
+                        {restaurantVoucher.discountType === 'FREESHIP' && 'Freeship'}
                       </span>
-                      <button 
+                      <button
                         onClick={() => handleRemoveVoucherForRestaurant(cart.restaurantId)}
-                        className="text-slate-400 hover:text-red-500 font-bold ml-1 cursor-pointer"
+                        className="p-0.5 rounded-full text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors cursor-pointer shrink-0"
                         title="Bỏ chọn voucher"
                       >
-                        ✕
+                        <X size={13} strokeWidth={2.5} />
                       </button>
                     </div>
                   ) : (
                     <button
                       type="button"
                       onClick={() => handleOpenVoucherModalForRestaurant(cart.restaurantId)}
-                      className="text-xs font-bold text-[#ff6b35] hover:underline cursor-pointer flex items-center gap-1"
+                      className="text-xs font-bold text-[#ff6b35] hover:bg-orange-100/60 px-2.5 py-1 rounded-lg cursor-pointer inline-flex items-center gap-1 transition-colors"
                     >
-                      Chọn voucher &gt;
+                      Chọn voucher <ChevronRight size={13} />
                     </button>
                   )}
                 </div>
@@ -729,38 +729,38 @@ export default function Cart() {
                 {/* Footer đơn hàng quán */}
                 <div className="border-t border-slate-100 px-4 py-3 bg-slate-50/40 space-y-3">             
                   <div className="flex items-center justify-between text-sm text-slate-600">
-                    <div className="space-y-0.5 w-full">
+                    <div className="space-y-1 w-full">
                       <div className="flex justify-between items-center">
-                        <span className="text-xs text-slate-500">Số lượng món:</span>
+                        <span className="text-xs text-slate-500 flex items-center gap-1.5"><ShoppingBag size={13} className="text-slate-400" /> Số lượng món:</span>
                         <span className="font-bold text-xs text-slate-700">{cartItemCount} món</span>
                       </div>
                       <div className="flex justify-between items-center">
-                        <span className="text-xs text-slate-500">Tạm tính:</span>
+                        <span className="text-xs text-slate-500 flex items-center gap-1.5"><Receipt size={13} className="text-slate-400" /> Tạm tính:</span>
                         <span className="font-bold text-xs text-slate-700">{formatCurrency(cart.subtotal)}</span>
                       </div>
                       <div className="flex justify-between items-center">
-                        <span className="text-xs text-slate-500 flex items-center gap-1">
-                          Khoảng cách & Thời gian dự kiến:
+                        <span className="text-xs text-slate-500 flex items-center gap-1.5">
+                          <MapPin size={13} className="text-slate-400" /> Khoảng cách & thời gian:
                         </span>
                         <span className="font-bold text-xs text-slate-700">
                           {isCalculatingShipping ? 'Đang tính...' : `${distance.toFixed(1)} km (~${Math.round(duration)} phút)`}
                         </span>
                       </div>
                       <div className="flex justify-between items-center">
-                        <span className="text-xs text-slate-500">Phí giao hàng:</span>
+                        <span className="text-xs text-slate-500 flex items-center gap-1.5"><Bike size={13} className="text-slate-400" /> Phí giao hàng:</span>
                         <span className="font-bold text-xs text-slate-700">
                           {isCalculatingShipping || isUpdatingLocation ? 'Đang tính...' : formatCurrency(shippingFee)}
                         </span>
                       </div>
                       {cartDiscount > 0 && (
                         <div className="flex justify-between items-center text-emerald-600">
-                          <span className="text-xs font-bold">Giảm giá voucher:</span>
+                          <span className="text-xs font-bold flex items-center gap-1.5"><BadgePercent size={13} /> Giảm giá voucher:</span>
                           <span className="font-bold text-xs">- {formatCurrency(cartDiscount)}</span>
                         </div>
                       )}
-                      <div className="flex justify-between items-center pt-1 border-t border-slate-200/60 mt-1">
-                        <span className="text-xs font-bold text-slate-700">Tổng cộng quán:</span>
-                        <span className="font-extrabold text-sm text-amber-600 md:text-[#ff6b35]">
+                      <div className="flex justify-between items-center pt-1.5 border-t border-slate-200/60 mt-1">
+                        <span className="text-xs font-extrabold text-slate-700 flex items-center gap-1.5"><Store size={13} className="text-[#ff6b35]" /> Tổng cộng quán:</span>
+                        <span className="font-extrabold text-sm text-[#ff6b35]">
                           {isCalculatingShipping || isUpdatingLocation ? 'Đang tính...' : formatCurrency(cartTotal > 0 ? cartTotal : 0)}
                         </span>
                       </div>
@@ -776,30 +776,30 @@ export default function Cart() {
         <aside className="w-full lg:w-80 shrink-0 lg:sticky lg:top-5 space-y-4">
 
           {/* TỔNG QUAN ĐƠN HÀNG */}
-          <Card variant="flat" className="p-4 !border-slate-200 !rounded-xl flex flex-col space-y-3">
+          <Card variant="flat" className="p-4 !border-slate-200 !rounded-2xl flex flex-col space-y-3">
             <h3 className="text-xs font-extrabold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
-              <ShoppingBag size={15} className="text-[#ff6b35]" /> Tổng quan đơn hàng
+              <Receipt size={15} className="text-[#ff6b35]" /> Tổng quan đơn hàng
             </h3>
-            
+
             <div className="flex items-center justify-between text-xs text-slate-600">
-              <span>Số quán đã chọn:</span>
+              <span className="flex items-center gap-1.5"><Store size={13} className="text-slate-400" /> Số quán đã chọn:</span>
               <span className="font-extrabold text-slate-800">{selectedRestaurantIds.length} / {carts.length}</span>
             </div>
-            
+
             <div className="flex items-center justify-between text-xs text-slate-600">
-              <span>Tổng số món:</span>
+              <span className="flex items-center gap-1.5"><ShoppingBag size={13} className="text-slate-400" /> Tổng số món:</span>
               <span className="font-extrabold text-slate-800">{totalItems} món</span>
             </div>
 
             {/* Hiển thị Tạm tính tiền hàng */}
             <div className="flex items-center justify-between text-xs text-slate-600">
-              <span>Tiền hàng:</span>
+              <span className="flex items-center gap-1.5"><Receipt size={13} className="text-slate-400" /> Tiền hàng:</span>
               <span className="font-bold text-slate-800">{formatCurrency(selectedItemsSubtotal)}</span>
             </div>
 
             {/* Hiển thị Phí vận chuyển */}
             <div className="flex items-center justify-between text-xs text-slate-600">
-              <span>Phí vận chuyển:</span>
+              <span className="flex items-center gap-1.5"><Bike size={13} className="text-slate-400" /> Phí vận chuyển:</span>
               <span className="font-bold text-slate-800">
                 {isCalculatingShipping ? 'Đang tính...' : formatCurrency(totalShippingFee)}
               </span>
@@ -807,15 +807,30 @@ export default function Cart() {
 
             {/* Tổng giảm giá từ tất cả voucher đã chọn */}
             {totalDiscountAmount > 0 && (
-              <div className="flex items-center justify-between text-xs text-emerald-600 font-bold">
-                <span>Giảm giá từ Voucher:</span>
+              <div className="flex items-center justify-between text-xs text-emerald-600 font-bold bg-emerald-50/70 -mx-1 px-2 py-1.5 rounded-lg">
+                <span className="flex items-center gap-1.5"><BadgePercent size={13} /> Tiết kiệm từ voucher:</span>
                 <span>- {formatCurrency(totalDiscountAmount)}</span>
               </div>
             )}
 
+            {/* Phương thức thanh toán — hiện hỗ trợ COD */}
+            <div className="pt-2 border-t border-slate-100">
+              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5 mb-1.5">
+                <Wallet size={13} /> Thanh toán
+              </span>
+              <div className="flex items-center gap-2.5 p-2.5 rounded-xl border border-[#ff6b35]/40 bg-orange-50/50">
+                <span className="w-8 h-8 rounded-lg bg-[#ff6b35]/10 text-[#ff6b35] flex items-center justify-center shrink-0"><Wallet size={16} /></span>
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs font-extrabold text-slate-800 leading-tight">Tiền mặt khi nhận hàng</p>
+                  <p className="text-[10px] text-slate-500 font-semibold">Thanh toán COD cho tài xế</p>
+                </div>
+                <span className="w-4 h-4 rounded-full bg-[#ff6b35] flex items-center justify-center shrink-0"><span className="w-1.5 h-1.5 rounded-full bg-white" /></span>
+              </div>
+            </div>
+
             <div className="pt-2 border-t border-slate-100 mb-1">
               <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5 mb-1.5">
-                Ghi chú đơn hàng
+                <StickyNote size={13} /> Ghi chú đơn hàng
               </label>
               <textarea
                 rows={2}
@@ -827,7 +842,7 @@ export default function Cart() {
             </div>
 
             {/* Tổng thanh toán cuối cùng */}
-            <div className="flex items-center justify-between text-sm text-slate-600 pt-1 border-t border-slate-100 mb-1 mt-1">
+            <div className="flex items-center justify-between text-sm text-slate-600 pt-2 border-t border-slate-100 mt-1">
               <span className="font-bold text-slate-700">Tổng thanh toán:</span>
               <span className="font-black text-[#ff6b35] text-lg">
                 {isCalculatingShipping || isUpdatingLocation ? 'Đang tính...' : formatCurrency(finalTotalAmount)}
@@ -841,8 +856,14 @@ export default function Cart() {
               icon={ShoppingBag}
               className="w-full !mt-0 !bg-orange-600 hover:!bg-orange-700 text-white font-bold py-3 rounded-xl flex items-center justify-center gap-2"
             >
-              Đặt Hàng
+              {selectedRestaurantIds.length === 0 ? 'Chọn quán để đặt' : `Đặt Hàng${selectedRestaurantIds.length > 1 ? ` · ${selectedRestaurantIds.length} quán` : ''}`}
             </Button>
+
+            {/* Trấn an / hỗ trợ khách */}
+            <p className="text-[10px] text-slate-400 font-medium flex items-center justify-center gap-1.5 leading-tight text-center">
+              <ShieldCheck size={13} className="text-emerald-500 shrink-0" />
+              Miễn phí huỷ trước khi quán xác nhận · Theo dõi đơn realtime
+            </p>
           </Card>
           
           {/* THÔNG TIN GIAO HÀNG */}
@@ -856,7 +877,7 @@ export default function Cart() {
             <div className="space-y-3.5">
               <div className="space-y-1">
                 <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
-                  <User size={12} className="text-slate-400" /> Người nhận
+                  <User size={12} className="text-indigo-500" /> Người nhận
                 </label>
                 <input
                   type="text"
@@ -869,20 +890,20 @@ export default function Cart() {
 
               <div className="space-y-1 mb-1">
                 <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
-                  <Phone size={12} className="text-slate-400" /> Số điện thoại
+                  <Phone size={12} className="text-emerald-500" /> Số điện thoại
                 </label>
                 <input
                   type="tel"
                   value={phone}
                   readOnly
                   onChange={(e) => setPhone(e.target.value)}
-                  className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl bg-white text-slate-700 font-semibold focus:outline-none focus:border-[#ff6b35] focus:ring-1 focus:ring-orange-100 transition-all duration-200"
+                  className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl bg-slate-50 text-slate-600 font-semibold focus:outline-none cursor-not-allowed transition-all duration-200"
                 />
               </div>
 
               <div className="space-y-1.5 pt-1">
                 <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
-                  <MapPin size={12} className="text-slate-400" /> Địa chỉ nhận hàng
+                  <MapPin size={12} className="text-rose-500" /> Địa chỉ nhận hàng
                 </label>
                 <div className="p-3 border border-slate-100 rounded-xl bg-slate-50/30 min-h-[56px] flex flex-col justify-center relative">
                   {isUpdatingLocation && (

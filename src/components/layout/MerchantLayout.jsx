@@ -244,6 +244,19 @@ export default function MerchantLayout() {
         </button>
       </nav>
 
+      {/* ─── MOBILE BOTTOM NAV (giúp thấy rõ điều hướng, "Đơn hàng" nổi giữa) ────── */}
+      <MobileTabBar
+        accent="#1A73E8"
+        rootPath="/merchant"
+        items={[
+          menuItems[0],                        // Dashboard
+          menuItems[2],                        // Quản lý menu
+          { ...menuItems[1], primary: true },  // Đơn hàng — nút nổi trung tâm
+          menuItems[4],                        // Đánh giá
+          { name: 'Thêm', icon: Menu, action: openMobileDrawer },
+        ]}
+      />
+
       {/* ─── MOBILE MERCHANT DRAWER ────────────────────────────────────────────── */}
       <MobileDrawer
         isOpen={isMobileDrawerOpen}

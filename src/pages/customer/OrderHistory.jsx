@@ -115,7 +115,7 @@ export default function OrderHistory() {
   const replaceCart = useCartStore((state) => state.replaceCart);
   const { subscribe, connected } = useWebSocketContext();
   const [activeTab, setActiveTab] = useState('ALL');
-  const prevStatusRef = useRef(null); // baseline trạng thái đơn để phát hiện thay đổi realtime
+  const prevStatusRef = useRef(null); 
 
   // Các States xử lý dữ liệu và lỗi
   const [orders, setOrders] = useState([]);
@@ -185,7 +185,6 @@ export default function OrderHistory() {
     });
   };
 
-  // background=true: làm mới ngầm (poll/WS) — KHÔNG bật skeleton, không nuốt trang khi lỗi mạng tạm thời
   const fetchOrderHistory = useCallback(async (background = false) => {
     if (!background) { setLoading(true); setError(null); }
     try {
@@ -215,8 +214,6 @@ export default function OrderHistory() {
     fetchOrderHistory();
   }, [fetchOrderHistory]);
 
-  // Đồng bộ toàn bộ đơn: đếm badge + dải tổng quan, và PHÁT HIỆN đổi trạng thái (realtime).
-  // alert=true: toast khi trạng thái đơn đổi so với lần trước; alert=false: chỉ đồng bộ số liệu.
   const syncOrders = useCallback(async (alert) => {
     try {
       const res = await apiClient.get('/orders', { params: { size: 1000 } });
@@ -266,35 +263,6 @@ export default function OrderHistory() {
     document.addEventListener('visibilitychange', onVisible);
     return () => { clearInterval(id); document.removeEventListener('visibilitychange', onVisible); };
   }, [syncOrders, fetchOrderHistory]);
-
-  // hiển thị modal hủy đơn
-  const handleOpenCancelModal = (e, orderId) => {
-    e.stopPropagation(); 
-    setSelectedOrderId(orderId);
-    setCancelReasonInput('');
-    setIsCancelModalOpen(true);
-  };
-
-  // Đóng modal hủy đơn
-  const handleCloseCancelModal = () => {
-    if (submittingCancel) return;
-    setIsCancelModalOpen(false);
-    setSelectedOrderId(null);
-    setCancelReasonInput('');
-  };
-
-  // hiển thị modal chi tiết đơn hàng
-  const handleOpenDetailModal = (e, order) => {
-    e.stopPropagation();
-    setSelectedOrder(order);
-    setIsDetailModalOpen(true);
-  };
-
-  // đóng modal chi tiết đơn hàng
-  const handleCloseDetailModal = () => {
-    setIsDetailModalOpen(false);
-    setSelectedOrder(null);
-  };
 
   // Hủy đơn hàng
   const handleCancelOrder = async () => {
@@ -381,7 +349,7 @@ export default function OrderHistory() {
             <span className="p-2 rounded-xl bg-orange-500/10 text-orange-500"><ShoppingBag size={20} /></span>
             Đơn Hàng Của Tôi
           </h1>
-          <span
+          {/* <span
             className={`inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1.5 rounded-full border ${
               connected ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-slate-100 text-slate-500 border-slate-200'
             }`}
@@ -392,7 +360,7 @@ export default function OrderHistory() {
               <span className={`relative inline-flex rounded-full h-2 w-2 ${connected ? 'bg-emerald-500' : 'bg-slate-400'}`} />
             </span>
             {connected ? 'Cập nhật trực tiếp' : 'Tự làm mới'}
-          </span>
+          </span> */}
         </div>
 
         {/* Dải tổng quan: tổng đơn · đã giao · tổng chi tiêu */}
@@ -545,7 +513,7 @@ export default function OrderHistory() {
                         {order.status === 'PENDING' ? (
                           <Button
                             type="button"
-                            onClick={(e) => handleOpenCancelModal(e, order.id)}
+                            onClick={(e) => cancelModal.open(order.id)}
                             icon={Ban}
                             className="!px-2.5 !py-1.5 !bg-red-500 hover:!bg-red-600 text-white !rounded-lg text-[11px] !font-bold !shadow-sm w-full sm:w-auto"
                           >
@@ -607,12 +575,15 @@ export default function OrderHistory() {
 
                         <Button
                           type="button"
-                          onClick={(e) => handleOpenDetailModal(e, order)}
+                          onClick={(e) => {
+                            e.stopPropagation(); 
+                            detailModal.open(order); 
+                          }}
                           icon={Eye}
                           className="!px-2.5 !py-1.5 !bg-blue-500 hover:!bg-blue-600 !text-white !border-none !rounded-lg text-[11px] !font-bold !shadow-none whitespace-nowrap w-full sm:w-auto"
                         >
                           Chi tiết
-                        </Button>         
+                        </Button>      
                       </div>
                     </div>
                   </Card>
@@ -643,7 +614,7 @@ export default function OrderHistory() {
         </div>
       </div>
 
-      {/* MODAL CHI TIẾT ĐƠN HÀNG — phong cách customer (tông cam) */}
+      {/* MODAL CHI TIẾT ĐƠN HÀNG  */}
       <Modal
         isOpen={detailModal.isOpen}
         onClose={detailModal.close}
@@ -681,7 +652,6 @@ export default function OrderHistory() {
                 )}
               </div>
 
-              {/* Danh sách món ăn — ảnh to hơn, số lượng dạng badge, hiện lần lượt */}
               <div>
                 <h4 className="flex items-center gap-2 text-[11px] font-extrabold text-slate-500 uppercase tracking-wider mb-2">
                   <UtensilsCrossed size={14} className="text-orange-500" /> Danh sách món ăn ({o.items.length})
@@ -740,7 +710,7 @@ export default function OrderHistory() {
                     <span className="text-slate-800 font-bold">{formatCurrency(o.shippingFee)}</span>
                   </div>
 
-                  {hasDiscount && (
+                  {o.voucherCode && (
                     <div className="flex justify-between items-center text-sm font-medium pt-1">
                       <span className="inline-flex items-center gap-1.5 text-orange-600">
                         Voucher ({o.voucherCode})
@@ -761,7 +731,7 @@ export default function OrderHistory() {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={handleCloseDetailModal}
+                  onClick={detailModal.close}
                   className="rounded-lg text-xs !py-2 hover:!border-orange-500 hover:!text-orange-600"
                 >
                   Đóng

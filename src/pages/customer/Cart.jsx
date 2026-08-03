@@ -2,11 +2,12 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useCartStore } from '../../stores/cartStore';
 import { useAuthStore } from '../../stores/authStore';
-import { 
-  ArrowLeft, MapPin, Phone, Store, XCircle, X, 
-  ShoppingBag, CheckSquare, Square, 
-  User, Truck, Edit2, Plus, Tag
-} from 'lucide-react'; 
+import {
+  ArrowLeft, MapPin, Phone, Store, XCircle, X,
+  ShoppingBag, CheckSquare, Square,
+  User, Truck, Edit2, Plus, Tag,
+  Minus, Wallet, BadgePercent, Bike, ShieldCheck, Receipt, Clock, ChevronRight, StickyNote
+} from 'lucide-react';
 import { formatCurrency } from '../../utils/format';
 import Button from '../../components/common/Button';
 import apiClient from '../../services/api';
@@ -471,11 +472,19 @@ export default function Cart() {
   return (
     <div className="flex-1 p-4 md:p-5 w-full font-google-sans pb-24 bg-slate-50 min-h-screen">
       <div className="flex items-center justify-between mb-5 gap-3">
-        <div className="flex items-center gap-3">
-          <button onClick={() => navigate(-1)} className="p-1.5 rounded-full hover:bg-slate-200 text-slate-600 transition-colors cursor-pointer">
+        <div className="flex items-center gap-3 min-w-0">
+          <button onClick={() => navigate(-1)} className="p-1.5 rounded-full hover:bg-slate-200 text-slate-600 transition-colors cursor-pointer shrink-0">
             <ArrowLeft size={18} />
           </button>
-          <h1 className="text-xl md:text-2xl font-bold text-gray-900">Giỏ Hàng Của Tôi</h1>
+          <span className="w-9 h-9 rounded-xl bg-gradient-to-tr from-[#FF6B35] to-[#FF8B5E] text-white flex items-center justify-center shadow-sm shrink-0">
+            <ShoppingBag size={18} />
+          </span>
+          <div className="min-w-0">
+            <h1 className="text-xl md:text-2xl font-bold text-gray-900 leading-tight">Giỏ Hàng Của Tôi</h1>
+            <p className="text-[11px] font-semibold text-slate-400 leading-none mt-0.5">
+              {carts.length} quán · {carts.reduce((s, c) => s + c.items.reduce((a, i) => a + i.quantity, 0), 0)} món trong giỏ
+            </p>
+          </div>
         </div>
 
         <button
@@ -582,18 +591,19 @@ export default function Cart() {
                                 <div className="flex flex-col items-center">
                                   <span className="text-[10px] font-medium text-slate-400 block mb-1">Số lượng</span>
                                   <div className="flex items-center border border-slate-200 rounded-lg bg-slate-50/50 p-0.5">
-                                    <button 
-                                      onClick={() => updateQty(item.foodId, item.quantity, item.quantity - 1)} 
-                                      className="w-6 h-6 flex items-center justify-center rounded-md font-bold text-slate-500 hover:bg-white hover:text-slate-800 transition-all text-xs cursor-pointer active:scale-95"
+                                    <button
+                                      onClick={() => updateQty(item.foodId, item.quantity, item.quantity - 1)}
+                                      disabled={item.quantity <= 1}
+                                      className="w-6 h-6 flex items-center justify-center rounded-md text-slate-500 hover:bg-white hover:text-[#ff6b35] disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-slate-500 transition-all cursor-pointer active:scale-90"
                                     >
-                                      -
+                                      <Minus size={13} strokeWidth={2.5} />
                                     </button>
                                     <span className="w-8 text-center font-extrabold text-xs text-slate-800 select-none">{item.quantity}</span>
-                                    <button 
-                                      onClick={() => updateQty(item.foodId, item.quantity, item.quantity + 1)} 
-                                      className="w-6 h-6 flex items-center justify-center rounded-md font-bold text-slate-500 hover:bg-white hover:text-slate-800 transition-all text-xs cursor-pointer active:scale-95"
+                                    <button
+                                      onClick={() => updateQty(item.foodId, item.quantity, item.quantity + 1)}
+                                      className="w-6 h-6 flex items-center justify-center rounded-md text-slate-500 hover:bg-white hover:text-[#ff6b35] transition-all cursor-pointer active:scale-90"
                                     >
-                                      +
+                                      <Plus size={13} strokeWidth={2.5} />
                                     </button>
                                   </div>
                                 </div>
@@ -635,18 +645,19 @@ export default function Cart() {
                               </p>
                               
                               <div className="flex items-center border border-slate-200 rounded-lg bg-slate-50/50 p-0.5 w-fit">
-                                <button 
-                                  onClick={() => updateQty(item.foodId, item.quantity, item.quantity - 1)} 
-                                  className="w-7 h-7 flex items-center justify-center rounded-md font-bold text-slate-500 hover:bg-white hover:text-slate-800 transition-all text-sm cursor-pointer active:scale-95"
+                                <button
+                                  onClick={() => updateQty(item.foodId, item.quantity, item.quantity - 1)}
+                                  disabled={item.quantity <= 1}
+                                  className="w-7 h-7 flex items-center justify-center rounded-md text-slate-500 hover:bg-white hover:text-[#ff6b35] disabled:opacity-40 transition-all cursor-pointer active:scale-90"
                                 >
-                                  -
+                                  <Minus size={15} strokeWidth={2.5} />
                                 </button>
                                 <span className="w-9 text-center font-extrabold text-sm text-slate-800 select-none">{item.quantity}</span>
-                                <button 
-                                  onClick={() => updateQty(item.foodId, item.quantity, item.quantity + 1)} 
-                                  className="w-7 h-7 flex items-center justify-center rounded-md font-bold text-slate-500 hover:bg-white hover:text-slate-800 transition-all text-sm cursor-pointer active:scale-95"
+                                <button
+                                  onClick={() => updateQty(item.foodId, item.quantity, item.quantity + 1)}
+                                  className="w-7 h-7 flex items-center justify-center rounded-md text-slate-500 hover:bg-white hover:text-[#ff6b35] transition-all cursor-pointer active:scale-90"
                                 >
-                                  +
+                                  <Plus size={15} strokeWidth={2.5} />
                                 </button>
                               </div>
                             </div>

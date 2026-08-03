@@ -33,7 +33,9 @@ export default function RoleSwitcher() {
       desc: 'Đặt món & theo dõi',
       icon: User,
       color: 'bg-orange-500 text-white',
-      activeBorder: 'border-orange-500/20 ring-2 ring-orange-500/5'
+      activeBorder: 'border-orange-500/20 ring-2 ring-orange-500/5',
+      chip: 'bg-orange-100 text-orange-600',
+      linkActive: 'bg-orange-50 text-orange-700 border-orange-200',
     },
     {
       id: 'OWNER',
@@ -41,7 +43,9 @@ export default function RoleSwitcher() {
       desc: 'Quản lý thực đơn & đơn',
       icon: Store,
       color: 'bg-blue-600 text-white',
-      activeBorder: 'border-blue-500/20 ring-2 ring-blue-500/5'
+      activeBorder: 'border-blue-500/20 ring-2 ring-blue-500/5',
+      chip: 'bg-blue-100 text-blue-600',
+      linkActive: 'bg-blue-50 text-blue-700 border-blue-200',
     },
     {
       id: 'SHIPPER',
@@ -49,7 +53,9 @@ export default function RoleSwitcher() {
       desc: 'Nhận đơn & giao nhận',
       icon: Bike,
       color: 'bg-emerald-600 text-white',
-      activeBorder: 'border-emerald-500/20 ring-2 ring-emerald-500/5'
+      activeBorder: 'border-emerald-500/20 ring-2 ring-emerald-500/5',
+      chip: 'bg-emerald-100 text-emerald-600',
+      linkActive: 'bg-emerald-50 text-emerald-700 border-emerald-200',
     },
     {
       id: 'ADMIN',
@@ -57,7 +63,9 @@ export default function RoleSwitcher() {
       desc: 'Quản trị & phê duyệt',
       icon: Shield,
       color: 'bg-purple-600 text-white',
-      activeBorder: 'border-purple-500/20 ring-2 ring-purple-500/5'
+      activeBorder: 'border-purple-500/20 ring-2 ring-purple-500/5',
+      chip: 'bg-purple-100 text-purple-600',
+      linkActive: 'bg-purple-50 text-purple-700 border-purple-200',
     },
   ];
 
@@ -102,6 +110,7 @@ export default function RoleSwitcher() {
           { label: 'Lịch sử giao hàng', path: '/shipper/history', icon: ClipboardList },
           { label: 'Ví thu nhập & thống kê', path: '/shipper/earnings', icon: Wallet },
           { label: 'Tin nhắn khách hàng/quán', path: '/shipper/chat', icon: MessageSquare },
+          { label: 'Đánh giá của tài xế', path: '/shipper/reviews', icon: Star },
           { label: 'Hồ sơ tài xế', path: '/shipper/profile', icon: User }
         ];
       case 'ADMIN':
@@ -123,12 +132,16 @@ export default function RoleSwitcher() {
   const CurrentIcon = currentRoleObj.icon;
   const quickLinks = getQuickLinks(role || 'CUSTOMER');
 
+  // Trang chi tiết quán có thanh giỏ hàng nổi ở đáy (mobile) → nâng widget cao hơn để không đè lên.
+  const hasBottomBar = /^\/restaurants\/[^/]+/.test(location.pathname);
+  const anchorClass = `${hasBottomBar ? 'bottom-44' : 'bottom-20'} right-4 md:bottom-24 md:right-6`;
+
   // Trả về nút siêu nhỏ mờ khi người dùng chọn ẩn widget
   if (isHidden) {
     return (
       <button
         onClick={handleRestore}
-        className="fixed bottom-20 right-4 md:bottom-24 md:right-6 z-[9999] w-7 h-7 rounded-full bg-slate-500/20 hover:bg-slate-500/40 text-slate-500/50 hover:text-slate-700 backdrop-blur-sm border border-slate-200/20 flex items-center justify-center cursor-pointer transition-all duration-200 opacity-40 hover:opacity-100 shadow-sm"
+        className={`fixed ${anchorClass} z-[9999] w-7 h-7 rounded-full bg-slate-500/20 hover:bg-slate-500/40 text-slate-500/50 hover:text-slate-700 backdrop-blur-sm border border-slate-200/20 flex items-center justify-center cursor-pointer transition-all duration-200 opacity-40 hover:opacity-100 shadow-sm`}
         title="Hiện bảng điều khiển nhanh"
       >
         <Eye size={12} />
@@ -137,7 +150,7 @@ export default function RoleSwitcher() {
   }
 
   return (
-    <div className="fixed bottom-20 right-4 md:bottom-24 md:right-6 z-[9999] flex flex-col items-end gap-3 font-google-sans select-none">
+    <div className={`fixed ${anchorClass} z-[9999] flex flex-col items-end gap-3 font-google-sans select-none`}>
 
       {/* Expanded Panel */}
       {expanded && (
@@ -189,13 +202,21 @@ export default function RoleSwitcher() {
 
           {/* Quick Navigation Links */}
           {quickLinks.length > 0 && (
-            <div className="bg-slate-50/60 border border-slate-100 rounded-2xl p-3.5 space-y-2.5 max-h-[200px] overflow-y-auto scrollbar-thin">
-              <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block">
-                Liên kết đi nhanh
-              </span>
+            <div className="bg-slate-50/60 border border-slate-100 rounded-2xl p-3.5 space-y-2.5 max-h-[320px] overflow-y-auto scrollbar-thin">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block">
+                  Liên kết đi nhanh
+                </span>
+                <span className={`text-[9px] font-black px-1.5 py-0.5 rounded-full ${currentRoleObj.chip}`}>
+                  {quickLinks.length} mục
+                </span>
+              </div>
               <div className="flex flex-col gap-1.5">
                 {quickLinks.map((link, idx) => {
                   const LinkIcon = link.icon;
+                  const isCurrent = link.path === '/' || link.path === '/shipper' || link.path === '/merchant' || link.path === '/admin'
+                    ? location.pathname === link.path
+                    : location.pathname === link.path || location.pathname.startsWith(link.path);
                   return (
                     <button
                       key={idx}
@@ -204,13 +225,25 @@ export default function RoleSwitcher() {
                         setExpanded(false);
                       }}
                       style={{ animationDelay: `${idx * 40}ms` }}
-                      className="animate-rise-in w-full flex items-center justify-between text-left px-3 py-2 rounded-xl hover:bg-white hover:shadow-sm text-xs font-semibold text-slate-700 hover:text-slate-900 border border-transparent hover:border-slate-100 transition-all duration-200 group cursor-pointer"
+                      className={`animate-rise-in w-full flex items-center justify-between text-left px-2.5 py-2 rounded-xl text-xs font-semibold border transition-all duration-200 group cursor-pointer ${
+                        isCurrent
+                          ? `${currentRoleObj.linkActive} shadow-sm`
+                          : 'text-slate-700 hover:text-slate-900 border-transparent hover:bg-white hover:shadow-sm hover:border-slate-100'
+                      }`}
                     >
-                      <div className="flex items-center gap-2">
-                        <LinkIcon size={14} className="text-slate-400 group-hover:text-slate-600" />
-                        <span>{link.label}</span>
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <span className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 transition-transform duration-200 group-hover:scale-110 ${
+                          isCurrent ? 'bg-white/70' : currentRoleObj.chip
+                        }`}>
+                          <LinkIcon size={14} />
+                        </span>
+                        <span className="truncate">{link.label}</span>
                       </div>
-                      <ArrowRight size={12} className="text-slate-300 opacity-0 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all duration-200" />
+                      {isCurrent ? (
+                        <span className="w-1.5 h-1.5 rounded-full bg-current animate-pulse shrink-0 mr-1" />
+                      ) : (
+                        <ArrowRight size={12} className="text-slate-300 opacity-0 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all duration-200 shrink-0" />
+                      )}
                     </button>
                   );
                 })}

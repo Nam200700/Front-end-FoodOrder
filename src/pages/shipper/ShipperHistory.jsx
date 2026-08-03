@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { History, ClipboardList, Clipboard, Check, X, Utensils, Wallet, CheckCircle2, ChevronLeft, ChevronRight, User, Clock, Sparkles, Package, Calendar, Coins, Bike, PackageSearch, Search, SlidersHorizontal, ArrowDownUp, ChevronDown, TrendingUp, CalendarDays, CalendarRange } from 'lucide-react';
-import { formatCurrency } from '../../utils/format';
+import { formatCurrency, normalizeForMatch } from '../../utils/format';
 import { useFetchData } from '../../hooks/useFetchData';
 import { SkeletonOrderCard } from '../../components/common/SkeletonCard';
 import EmptyState from '../../components/common/EmptyState';
@@ -15,11 +15,13 @@ const SORTS = [
   { id: 'feeLow', label: 'Phí thấp nhất' },
 ];
 
-// Tô sáng phần khớp từ khoá tìm kiếm (kiểu GitHub/Algolia) — an toàn, chỉ so chuỗi thường.
+// Tô sáng phần khớp từ khoá tìm kiếm (kiểu GitHub/Algolia).
+// So khớp KHÔNG phân biệt dấu tiếng Việt: chuẩn hoá cả text lẫn từ khoá rồi map lại vị trí về chuỗi gốc.
+// (normalizeForMatch giữ nguyên độ dài từng ký tự — bỏ dấu, không thêm/bớt ký tự — nên chỉ số khớp đúng chuỗi gốc.)
 function Highlight({ text, q }) {
   const s = String(text ?? '');
   if (!q) return s;
-  const i = s.toLowerCase().indexOf(q);
+  const i = normalizeForMatch(s).indexOf(q);
   if (i === -1) return s;
   return (
     <>
@@ -100,7 +102,8 @@ export default function ShipperHistory() {
   const totalElements = pageData?.totalElements ?? list.length; // tổng chuyến THẬT
 
   // ─── ÁP BỘ LỌC: trạng thái + tìm kiếm + mốc thời gian + thứ + tháng ───
-  const q = search.trim().toLowerCase();
+  // Chuẩn hoá từ khoá KHÔNG phân biệt dấu → gõ "com tam" vẫn khớp "Cơm Tấm".
+  const q = normalizeForMatch(search);
   const now = Date.now();
   const DAY = 86400000;
   // Tuần HIỆN TẠI: từ Thứ 2 (00:00).
@@ -125,9 +128,9 @@ export default function ShipperHistory() {
     if (weekday !== 'ALL' && item.dow !== Number(weekday)) return false;
     // tháng cụ thể
     if (monthFilter !== 'ALL' && item.ym !== monthFilter) return false;
-    // tìm kiếm (mã đơn / khách / quán)
-    if (q && !(`#${item.id}`.toLowerCase().includes(q) || item.id.includes(q) ||
-      item.customer.toLowerCase().includes(q) || item.restaurant.toLowerCase().includes(q))) return false;
+    // tìm kiếm (mã đơn / khách / quán) — không phân biệt dấu
+    if (q && !(`#${item.id}`.includes(q) || String(item.id).includes(q) ||
+      normalizeForMatch(item.customer).includes(q) || normalizeForMatch(item.restaurant).includes(q))) return false;
     return true;
   });
 

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Plus, ToggleLeft, ToggleRight, Edit, Trash2, Check, X, ClipboardList, UtensilsCrossed, AlertTriangle, Tags, Tag, FolderPlus, Pencil } from 'lucide-react';
+import { Plus, ToggleLeft, ToggleRight, Edit, Trash2, Check, X, ClipboardList, UtensilsCrossed, AlertTriangle, Tags, Tag, FolderPlus, Pencil, ImagePlus, FileText, Wallet, FolderOpen } from 'lucide-react';
 import { formatCurrency } from '../../utils/format';
 import apiClient from '../../services/api';
 import Spinner from '../../components/common/Spinner';
@@ -408,6 +408,13 @@ export default function MerchantMenu() {
   // Tên danh mục đang chọn (cho thanh thao tác Sửa/Xóa rõ ràng)
   const activeCatName = categories.find(c => Number(c.id) === Number(activeCategory))?.name || '';
 
+  // ── Sức khoẻ thực đơn (dùng để làm nổi bật việc quan trọng cần xử lý) ──
+  const availableCount = menuItems.filter(i => i.active).length;
+  const unavailableCount = menuItems.filter(i => !i.active).length;
+  const uncategorizedCount = menuItems.filter(item =>
+    !item.catId || !categories.some(c => Number(c.id) === Number(item.catId))
+  ).length;
+
   const displayedItems = menuItems.filter(item => {
     const matchCat = activeCategory === 'UNCATEGORIZED'
       ? (!item.catId || !categories.some(c => Number(c.id) === Number(item.catId)))
@@ -452,26 +459,63 @@ export default function MerchantMenu() {
       </div>
 
       {/* ─── HÀNG KPI TÓM TẮT THỰC ĐƠN (đếm THẬT từ menuItems toàn quán) ──────────── */}
-      <div className="grid grid-cols-3 gap-3 sm:gap-4 mb-6">
+      <div className="grid grid-cols-3 gap-3 sm:gap-4 mb-5">
         {[
-          { label: 'Tổng số món', value: menuItems.length, icon: UtensilsCrossed, color: 'bg-md-secondary/10 text-md-secondary' },
-          { label: 'Đang bán', value: menuItems.filter(i => i.active).length, icon: ToggleRight, color: 'bg-emerald-100 text-emerald-600' },
-          { label: 'Tạm hết', value: menuItems.filter(i => !i.active).length, icon: ToggleLeft, color: 'bg-rose-100 text-rose-600' },
+          { label: 'Tổng số món', value: menuItems.length, icon: UtensilsCrossed, tint: 'from-blue-50', ring: 'ring-blue-100/70', chip: 'bg-blue-100 text-blue-600', num: 'text-slate-800' },
+          { label: 'Đang bán', value: availableCount, icon: ToggleRight, tint: 'from-emerald-50', ring: 'ring-emerald-100/70', chip: 'bg-emerald-100 text-emerald-600', num: 'text-emerald-600' },
+          { label: 'Tạm hết', value: unavailableCount, icon: ToggleLeft, tint: 'from-rose-50', ring: 'ring-rose-100/70', chip: 'bg-rose-100 text-rose-600', num: unavailableCount > 0 ? 'text-rose-600' : 'text-slate-800' },
         ].map((kpi, idx) => {
           const KIcon = kpi.icon;
           return (
-            <div key={idx} className="bg-white rounded-radius-xl p-3.5 border border-slate-200/60 shadow-sm flex items-center gap-3">
-              <span className={`p-2 rounded-radius-md shrink-0 ${kpi.color}`}>
+            <div key={idx} className={`relative overflow-hidden bg-gradient-to-br ${kpi.tint} to-white rounded-radius-xl p-3.5 border border-slate-200/60 shadow-sm ring-1 ${kpi.ring} flex items-center gap-3`}>
+              <span className={`p-2 rounded-radius-md shrink-0 ${kpi.chip}`}>
                 <KIcon size={18} />
               </span>
               <div className="min-w-0">
-                <span className="text-lg font-black text-slate-800 block leading-none">{kpi.value}</span>
-                <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block mt-0.5 truncate">{kpi.label}</span>
+                <span className={`text-xl font-black block leading-none ${kpi.num}`}>{kpi.value}</span>
+                <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block mt-1 truncate">{kpi.label}</span>
               </div>
             </div>
           );
         })}
       </div>
+
+      {/* ─── CẢNH BÁO SỨC KHOẺ THỰC ĐƠN — làm nổi bật việc quan trọng cần xử lý ────── */}
+      {(unavailableCount > 0 || uncategorizedCount > 0) && (
+        <div className="mb-6 rounded-radius-xl border border-amber-200 bg-gradient-to-r from-amber-50 to-white p-4 flex items-start gap-3 shadow-sm animate-rise-in">
+          <span className="p-2 rounded-radius-lg bg-amber-100 text-amber-600 shrink-0 animate-pulse">
+            <AlertTriangle size={18} />
+          </span>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-extrabold text-amber-800 flex items-center gap-1.5">
+              Cần chú ý để không lỡ đơn của khách
+            </p>
+            <ul className="mt-1.5 space-y-1">
+              {unavailableCount > 0 && (
+                <li className="text-xs text-amber-700/90 font-medium flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-rose-500 shrink-0" />
+                  <span><b className="text-rose-600">{unavailableCount} món</b> đang <b>tạm hết</b> — khách <b>không nhìn thấy</b> trên app.</span>
+                </li>
+              )}
+              {uncategorizedCount > 0 && (
+                <li className="text-xs text-amber-700/90 font-medium flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" />
+                  <span><b className="text-amber-700">{uncategorizedCount} món</b> <b>chưa phân loại</b> — nên gán danh mục để khách dễ tìm.</span>
+                </li>
+              )}
+            </ul>
+          </div>
+          {unavailableCount > 0 && (
+            <button
+              type="button"
+              onClick={() => setStatusFilter('UNAVAILABLE')}
+              className="shrink-0 self-center inline-flex items-center gap-1.5 px-3.5 py-2 rounded-radius-lg bg-amber-500 text-white text-xs font-bold shadow-sm hover:bg-amber-600 active:scale-95 transition-all cursor-pointer"
+            >
+              <AlertTriangle size={14} /> Xem món tạm hết
+            </button>
+          )}
+        </div>
+      )}
 
       {/* ─── DANH MỤC THỰC PHẨM ─── */}
       <div className="mb-6 bg-white p-4 sm:p-5 rounded-radius-xl border border-slate-200/60 shadow-sm">
@@ -700,6 +744,7 @@ export default function MerchantMenu() {
                 type="button"
                 variant="outline"
                 size="sm"
+                icon={ImagePlus}
                 onClick={() => fileInputAddRef.current?.click()}
                 loading={uploadingAddImage}
               >
@@ -719,7 +764,7 @@ export default function MerchantMenu() {
           {/* Form Fields */}
           <div className="space-y-4">
             <div>
-              <label className="block text-slate-400 font-bold uppercase tracking-wider mb-1.5 text-[10px]">Tên món ăn *</label>
+              <label className="flex items-center gap-1.5 text-slate-400 font-bold uppercase tracking-wider mb-1.5 text-[10px]"><UtensilsCrossed size={12} className="text-md-secondary" /> Tên món ăn *</label>
               <input
                 type="text"
                 value={newFoodName}
@@ -732,7 +777,7 @@ export default function MerchantMenu() {
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-slate-400 font-bold uppercase tracking-wider mb-1.5 text-[10px]">Giá bán (VNĐ) *</label>
+                <label className="flex items-center gap-1.5 text-slate-400 font-bold uppercase tracking-wider mb-1.5 text-[10px]"><Wallet size={12} className="text-emerald-500" /> Giá bán (VNĐ) *</label>
                 <input
                   type="number"
                   value={newFoodPrice}
@@ -744,7 +789,7 @@ export default function MerchantMenu() {
               </div>
 
               <div>
-                <label className="block text-slate-400 font-bold uppercase tracking-wider mb-1.5 text-[10px]">Danh mục</label>
+                <label className="flex items-center gap-1.5 text-slate-400 font-bold uppercase tracking-wider mb-1.5 text-[10px]"><FolderOpen size={12} className="text-amber-500" /> Danh mục</label>
                 <select
                   value={newFoodCat}
                   onChange={(e) => { setNewFoodCat(Number(e.target.value)); if (catErr) setCatErr(''); }}
@@ -757,7 +802,7 @@ export default function MerchantMenu() {
             </div>
 
             <div>
-              <label className="block text-slate-400 font-bold uppercase tracking-wider mb-1.5 text-[10px]">Mô tả món ăn</label>
+              <label className="flex items-center gap-1.5 text-slate-400 font-bold uppercase tracking-wider mb-1.5 text-[10px]"><FileText size={12} className="text-blue-500" /> Mô tả món ăn</label>
               <textarea
                 rows={2.5}
                 value={newFoodDesc}
@@ -796,6 +841,7 @@ export default function MerchantMenu() {
                 type="button"
                 variant="outline"
                 size="sm"
+                icon={ImagePlus}
                 onClick={() => fileInputEditRef.current?.click()}
                 loading={uploadingEditImage}
               >
@@ -814,7 +860,7 @@ export default function MerchantMenu() {
 
           <div className="space-y-4">
             <div>
-              <label className="block text-slate-400 font-bold uppercase tracking-wider mb-1.5 text-[10px]">Tên món ăn *</label>
+              <label className="flex items-center gap-1.5 text-slate-400 font-bold uppercase tracking-wider mb-1.5 text-[10px]"><UtensilsCrossed size={12} className="text-md-secondary" /> Tên món ăn *</label>
               <input
                 type="text"
                 value={editFoodName}
@@ -826,7 +872,7 @@ export default function MerchantMenu() {
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-slate-400 font-bold uppercase tracking-wider mb-1.5 text-[10px]">Giá bán (VNĐ) *</label>
+                <label className="flex items-center gap-1.5 text-slate-400 font-bold uppercase tracking-wider mb-1.5 text-[10px]"><Wallet size={12} className="text-emerald-500" /> Giá bán (VNĐ) *</label>
                 <input
                   type="number"
                   value={editFoodPrice}
@@ -837,7 +883,7 @@ export default function MerchantMenu() {
               </div>
 
               <div>
-                <label className="block text-slate-400 font-bold uppercase tracking-wider mb-1.5 text-[10px]">Danh mục</label>
+                <label className="flex items-center gap-1.5 text-slate-400 font-bold uppercase tracking-wider mb-1.5 text-[10px]"><FolderOpen size={12} className="text-amber-500" /> Danh mục</label>
                 <select
                   value={editFoodCat || ''}
                   onChange={(e) => setEditFoodCat(e.target.value ? Number(e.target.value) : null)}
@@ -852,7 +898,7 @@ export default function MerchantMenu() {
             </div>
 
             <div>
-              <label className="block text-slate-400 font-bold uppercase tracking-wider mb-1.5 text-[10px]">Mô tả món ăn</label>
+              <label className="flex items-center gap-1.5 text-slate-400 font-bold uppercase tracking-wider mb-1.5 text-[10px]"><FileText size={12} className="text-blue-500" /> Mô tả món ăn</label>
               <textarea
                 rows={2.5}
                 placeholder="Sườn nướng thơm ngon mật ong..."
@@ -896,7 +942,7 @@ export default function MerchantMenu() {
       >
         <div className="space-y-4 font-google-sans">
           <div>
-            <label className="block text-xs font-semibold text-slate-500 mb-1.5 uppercase">Tên danh mục mới *</label>
+            <label className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 mb-1.5 uppercase"><FolderPlus size={13} className="text-md-secondary" /> Tên danh mục mới *</label>
             <input
               type="text"
               value={newCatName}
@@ -936,7 +982,7 @@ export default function MerchantMenu() {
       >
         <div className="space-y-4 font-google-sans">
           <div>
-            <label className="block text-xs font-semibold text-slate-500 mb-1.5 uppercase">Tên danh mục *</label>
+            <label className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 mb-1.5 uppercase"><Pencil size={13} className="text-blue-500" /> Tên danh mục *</label>
             <input
               type="text"
               value={editCatName}

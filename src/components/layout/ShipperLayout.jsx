@@ -24,6 +24,7 @@ import { useAvatarUpload } from '../../hooks/useAvatarUpload';
 import { useLayoutNav } from '../../hooks/useLayoutNav';
 import NavMenuList from './NavMenuList';
 import MobileDrawer from './MobileDrawer';
+import MobileTabBar from './MobileTabBar';
 
 export default function ShipperLayout() {
   const navigate = useNavigate();
@@ -171,32 +172,8 @@ export default function ShipperLayout() {
       </button>
     </header>
 
-    {/* ─── MOBILE BOTTOM NAVIGATION (Hidden on desktop) ─────────────────────────── */}
-    <nav className="md:hidden fixed bottom-0 left-0 right-0 h-16 border-t border-md-outline-variant bg-white flex items-center justify-around px-2 z-40 shadow-shadow-2">
-      {menuItems.map((item) => {
-        const Icon = item.icon;
-        const isActive = location.pathname === item.path || (item.path !== '/shipper' && location.pathname.startsWith(item.path));
-        return (
-          <button
-            key={item.path}
-            onClick={() => navigate(item.path)}
-            className={`flex flex-col items-center justify-center gap-1 w-16 h-full relative transition-all duration-200 ${
-              isActive ? 'text-md-tertiary font-bold' : 'text-md-on-surface-variant'
-            }`}
-          >
-            <div className="relative">
-              <Icon size={20} className={isActive ? 'scale-110 stroke-[2.5px]' : ''} />
-              {item.badge > 0 && (
-                <span className="absolute -top-1.5 -right-1.5 bg-red-500 text-white text-[8px] font-bold h-3.5 min-w-3.5 px-0.5 rounded-full flex items-center justify-center animate-pulse">
-                  {item.badge}
-                </span>
-              )}
-            </div>
-            <span className="text-[10px] tracking-tight">{item.name}</span>
-          </button>
-        );
-      })}
-    </nav>
+    {/* ─── MOBILE BOTTOM NAVIGATION (component dùng chung, tông xanh shipper) ─────── */}
+    <MobileTabBar items={menuItems} accent="#34A853" rootPath="/shipper" />
 
     {/* ─── MOBILE SHIPPER DRAWER ────────────────────────────────────────────── */}
     <MobileDrawer

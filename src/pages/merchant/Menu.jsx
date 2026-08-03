@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Plus, ToggleLeft, ToggleRight, Edit, Trash2, Check, X, ClipboardList, UtensilsCrossed, AlertTriangle, Tags, Tag, FolderPlus, Pencil } from 'lucide-react';
+import { Plus, ToggleLeft, ToggleRight, Edit, Trash2, Check, X, ClipboardList, UtensilsCrossed, AlertTriangle, Tags, Tag, FolderPlus, Pencil, ImagePlus, FileText, Wallet, FolderOpen } from 'lucide-react';
 import { formatCurrency } from '../../utils/format';
 import apiClient from '../../services/api';
 import Spinner from '../../components/common/Spinner';
@@ -744,6 +744,7 @@ export default function MerchantMenu() {
                 type="button"
                 variant="outline"
                 size="sm"
+                icon={ImagePlus}
                 onClick={() => fileInputAddRef.current?.click()}
                 loading={uploadingAddImage}
               >
@@ -763,7 +764,7 @@ export default function MerchantMenu() {
           {/* Form Fields */}
           <div className="space-y-4">
             <div>
-              <label className="block text-slate-400 font-bold uppercase tracking-wider mb-1.5 text-[10px]">Tên món ăn *</label>
+              <label className="flex items-center gap-1.5 text-slate-400 font-bold uppercase tracking-wider mb-1.5 text-[10px]"><UtensilsCrossed size={12} className="text-md-secondary" /> Tên món ăn *</label>
               <input
                 type="text"
                 value={newFoodName}
@@ -776,7 +777,7 @@ export default function MerchantMenu() {
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-slate-400 font-bold uppercase tracking-wider mb-1.5 text-[10px]">Giá bán (VNĐ) *</label>
+                <label className="flex items-center gap-1.5 text-slate-400 font-bold uppercase tracking-wider mb-1.5 text-[10px]"><Wallet size={12} className="text-emerald-500" /> Giá bán (VNĐ) *</label>
                 <input
                   type="number"
                   value={newFoodPrice}
@@ -788,7 +789,7 @@ export default function MerchantMenu() {
               </div>
 
               <div>
-                <label className="block text-slate-400 font-bold uppercase tracking-wider mb-1.5 text-[10px]">Danh mục</label>
+                <label className="flex items-center gap-1.5 text-slate-400 font-bold uppercase tracking-wider mb-1.5 text-[10px]"><FolderOpen size={12} className="text-amber-500" /> Danh mục</label>
                 <select
                   value={newFoodCat}
                   onChange={(e) => { setNewFoodCat(Number(e.target.value)); if (catErr) setCatErr(''); }}
@@ -801,7 +802,7 @@ export default function MerchantMenu() {
             </div>
 
             <div>
-              <label className="block text-slate-400 font-bold uppercase tracking-wider mb-1.5 text-[10px]">Mô tả món ăn</label>
+              <label className="flex items-center gap-1.5 text-slate-400 font-bold uppercase tracking-wider mb-1.5 text-[10px]"><FileText size={12} className="text-blue-500" /> Mô tả món ăn</label>
               <textarea
                 rows={2.5}
                 value={newFoodDesc}
@@ -840,6 +841,7 @@ export default function MerchantMenu() {
                 type="button"
                 variant="outline"
                 size="sm"
+                icon={ImagePlus}
                 onClick={() => fileInputEditRef.current?.click()}
                 loading={uploadingEditImage}
               >
@@ -858,7 +860,7 @@ export default function MerchantMenu() {
 
           <div className="space-y-4">
             <div>
-              <label className="block text-slate-400 font-bold uppercase tracking-wider mb-1.5 text-[10px]">Tên món ăn *</label>
+              <label className="flex items-center gap-1.5 text-slate-400 font-bold uppercase tracking-wider mb-1.5 text-[10px]"><UtensilsCrossed size={12} className="text-md-secondary" /> Tên món ăn *</label>
               <input
                 type="text"
                 value={editFoodName}
@@ -870,7 +872,7 @@ export default function MerchantMenu() {
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-slate-400 font-bold uppercase tracking-wider mb-1.5 text-[10px]">Giá bán (VNĐ) *</label>
+                <label className="flex items-center gap-1.5 text-slate-400 font-bold uppercase tracking-wider mb-1.5 text-[10px]"><Wallet size={12} className="text-emerald-500" /> Giá bán (VNĐ) *</label>
                 <input
                   type="number"
                   value={editFoodPrice}
@@ -881,7 +883,7 @@ export default function MerchantMenu() {
               </div>
 
               <div>
-                <label className="block text-slate-400 font-bold uppercase tracking-wider mb-1.5 text-[10px]">Danh mục</label>
+                <label className="flex items-center gap-1.5 text-slate-400 font-bold uppercase tracking-wider mb-1.5 text-[10px]"><FolderOpen size={12} className="text-amber-500" /> Danh mục</label>
                 <select
                   value={editFoodCat || ''}
                   onChange={(e) => setEditFoodCat(e.target.value ? Number(e.target.value) : null)}
@@ -896,7 +898,7 @@ export default function MerchantMenu() {
             </div>
 
             <div>
-              <label className="block text-slate-400 font-bold uppercase tracking-wider mb-1.5 text-[10px]">Mô tả món ăn</label>
+              <label className="flex items-center gap-1.5 text-slate-400 font-bold uppercase tracking-wider mb-1.5 text-[10px]"><FileText size={12} className="text-blue-500" /> Mô tả món ăn</label>
               <textarea
                 rows={2.5}
                 placeholder="Sườn nướng thơm ngon mật ong..."
@@ -940,7 +942,7 @@ export default function MerchantMenu() {
       >
         <div className="space-y-4 font-google-sans">
           <div>
-            <label className="block text-xs font-semibold text-slate-500 mb-1.5 uppercase">Tên danh mục mới *</label>
+            <label className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 mb-1.5 uppercase"><FolderPlus size={13} className="text-md-secondary" /> Tên danh mục mới *</label>
             <input
               type="text"
               value={newCatName}
@@ -980,7 +982,7 @@ export default function MerchantMenu() {
       >
         <div className="space-y-4 font-google-sans">
           <div>
-            <label className="block text-xs font-semibold text-slate-500 mb-1.5 uppercase">Tên danh mục *</label>
+            <label className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 mb-1.5 uppercase"><Pencil size={13} className="text-blue-500" /> Tên danh mục *</label>
             <input
               type="text"
               value={editCatName}

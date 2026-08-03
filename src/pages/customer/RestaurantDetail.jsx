@@ -1122,7 +1122,7 @@ export default function RestaurantDetail() {
 
       {/* ─── FLOATING CART BOTTOM BAR (Shows when there is item in cart) ────────── */}
       {cartItems.length > 0 && (
-        <div className="fixed bottom-16 md:bottom-0 left-0 right-0 p-3 xs:p-5 bg-white/80 backdrop-blur-md border-t border-md-outline-variant/30 flex justify-center z-50 shadow-shadow-4 xl:hidden">
+        <div className="fixed bottom-24 md:bottom-0 left-0 right-0 p-3 xs:p-5 bg-white/80 backdrop-blur-md border-t border-md-outline-variant/30 flex justify-center z-50 shadow-shadow-4 xl:hidden">
           <div className="w-full max-w-5xl flex items-center justify-between bg-md-primary text-white px-4 py-3 xs:px-6 xs:py-4.5 rounded-radius-full shadow-shadow-4 hover:scale-[1.01] active:scale-[0.99] transition-all cursor-pointer" onClick={() => navigate('/cart', { state: { targetRestaurantId: restaurant.id } })}>
             <div className="flex items-center gap-3 xs:gap-4 min-w-0">
               <div className="relative shrink-0">

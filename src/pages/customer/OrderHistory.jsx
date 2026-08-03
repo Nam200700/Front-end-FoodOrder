@@ -5,7 +5,7 @@ import { useWebSocketContext } from '../../contexts/WebSocketContext';
 import {
   ShoppingBag, RefreshCw, Ban, AlertCircle, MessageSquare, Star, FileText, MapPin, CreditCard, Eye,
   User, Phone, Bike, Wallet, StickyNote, CalendarClock, UtensilsCrossed, Package, BadgeCheck, Clock, Check,
-  Store, CheckCircle2, ChevronRight, Receipt
+  Store, CheckCircle2, ChevronRight, Receipt, Ticket, ChevronLeft 
 } from 'lucide-react';
 import { formatCurrency } from '../../utils/format';
 import { getFoodImageUrl, DEFAULT_FOOD_IMAGE } from '../../utils/avatarHelper';
@@ -18,6 +18,7 @@ import FilterTabs from '../../components/common/FilterTabs';
 import Button from '../../components/common/Button';
 import Modal from '../../components/common/Modal';
 import Card from '../../components/common/Card';
+import { useModalState } from '../../hooks/useModalState';
 
 // Tabs trạng thái đơn hàng
 const ORDER_STATUS_TABS = [
@@ -135,6 +136,13 @@ export default function OrderHistory() {
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState(null);
 
+  const [page, setPage] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
+  const pageSize = 10;
+
+  const detailModal = useModalState(null);
+  const cancelModal = useModalState(null);
+
   const mapOrders = (data) => {
     const realData = data?.content || [];
     return realData.map((order) => {
@@ -170,7 +178,9 @@ export default function OrderHistory() {
         rating: order.restaurantRating || 5,
         note: order.note,
         name: order.customerName,
-        phone: order.customerPhone
+        phone: order.customerPhone,
+        voucherCode: order.voucherCode,
+        discountAmount: order.discountAmount
       };
     });
   };
@@ -179,16 +189,26 @@ export default function OrderHistory() {
   const fetchOrderHistory = useCallback(async (background = false) => {
     if (!background) { setLoading(true); setError(null); }
     try {
-      const statusParam = activeTab === 'ALL' ? {} : { status: activeTab};
-      const response = await apiClient.get('/orders', { params: statusParam });
-      const mappedData = mapOrders(response.data?.data || response.data);
-      setOrders(mappedData);
+      const params = {
+        page: page,
+        size: pageSize,
+        ...(activeTab !== 'ALL' && { status: activeTab })
+      };
+      const response = await apiClient.get('/orders', { params });
+      const responseData = response.data?.data || response.data;
+      
+      setOrders(mapOrders(responseData));
+      setTotalPages(responseData?.totalPages || 0);
     } catch (err) {
       console.error('Lỗi khi lấy danh sách đơn hàng:', err);
       if (!background) setError(err);
     } finally {
       if (!background) setLoading(false);
     }
+  }, [activeTab, page]);
+
+  useEffect(() => {
+    setPage(0);
   }, [activeTab]);
 
   useEffect(() => {
@@ -278,6 +298,7 @@ export default function OrderHistory() {
 
   // Hủy đơn hàng
   const handleCancelOrder = async () => {
+    const orderIdToCancel = cancelModal.data; 
     if (!cancelReasonInput.trim()) {
       toast.error('Vui lòng nhập hoặc chọn lý do hủy!');
       return;
@@ -285,15 +306,16 @@ export default function OrderHistory() {
 
     setSubmittingCancel(true);
     try {
-      await apiClient.post(`/orders/${selectedOrderId}/cancel`, {
+      await apiClient.patch(`/orders/${orderIdToCancel}/cancel`, {
         reason: cancelReasonInput.trim()
       });
-      toast.success(`Đã hủy thành công đơn hàng #${selectedOrderId}!`);
-      setIsCancelModalOpen(false);
+      toast.success(`Đã hủy thành công đơn hàng #${orderIdToCancel}!`);
+      cancelModal.close(); 
+      setCancelReasonInput('');
       fetchOrderHistory(); 
     } catch (err) {
       console.error('Lỗi khi hủy đơn hàng:', err);
-      toast.error(err.response?.data?.message);
+      toast.error(err.response?.data?.message || 'Không thể hủy đơn hàng này.');
     } finally {
       setSubmittingCancel(false);
     }
@@ -405,7 +427,7 @@ export default function OrderHistory() {
           />
         </div>
 
-        <div className="min-h-[600px] w-full">
+        <div className="min-h-[600px] w-full flex flex-col justify-between">
           {loading ? (
             <div className="space-y-4">
               <SkeletonOrderCard />
@@ -428,171 +450,194 @@ export default function OrderHistory() {
               />
             </div>
           ) : (
-            <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-              {list.map((order, idx) => (
-                <Card
-                  key={order.id}
-                  variant="flat"
-                  onClick={() => navigate(`/orders/${order.id}`)}
-                  style={{ animationDelay: `${idx * 60}ms` }}
-                  className={`animate-rise-in !border-slate-100 border-l-4 ${STATUS_ACCENT[order.status] || 'border-l-slate-200'} shadow-sm p-4 md:p-5 flex flex-col gap-4 group hover:-translate-y-0.5 hover:shadow-md hover:border-slate-200 !rounded-2xl cursor-pointer`}
-                >
-                  {/* Card Header: tên quán + mã đơn + ngày · pill trạng thái có icon */}
-                  <div className="flex flex-row justify-between items-start gap-3 border-b border-slate-100 pb-3">
-                    <div className="min-w-0">
-                      <h3 className="font-extrabold text-slate-800 text-sm md:text-[15px] flex items-center gap-1.5 truncate">
-                        <Store size={15} className="text-orange-500 shrink-0" />
-                        <span className="truncate">{order.restaurantName || 'Nhà hàng'}</span>
-                      </h3>
-                      <div className="flex items-center gap-2 mt-1 text-[10px] sm:text-[11px] text-slate-400 font-medium">
-                        <span className="font-bold text-slate-500">MÃ ĐƠN #{order.id}</span>
-                        <span className="w-1 h-1 rounded-full bg-slate-300 shrink-0" />
-                        <span className="inline-flex items-center gap-1 whitespace-nowrap"><CalendarClock size={11} /> {order.createdAt}</span>
+            <div className="space-y-6">
+              {/* Lưới danh sách đơn hàng */}
+              <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+                {list.map((order, idx) => (
+                  <Card
+                    key={order.id}
+                    variant="flat"
+                    onClick={() => navigate(`/orders/${order.id}`)}
+                    style={{ animationDelay: `${idx * 60}ms` }}
+                    className={`animate-rise-in !border-slate-100 border-l-4 ${STATUS_ACCENT[order.status] || 'border-l-slate-200'} shadow-sm p-4 md:p-5 flex flex-col gap-4 group hover:-translate-y-0.5 hover:shadow-md hover:border-slate-200 !rounded-2xl cursor-pointer`}
+                  >
+                    {/* Card Header: tên quán + mã đơn + ngày · pill trạng thái có icon */}
+                    <div className="flex flex-row justify-between items-start gap-3 border-b border-slate-100 pb-3">
+                      <div className="min-w-0">
+                        <h3 className="font-extrabold text-slate-800 text-sm md:text-[15px] flex items-center gap-1.5 truncate">
+                          <Store size={15} className="text-orange-500 shrink-0" />
+                          <span className="truncate">{order.restaurantName || 'Nhà hàng'}</span>
+                        </h3>
+                        <div className="flex items-center gap-2 mt-1 text-[10px] sm:text-[11px] text-slate-400 font-medium">
+                          <span className="font-bold text-slate-500">MÃ ĐƠN #{order.id}</span>
+                          <span className="w-1 h-1 rounded-full bg-slate-300 shrink-0" />
+                          <span className="inline-flex items-center gap-1 whitespace-nowrap"><CalendarClock size={11} /> {order.createdAt}</span>
+                        </div>
+                      </div>
+
+                      {(() => {
+                        const SIcon = STATUS_ICON[order.status] || Clock;
+                        return (
+                          <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full font-bold text-[10px] sm:text-[11px] shrink-0 ${getStatusStyles(order.status)}`}>
+                            <SIcon size={12} /> {getStatusLabel(order.status)}
+                          </span>
+                        );
+                      })()}
+                    </div>
+
+                    {/* Thanh tiến trình cho đơn đang xử lý */}
+                    {isActiveStatus(order.status) && (
+                      <div onClick={(e) => e.stopPropagation()} className="bg-orange-50/40 border border-orange-100 rounded-xl px-3 pt-2 pb-2.5">
+                        <OrderProgress status={order.status} />
+                        <button
+                          onClick={() => navigate(`/orders/${order.id}`)}
+                          className="mt-2 w-full flex items-center justify-center gap-1 text-[11px] font-bold text-orange-600 hover:text-orange-700 transition-colors cursor-pointer"
+                        >
+                          Theo dõi đơn hàng <ChevronRight size={13} />
+                        </button>
+                      </div>
+                    )}
+
+                    {/* Danh sách món ăn */}
+                    <div className="w-full">
+                      <div 
+                        className="w-full overflow-x-auto scrollbar-none touch-pan-x" 
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <div className="flex flex-row gap-3 sm:gap-4 w-max max-w-full pb-1">
+                          {order.items.map((item, idx) => (
+                            <div 
+                              key={idx}
+                              className="flex gap-3 items-center border border-slate-100 rounded-lg p-3 bg-slate-50/50 w-[260px] sm:w-[280px] shrink-0 select-none"
+                            >
+                              <div className="w-16 h-16 rounded-md overflow-hidden shrink-0 border border-slate-200 bg-white">
+                                <img
+                                  src={item.image}
+                                  alt={item.name}
+                                  className="w-full h-full object-cover"
+                                  draggable="false"
+                                  onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = DEFAULT_FOOD_IMAGE; }}
+                                />
+                              </div>
+                              <div className="min-w-0 flex-1">
+                                <h4 className="font-bold text-slate-800 text-sm truncate">{item.name}</h4>
+                                <p className="text-xs text-orange-500 font-bold mt-1">
+                                  {formatCurrency(item.price)}
+                                  <span className="text-slate-500 font-medium text-[12px] ml-1.5">x{item.quantity}</span>
+                                </p>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
                       </div>
                     </div>
 
-                    {(() => {
-                      const SIcon = STATUS_ICON[order.status] || Clock;
-                      return (
-                        <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full font-bold text-[10px] sm:text-[11px] shrink-0 ${getStatusStyles(order.status)}`}>
-                          <SIcon size={12} /> {getStatusLabel(order.status)}
+                    {/* Card Footer */}
+                    <div className="flex flex-col sm:flex-row justify-between sm:items-center border-t border-slate-100 pt-3 mt-0.5 gap-3">
+                      <div className="text-xs sm:text-sm text-slate-500 font-medium">
+                        Tổng thanh toán:{' '}
+                        <span className="text-sm sm:text-base font-extrabold text-orange-500 ml-1">
+                          {formatCurrency(order.total)}
                         </span>
-                      );
-                    })()}
-                  </div>
+                      </div>
 
-                  {/* Thanh tiến trình cho đơn đang xử lý (khách theo dõi ngay trên card) */}
-                  {isActiveStatus(order.status) && (
-                    <div onClick={(e) => e.stopPropagation()} className="bg-orange-50/40 border border-orange-100 rounded-xl px-3 pt-2 pb-2.5">
-                      <OrderProgress status={order.status} />
-                      <button
-                        onClick={() => navigate(`/orders/${order.id}`)}
-                        className="mt-2 w-full flex items-center justify-center gap-1 text-[11px] font-bold text-orange-600 hover:text-orange-700 transition-colors cursor-pointer"
-                      >
-                        Theo dõi đơn hàng <ChevronRight size={13} />
-                      </button>
-                    </div>
-                  )}
-
-                  {/* danh sách món ăn */}
-                  <div className="w-full">
-                    <div 
-                      className="w-full overflow-x-auto scrollbar-none touch-pan-x" 
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <div className="flex flex-row gap-3 sm:gap-4 w-max max-w-full pb-1">
-                        {order.items.map((item, idx) => (
-                          <div 
-                            key={idx}
-                            className="flex gap-3 items-center border border-slate-100 rounded-lg p-3 bg-slate-50/50 w-[260px] sm:w-[280px] shrink-0 select-none"
+                      <div className="flex items-center justify-end gap-1.5 w-full sm:w-auto" onClick={(e) => e.stopPropagation()}>
+                        {order.status === 'PENDING' ? (
+                          <Button
+                            type="button"
+                            onClick={(e) => handleOpenCancelModal(e, order.id)}
+                            icon={Ban}
+                            className="!px-2.5 !py-1.5 !bg-red-500 hover:!bg-red-600 text-white !rounded-lg text-[11px] !font-bold !shadow-sm w-full sm:w-auto"
                           >
-                            <div className="w-16 h-16 rounded-md overflow-hidden shrink-0 border border-slate-200 bg-white">
-                              <img
-                                src={item.image}
-                                alt={item.name}
-                                className="w-full h-full object-cover"
-                                draggable="false"
-                                onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = DEFAULT_FOOD_IMAGE; }}
-                              />
-                            </div>
-                            <div className="min-w-0 flex-1">
-                              <h4 className="font-bold text-slate-800 text-sm truncate">{item.name}</h4>
-                              <p className="text-xs text-orange-500 font-bold mt-1">
-                                {formatCurrency(item.price)}
-                                <span className="text-slate-500 font-medium text-[12px] ml-1.5">x{item.quantity}</span>
-                              </p>
-                            </div>
-                          </div>
-                        ))}
+                            Hủy đơn
+                          </Button>
+                        ) : (
+                          <>
+                            {order.status === 'COMPLETED' && (
+                              <>
+                                <Button
+                                  type="button"
+                                  onClick={(e) => handleReorder(e, order)}
+                                  icon={RefreshCw}
+                                  className="!px-2.5 !py-1.5 !bg-orange-500 hover:!bg-orange-600 text-white !rounded-lg text-[11px] !font-bold !shadow-sm whitespace-nowrap flex-1 sm:flex-none sm:w-auto"
+                                >
+                                  Mua lại
+                                </Button>
+                                 
+                                {order.reviewed ? (
+                                  <Button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation(); 
+                                      navigate(`/reviews/${order.id}`);
+                                    }}
+                                    icon={Star}
+                                    className="!px-2.5 !py-1.5 !bg-slate-100 !text-slate-500 !border-none !rounded-lg text-[11px] !font-bold !shadow-none whitespace-nowrap flex-1 sm:flex-none sm:w-auto cursor-not-allowed flex items-center justify-center gap-1"
+                                  >
+                                    Đã đánh giá 
+                                  </Button>
+                                ) : (
+                                  <Button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation(); 
+                                      navigate(`/reviews/${order.id}`);
+                                    }}
+                                    icon={MessageSquare}
+                                    className="!px-2.5 !py-1.5 !bg-indigo-600 hover:!bg-indigo-700 !text-white !border-none !rounded-lg text-[11px] !font-bold !shadow-none whitespace-nowrap flex-1 sm:flex-none sm:w-auto"
+                                  >
+                                    Đánh giá
+                                  </Button>
+                                )}
+                              </>
+                            )}         
+                          </>
+                        )}
+
+                        {order.status === 'CANCELLED' && (
+                          <Button
+                            type="button"
+                            onClick={(e) => handleReorder(e, order)}
+                            icon={RefreshCw}
+                            className="!px-2.5 !py-1.5 !bg-orange-500 hover:!bg-orange-600 text-white !rounded-lg text-[11px] !font-bold !shadow-sm whitespace-nowrap w-full sm:w-auto"
+                          >
+                            Mua lại
+                          </Button>         
+                        )}
+
+                        <Button
+                          type="button"
+                          onClick={(e) => handleOpenDetailModal(e, order)}
+                          icon={Eye}
+                          className="!px-2.5 !py-1.5 !bg-blue-500 hover:!bg-blue-600 !text-white !border-none !rounded-lg text-[11px] !font-bold !shadow-none whitespace-nowrap w-full sm:w-auto"
+                        >
+                          Chi tiết
+                        </Button>         
                       </div>
                     </div>
-                  </div>
+                  </Card>
+                ))}
+              </div>
 
-                  {/* Card Footer */}
-                  <div className="flex flex-col sm:flex-row justify-between sm:items-center border-t border-slate-100 pt-3 mt-0.5 gap-3">
-                    <div className="text-xs sm:text-sm text-slate-500 font-medium">
-                      Tổng thanh toán:{' '}
-                      <span className="text-sm sm:text-base font-extrabold text-orange-500 ml-1">
-                        {formatCurrency(order.total)}
-                      </span>
-                    </div>
-
-                    <div className="flex items-center justify-end gap-1.5 w-full sm:w-auto" onClick={(e) => e.stopPropagation()}>
-                      {order.status === 'PENDING' ? (
-                        <Button
-                          type="button"
-                          onClick={(e) => handleOpenCancelModal(e, order.id)}
-                          icon={Ban}
-                          className="!px-2.5 !py-1.5 !bg-red-500 hover:!bg-red-600 text-white !rounded-lg text-[11px] !font-bold !shadow-sm w-full sm:w-auto"
-                        >
-                          Hủy đơn
-                        </Button>
-                      ) : (
-                        <>
-                          {order.status === 'COMPLETED' && (
-                            <>
-                              <Button
-                                type="button"
-                                onClick={(e) => handleReorder(e, order)}
-                                icon={RefreshCw}
-                                className="!px-2.5 !py-1.5 !bg-orange-500 hover:!bg-orange-600 text-white !rounded-lg text-[11px] !font-bold !shadow-sm whitespace-nowrap flex-1 sm:flex-none sm:w-auto"
-                              >
-                                Mua lại
-                              </Button>
-                               
-                              {order.reviewed ? (
-                                <Button
-                                  type="button"
-                                  onClick={(e) => {
-                                    e.stopPropagation(); 
-                                    navigate(`/reviews/${order.id}`);
-                                  }}
-                                  icon={Star}
-                                  className="!px-2.5 !py-1.5 !bg-slate-100 !text-slate-500 !border-none !rounded-lg text-[11px] !font-bold !shadow-none whitespace-nowrap flex-1 sm:flex-none sm:w-auto cursor-not-allowed flex items-center justify-center gap-1"
-                                >
-                                  Đã đánh giá ({order.rating}★)
-                                </Button>
-                              ) : (
-                                <Button
-                                  type="button"
-                                  onClick={(e) => {
-                                    e.stopPropagation(); 
-                                    navigate(`/reviews/${order.id}`);
-                                  }}
-                                  icon={MessageSquare}
-                                  className="!px-2.5 !py-1.5 !bg-indigo-600 hover:!bg-indigo-700 !text-white !border-none !rounded-lg text-[11px] !font-bold !shadow-none whitespace-nowrap flex-1 sm:flex-none sm:w-auto"
-                                >
-                                  Đánh giá
-                                </Button>
-                              )}
-                            </>
-                          )}                        
-                        </>
-                      )}
-
-                      {order.status === 'CANCELLED' && (
-                        <Button
-                          type="button"
-                          onClick={(e) => handleReorder(e, order)}
-                          icon={RefreshCw}
-                          className="!px-2.5 !py-1.5 !bg-orange-500 hover:!bg-orange-600 text-white !rounded-lg text-[11px] !font-bold !shadow-sm whitespace-nowrap w-full sm:w-auto"
-                        >
-                          Mua lại
-                        </Button>                          
-                      )}
-
-                      <Button
-                        type="button"
-                        onClick={(e) => handleOpenDetailModal(e, order)}
-                        icon={Eye}
-                        className="!px-2.5 !py-1.5 !bg-blue-500 hover:!bg-blue-600 !text-white !border-none !rounded-lg text-[11px] !font-bold !shadow-none whitespace-nowrap w-full sm:w-auto"
-                      >
-                        Chi tiết
-                      </Button>                            
-                    </div>
-                  </div>
-                </Card>
-              ))}
+              {totalPages > 1 && (
+                <div className="flex items-center justify-end gap-3 pt-6 border-t border-slate-200/60 mt-6">
+                  <button
+                    onClick={() => setPage(Math.max(page - 1, 0))}
+                    disabled={page === 0}
+                    className="flex items-center justify-center w-8 h-8 rounded-lg bg-white border border-slate-200 text-slate-600 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-50 transition-all cursor-pointer shadow-sm"
+                  >
+                    <ChevronLeft size={16} /> 
+                  </button>
+                  <span className="text-xs font-bold text-slate-500 mr-1">Trang {page + 1} / {totalPages}</span>
+                  <button
+                    onClick={() => setPage(Math.min(page + 1, totalPages - 1))}
+                    disabled={page >= totalPages - 1}
+                    className="flex items-center justify-center w-8 h-8 rounded-lg bg-white border border-slate-200 text-slate-600 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-50 transition-all cursor-pointer shadow-sm"
+                  >
+                    <ChevronRight size={16} />
+                  </button>
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -600,15 +645,17 @@ export default function OrderHistory() {
 
       {/* MODAL CHI TIẾT ĐƠN HÀNG — phong cách customer (tông cam) */}
       <Modal
-        isOpen={isDetailModalOpen}
-        onClose={handleCloseDetailModal}
-        title={`Chi Tiết Đơn Hàng #${selectedOrder?.id}`}
+        isOpen={detailModal.isOpen}
+        onClose={detailModal.close}
+        title={`Chi Tiết Đơn Hàng #${detailModal.data?.id}`}
         size="lg"
       >
-        {selectedOrder && (() => {
-          const o = selectedOrder;
+        {detailModal.data && (() => {
+          const o = detailModal.data;
           const StatusIcon = STATUS_ICON[o.status] || Clock;
           const payLabel = o.paymentMethod === 'VNPAY' ? 'Chuyển khoản VNPAY' : 'Thanh toán khi nhận hàng (COD)';
+          const hasDiscount = o.discountAmount && Number(o.discountAmount) > 0;
+
           return (
             <div className="space-y-4 text-slate-700 -mt-1">
               {/* Hàng đầu: thời gian đặt + pill trạng thái */}
@@ -687,13 +734,24 @@ export default function OrderHistory() {
                     <span>Tạm tính</span>
                     <span className="text-slate-800 font-bold">{formatCurrency(o.subtotal)}</span>
                   </div>
+                  
                   <div className="flex justify-between items-center text-sm text-slate-500 font-medium">
                     <span>Phí vận chuyển</span>
                     <span className="text-slate-800 font-bold">{formatCurrency(o.shippingFee)}</span>
                   </div>
+
+                  {hasDiscount && (
+                    <div className="flex justify-between items-center text-sm font-medium pt-1">
+                      <span className="inline-flex items-center gap-1.5 text-orange-600">
+                        Voucher ({o.voucherCode})
+                      </span>
+                      <span className="text-rose-600 font-bold">-{formatCurrency(o.discountAmount)}</span>
+                    </div>
+                  )}
+
                   <div className="flex justify-between items-center pt-2 border-t border-dashed border-orange-200">
                     <span className="text-sm font-extrabold text-slate-800">Tổng thanh toán</span>
-                    <span className="text-orange-500 text-xl font-extrabold">{formatCurrency(o.total)}</span>
+                    <span className="text-orange-500 text-xl font-extrabold">{formatCurrency(o.total)} </span>
                   </div>
                 </div>
               </div>
@@ -726,11 +784,10 @@ export default function OrderHistory() {
 
       {/* MODAL HỦY ĐƠN HÀNG */}
       <Modal
-        isOpen={isCancelModalOpen}
-        onClose={handleCloseCancelModal}
-        title={`Xác Nhận Hủy Đơn Hàng #${selectedOrderId}`}
+        isOpen={cancelModal.isOpen}
+        onClose={cancelModal.close}
+        title={`Xác Nhận Hủy Đơn Hàng #${cancelModal.data}`}
         size="sm"
-        className="[&_h2]:!text-slate-900 [&_h2]:!text-base [&_h2]:md:!text-lg [&_h2]:!font-bold [&_button]:disabled:opacity-50"
       >
         <div className="space-y-4 text-slate-700 !-mt-3">
           <div className="p-3 bg-amber-50 text-amber-800 rounded-lg text-xs font-medium border border-amber-100 flex items-start gap-2">

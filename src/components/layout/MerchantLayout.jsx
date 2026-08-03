@@ -28,6 +28,7 @@ import { useAvatarUpload } from '../../hooks/useAvatarUpload';
 import { useLayoutNav } from '../../hooks/useLayoutNav';
 import NavMenuList from './NavMenuList';
 import MobileDrawer from './MobileDrawer';
+import MobileTabBar from './MobileTabBar';
 
 export default function MerchantLayout() {
   const navigate = useNavigate();

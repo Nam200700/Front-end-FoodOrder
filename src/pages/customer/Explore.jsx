@@ -13,10 +13,27 @@ import { calculateHaversineDistance } from '../../utils/haversine';
 
 const FEED_SIZE = 8;
 
-// Gắn khoảng cách thật (Haversine) vào quán đã map — dùng chung feed + kết quả tìm kiếm.
-const withDistance = (mapped, userLat, userLng) => {
+// Tính trạng thái mở cửa THẬT từ giờ mở/đóng của quán (hỗ trợ khung qua đêm). Thiếu dữ liệu → coi như đang mở.
+const computeOpen = (raw) => {
+  const o = raw?.opensAt, c = raw?.closesAt;
+  if (!o || !c) return true;
+  const toMin = (t) => { const [h, m] = String(t).split(':'); return Number(h) * 60 + Number(m); };
+  const now = new Date();
+  const cur = now.getHours() * 60 + now.getMinutes();
+  const open = toMin(o), close = toMin(c);
+  return open <= close ? (cur >= open && cur < close) : (cur >= open || cur < close); // qua đêm
+};
+
+// Gắn khoảng cách thật (Haversine) + trạng thái mở cửa vào quán đã map — dùng chung feed + tìm kiếm.
+const decorate = (mapped, raw, userLat, userLng) => {
   const d = calculateHaversineDistance(userLat, userLng, mapped.latitude, mapped.longitude);
-  return { ...mapped, distanceVal: d ?? 999, distance: d ? `${d}km` : '—', cuisineType: mapped.tags?.[0] || 'Ẩm thực' };
+  return {
+    ...mapped,
+    isOpen: computeOpen(raw),
+    distanceVal: d ?? 999,
+    distance: d ? `${d}km` : '—',
+    cuisineType: mapped.tags?.[0] || 'Ẩm thực',
+  };
 };
 
 // ─── Thẻ "bài viết" quán ăn (kiểu feed GrabFood/UberEats) ───

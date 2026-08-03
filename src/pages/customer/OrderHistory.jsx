@@ -143,6 +143,9 @@ export default function OrderHistory() {
   const detailModal = useModalState(null);
   const cancelModal = useModalState(null);
 
+  const [keywordInput, setKeywordInput] = useState('');
+  const [debouncedKeyword, setDebouncedKeyword] = useState('');
+
   const mapOrders = (data) => {
     const realData = data?.content || [];
     return realData.map((order) => {
@@ -191,7 +194,8 @@ export default function OrderHistory() {
       const params = {
         page: page,
         size: pageSize,
-        ...(activeTab !== 'ALL' && { status: activeTab })
+        ...(activeTab !== 'ALL' && { status: activeTab }),
+        ...(debouncedKeyword.trim() && { keyword: debouncedKeyword.trim() })
       };
       const response = await apiClient.get('/orders', { params });
       const responseData = response.data?.data || response.data;
@@ -204,7 +208,7 @@ export default function OrderHistory() {
     } finally {
       if (!background) setLoading(false);
     }
-  }, [activeTab, page]);
+  }, [activeTab, page, debouncedKeyword]);
 
   useEffect(() => {
     setPage(0);
@@ -213,6 +217,14 @@ export default function OrderHistory() {
   useEffect(() => {
     fetchOrderHistory();
   }, [fetchOrderHistory]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedKeyword(keywordInput);
+      setPage(0); 
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [keywordInput]);
 
   const syncOrders = useCallback(async (alert) => {
     try {
@@ -383,16 +395,43 @@ export default function OrderHistory() {
           })}
         </div>
 
-        {/* Thanh điều hướng Tabs Trạng thái */}
-        <div className="mb-6 overflow-x-auto scrollbar-none touch-pan-x border-b border-slate-200">
-          <FilterTabs
-            tabs={ORDER_STATUS_TABS}
-            activeTab={activeTab}
-            onTabChange={setActiveTab}
-            counts={statusCounts}
-            className="min-w-max pb-3 gap-2.5 !flex-nowrap [&_button]:text-center [&_button]:!py-2 [&_button]:!px-4 [&_button]:text-xs [&_button]:md:text-sm [&_button]:font-bold [&_button]:!rounded-lg [&_button]:whitespace-nowrap [&_button]:!border-transparent [&_button]:cursor-pointer"
-            activeClassName="!bg-orange-500 !text-white !border-orange-500 shadow-sm"
-          />
+        {/* Thanh điều hướng Tabs Trạng thái & Ô Tìm kiếm ở góc phải */}
+        <div className="mb-6 flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-slate-200 pb-3">
+          <div className="overflow-x-auto scrollbar-none touch-pan-x">
+            <FilterTabs
+              tabs={ORDER_STATUS_TABS}
+              activeTab={activeTab}
+              onTabChange={setActiveTab}
+              counts={statusCounts}
+              className="min-w-max gap-2.5 !flex-nowrap [&_button]:text-center [&_button]:!py-2 [&_button]:!px-4 [&_button]:text-xs [&_button]:md:text-sm [&_button]:font-bold [&_button]:!rounded-lg [&_button]:whitespace-nowrap [&_button]:!border-transparent [&_button]:cursor-pointer"
+              activeClassName="!bg-orange-500 !text-white !border-orange-500 shadow-sm"
+            />
+          </div>
+
+          {/* Ô tìm kiếm góc phải */}
+          <div className="relative min-w-[240px] md:w-72 shrink-0">
+            <span className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-slate-400">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+              </svg>
+            </span>
+            <input
+              type="text"
+              value={keywordInput}
+              onChange={(e) => setKeywordInput(e.target.value)}
+              placeholder="Tìm mã đơn, tên quán, món ăn..."
+              className="w-full pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-xs md:text-sm focus:outline-none focus:border-orange-500 text-slate-800 placeholder-slate-400 shadow-sm transition-all"
+            />
+            {keywordInput && (
+              <button
+                type="button"
+                onClick={() => setKeywordInput('')}
+                className="absolute inset-y-0 right-0 flex items-center pr-3 text-slate-400 hover:text-slate-600 text-xs font-bold"
+              >
+                ✕
+              </button>
+            )}
+          </div>
         </div>
 
         <div className="min-h-[600px] w-full flex flex-col justify-between">

@@ -6,7 +6,7 @@ import {
   ArrowLeft, MapPin, Phone, Store, XCircle, X,
   ShoppingBag, CheckSquare, Square,
   User, Truck, Edit2, Plus, Tag,
-  Minus, Wallet, BadgePercent, Bike, ShieldCheck, Receipt, Clock, ChevronRight, StickyNote
+  Minus, Wallet, BadgePercent, Bike, ShieldCheck, Receipt, Clock, ChevronRight, StickyNote, Check, Sparkles
 } from 'lucide-react';
 import { formatCurrency } from '../../utils/format';
 import Button from '../../components/common/Button';
@@ -18,6 +18,21 @@ import Card from '../../components/common/Card';
 import { useModalState } from '../../hooks/useModalState';
 import MapModal2 from '../../components/common/Map';
 import { formatDateTime } from '../../utils/format';
+
+// Nhận diện loại voucher: icon + màu riêng cho FREESHIP / PERCENT / FIXED (đồng bộ toàn app)
+const VOUCHER_TYPE_META = {
+  FREESHIP: { icon: Truck, label: 'Miễn phí ship', chip: 'bg-teal-100 text-teal-700', strip: 'bg-teal-400', value: 'text-teal-700' },
+  PERCENT: { icon: BadgePercent, label: 'Giảm theo %', chip: 'bg-orange-100 text-[#ff6b35]', strip: 'bg-[#ff6b35]', value: 'text-[#ff6b35]' },
+  FIXED: { icon: Wallet, label: 'Giảm tiền mặt', chip: 'bg-blue-100 text-blue-700', strip: 'bg-blue-400', value: 'text-blue-700' },
+};
+const vmeta = (t) => VOUCHER_TYPE_META[t] || VOUCHER_TYPE_META.FIXED;
+
+// Trạng thái hạn dùng: sắp hết hạn (≤3 ngày) để nhắc khách dùng sớm
+const expiryInfo = (dateVal) => {
+  if (!dateVal) return { days: null, soon: false, expired: false };
+  const days = Math.ceil((new Date(dateVal).getTime() - Date.now()) / 86400000);
+  return { days, soon: days >= 0 && days <= 3, expired: days < 0 };
+};
 
 export default function Cart() {
   const navigate = useNavigate();
@@ -441,6 +456,28 @@ export default function Cart() {
   const totalDiscountAmount = useMemo(() => {
     return selectedCarts.reduce((sum, cart) => sum + calculateCartDiscount(cart), 0);
   }, [selectedCarts, selectedVouchers, shippingInfos]);
+
+  // Ước tính số tiền THẬT tiết kiệm được nếu áp voucher này cho quán đang mở modal (hỗ trợ khách chọn đúng mã).
+  const estimateVoucherSaving = (voucher) => {
+    const cart = carts.find(c => Number(c.restaurantId) === Number(selectingRestaurantId));
+    if (!cart || !voucher) return 0;
+    const subtotal = cart.subtotal;
+    const shipFee = shippingInfos[selectingRestaurantId]?.shippingFee || 0;
+    const totalBefore = subtotal + shipFee;
+    let d = 0;
+    if (voucher.discountType === 'FIXED') d = Number(voucher.discountValue) || 0;
+    else if (voucher.discountType === 'PERCENT') d = (subtotal * Number(voucher.discountValue)) / 100;
+    else if (voucher.discountType === 'FREESHIP') d = shipFee;
+    return Math.round(d > totalBefore ? totalBefore : d);
+  };
+
+  // Voucher tiết kiệm nhiều nhất cho quán này → gắn nhãn "Tiết kiệm nhất" gợi ý khách.
+  const bestUserVoucherId = useMemo(() => {
+    if (!selectingRestaurantId || myVouchers.length === 0) return null;
+    let best = null, bestVal = 0;
+    myVouchers.forEach(v => { const s = estimateVoucherSaving(v); if (s > bestVal) { bestVal = s; best = v.userVoucherId; } });
+    return bestVal > 0 ? best : null;
+  }, [myVouchers, selectingRestaurantId, carts, shippingInfos]);
 
   const finalTotalAmount = useMemo(() => {
     const total = selectedItemsSubtotal + totalShippingFee - totalDiscountAmount;
@@ -1120,41 +1157,65 @@ export default function Cart() {
                 {/* TAB 1: VOUCHER CỦA TÔI */}
                 {activeVoucherTab === 'my' && (
                   <>
-                    {myVouchers.map((item) => {
+                    {myVouchers.map((item, idx) => {
                       const isSelectedForThisRes = selectedVouchers[selectingRestaurantId]?.userVoucherId === item.userVoucherId;
+                      const meta = vmeta(item.discountType);
+                      const MetaIcon = meta.icon;
+                      const saving = estimateVoucherSaving(item);
+                      const isBest = bestUserVoucherId === item.userVoucherId && !isSelectedForThisRes;
+                      const exp = expiryInfo(item.expiredAt);
                       return (
                         <div
                           key={item.userVoucherId}
                           onClick={() => handleSelectVoucherForRestaurant(item)}
-                          className={`group relative p-3 sm:p-4 rounded-2xl border transition-all cursor-pointer flex items-center justify-between gap-3 overflow-hidden ${
-                            isSelectedForThisRes 
-                              ? 'border-[#ff6b35] bg-gradient-to-r from-orange-50/60 to-white shadow-md ring-1 ring-[#ff6b35]/30' 
+                          style={{ animationDelay: `${idx * 55}ms` }}
+                          className={`group relative p-3 sm:p-4 pl-4 rounded-2xl border transition-all cursor-pointer flex items-center justify-between gap-3 overflow-hidden animate-rise-in hover:-translate-y-0.5 ${
+                            isSelectedForThisRes
+                              ? 'border-[#ff6b35] bg-gradient-to-r from-orange-50/60 to-white shadow-md ring-1 ring-[#ff6b35]/30'
                               : 'border-slate-200/80 hover:border-orange-300 hover:shadow-md bg-white'
                           }`}
                         >
-                          <div className={`absolute left-0 top-0 bottom-0 w-1.5 ${isSelectedForThisRes ? 'bg-[#ff6b35]' : 'bg-slate-200 group-hover:bg-orange-300'} transition-colors`} />
+                          {/* Dải màu bên trái + 2 khấc răng cưa kiểu vé (ticket) */}
+                          <div className={`absolute left-0 top-0 bottom-0 w-1.5 ${isSelectedForThisRes ? 'bg-[#ff6b35]' : meta.strip} transition-colors`} />
+                          <span className="absolute -left-1 top-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-slate-100 border border-slate-200" />
 
-                          <div className="space-y-1 pl-2 min-w-0 flex-1">
+                          {/* Chip icon loại voucher */}
+                          <span className={`shrink-0 w-9 h-9 rounded-xl flex items-center justify-center ${meta.chip} transition-transform group-hover:scale-110`}>
+                            <MetaIcon size={17} />
+                          </span>
+
+                          <div className="space-y-1 min-w-0 flex-1">
                             <div className="flex flex-wrap items-center gap-1.5">
-                              <span className="px-2 py-0.5 rounded-md bg-orange-100 text-[#ff6b35] font-extrabold text-[10px] sm:text-[11px] tracking-wide shrink-0">
+                              <span className={`px-2 py-0.5 rounded-md font-extrabold text-[10px] sm:text-[11px] tracking-wide shrink-0 ${meta.chip}`}>
                                 {item.code}
                               </span>
                               <span className="font-bold text-xs sm:text-sm text-slate-800 truncate">{item.name}</span>
-                            </div>
-                            
-                            <div className="flex items-center gap-2 pt-0.5">
-                              <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-slate-100 text-slate-600">
-                                {item.discountType === 'FIXED' && `Giảm: ${formatCurrency(item.discountValue)}`}
-                                {item.discountType === 'PERCENT' && `Giảm: ${item.discountValue}%`}
-                                {item.discountType === 'FREESHIP' && `Miễn phí vận chuyển`}
-                              </span>
+                              {isBest && (
+                                <span className="inline-flex items-center gap-0.5 text-[9px] font-black px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 shrink-0">
+                                  <Sparkles size={9} /> Tiết kiệm nhất
+                                </span>
+                              )}
                             </div>
 
-                            <div className="flex items-center gap-1.5 text-[11px] sm:text-xs text-slate-500">
-                              <svg className="w-3.5 h-3.5 text-slate-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                              </svg>
+                            <div className="flex items-center gap-2 flex-wrap pt-0.5">
+                              <span className={`inline-flex items-center gap-1 text-[10px] font-extrabold px-2 py-0.5 rounded ${meta.chip}`}>
+                                {item.discountType === 'FIXED' && `Giảm ${formatCurrency(item.discountValue)}`}
+                                {item.discountType === 'PERCENT' && `Giảm ${item.discountValue}%`}
+                                {item.discountType === 'FREESHIP' && 'Miễn phí vận chuyển'}
+                              </span>
+                              {saving > 0 ? (
+                                <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-600">
+                                  <BadgePercent size={11} /> Tiết kiệm ~{formatCurrency(saving)} cho quán này
+                                </span>
+                              ) : (
+                                <span className="text-[10px] font-medium text-slate-400">Có thể áp cho quán này</span>
+                              )}
+                            </div>
+
+                            <div className={`flex items-center gap-1.5 text-[11px] sm:text-xs ${exp.soon ? 'text-rose-500 font-bold' : 'text-slate-500'}`}>
+                              <Clock size={13} className="shrink-0" />
                               <span className="truncate">Hạn: {formatDateTime(item.expiredAt)}</span>
+                              {exp.soon && <span className="text-[9px] font-black px-1.5 py-0.5 rounded-full bg-rose-50 text-rose-600 shrink-0">Sắp hết hạn</span>}
                             </div>
                           </div>
 
@@ -1162,7 +1223,7 @@ export default function Cart() {
                             <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${
                               isSelectedForThisRes ? 'border-[#ff6b35] bg-[#ff6b35]' : 'border-slate-300 bg-white group-hover:border-slate-400'
                             }`}>
-                              {isSelectedForThisRes && <div className="w-2 h-2 rounded-full bg-white" />}
+                              {isSelectedForThisRes && <Check size={12} className="text-white" strokeWidth={3.5} />}
                             </div>
                           </div>
                         </div>
@@ -1181,37 +1242,53 @@ export default function Cart() {
                 {/* TAB 2: VOUCHER PUBLIC */}
                 {activeVoucherTab === 'public' && (
                   <>
-                    {publicVouchers.map((pub) => (
-                      <div
-                        key={pub.voucherId}
-                        className="group relative p-3 sm:p-4 rounded-2xl border border-slate-200/80 bg-white flex items-center justify-between gap-3 shadow-sm hover:shadow-md hover:border-orange-300 transition-all overflow-hidden"
-                      >
-                        <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-orange-400 group-hover:bg-[#ff6b35] transition-colors" />
-
-                        <div className="space-y-1 pl-2 min-w-0 flex-1">
-                          <div className="flex flex-wrap items-center gap-1.5">
-                            <span className="px-2 py-0.5 rounded-md bg-orange-100 text-[#ff6b35] font-extrabold text-[10px] sm:text-[11px] tracking-wide shrink-0">
-                              {pub.code}
-                            </span>
-                            <span className="font-bold text-xs sm:text-sm text-slate-800 truncate">{pub.name}</span>
-                          </div>
-                          <div className="flex items-center gap-1.5 text-[11px] sm:text-xs text-slate-500">
-                            <svg className="w-3.5 h-3.5 text-slate-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                            </svg>
-                            <span className="truncate">{formatDateTime(pub.startDate)} - {formatDateTime(pub.endDate)}</span>
-                          </div>
-                        </div>
-
-                        <Button
-                          type="button"
-                          onClick={() => handleClaimPublicVoucher(pub.voucherId || pub.id)}
-                          className="!bg-[#ff6b35] hover:!bg-orange-600 text-white !text-[11px] sm:!text-xs !font-bold !py-1.5 sm:!py-2 !px-3 sm:!px-4 !rounded-xl shadow-sm hover:shadow transition-all cursor-pointer shrink-0"
+                    {publicVouchers.map((pub, idx) => {
+                      const meta = vmeta(pub.discountType);
+                      const MetaIcon = meta.icon;
+                      const exp = expiryInfo(pub.endDate);
+                      return (
+                        <div
+                          key={pub.voucherId}
+                          style={{ animationDelay: `${idx * 55}ms` }}
+                          className="group relative p-3 sm:p-4 pl-4 rounded-2xl border border-slate-200/80 bg-white flex items-center justify-between gap-3 shadow-sm hover:shadow-md hover:border-orange-300 hover:-translate-y-0.5 transition-all overflow-hidden animate-rise-in"
                         >
-                          Nhận mã
-                        </Button>
-                      </div>
-                    ))}
+                          <div className={`absolute left-0 top-0 bottom-0 w-1.5 ${meta.strip} transition-colors`} />
+                          <span className="absolute -left-1 top-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-slate-100 border border-slate-200" />
+
+                          <span className={`shrink-0 w-9 h-9 rounded-xl flex items-center justify-center ${meta.chip} transition-transform group-hover:scale-110`}>
+                            <MetaIcon size={17} />
+                          </span>
+
+                          <div className="space-y-1 min-w-0 flex-1">
+                            <div className="flex flex-wrap items-center gap-1.5">
+                              <span className={`px-2 py-0.5 rounded-md font-extrabold text-[10px] sm:text-[11px] tracking-wide shrink-0 ${meta.chip}`}>
+                                {pub.code}
+                              </span>
+                              <span className="font-bold text-xs sm:text-sm text-slate-800 truncate">{pub.name}</span>
+                            </div>
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className={`inline-flex items-center gap-1 text-[10px] font-extrabold px-2 py-0.5 rounded ${meta.chip}`}>
+                                {pub.discountType === 'FIXED' && `Giảm ${formatCurrency(pub.discountValue)}`}
+                                {pub.discountType === 'PERCENT' && `Giảm ${pub.discountValue}%`}
+                                {pub.discountType === 'FREESHIP' && 'Miễn phí vận chuyển'}
+                              </span>
+                              <span className={`inline-flex items-center gap-1 text-[11px] ${exp.soon ? 'text-rose-500 font-bold' : 'text-slate-500'}`}>
+                                <Clock size={12} className="shrink-0" /> HSD {formatDateTime(pub.endDate)}
+                                {exp.soon && <span className="text-[9px] font-black px-1.5 py-0.5 rounded-full bg-rose-50 text-rose-600 shrink-0">Sắp hết</span>}
+                              </span>
+                            </div>
+                          </div>
+
+                          <Button
+                            type="button"
+                            onClick={() => handleClaimPublicVoucher(pub.voucherId || pub.id)}
+                            className="!bg-[#ff6b35] hover:!bg-orange-600 text-white !text-[11px] sm:!text-xs !font-bold !py-1.5 sm:!py-2 !px-3 sm:!px-4 !rounded-xl shadow-sm hover:shadow transition-all cursor-pointer shrink-0"
+                          >
+                            Nhận mã
+                          </Button>
+                        </div>
+                      );
+                    })}
                     {publicVouchers.length === 0 && (
                       <div className="flex flex-col items-center justify-center py-12 text-center px-4">
                         <div className="w-12 h-12 bg-slate-100 rounded-full flex items-center justify-center text-slate-400 mb-2.5 text-base">🏷️</div>

@@ -33,7 +33,9 @@ export default function RoleSwitcher() {
       desc: 'Đặt món & theo dõi',
       icon: User,
       color: 'bg-orange-500 text-white',
-      activeBorder: 'border-orange-500/20 ring-2 ring-orange-500/5'
+      activeBorder: 'border-orange-500/20 ring-2 ring-orange-500/5',
+      chip: 'bg-orange-100 text-orange-600',
+      linkActive: 'bg-orange-50 text-orange-700 border-orange-200',
     },
     {
       id: 'OWNER',
@@ -41,7 +43,9 @@ export default function RoleSwitcher() {
       desc: 'Quản lý thực đơn & đơn',
       icon: Store,
       color: 'bg-blue-600 text-white',
-      activeBorder: 'border-blue-500/20 ring-2 ring-blue-500/5'
+      activeBorder: 'border-blue-500/20 ring-2 ring-blue-500/5',
+      chip: 'bg-blue-100 text-blue-600',
+      linkActive: 'bg-blue-50 text-blue-700 border-blue-200',
     },
     {
       id: 'SHIPPER',
@@ -49,7 +53,9 @@ export default function RoleSwitcher() {
       desc: 'Nhận đơn & giao nhận',
       icon: Bike,
       color: 'bg-emerald-600 text-white',
-      activeBorder: 'border-emerald-500/20 ring-2 ring-emerald-500/5'
+      activeBorder: 'border-emerald-500/20 ring-2 ring-emerald-500/5',
+      chip: 'bg-emerald-100 text-emerald-600',
+      linkActive: 'bg-emerald-50 text-emerald-700 border-emerald-200',
     },
     {
       id: 'ADMIN',
@@ -57,7 +63,9 @@ export default function RoleSwitcher() {
       desc: 'Quản trị & phê duyệt',
       icon: Shield,
       color: 'bg-purple-600 text-white',
-      activeBorder: 'border-purple-500/20 ring-2 ring-purple-500/5'
+      activeBorder: 'border-purple-500/20 ring-2 ring-purple-500/5',
+      chip: 'bg-purple-100 text-purple-600',
+      linkActive: 'bg-purple-50 text-purple-700 border-purple-200',
     },
   ];
 

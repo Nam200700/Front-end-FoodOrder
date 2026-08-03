@@ -110,6 +110,7 @@ export default function RoleSwitcher() {
           { label: 'Lịch sử giao hàng', path: '/shipper/history', icon: ClipboardList },
           { label: 'Ví thu nhập & thống kê', path: '/shipper/earnings', icon: Wallet },
           { label: 'Tin nhắn khách hàng/quán', path: '/shipper/chat', icon: MessageSquare },
+          { label: 'Đánh giá của tài xế', path: '/shipper/reviews', icon: Star },
           { label: 'Hồ sơ tài xế', path: '/shipper/profile', icon: User }
         ];
       case 'ADMIN':

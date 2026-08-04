@@ -6,7 +6,8 @@ import {
   ArrowLeft, MapPin, Phone, Store, XCircle, X,
   ShoppingBag, CheckSquare, Square,
   User, Truck, Edit2, Plus, Tag,
-  Minus, Wallet, BadgePercent, Bike, ShieldCheck, Receipt, Clock, ChevronRight, StickyNote, Check, Sparkles
+  Minus, Wallet, BadgePercent, Bike, ShieldCheck, Receipt, Clock, ChevronRight, StickyNote, Check, Sparkles,
+  Search, Heart, Package
 } from 'lucide-react';
 import { formatCurrency } from '../../utils/format';
 import Button from '../../components/common/Button';
@@ -488,19 +489,53 @@ export default function Cart() {
 
   if (carts.length === 0) {
     return (
-      <div className="flex-1 p-4 md:p-6 flex flex-col items-center justify-center font-google-sans min-h-screen bg-slate-50">
-        <div className="max-w-md w-full bg-white border border-slate-200 rounded-2xl p-8 shadow-sm flex flex-col items-center text-center">
-          <div className="w-20 h-20 bg-orange-50 rounded-full flex items-center justify-center mb-5 border border-orange-100 shadow-inner animate-bounce">
-            <ShoppingBag size={36} className="text-[#ff6b35]" />
+      <div className="flex-1 p-4 md:p-6 flex flex-col items-center justify-center font-google-sans min-h-screen bg-gradient-to-b from-orange-50/40 via-slate-50 to-slate-50">
+        <div className="max-w-md w-full bg-white border border-orange-100/80 rounded-3xl p-8 shadow-sm flex flex-col items-center text-center animate-rise-in relative overflow-hidden">
+          <span className="pointer-events-none absolute -top-14 -right-14 w-40 h-40 bg-orange-100/40 rounded-full blur-2xl" />
+
+          {/* Túi giỏ hàng nổi + tia lấp lánh */}
+          <div className="relative mb-5">
+            <div className="w-24 h-24 bg-gradient-to-br from-orange-100 to-amber-50 rounded-full flex items-center justify-center border border-orange-100 shadow-inner animate-float">
+              <ShoppingBag size={40} className="text-[#ff6b35]" />
+            </div>
+            <Sparkles size={16} className="absolute -top-1 -right-1 text-amber-400 animate-pulse" />
+            <Sparkles size={12} className="absolute bottom-1 -left-2 text-orange-300 animate-pulse" style={{ animationDelay: '0.4s' }} />
           </div>
+
           <h2 className="text-xl font-extrabold text-slate-800 tracking-tight">Giỏ hàng của bạn đang trống</h2>
-          
-          <Button 
-            onClick={() => navigate('/')} 
-            className="mt-4 mb-0 w-full sm:w-auto bg-[#ff6b35] hover:bg-orange-600 text-white font-bold px-6 py-3 rounded-xl border border-[#ff6b35] text-xs uppercase tracking-wider shadow-md shadow-orange-500/10 hover:shadow-orange-500/20 active:scale-95 transition-all duration-200 cursor-pointer"
+          <p className="text-sm text-slate-500 font-medium mt-2 max-w-xs leading-relaxed">
+            Chưa có món nào ở đây cả. Cùng khám phá <b className="text-[#ff6b35]">hàng ngàn món ngon</b> quanh bạn và thêm vào giỏ nhé!
+          </p>
+
+          <Button
+            onClick={() => navigate('/explore')}
+            className="mt-5 w-full sm:w-auto bg-[#ff6b35] hover:bg-orange-600 text-white font-bold px-6 py-3 rounded-radius-full border border-[#ff6b35] text-xs uppercase tracking-wider shadow-md shadow-orange-500/20 hover:shadow-orange-500/30 active:scale-95 transition-all duration-200 cursor-pointer inline-flex items-center gap-2"
           >
-            Khám phá món ngon ngay
+            <Search size={15} /> Khám phá món ngon ngay
           </Button>
+
+          {/* Lối đi nhanh — để khách không cụt hứng */}
+          <div className="w-full mt-6 pt-5 border-t border-slate-100 grid grid-cols-3 gap-2.5">
+            {[
+              { label: 'Trang chủ', icon: Sparkles, to: '/', color: 'bg-orange-50 text-[#ff6b35]' },
+              { label: 'Yêu thích', icon: Heart, to: '/favorites', color: 'bg-rose-50 text-rose-500' },
+              { label: 'Đơn hàng', icon: Package, to: '/orders', color: 'bg-blue-50 text-blue-500' },
+            ].map((s) => {
+              const SIcon = s.icon;
+              return (
+                <button
+                  key={s.to}
+                  onClick={() => navigate(s.to)}
+                  className="flex flex-col items-center gap-1.5 p-2.5 rounded-radius-lg hover:bg-slate-50 transition-colors cursor-pointer group"
+                >
+                  <span className={`w-10 h-10 rounded-radius-lg flex items-center justify-center ${s.color} group-hover:scale-110 transition-transform`}>
+                    <SIcon size={18} />
+                  </span>
+                  <span className="text-[11px] font-bold text-slate-600">{s.label}</span>
+                </button>
+              );
+            })}
+          </div>
         </div>
       </div>
     );

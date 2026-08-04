@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Plus, ToggleLeft, ToggleRight, Edit, Trash2, Check, X, ClipboardList, UtensilsCrossed, AlertTriangle, Tags, Tag, FolderPlus, Pencil, ImagePlus, FileText, Wallet, FolderOpen } from 'lucide-react';
+import { Plus, ToggleLeft, ToggleRight, Edit, Trash2, Check, X, ClipboardList, UtensilsCrossed, AlertTriangle, Tags, Tag, FolderPlus, Pencil, ImagePlus, FileText, Wallet, FolderOpen, Rocket, Store, CheckCircle2, Lock, ArrowRight, Sparkles } from 'lucide-react';
 import { formatCurrency } from '../../utils/format';
 import apiClient from '../../services/api';
 import Spinner from '../../components/common/Spinner';
@@ -415,6 +415,45 @@ export default function MerchantMenu() {
     !item.catId || !categories.some(c => Number(c.id) === Number(item.catId))
   ).length;
 
+  // ── HƯỚNG DẪN KHỞI TẠO cho chủ quán MỚI: 3 bước, tự đánh dấu theo trạng thái THẬT ──
+  const isShopOpen = !!resData?.status;
+  const setupSteps = [
+    {
+      key: 'category',
+      title: 'Tạo danh mục món',
+      desc: 'Nhóm món theo loại: Cơm, Món nướng, Đồ uống…',
+      icon: FolderPlus,
+      done: categories.length > 0,
+      cta: 'Thêm danh mục',
+      onCta: handleAddCategoryClick,
+    },
+    {
+      key: 'food',
+      title: 'Thêm món đầu tiên',
+      desc: 'Đưa món lên thực đơn kèm ảnh, giá & mô tả.',
+      icon: UtensilsCrossed,
+      done: menuItems.length > 0,
+      cta: 'Thêm món',
+      onCta: handleOpenAddModal,
+      locked: categories.length === 0,
+      lockHint: 'Cần tạo danh mục trước',
+    },
+    {
+      key: 'sell',
+      title: 'Sẵn sàng nhận đơn',
+      desc: 'Mở cửa quán & có món đang bán để khách đặt ngay.',
+      icon: Store,
+      done: isShopOpen && availableCount > 0,
+      cta: 'Cài đặt quán',
+      onCta: () => navigate('/merchant/settings'),
+      locked: menuItems.length === 0,
+      lockHint: 'Cần có món trong thực đơn',
+    },
+  ];
+  const doneStepCount = setupSteps.filter(s => s.done).length;
+  const firstTodoIndex = setupSteps.findIndex(s => !s.done && !s.locked);
+  const showOnboarding = doneStepCount < setupSteps.length;
+
   const displayedItems = menuItems.filter(item => {
     const matchCat = activeCategory === 'UNCATEGORIZED'
       ? (!item.catId || !categories.some(c => Number(c.id) === Number(item.catId)))
@@ -457,6 +496,101 @@ export default function MerchantMenu() {
           Thêm món mới
         </button>
       </div>
+
+      {/* ─── HƯỚNG DẪN KHỞI TẠO — chỉ hiện khi chủ quán MỚI chưa hoàn tất thiết lập ── */}
+      {showOnboarding && (
+        <div className="mb-6 relative overflow-hidden rounded-radius-xl border border-md-secondary/20 bg-gradient-to-br from-md-secondary/[0.07] via-white to-white p-5 sm:p-6 shadow-sm animate-rise-in">
+          <span className="pointer-events-none absolute -top-12 -right-12 w-44 h-44 bg-md-secondary/[0.06] rounded-full blur-2xl" />
+
+          {/* Tiêu đề + tiến độ */}
+          <div className="relative flex items-start gap-3 mb-4">
+            <span className="p-2.5 rounded-radius-lg bg-gradient-to-br from-md-secondary to-blue-700 text-white shrink-0 shadow-sm">
+              <Rocket size={20} />
+            </span>
+            <div className="flex-1 min-w-0">
+              <h2 className="text-base sm:text-lg font-extrabold text-slate-800 flex items-center gap-1.5">
+                Chào mừng đến với MealDash <Sparkles size={16} className="text-amber-400" />
+              </h2>
+              <p className="text-xs text-slate-500 font-medium mt-1 leading-snug">
+                Hoàn tất <b className="text-md-secondary">3 bước</b> dưới đây để quán của bạn sẵn sàng đón khách. Chúng tôi sẽ đồng hành cùng bạn từng bước.
+              </p>
+            </div>
+            <div className="text-right shrink-0">
+              <span className="text-2xl font-black text-md-secondary leading-none">{doneStepCount}<span className="text-slate-300">/{setupSteps.length}</span></span>
+              <span className="text-[10px] text-slate-400 font-bold uppercase block mt-0.5 tracking-wider">Hoàn tất</span>
+            </div>
+          </div>
+
+          {/* Thanh tiến độ */}
+          <div className="relative h-2 rounded-full bg-slate-100 overflow-hidden mb-5">
+            <div
+              className="h-full bg-gradient-to-r from-md-secondary to-blue-400 rounded-full transition-all duration-500 ease-out"
+              style={{ width: `${(doneStepCount / setupSteps.length) * 100}%` }}
+            />
+          </div>
+
+          {/* 3 bước */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            {setupSteps.map((step, i) => {
+              const SIcon = step.icon;
+              const isCurrent = i === firstTodoIndex;
+              return (
+                <div
+                  key={step.key}
+                  className={`relative rounded-radius-lg border p-4 flex flex-col transition-all ${
+                    step.done
+                      ? 'border-emerald-200 bg-emerald-50/40'
+                      : isCurrent
+                        ? 'border-md-secondary/40 bg-white shadow-sm ring-2 ring-md-secondary/10'
+                        : 'border-slate-200 bg-white'
+                  }`}
+                >
+                  {isCurrent && !step.done && (
+                    <span className="absolute -top-2 right-3 text-[9px] font-extrabold text-white bg-md-secondary px-2 py-0.5 rounded-full uppercase tracking-wider shadow-sm">
+                      Bước tiếp theo
+                    </span>
+                  )}
+                  <div className="flex items-center gap-2.5 mb-2">
+                    <span className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 text-sm font-black ${
+                      step.done
+                        ? 'bg-emerald-500 text-white'
+                        : step.locked
+                          ? 'bg-slate-100 text-slate-400'
+                          : 'bg-gradient-to-br from-md-secondary to-blue-700 text-white shadow-sm'
+                    }`}>
+                      {step.done ? <CheckCircle2 size={18} /> : step.locked ? <Lock size={14} /> : i + 1}
+                    </span>
+                    <h4 className={`text-sm font-extrabold leading-tight ${step.done ? 'text-emerald-700' : 'text-slate-800'}`}>{step.title}</h4>
+                  </div>
+                  <p className="text-[11px] text-slate-500 font-medium leading-snug flex-1">{step.desc}</p>
+
+                  {step.done ? (
+                    <span className="mt-3 inline-flex items-center gap-1 text-[11px] font-bold text-emerald-600">
+                      <Check size={13} /> Đã hoàn tất
+                    </span>
+                  ) : step.locked ? (
+                    <span className="mt-3 inline-flex items-center gap-1 text-[11px] font-semibold text-slate-400">
+                      <Lock size={11} /> {step.lockHint}
+                    </span>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={step.onCta}
+                      className={`mt-3 inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-radius-lg text-xs font-bold transition-all active:scale-95 cursor-pointer ${
+                        isCurrent
+                          ? 'bg-md-secondary text-white shadow-sm hover:bg-blue-700'
+                          : 'bg-md-secondary/10 text-md-secondary hover:bg-md-secondary/20'
+                      }`}
+                    >
+                      <SIcon size={14} /> {step.cta} <ArrowRight size={13} />
+                    </button>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* ─── HÀNG KPI TÓM TẮT THỰC ĐƠN (đếm THẬT từ menuItems toàn quán) ──────────── */}
       <div className="grid grid-cols-3 gap-3 sm:gap-4 mb-5">
@@ -634,8 +768,21 @@ export default function MerchantMenu() {
       {loading && menuItems.length === 0 ? (
         <Spinner />
       ) : categories.length === 0 ? (
-        <div className="text-center py-12 bg-white rounded-radius-xl border border-slate-200/60 shadow-sm text-slate-400 text-xs font-bold">
-          Chủ quán chưa tạo danh mục nào. Hãy nhấn nút "+ Thêm danh mục" phía trên để bắt đầu!
+        <div className="text-center py-12 px-6 bg-white rounded-radius-xl border border-slate-200/60 shadow-sm flex flex-col items-center animate-rise-in">
+          <span className="w-16 h-16 rounded-full bg-md-secondary/10 text-md-secondary flex items-center justify-center mb-4">
+            <FolderPlus size={30} />
+          </span>
+          <h3 className="text-sm font-extrabold text-slate-700">Bắt đầu bằng danh mục đầu tiên</h3>
+          <p className="text-xs text-slate-400 font-medium mt-1.5 max-w-sm leading-relaxed">
+            Danh mục giúp nhóm món theo loại (Cơm, Món nướng, Đồ uống…) để khách dễ chọn. Tạo 1 danh mục rồi thêm món vào nhé!
+          </p>
+          <button
+            type="button"
+            onClick={handleAddCategoryClick}
+            className="mt-5 inline-flex items-center gap-1.5 px-5 py-2.5 rounded-radius-full bg-md-secondary text-white text-xs font-bold shadow-sm hover:bg-blue-700 active:scale-95 transition-all cursor-pointer"
+          >
+            <FolderPlus size={15} /> Tạo danh mục ngay
+          </button>
         </div>
       ) : displayedItems.length === 0 ? (
         <div className="text-center py-12 bg-white rounded-radius-xl border border-slate-200/60 shadow-sm text-slate-400 text-xs font-bold">

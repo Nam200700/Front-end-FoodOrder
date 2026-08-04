@@ -132,9 +132,9 @@ export default function RoleSwitcher() {
   const CurrentIcon = currentRoleObj.icon;
   const quickLinks = getQuickLinks(role || 'CUSTOMER');
 
-  // Trang chi tiết quán có thanh giỏ hàng nổi ở đáy (mobile) → nâng widget cao hơn để không đè lên.
-  const hasBottomBar = /^\/restaurants\/[^/]+/.test(location.pathname);
-  const anchorClass = `${hasBottomBar ? 'bottom-44' : 'bottom-20'} right-4 md:bottom-24 md:right-6`;
+  // MOBILE: neo widget ở khu giữa-phải (~1/4 màn hình) → vừa tầm ngón cái khi lướt & KHÔNG đè
+  // các thanh nổi ở đáy (bottom nav + thanh giỏ hàng). DESKTOP: giữ góc phải-dưới quen thuộc.
+  const anchorClass = `bottom-1/4 right-4 md:bottom-24 md:right-6`;
 
   // Trả về nút siêu nhỏ mờ khi người dùng chọn ẩn widget
   if (isHidden) {

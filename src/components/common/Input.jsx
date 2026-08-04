@@ -73,14 +73,26 @@ export default function Input({
           {...props}
         />
 
-        {/* Password Eye Toggle */}
+        {/* Password Eye Toggle — Eye ⇄ EyeOff xoay + fade chéo nhau, nhún khi bấm */}
         {isPassword && (
           <button
             type="button"
             onClick={() => setShowPassword(!showPassword)}
-            className="absolute right-4.5 text-md-outline hover:text-md-primary transition-colors cursor-pointer p-1"
+            className="absolute right-4.5 w-[18px] h-[18px] text-md-outline hover:text-md-primary active:scale-90 transition-all cursor-pointer"
+            aria-label={showPassword ? 'Ẩn mật khẩu' : 'Xem mật khẩu'}
           >
-            {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+            <Eye
+              size={18}
+              className={`absolute inset-0 m-auto transition-all duration-300 ${
+                showPassword ? 'opacity-0 scale-50 -rotate-90' : 'opacity-100 scale-100 rotate-0'
+              }`}
+            />
+            <EyeOff
+              size={18}
+              className={`absolute inset-0 m-auto transition-all duration-300 ${
+                showPassword ? 'opacity-100 scale-100 rotate-0' : 'opacity-0 scale-50 rotate-90'
+              }`}
+            />
           </button>
         )}
       </div>

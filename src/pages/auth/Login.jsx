@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../stores/authStore';
-import { Lock, Phone, ChevronRight, User, Store, Bike, Shield, KeyRound, Mail, MessageSquare, AlertTriangle, CheckCircle2, Eye, EyeOff, ChefHat, Star, ShieldCheck, Pizza, Soup, IceCream, Croissant, Sandwich, CupSoda, Sparkles, Users, UserPlus } from 'lucide-react';
+import { Lock, Phone, ChevronRight, User, Store, Bike, Shield, KeyRound, Mail, MessageSquare, AlertTriangle, CheckCircle2, Check, Eye, EyeOff, ChefHat, Star, ShieldCheck, Pizza, Soup, IceCream, Croissant, Sandwich, CupSoda, Sparkles, Users, UserPlus, Loader2, LogIn } from 'lucide-react';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import apiClient from '../../services/api';
@@ -320,8 +320,8 @@ export default function Login() {
               
               {/* SĐT */}
               <div className="space-y-2 animate-rise-in" style={{ animationDelay: '40ms' }}>
-                <label className="block text-[10px] font-extrabold text-slate-400 uppercase tracking-wider pl-1">
-                  Số điện thoại
+                <label className="flex items-center gap-1.5 text-[10px] font-extrabold text-slate-400 uppercase tracking-wider pl-1">
+                  <Phone size={11} className="text-[#FF6B35]" /> Số điện thoại
                 </label>
                 <div className="relative text-slate-400 focus-within:text-[#FF6B35] transition-colors">
                   <Phone className="absolute left-4 top-1/2 -translate-y-1/2" size={16} />
@@ -344,8 +344,8 @@ export default function Login() {
  
               {/* Mật khẩu */}
               <div className="space-y-2 animate-rise-in" style={{ animationDelay: '120ms' }}>
-                <label className="block text-[10px] font-extrabold text-slate-400 uppercase tracking-wider pl-1">
-                  Mật khẩu
+                <label className="flex items-center gap-1.5 text-[10px] font-extrabold text-slate-400 uppercase tracking-wider pl-1">
+                  <Lock size={11} className="text-[#FF6B35]" /> Mật khẩu
                 </label>
                 <div className="relative text-slate-400 focus-within:text-[#FF6B35] transition-colors">
                   <Lock className="absolute left-4 top-1/2 -translate-y-1/2" size={16} />
@@ -360,14 +360,26 @@ export default function Login() {
                     placeholder="••••••••"
                     className="w-full pl-11 pr-11 py-3 bg-slate-50 border border-slate-200 rounded-radius-lg text-xs font-semibold focus:outline-none focus:border-[#FF6B35] focus:bg-white transition-all shadow-sm text-slate-700 placeholder-slate-400"
                   />
-                  {/* Nút xem/ẩn mật khẩu */}
+                  {/* Nút xem/ẩn mật khẩu — Eye ⇄ EyeOff xoay + fade chéo nhau, nhún khi bấm */}
                   <button
                     type="button"
                     onClick={() => setShowPassword((v) => !v)}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-[#FF6B35] transition-colors cursor-pointer"
+                    className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 hover:text-[#FF6B35] active:scale-90 transition-all cursor-pointer"
                     title={showPassword ? 'Ẩn mật khẩu' : 'Xem mật khẩu'}
+                    aria-label={showPassword ? 'Ẩn mật khẩu' : 'Xem mật khẩu'}
                   >
-                    {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                    <Eye
+                      size={16}
+                      className={`absolute inset-0 m-auto transition-all duration-300 ${
+                        showPassword ? 'opacity-0 scale-50 -rotate-90' : 'opacity-100 scale-100 rotate-0'
+                      }`}
+                    />
+                    <EyeOff
+                      size={16}
+                      className={`absolute inset-0 m-auto transition-all duration-300 ${
+                        showPassword ? 'opacity-100 scale-100 rotate-0' : 'opacity-0 scale-50 rotate-90'
+                      }`}
+                    />
                   </button>
                 </div>
                 {/* Cảnh báo Caps Lock — lỗi đăng nhập kinh điển, báo sớm cho user cũ */}
@@ -378,23 +390,39 @@ export default function Login() {
                 )}
               </div>
  
-              {/* Option Bar */}
-              <div className="flex items-center justify-between text-xs font-bold pt-1 animate-rise-in" style={{ animationDelay: '200ms' }}>
-                <label className="flex items-center gap-2 text-slate-500 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={remember}
-                    onChange={(e) => setRemember(e.target.checked)}
-                    className="rounded border-slate-300 text-[#FF6B35] focus:ring-[#FF6B35]/20 w-4 h-4 cursor-pointer accent-[#FF6B35]"
-                  />
-                  Ghi nhớ tài khoản
+              {/* Option Bar — checkbox tuỳ biến (tick pop) + link quên mật khẩu có gạch chân chạy */}
+              <div className="flex items-center justify-between pt-1 animate-rise-in" style={{ animationDelay: '200ms' }}>
+                <label className="group flex items-center gap-2.5 cursor-pointer select-none">
+                  <span className="relative flex">
+                    <input
+                      type="checkbox"
+                      checked={remember}
+                      onChange={(e) => setRemember(e.target.checked)}
+                      className="peer sr-only"
+                    />
+                    <span className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all duration-200 active:scale-90 peer-focus-visible:ring-2 peer-focus-visible:ring-[#FF6B35]/30 ${
+                      remember
+                        ? 'bg-gradient-to-tr from-[#FF6B35] to-amber-400 border-[#FF6B35] shadow-sm shadow-orange-500/30'
+                        : 'border-slate-300 bg-white group-hover:border-[#FF6B35]/60'
+                    }`}>
+                      <Check size={13} className={`text-white stroke-[3.5px] transition-all duration-200 ${remember ? 'scale-100 opacity-100' : 'scale-0 opacity-0'}`} />
+                    </span>
+                  </span>
+                  <span className={`text-xs font-bold transition-colors ${remember ? 'text-[#FF6B35]' : 'text-slate-500 group-hover:text-slate-700'}`}>
+                    Ghi nhớ tài khoản
+                  </span>
                 </label>
-                <button 
-                  type="button" 
-                  onClick={() => { setMode('forgot-password'); setErrorMsg(''); }} 
-                  className="text-[#FF6B35] hover:underline bg-transparent border-none cursor-pointer font-bold"
+
+                <button
+                  type="button"
+                  onClick={() => { setMode('forgot-password'); setErrorMsg(''); }}
+                  className="group inline-flex items-center gap-1.5 text-xs font-bold text-[#FF6B35] bg-transparent border-none cursor-pointer"
                 >
-                  Quên mật khẩu?
+                  <KeyRound size={13} className="transition-transform duration-300 group-hover:-rotate-12 group-hover:scale-110" />
+                  <span className="relative">
+                    Quên mật khẩu?
+                    <span className="absolute -bottom-0.5 left-0 h-0.5 w-0 rounded-full bg-[#FF6B35] transition-all duration-300 group-hover:w-full" />
+                  </span>
                 </button>
               </div>
  
@@ -403,12 +431,16 @@ export default function Login() {
                 type="submit"
                 disabled={loading}
                 style={{ animationDelay: '280ms' }}
-                className="w-full bg-gradient-to-r from-[#FF6B35] to-[#FF6B35]/95 hover:from-[#ff7947] hover:to-[#FF6B35] text-white font-extrabold py-3.5 px-3.5 pl-6 rounded-full flex items-center justify-between shadow-shadow-2 hover:scale-[1.01] active:scale-[0.98] transition-all cursor-pointer group animate-rise-in disabled:opacity-70"
+                className="relative overflow-hidden w-full bg-gradient-to-r from-[#FF6B35] to-[#FF6B35]/95 hover:from-[#ff7947] hover:to-[#FF6B35] text-white font-extrabold py-3.5 px-3.5 pl-6 rounded-full flex items-center justify-between shadow-shadow-2 shadow-orange-500/20 hover:shadow-orange-500/40 hover:scale-[1.01] active:scale-[0.98] transition-all cursor-pointer group animate-rise-in disabled:opacity-70"
               >
-                <span className="uppercase tracking-wider text-xs">
+                {/* Vệt sáng quét ngang khi hover (physics sweep) */}
+                <span className="pointer-events-none absolute inset-y-0 -left-1/3 w-1/3 -skew-x-12 bg-gradient-to-r from-transparent via-white/25 to-transparent translate-x-[-160%] group-hover:translate-x-[460%] transition-transform duration-700 ease-out" />
+
+                <span className="relative flex items-center gap-2 uppercase tracking-wider text-xs">
+                  {loading ? <Loader2 size={15} className="animate-spin" /> : <LogIn size={15} className="transition-transform group-hover:-translate-x-0.5" />}
                   {loading ? 'Đang xử lý...' : 'Đăng Nhập'}
                 </span>
-                <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center text-white group-hover:translate-x-1.5 transition-transform shrink-0">
+                <div className="relative w-8 h-8 bg-white/20 rounded-full flex items-center justify-center text-white group-hover:translate-x-1.5 group-hover:bg-white/30 transition-all shrink-0">
                   <ChevronRight size={18} className="stroke-[2.5px]" />
                 </div>
               </button>

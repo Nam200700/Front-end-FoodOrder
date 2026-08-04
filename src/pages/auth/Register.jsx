@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../stores/authStore';
-import { Mail, Lock, User, Phone, ChevronRight, ChevronLeft, Store, Bike, FileText, MapPin, Lightbulb, Users, Check, ShieldCheck, ChefHat, Soup, UtensilsCrossed, TrendingUp, Wallet, Route, Hand, Pizza, IceCream, Sparkles } from 'lucide-react';
+import { Mail, Lock, User, Phone, ChevronRight, ChevronLeft, Store, Bike, FileText, MapPin, Lightbulb, Users, Check, ShieldCheck, ChefHat, Soup, UtensilsCrossed, TrendingUp, Wallet, Route, Hand, Pizza, IceCream, Sparkles, Clock, Gift } from 'lucide-react';
 import { validatePhone, validatePassword, validateName, validateEmail, validateIdCard } from '../../utils/validation';
 import Button from '../../components/common/Button';
 import Input from '../../components/common/Input';
@@ -247,6 +247,13 @@ export default function Register() {
     { id: 2, label: 'Tài khoản', icon: User },
     { id: 3, label: 'Hoàn tất', icon: ShieldCheck },
   ];
+
+  // ── Gợi ý ĐỘ MẠNH mật khẩu (hỗ trợ trực quan; điều kiện bắt buộc duy nhất là ≥8 ký tự) ──
+  const pwLen = password.length;
+  const pwHasMin = pwLen >= 8;
+  const pwVariety = /[a-zA-Z]/.test(password) && /\d/.test(password);
+  const pwLevel = pwLen === 0 ? 0 : (!pwHasMin ? 1 : (pwVariety || pwLen >= 12 ? 3 : 2));
+  const PW_META = { 1: { label: 'Yếu', color: '#ef4444' }, 2: { label: 'Trung bình', color: '#f59e0b' }, 3: { label: 'Mạnh', color: '#22c55e' } };
 
   // Kiểm tra 4 field cơ bản trước khi cho qua bước tiếp theo (chặn đi tiếp khi còn lỗi)
   const validateStep2 = () => {
@@ -524,9 +531,22 @@ export default function Register() {
                   })}
                 </div>
 
+                {/* Chip trấn an — giảm ngần ngại, khuyến khích user mới hoàn tất đăng ký */}
+                <div className="flex items-center justify-center gap-2 flex-wrap mt-4">
+                  {[
+                    { Icon: Gift, label: 'Miễn phí đăng ký' },
+                    { Icon: Clock, label: 'Chỉ vài phút' },
+                    { Icon: ShieldCheck, label: 'Bảo mật thông tin' },
+                  ].map(({ Icon, label }, i) => (
+                    <span key={i} className="inline-flex items-center gap-1.5 text-[10px] sm:text-[11px] font-bold text-slate-500 bg-slate-50 border border-slate-200/70 px-2.5 py-1.5 rounded-full">
+                      <Icon size={12} style={{ color: accent }} /> {label}
+                    </span>
+                  ))}
+                </div>
+
                 {role !== 'CUSTOMER' && (
                   <p className="text-[10px] sm:text-xs text-amber-600 font-bold mt-4 text-center bg-amber-50/70 border border-amber-100/60 p-3 rounded-radius-lg leading-relaxed shadow-sm inline-flex items-start gap-1.5">
-                    <Lightbulb size={13} className="shrink-0 mt-0.5" /> <span><span className="font-extrabold">Lưu ý:</span> Hồ sơ đăng ký làm đối tác sẽ được gửi trực tiếp đến Admin phê duyệt. Vui lòng cung cấp chính xác thông tin để được duyệt sớm nhất!</span>
+                    <Lightbulb size={13} className="shrink-0 mt-0.5" /> <span><span className="font-extrabold">Lưu ý:</span> Hồ sơ đăng ký làm đối tác sẽ được gửi trực tiếp đến Admin phê duyệt. Vui lòng cung cấp chính xác thông tin để được duyệt sớm nhất — bạn sẽ nhận thông báo ngay khi hồ sơ được duyệt!</span>
                   </p>
                 )}
               </div>
@@ -565,11 +585,14 @@ export default function Register() {
                     type="tel"
                     required
                     value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
+                    onChange={(e) => setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
                     onBlur={handlePhoneBlur}
                     placeholder="0901234567..."
                     icon={Phone}
                     error={errors.phone}
+                    inputMode="numeric"
+                    maxLength={10}
+                    helperText="10 chữ số, bắt đầu bằng 0"
                   />
                 </div>
 
@@ -584,6 +607,34 @@ export default function Register() {
                   icon={Lock}
                   error={errors.password}
                 />
+
+                {/* Gợi ý độ mạnh mật khẩu — chỉ hiện khi bắt đầu gõ, giúp người dùng đặt pass an toàn */}
+                {pwLen > 0 && (
+                  <div className="-mt-2.5 space-y-2 animate-rise-in">
+                    <div className="flex items-center gap-2.5">
+                      <div className="flex-1 h-1.5 rounded-full bg-slate-100 overflow-hidden flex gap-1">
+                        {[1, 2, 3].map((seg) => (
+                          <span
+                            key={seg}
+                            className="flex-1 rounded-full transition-all duration-300"
+                            style={{ backgroundColor: seg <= pwLevel ? PW_META[pwLevel].color : '#e2e8f0' }}
+                          />
+                        ))}
+                      </div>
+                      <span className="text-[10px] font-extrabold tabular-nums shrink-0" style={{ color: PW_META[pwLevel].color }}>
+                        {PW_META[pwLevel].label}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-4 flex-wrap">
+                      <span className={`inline-flex items-center gap-1 text-[11px] font-bold transition-colors ${pwHasMin ? 'text-emerald-600' : 'text-slate-400'}`}>
+                        <Check size={12} className={pwHasMin ? 'opacity-100' : 'opacity-40'} /> Ít nhất 8 ký tự
+                      </span>
+                      <span className={`inline-flex items-center gap-1 text-[11px] font-semibold transition-colors ${pwVariety ? 'text-emerald-600' : 'text-slate-400'}`}>
+                        <Check size={12} className={pwVariety ? 'opacity-100' : 'opacity-40'} /> Có cả chữ & số <span className="text-slate-300 font-normal">(khuyến nghị)</span>
+                      </span>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
@@ -635,11 +686,14 @@ export default function Register() {
                         type="tel"
                         required
                         value={restaurantPhone}
-                        onChange={(e) => setRestaurantPhone(e.target.value)}
+                        onChange={(e) => setRestaurantPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
                         onBlur={handleRestaurantPhoneBlur}
                         placeholder="Để khách liên hệ..."
                         icon={Phone}
                         error={errors.restaurantPhone}
+                        inputMode="numeric"
+                        maxLength={10}
+                        helperText="Số để khách & shipper liên hệ khi giao"
                       />
 
                       <div className="cursor-pointer" onClick={() => setOpenMap(true)}>
@@ -683,11 +737,14 @@ export default function Register() {
                         type="text"
                         required
                         value={idCard}
-                        onChange={(e) => setIdCard(e.target.value)}
+                        onChange={(e) => setIdCard(e.target.value.replace(/\D/g, '').slice(0, 12))}
                         onBlur={handleIdCardBlur}
                         placeholder="Số CCCD 12 số..."
                         icon={FileText}
                         error={errors.idCard}
+                        inputMode="numeric"
+                        maxLength={12}
+                        helperText="Gồm 9 hoặc 12 chữ số trên căn cước"
                       />
 
                       <Input
@@ -700,6 +757,7 @@ export default function Register() {
                         placeholder="Ví dụ: 29A1-12345..."
                         icon={Bike}
                         error={errors.licensePlate}
+                        helperText="Ví dụ: 29A1-12345"
                       />
                     </div>
 

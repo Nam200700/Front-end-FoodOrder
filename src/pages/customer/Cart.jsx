@@ -148,6 +148,24 @@ export default function Cart() {
       return;
     }
 
+    // --- Validate khoảng cách > 10km & Giờ hoạt động cho từng quán được chọn ---
+    for (const cart of currentSelectedCarts) {
+      const shipInfo = shippingInfos[cart.restaurantId];
+      const distance = shipInfo?.distanceKm || 0;
+
+      // 1. Kiểm tra khoảng cách
+      if (distance > 10) {
+        toast.error(`Quán "${cart.restaurantName}" cách bạn ${distance.toFixed(1)} km (vượt quá 10km). Vui lòng bỏ chọn hoặc đổi địa chỉ!`);
+        return;
+      }
+
+      // 2. Kiểm tra giờ hoạt động (opensAt, closesAt)
+      if (!isRestaurantOpen(cart.opensAt, cart.closesAt)) {
+        toast.error(`Quán "${cart.restaurantName}" hiện chưa tới giờ hoạt động hoặc đã đóng cửa (Giờ mở cửa: ${cart.opensAt || 'N/A'} - ${cart.closesAt || 'N/A'})!`);
+        return;
+      }
+    }
+
     // Xây dựng map voucher cho từng quán được chọn { [restaurantId]: userVoucherId }
     const restaurantVouchersMap = {};
     selectedRestaurantIds.forEach(resId => {
@@ -488,6 +506,28 @@ export default function Cart() {
     return total > 0 ? total : 0;
   }, [selectedItemsSubtotal, totalShippingFee, totalDiscountAmount]);
 
+  // Hàm kiểm tra quán có đang mở cửa không
+  const isRestaurantOpen = (opensAt, closesAt) => {
+    if (!opensAt || !closesAt) return true; // Nếu quán không cài đặt giờ thì coi như mở cửa
+    
+    const now = new Date();
+    const currentMinutes = now.getHours() * 60 + now.getMinutes();
+
+    const [openH, openM] = opensAt.split(':').map(Number);
+    const openMinutes = openH * 60 + openM;
+
+    const [closeH, closeM] = closesAt.split(':').map(Number);
+    const closeMinutes = closeH * 60 + closeM;
+
+    if (openMinutes < closeMinutes) {
+      // Trong cùng 1 ngày (VD: 07:00 - 22:00)
+      return currentMinutes >= openMinutes && currentMinutes <= closeMinutes;
+    } else {
+      // Mở qua đêm (VD: 18:00 - 02:00)
+      return currentMinutes >= openMinutes || currentMinutes <= closeMinutes;
+    }
+  };
+
   if (loading && carts.length === 0) return <Spinner fullScreen />;
 
   if (carts.length === 0) {
@@ -596,6 +636,37 @@ export default function Cart() {
                     Xóa giỏ hàng
                   </Button>
                 </div>
+
+                {/* --- CẢNH BÁO ĐỎ: QUÁN XA > 10KM HOẶC ĐÓNG CỬA --- */}
+                {(() => {
+                  const shipInfo = shippingInfos[cart.restaurantId];
+                  const distance = shipInfo?.distanceKm || 0;
+                  const opensAt = cart.opensAt || cart.restaurant?.opensAt;
+                  const closesAt = cart.closesAt || cart.restaurant?.closesAt;
+                  const isOpen = isRestaurantOpen(opensAt, closesAt);
+                  const isTooFar = distance > 10;
+
+                  if (isTooFar || !isOpen) {
+                    return (
+                      <div className="mx-4 my-3 p-3 bg-red-50 border border-red-200 rounded-xl text-red-700 text-xs flex items-start gap-2.5 font-medium shadow-sm">
+                        <XCircle size={18} className="shrink-0 text-red-500 mt-0.5" />
+                        <div className="space-y-1">
+                          {isTooFar && (
+                            <p className="leading-snug">
+                              ⚠️ <span className="font-extrabold text-red-800">Không thể đặt hàng:</span> Quán cách bạn <span className="font-bold text-red-900">{distance.toFixed(1)} km</span> (vượt quá bán kính tối đa <span className="font-bold">10 km</span>).
+                            </p>
+                          )}
+                          {!isOpen && (
+                            <p className="leading-snug">
+                              ⏰ <span className="font-extrabold text-red-800">Không thể đặt hàng:</span> Quán hiện không trong khung giờ hoạt động. Giờ mở cửa: <span className="font-bold text-red-900">{opensAt || 'N/A'} - {closesAt || 'N/A'}</span>.
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  }
+                  return null;
+                })()}
 
                 {/* Danh sách món ăn */}
                 <div className="divide-y divide-slate-100">

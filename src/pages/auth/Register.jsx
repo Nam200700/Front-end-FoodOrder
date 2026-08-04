@@ -428,7 +428,7 @@ export default function Register() {
                       {isMe && <span className="absolute -top-1.5 -right-1.5 w-3 h-3 rounded-full bg-amber-300 border-2 border-white/70 animate-pulse" />}
                       {/* Chip icon — ô đang chọn: nền trắng + icon màu role, nhún nhẹ */}
                       <span className={`w-9 h-9 rounded-full flex items-center justify-center transition-transform duration-300 group-hover:scale-110 ${isMe ? 'bg-white shadow-md' : 'bg-white/15'}`}>
-                        <ItIcon size={16} className={isMe ? 'animate-bob' : 'text-white'} style={isMe ? { color: accent } : undefined} />
+                        <ItIcon size={16} className={isMe ? 'animate-jelly' : 'text-white'} style={isMe ? { color: accent } : undefined} />
                       </span>
                       <span className={`text-[10px] font-bold ${isMe ? 'text-white' : 'text-white/80'}`}>{it.t}</span>
                     </div>
@@ -441,7 +441,8 @@ export default function Register() {
           {/* Lợi ích theo vai trò — mỗi dòng 1 animation idle KHÁC nhau + dấu tích cho phong phú */}
           <div className="relative z-10 space-y-2" key={`b-${role}`}>
             {hero.benefits.map(({ Icon, label }, i) => {
-              const idle = ['animate-bob', 'animate-float', 'animate-wiggle'][i % 3]; // nhún / trôi / lắc
+              // Mỗi mục 1 chuyển động compound có tính cách: đung đưa / pop dẻo / đập bảo vệ
+              const idle = ['animate-sway', 'animate-jelly', 'animate-throb'][i % 3];
               return (
                 <div
                   key={i}
@@ -449,9 +450,11 @@ export default function Register() {
                   style={{ animationDelay: `${210 + i * 90}ms` }}
                 >
                   <div className="relative w-10 h-10 rounded-xl bg-white/15 backdrop-blur-sm border border-white/20 flex items-center justify-center shrink-0 shadow-sm transition-all group-hover:bg-white/25 group-hover:scale-110">
-                    <Icon size={18} className={idle} style={{ transformOrigin: 'center' }} />
+                    {/* Lớp chuyển động thứ 2: quầng sáng thở sau chip, mỗi mục lệch nhịp */}
+                    <span className="absolute inset-0 rounded-xl bg-white/40 blur-md animate-soft-halo pointer-events-none" style={{ animationDelay: `${i * 500}ms` }} />
+                    <Icon size={18} className={`relative z-[1] text-white ${idle}`} style={{ transformOrigin: 'center' }} />
                     {/* Dấu tích nhỏ — tính năng có sẵn */}
-                    <span className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-white flex items-center justify-center shadow" style={{ color: accent }}>
+                    <span className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-white flex items-center justify-center shadow z-10" style={{ color: accent }}>
                       <Check size={10} className="stroke-[3px]" />
                     </span>
                   </div>

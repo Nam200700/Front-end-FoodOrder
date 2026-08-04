@@ -771,7 +771,7 @@ export default function Register() {
                         placeholder="Ví dụ: 59H1-23456..."
                         icon={Bike}
                         error={errors.licensePlate}
-                        helperText="Gõ tự nhiên, dấu “-” tự chuẩn hoá. VD: 59H1-23456"
+                        helperText="Chỉ gõ chữ & số — dấu “-” tự hiện. VD: 59H1-23456"
                       />
                     </div>
 
@@ -782,7 +782,7 @@ export default function Register() {
                       <div className="relative">
                         <select
                           value={vehicleType}
-                          onChange={(e) => setVehicleType(e.target.value)}
+                          onChange={(e) => handleVehicleTypeChange(e.target.value)}
                           className="w-full bg-slate-50 border border-slate-200 rounded-radius-lg p-3 text-xs sm:text-sm font-semibold focus:outline-none focus:border-[#FF6B35] focus:bg-white transition-all shadow-sm text-slate-700"
                         >
                           <option value="MOTORBIKE">Xe Máy (Motorbike)</option>

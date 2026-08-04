@@ -42,6 +42,30 @@ export default function Login() {
   const [showPassword, setShowPassword] = useState(false); // toggle xem mật khẩu ở ô đăng nhập
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+  const [remember, setRemember] = useState(false);   // ghi nhớ SĐT cho lần đăng nhập sau (hỗ trợ user cũ)
+  const [capsOn, setCapsOn] = useState(false);        // cảnh báo Caps Lock khi gõ mật khẩu
+
+  // Nạp sẵn SĐT đã ghi nhớ → user cũ khỏi gõ lại. Chỉ lưu SĐT (định danh), KHÔNG lưu mật khẩu/token.
+  useEffect(() => {
+    const saved = localStorage.getItem('md_remember_phone');
+    if (saved) { setPhone(saved); setRemember(true); }
+  }, []);
+
+  // Parallax vật lý cho lớp trang trí hero: món ăn "trôi" nhẹ theo con trỏ (ghi thẳng CSS var, không re-render).
+  const heroRef = useRef(null);
+  const handleHeroMove = (e) => {
+    const el = heroRef.current;
+    if (!el) return;
+    const r = el.getBoundingClientRect();
+    el.style.setProperty('--px', ((e.clientX - r.left) / r.width - 0.5).toFixed(3));
+    el.style.setProperty('--py', ((e.clientY - r.top) / r.height - 0.5).toFixed(3));
+  };
+  const handleHeroLeave = () => {
+    const el = heroRef.current;
+    if (!el) return;
+    el.style.setProperty('--px', '0');
+    el.style.setProperty('--py', '0');
+  };
 
   // Forgot Password State
   const [mode, setMode] = useState('login'); // 'login' or 'forgot-password'
@@ -75,6 +99,9 @@ export default function Login() {
     setLoading(false);
     
     if (res.success) {
+      // Ghi nhớ / xoá SĐT theo lựa chọn (chỉ SĐT, không đụng token — tuân thủ bảo mật in-memory)
+      if (remember) localStorage.setItem('md_remember_phone', phone);
+      else localStorage.removeItem('md_remember_phone');
       toast.success('Đăng nhập thành công! Đang chuyển hướng...', { autoClose: 1000 });
       setTimeout(() => {
         const currentRole = useAuthStore.getState().role;
@@ -180,7 +207,12 @@ export default function Login() {
       <div className="w-full max-w-4xl bg-white rounded-[2rem] shadow-shadow-4 border border-slate-200/60 overflow-hidden grid lg:grid-cols-2 relative z-10 animate-slide-up">
 
         {/* ───── PANEL HERO PHONG CÁCH QUÁN ĂN (chỉ desktop) ───── */}
-        <div className="hidden lg:flex flex-col justify-between relative overflow-hidden p-10 text-white bg-gradient-to-br from-[#EF6C33] via-[#D9491C] to-[#A62D14] bg-[length:180%_180%] animate-gradient-pan">
+        <div
+          ref={heroRef}
+          onMouseMove={handleHeroMove}
+          onMouseLeave={handleHeroLeave}
+          className="hidden lg:flex flex-col justify-between relative overflow-hidden p-10 text-white bg-gradient-to-br from-[#EF6C33] via-[#D9491C] to-[#A62D14] bg-[length:180%_180%] animate-gradient-pan"
+        >
 
           {/* Lớp làm dịu (vignette tối ở rìa) chống chói + tăng độ tương phản chữ */}
           <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(120%_120%_at_50%_0%,transparent_38%,rgba(0,0,0,0.30)_100%)]"></div>
@@ -192,14 +224,18 @@ export default function Login() {
           {/* Vệt sáng quét ngang định kỳ */}
           <div className="absolute inset-y-0 -left-1/3 w-1/4 bg-gradient-to-r from-transparent via-white/12 to-transparent animate-shine pointer-events-none"></div>
 
-          {/* Món ăn bay lơ lửng */}
-          {FOOD_DECOR.map(({ Icon, wrap, size, delay, anim }, i) => (
-            <Icon key={i} size={size} style={{ animationDelay: delay }} className={`absolute ${wrap} text-white/20 ${anim} pointer-events-none`} />
-          ))}
-          {/* Đốm lấp lánh */}
-          {SPARKLES.map(({ wrap, size, delay }, i) => (
-            <Sparkles key={`s${i}`} size={size} style={{ animationDelay: delay }} className={`absolute ${wrap} text-white/70 animate-twinkle pointer-events-none`} />
-          ))}
+          {/* Lớp trang trí trôi theo con trỏ (parallax) — món ăn & đốm lấp lánh */}
+          <div
+            className="absolute inset-0 pointer-events-none transition-transform duration-300 ease-out"
+            style={{ transform: 'translate3d(calc(var(--px,0) * 20px), calc(var(--py,0) * 20px), 0)' }}
+          >
+            {FOOD_DECOR.map(({ Icon, wrap, size, delay, anim }, i) => (
+              <Icon key={i} size={size} style={{ animationDelay: delay }} className={`absolute ${wrap} text-white/20 ${anim}`} />
+            ))}
+            {SPARKLES.map(({ wrap, size, delay }, i) => (
+              <Sparkles key={`s${i}`} size={size} style={{ animationDelay: delay }} className={`absolute ${wrap} text-white/70 animate-twinkle`} />
+            ))}
+          </div>
 
           {/* Brand */}
           <div className="relative z-10 flex items-center gap-2.5">
@@ -287,8 +323,8 @@ export default function Login() {
                 <label className="block text-[10px] font-extrabold text-slate-400 uppercase tracking-wider pl-1">
                   Số điện thoại
                 </label>
-                <div className="relative">
-                  <Phone className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                <div className="relative text-slate-400 focus-within:text-[#FF6B35] transition-colors">
+                  <Phone className="absolute left-4 top-1/2 -translate-y-1/2" size={16} />
                   <input
                     type="text"
                     required
@@ -297,8 +333,12 @@ export default function Login() {
                     value={phone}
                     onChange={(e) => setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
                     placeholder="0901234567..."
-                    className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-radius-lg text-xs font-semibold focus:outline-none focus:border-[#FF6B35] focus:bg-white transition-all shadow-sm text-slate-700 placeholder-slate-400"
+                    className="w-full pl-11 pr-10 py-3 bg-slate-50 border border-slate-200 rounded-radius-lg text-xs font-semibold focus:outline-none focus:border-[#FF6B35] focus:bg-white transition-all shadow-sm text-slate-700 placeholder-slate-400"
                   />
+                  {/* Tick xanh khi SĐT đủ 10 số hợp lệ → trấn an user nhập đúng */}
+                  {validatePhone(phone) && (
+                    <CheckCircle2 size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-emerald-500 animate-scale-up" />
+                  )}
                 </div>
               </div>
  
@@ -307,13 +347,16 @@ export default function Login() {
                 <label className="block text-[10px] font-extrabold text-slate-400 uppercase tracking-wider pl-1">
                   Mật khẩu
                 </label>
-                <div className="relative">
-                  <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                <div className="relative text-slate-400 focus-within:text-[#FF6B35] transition-colors">
+                  <Lock className="absolute left-4 top-1/2 -translate-y-1/2" size={16} />
                   <input
                     type={showPassword ? 'text' : 'password'}
                     required
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
+                    onKeyUp={(e) => setCapsOn(e.getModifierState?.('CapsLock') ?? false)}
+                    onKeyDown={(e) => setCapsOn(e.getModifierState?.('CapsLock') ?? false)}
+                    onBlur={() => setCapsOn(false)}
                     placeholder="••••••••"
                     className="w-full pl-11 pr-11 py-3 bg-slate-50 border border-slate-200 rounded-radius-lg text-xs font-semibold focus:outline-none focus:border-[#FF6B35] focus:bg-white transition-all shadow-sm text-slate-700 placeholder-slate-400"
                   />
@@ -327,14 +370,22 @@ export default function Login() {
                     {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                   </button>
                 </div>
+                {/* Cảnh báo Caps Lock — lỗi đăng nhập kinh điển, báo sớm cho user cũ */}
+                {capsOn && (
+                  <p className="flex items-center gap-1.5 text-[11px] font-bold text-amber-600 pl-1 animate-rise-in">
+                    <AlertTriangle size={12} className="shrink-0" /> Phím Caps Lock đang bật — mật khẩu phân biệt HOA/thường.
+                  </p>
+                )}
               </div>
  
               {/* Option Bar */}
               <div className="flex items-center justify-between text-xs font-bold pt-1 animate-rise-in" style={{ animationDelay: '200ms' }}>
                 <label className="flex items-center gap-2 text-slate-500 cursor-pointer">
-                  <input 
-                    type="checkbox" 
-                    className="rounded border-slate-300 text-[#FF6B35] focus:ring-[#FF6B35]/20 w-4 h-4" 
+                  <input
+                    type="checkbox"
+                    checked={remember}
+                    onChange={(e) => setRemember(e.target.checked)}
+                    className="rounded border-slate-300 text-[#FF6B35] focus:ring-[#FF6B35]/20 w-4 h-4 cursor-pointer accent-[#FF6B35]"
                   />
                   Ghi nhớ tài khoản
                 </label>
@@ -536,17 +587,24 @@ export default function Login() {
             </div>
           )}
 
-          {/* Footer Navigation */}
+          {/* Footer — thẻ CTA dẫn dắt USER MỚI đăng ký (thay dòng chữ nhỏ) */}
           {mode === 'login' && (
-            <div className="mt-8 text-center text-xs text-slate-500 relative z-10 font-semibold">
-              Bạn chưa có tài khoản?{' '}
-              <button 
-                onClick={() => navigate('/register')} 
-                className="text-[#FF6B35] font-extrabold hover:underline cursor-pointer"
-              >
-                Đăng ký ngay
-              </button>
-            </div>
+            <button
+              type="button"
+              onClick={() => navigate('/register')}
+              className="group mt-8 w-full flex items-center gap-3 rounded-2xl border border-orange-100 bg-orange-50/50 p-3.5 hover:bg-orange-50 hover:border-[#FF6B35]/40 hover:shadow-sm active:scale-[0.99] transition-all cursor-pointer relative z-10 text-left"
+            >
+              <span className="w-10 h-10 rounded-xl bg-gradient-to-tr from-[#FF6B35] to-amber-400 text-white flex items-center justify-center shrink-0 shadow-sm group-hover:scale-105 transition-transform">
+                <UserPlus size={18} />
+              </span>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-extrabold text-slate-700">Bạn chưa có tài khoản?</p>
+                <p className="text-[11px] text-slate-400 font-semibold mt-0.5">Đăng ký miễn phí chỉ trong vài phút</p>
+              </div>
+              <span className="shrink-0 inline-flex items-center gap-1 text-xs font-extrabold text-[#FF6B35]">
+                Đăng ký <ChevronRight size={14} className="group-hover:translate-x-0.5 transition-transform" />
+              </span>
+            </button>
           )}
 
         </div>

@@ -102,6 +102,10 @@
   --animate-jelly: jelly 2.8s ease-in-out infinite;
   --animate-throb: throb 2.4s ease-in-out infinite;
   --animate-soft-halo: softHalo 2.8s ease-in-out infinite;
+  /* Chuỗi nối liền: icon "nhảy" nhiều chặng, vòng sóng bung, luồng sáng chạy dọc đường nối */
+  --animate-icon-dance: iconDance 3s ease-in-out infinite;
+  --animate-ring-wave: ringWave 2.6s ease-out infinite;
+  --animate-line-flow: lineFlow 3s ease-in-out infinite;
   /* Shipper "chân thật": đi có gia tốc, thân xe rung theo đường, bánh quay, vạch tốc độ */
   --animate-courier: courier 7s cubic-bezier(0.45, 0, 0.55, 1) infinite;
   --animate-vroom: vroom 0.32s ease-in-out infinite;
@@ -362,6 +366,27 @@
   0%, 100% { transform: scale(0.8); opacity: 0.1; }
   50% { transform: scale(1.25); opacity: 0.38; }
 }
+/* Icon "nhảy" NHIỀU CHẶNG NỐI LIỀN: nhấc → nghiêng & dội → nảy nhỏ → lắc → lặng (biên độ rõ) */
+@keyframes iconDance {
+  0%, 62%, 100% { transform: translateY(0) rotate(0deg) scale(1); }
+  10% { transform: translateY(-5px) rotate(-8deg) scale(1.12); }
+  22% { transform: translateY(2px) rotate(7deg) scale(0.9); }
+  34% { transform: translateY(-3px) rotate(-4deg) scale(1.06); }
+  46% { transform: translateY(1px) rotate(3deg) scale(0.98); }
+  54% { transform: translateY(0) rotate(-1deg) scale(1); }
+}
+/* Vòng sóng bung ra từ chip (lớp lan toả) */
+@keyframes ringWave {
+  0% { transform: scale(0.65); opacity: 0.55; }
+  70%, 100% { transform: scale(1.7); opacity: 0; }
+}
+/* Luồng sáng chạy dọc đường nối 3 mục → cảm giác "một dòng chảy nối liền" */
+@keyframes lineFlow {
+  0% { transform: translateY(-120%); opacity: 0; }
+  15% { opacity: 1; }
+  85% { opacity: 1; }
+  100% { transform: translateY(360%); opacity: 0; }
+}
 /* Shipper đi có gia tốc, dừng nhẹ ở đích rồi lặp lại (chân thật hơn linear) */
 @keyframes courier {
   0% { transform: translateX(-16%); }
@@ -419,7 +444,8 @@
   .animate-courier, .animate-vroom, .animate-wheel, .animate-speed, .animate-halo,
   .animate-slide-in-right, .animate-nav-in, .animate-flow, .animate-star-pop,
   .animate-heart-pop, .animate-heart-burst, .animate-heart-beat, .animate-shake,
-  .animate-sway, .animate-jelly, .animate-throb, .animate-soft-halo { animation: none !important; }
+  .animate-sway, .animate-jelly, .animate-throb, .animate-soft-halo,
+  .animate-icon-dance, .animate-ring-wave, .animate-line-flow { animation: none !important; }
 }
 
 /* ─── Parallax Effect ────────────────────────────── */

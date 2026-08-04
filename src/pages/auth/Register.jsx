@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../stores/authStore';
-import { Mail, Lock, User, Phone, ChevronRight, ChevronLeft, Store, Bike, FileText, MapPin, Lightbulb, Users, Check, ShieldCheck, ChefHat, Soup, UtensilsCrossed, TrendingUp, Wallet, Route, Hand, Pizza, IceCream, Sparkles, Clock, Gift } from 'lucide-react';
+import { Mail, Lock, User, Phone, ChevronRight, ChevronLeft, Store, Bike, FileText, MapPin, Lightbulb, Users, Check, ShieldCheck, ChefHat, Soup, UtensilsCrossed, TrendingUp, Wallet, Route, Hand, Pizza, IceCream, Sparkles, Clock, Gift, AtSign, Loader2, LogIn } from 'lucide-react';
 import { validatePhone, validatePassword, validateName, validateEmail, validateIdCard, validateLicensePlate, formatLicensePlate } from '../../utils/validation';
 import Button from '../../components/common/Button';
 import Input from '../../components/common/Input';
@@ -268,6 +268,15 @@ export default function Register() {
   const pwVariety = /[a-zA-Z]/.test(password) && /\d/.test(password);
   const pwLevel = pwLen === 0 ? 0 : (!pwHasMin ? 1 : (pwVariety || pwLen >= 12 ? 3 : 2));
   const PW_META = { 1: { label: 'Yếu', color: '#ef4444' }, 2: { label: 'Trung bình', color: '#f59e0b' }, 3: { label: 'Mạnh', color: '#22c55e' } };
+
+  // ── Gợi ý tên miền email phổ biến → khách khỏi gõ "@gmail.com…" ──
+  const EMAIL_DOMAINS = ['@gmail.com'];
+  const emailLocal = email.split('@')[0];
+  const emailTypedDomain = email.includes('@') ? '@' + email.split('@').slice(1).join('@') : '';
+  const emailSuggestions = (emailLocal.length > 0 && !validateEmail(email))
+    ? EMAIL_DOMAINS.filter((d) => emailTypedDomain === '' || (d.startsWith(emailTypedDomain.toLowerCase()) && d !== emailTypedDomain.toLowerCase()))
+    : [];
+  const applyEmailDomain = (d) => { setEmail(emailLocal + d); clearError('email'); };
 
   // Kiểm tra 4 field cơ bản trước khi cho qua bước tiếp theo (chặn đi tiếp khi còn lỗi)
   const validateStep2 = () => {
@@ -581,18 +590,36 @@ export default function Register() {
                   error={errors.fullName}
                 />
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                  <Input
-                    label="Địa chỉ Email"
-                    type="email"
-                    required
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    onBlur={handleEmailBlur}
-                    placeholder="ten@example.com..."
-                    icon={Mail}
-                    error={errors.email}
-                  />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 items-start">
+                  <div>
+                    <Input
+                      label="Địa chỉ Email"
+                      type="email"
+                      required
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      onBlur={handleEmailBlur}
+                      placeholder="ten@example.com..."
+                      icon={Mail}
+                      error={errors.email}
+                    />
+                    {/* Chip gợi ý tên miền — bấm để tự thêm @gmail.com… khỏi gõ */}
+                    {emailSuggestions.length > 0 && (
+                      <div className="flex flex-wrap gap-1.5 mt-2 animate-rise-in">
+                        {emailSuggestions.map((d) => (
+                          <button
+                            key={d}
+                            type="button"
+                            onClick={() => applyEmailDomain(d)}
+                            className="group inline-flex items-center gap-1 text-[10px] font-bold text-slate-500 bg-slate-50 border border-slate-200 hover:border-md-primary hover:text-md-primary hover:bg-md-primary/5 px-2.5 py-1 rounded-full transition-all active:scale-95 cursor-pointer"
+                          >
+                            <AtSign size={10} className="text-md-primary group-hover:rotate-12 transition-transform" />
+                            {d}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
 
                   <Input
                     label="Số điện thoại"
@@ -818,11 +845,14 @@ export default function Register() {
                   key="btn-next"
                   type="button"
                   onClick={goNext}
-                  className="flex-1 text-white font-extrabold py-3.5 px-3.5 pl-6 rounded-full flex items-center justify-between shadow-shadow-2 hover:brightness-105 active:scale-[0.98] transition-all cursor-pointer group"
-                  style={{ backgroundColor: accent }}
+                  className="relative overflow-hidden flex-1 text-white font-extrabold py-3.5 px-3.5 pl-6 rounded-full flex items-center justify-between shadow-shadow-2 hover:brightness-105 hover:scale-[1.01] active:scale-[0.98] transition-all cursor-pointer group"
+                  style={{ backgroundColor: accent, boxShadow: `0 8px 22px ${accent}44` }}
                 >
-                  <span className="uppercase tracking-wider text-xs">Tiếp tục</span>
-                  <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center text-white group-hover:translate-x-1.5 transition-transform shrink-0">
+                  <span className="pointer-events-none absolute inset-y-0 -left-1/3 w-1/3 -skew-x-12 bg-gradient-to-r from-transparent via-white/25 to-transparent translate-x-[-160%] group-hover:translate-x-[460%] transition-transform duration-700 ease-out" />
+                  <span className="relative flex items-center gap-2 uppercase tracking-wider text-xs">
+                    <Sparkles size={14} className="animate-pulse" /> Tiếp tục
+                  </span>
+                  <div className="relative w-8 h-8 bg-white/20 rounded-full flex items-center justify-center text-white group-hover:translate-x-1.5 group-hover:bg-white/30 transition-all shrink-0">
                     <ChevronRight size={18} className="stroke-[2.5px]" />
                   </div>
                 </button>
@@ -831,13 +861,15 @@ export default function Register() {
                   key="btn-submit"
                   type="submit"
                   disabled={loading}
-                  className="flex-1 text-white font-extrabold py-3.5 px-3.5 pl-6 rounded-full flex items-center justify-between shadow-shadow-2 hover:brightness-105 active:scale-[0.98] transition-all cursor-pointer group disabled:opacity-70"
-                  style={{ backgroundColor: accent }}
+                  className="relative overflow-hidden flex-1 text-white font-extrabold py-3.5 px-3.5 pl-6 rounded-full flex items-center justify-between shadow-shadow-2 hover:brightness-105 hover:scale-[1.01] active:scale-[0.98] transition-all cursor-pointer group disabled:opacity-70"
+                  style={{ backgroundColor: accent, boxShadow: `0 8px 22px ${accent}44` }}
                 >
-                  <span className="uppercase tracking-wider text-xs">
+                  <span className="pointer-events-none absolute inset-y-0 -left-1/3 w-1/3 -skew-x-12 bg-gradient-to-r from-transparent via-white/25 to-transparent translate-x-[-160%] group-hover:translate-x-[460%] transition-transform duration-700 ease-out" />
+                  <span className="relative flex items-center gap-2 uppercase tracking-wider text-xs">
+                    {loading ? <Loader2 size={15} className="animate-spin" /> : <ShieldCheck size={15} />}
                     {loading ? 'Đang đăng ký...' : 'Đăng Ký Tài Khoản'}
                   </span>
-                  <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center text-white group-hover:translate-x-1.5 transition-transform shrink-0">
+                  <div className="relative w-8 h-8 bg-white/20 rounded-full flex items-center justify-center text-white group-hover:translate-x-1.5 group-hover:bg-white/30 transition-all shrink-0">
                     <ChevronRight size={18} className="stroke-[2.5px]" />
                   </div>
                 </button>
@@ -845,14 +877,19 @@ export default function Register() {
             </div>
           </form>
 
-          {/* Footer Navigation */}
-          <div className="mt-8 text-center text-xs sm:text-sm text-slate-500 relative z-10 font-semibold">
-            Đã có tài khoản?{' '}
-            <button 
-              onClick={() => navigate('/login')} 
-              className="text-[#FF6B35] font-extrabold hover:underline cursor-pointer"
+          {/* Footer Navigation — link đăng nhập có icon + gạch chân chạy (đổi màu theo role) */}
+          <div className="mt-8 flex items-center justify-center gap-1.5 relative z-10">
+            <span className="text-xs sm:text-sm text-slate-500 font-semibold">Đã có tài khoản?</span>
+            <button
+              onClick={() => navigate('/login')}
+              className="group inline-flex items-center gap-1 text-xs sm:text-sm font-extrabold cursor-pointer"
+              style={{ color: accent }}
             >
-              Đăng nhập
+              <LogIn size={14} className="transition-transform duration-300 group-hover:-translate-x-0.5" />
+              <span className="relative">
+                Đăng nhập
+                <span className="absolute -bottom-0.5 left-0 h-0.5 w-0 rounded-full transition-all duration-300 group-hover:w-full" style={{ backgroundColor: accent }} />
+              </span>
             </button>
           </div>
 

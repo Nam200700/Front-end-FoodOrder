@@ -19,24 +19,28 @@ export const LICENSE_PLATE_REGEX = /^\d{2}[A-Z]{1,2}\d{4,6}$/;
 // Bỏ mọi ký tự không phải chữ/số rồi viết hoa → dạng "gốc" để kiểm tra & so khớp
 export const normalizeLicensePlate = (v) => (v || '').replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
 export const validateLicensePlate = (v) => LICENSE_PLATE_REGEX.test(normalizeLicensePlate(v));
-// Tự chèn dấu "-" và "." theo cấu trúc để khách CHỈ cần gõ chữ & số (dấu hiện live, KHÔNG nhảy).
-// Vị trí dấu được xác định theo loại xe → cố định, không phụ thuộc số ký tự đã gõ:
-//   • Xe máy (MOTORBIKE): tỉnh + chữ + 1 số seri  "-"  số đăng ký   (59H1-234.56)
-//   • Ô tô   (CAR):       tỉnh + chữ               "-"  số đăng ký   (51F-123.45)
-// Dấu "." đặt cố định sau 3 số đầu của phần đăng ký (chuẩn hiển thị biển VN).
+// Tự chèn dấu "-" và "." để khách CHỈ cần gõ chữ & số (dấu hiện live, KHÔNG nhảy).
+// DỰNG biển số theo từng ô & BỎ ký tự dư → không thể tạo ra chuỗi sai cấu trúc dù gõ loạn:
+//   • Mã tỉnh: đúng 2 số (số thứ 3 bị bỏ)
+//   • Seri: 1–2 chữ (chữ thứ 3 bị bỏ)
+//   • Xe máy (MOTORBIKE): thêm 1 số seri trước dấu "-"  → 59H1-234.56
+//   • Ô tô   (CAR):       không số seri                 → 51F-123.45
+//   • Số đăng ký: tối đa 5 số, chèn "." sau 3 số đầu (chuẩn hiển thị biển VN)
 export const formatLicensePlate = (v, vehicleType = 'MOTORBIKE') => {
-  const s = normalizeLicensePlate(v).slice(0, 9); // 2 tỉnh + tối đa 2 chữ + (1 seri) + 5 số
-  const m = s.match(/^(\d{0,2})([A-Z]{0,2})(\d{0,6})$/);
-  if (!m) return s;
-  const [, prov, letters, digits] = m;
-  let serial = '', tail = digits;
-  if (vehicleType === 'MOTORBIKE' && digits.length > 0) {
-    serial = digits.slice(0, 1); // xe máy: số seri đứng ngay sau chữ, trước dấu "-"
-    tail = digits.slice(1);
+  const s = normalizeLicensePlate(v);
+  let prov = '', letters = '', serial = '', num = '';
+  for (const ch of s) {
+    const isDigit = ch >= '0' && ch <= '9';
+    // 1) Mã tỉnh: cần đủ 2 số, trước đó chỉ nhận số (chữ đứng trước bị bỏ)
+    if (prov.length < 2) { if (isDigit) prov += ch; continue; }
+    // 2) Seri chữ: nhận 1–2 chữ (chữ dư bị bỏ)
+    if (!isDigit) { if (letters.length < 2) letters += ch; continue; }
+    // ch là số & mã tỉnh đã đủ:
+    if (letters.length === 0) continue;                 // chưa có chữ seri → bỏ số lạc
+    if (vehicleType === 'MOTORBIKE' && serial.length < 1) { serial += ch; continue; } // 3) số seri xe máy
+    if (num.length < 5) num += ch;                      // 4) số đăng ký (dư bị bỏ)
   }
   const head = prov + letters + serial;
-  // Phần số đăng ký: chèn "." sau 3 số đầu khi đã có từ 4 số trở lên (234.56 / 123.45)
-  const numPart = tail.length >= 4 ? `${tail.slice(0, 3)}.${tail.slice(3)}` : tail;
-  // Chỉ chèn "-" khi đã có phần chữ và bắt đầu nhập số đăng ký
-  return (letters && tail) ? `${head}-${numPart}` : head;
+  const numPart = num.length >= 4 ? `${num.slice(0, 3)}.${num.slice(3)}` : num;
+  return (letters && num) ? `${head}-${numPart}` : head;
 };

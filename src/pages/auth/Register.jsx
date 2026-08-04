@@ -265,9 +265,9 @@ export default function Register() {
   };
 
   const roles = [
-    { id: 'CUSTOMER', label: 'Khách Hàng', desc: 'Đặt đồ ăn giao tận nơi', icon: User, color: 'border-md-primary text-md-primary bg-md-primary-container/10' },
-    { id: 'OWNER', label: 'Quán Ăn', desc: 'Bán đồ ăn trên hệ thống', icon: Store, color: 'border-md-secondary text-md-secondary bg-md-secondary-container/10' },
-    { id: 'SHIPPER', label: 'Tài Xế', desc: 'Giao đồ ăn kiếm thu nhập', icon: Bike, color: 'border-md-tertiary text-md-tertiary bg-md-tertiary-container/10' },
+    { id: 'CUSTOMER', label: 'Khách Hàng', desc: 'Đặt đồ ăn giao tận nơi', icon: User, hex: '#FF6B35' },
+    { id: 'OWNER', label: 'Quán Ăn', desc: 'Bán đồ ăn trên hệ thống', icon: Store, hex: '#1A73E8' },
+    { id: 'SHIPPER', label: 'Tài Xế', desc: 'Giao đồ ăn kiếm thu nhập', icon: Bike, hex: '#34A853' },
   ];
 
   // Màu nhấn của wizard đổi theo vai trò đang chọn (đồng bộ nhận diện role)
@@ -359,8 +359,8 @@ export default function Register() {
             <Hand size={18} className="text-amber-200 animate-wiggle origin-bottom ml-0.5" />
           </div>
 
-          {/* Khối giữa gom title + lợi ích, chiếm hết chiều cao còn lại và canh giữa dọc */}
-          <div className="relative z-10 flex-1 flex flex-col justify-center gap-8 py-8">
+          {/* Khối giữa: phân bố ĐỀU top–giữa–đáy để lấp hết chiều cao (không cụm giữa gây trống 2 đầu) */}
+          <div className="relative z-10 flex-1 flex flex-col justify-between gap-6 py-6">
 
           {/* Tiêu đề + icon vai trò (đổi theo role, re-animate nhờ key) */}
           <div key={role}>
@@ -395,6 +395,36 @@ export default function Register() {
                         <span className="absolute -top-1 -left-1 w-4 h-4 rounded-full bg-white text-[9px] font-black flex items-center justify-center" style={{ color: accent }}>{i + 1}</span>
                       </span>
                       <span className="text-[13px] font-bold text-white/95">{it.t}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Thẻ giữa mặc định: NỀN TẢNG 3 TRONG 1 — giữ hero luôn đầy ở các bước không phải bước-3-đối-tác */}
+          {!(step === 3 && (role === 'OWNER' || role === 'SHIPPER')) && (
+            <div className="relative z-10 rounded-2xl bg-white/12 backdrop-blur-md border border-white/20 p-4 shadow-lg animate-rise-in">
+              <p className="text-[11px] font-extrabold uppercase tracking-wider text-white/85 flex items-center gap-1.5 mb-3">
+                <Users size={13} className="text-amber-200" /> Nền tảng 3 trong 1
+              </p>
+              <div className="flex items-center gap-2">
+                {[
+                  { Icon: User, t: 'Khách hàng' },
+                  { Icon: Store, t: 'Quán ăn' },
+                  { Icon: Bike, t: 'Tài xế' },
+                ].map((it, i) => {
+                  const ItIcon = it.Icon;
+                  const isMe = (role === 'OWNER' && it.t === 'Quán ăn') || (role === 'SHIPPER' && it.t === 'Tài xế') || (role === 'CUSTOMER' && it.t === 'Khách hàng');
+                  return (
+                    <div
+                      key={i}
+                      className={`flex-1 flex flex-col items-center gap-1.5 py-2.5 rounded-xl border transition-all ${
+                        isMe ? 'bg-white/20 border-white/40 scale-[1.03]' : 'bg-white/5 border-white/10'
+                      }`}
+                    >
+                      <ItIcon size={16} className="text-white" />
+                      <span className="text-[10px] font-bold text-white/90">{it.t}</span>
                     </div>
                   );
                 })}
@@ -575,38 +605,42 @@ export default function Register() {
                   {roles.map((r) => {
                     const Icon = r.icon;
                     const isActive = role === r.id;
-
-                    // Customize border, background and text colors based on active role
-                    let activeColorClasses = "";
-                    if (r.id === 'CUSTOMER') {
-                      activeColorClasses = isActive
-                        ? "border-[#FF6B35] bg-[#FF6B35]/5 text-[#FF6B35] shadow-[0_4px_16px_rgba(255,107,53,0.06)]"
-                        : "border-slate-200/50 bg-white hover:bg-slate-50 text-slate-500 hover:text-slate-700";
-                    } else if (r.id === 'OWNER') {
-                      activeColorClasses = isActive
-                        ? "border-[#1A73E8] bg-[#1A73E8]/5 text-[#1A73E8] shadow-[0_4px_16px_rgba(26,115,232,0.06)]"
-                        : "border-slate-200/50 bg-white hover:bg-slate-50 text-slate-500 hover:text-slate-700";
-                    } else if (r.id === 'SHIPPER') {
-                      activeColorClasses = isActive
-                        ? "border-[#34A853] bg-[#34A853]/5 text-[#34A853] shadow-[0_4px_16px_rgba(52,168,83,0.06)]"
-                        : "border-slate-200/50 bg-white hover:bg-slate-50 text-slate-500 hover:text-slate-700";
-                    }
-
+                    const hex = r.hex;
                     return (
                       <button
                         key={r.id}
                         type="button"
                         onClick={() => setRole(r.id)}
-                        className={`relative flex flex-col items-center p-3.5 sm:p-4.5 rounded-radius-xl border text-center transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] cursor-pointer ${activeColorClasses}`}
+                        className="group relative overflow-hidden flex flex-col items-center p-3.5 sm:p-4.5 rounded-radius-xl border text-center transition-all duration-200 hover:-translate-y-0.5 active:scale-[0.97] cursor-pointer"
+                        style={{
+                          borderColor: isActive ? hex : '#e2e8f0',
+                          backgroundColor: isActive ? `${hex}0D` : '#fff',
+                          boxShadow: isActive ? `0 10px 26px ${hex}26` : undefined,
+                        }}
                       >
-                        {/* Dấu tích khi vai trò được chọn */}
+                        {/* Dải sáng đỉnh khi chọn */}
                         {isActive && (
-                          <span className="absolute top-2 right-2 w-4.5 h-4.5 rounded-full flex items-center justify-center text-white" style={{ backgroundColor: accent }}>
-                            <Check size={11} className="stroke-[3px]" />
+                          <span className="absolute inset-x-0 top-0 h-1" style={{ background: `linear-gradient(90deg, transparent, ${hex}, transparent)` }} />
+                        )}
+
+                        {/* Tick góc phải — pop khi chọn */}
+                        {isActive && (
+                          <span className="absolute top-2 right-2 w-5 h-5 rounded-full flex items-center justify-center text-white animate-scale-up shadow-sm" style={{ backgroundColor: hex }}>
+                            <Check size={12} className="stroke-[3px]" />
                           </span>
                         )}
-                        <Icon size={24} className="mb-2 shrink-0 stroke-[2px]" />
-                        <span className="text-xs sm:text-sm font-extrabold block leading-tight">{r.label}</span>
+
+                        {/* Chip icon — tô màu role khi chọn, phóng nhẹ khi hover */}
+                        <span
+                          className="w-12 h-12 rounded-2xl flex items-center justify-center mb-2.5 shrink-0 transition-all duration-300 group-hover:scale-110"
+                          style={isActive
+                            ? { backgroundColor: hex, color: '#fff', boxShadow: `0 6px 16px ${hex}55` }
+                            : { backgroundColor: '#f1f5f9', color: '#94a3b8' }}
+                        >
+                          <Icon size={22} className={`stroke-[2px] ${isActive ? 'animate-bob' : ''}`} />
+                        </span>
+
+                        <span className="text-xs sm:text-sm font-extrabold block leading-tight" style={{ color: isActive ? hex : '#334155' }}>{r.label}</span>
                         <span className="text-[10px] text-slate-400 leading-tight mt-1.5 hidden sm:block font-semibold">{r.desc}</span>
                       </button>
                     );

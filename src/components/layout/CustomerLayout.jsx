@@ -16,8 +16,10 @@ import {
   ChevronRight,
   LogOut,
   Menu,
-  X
+  X,
+  Sparkles
 } from 'lucide-react';
+import { formatCurrency } from '../../utils/format';
 import { useAuthStore } from '../../stores/authStore';
 import { useWebSocketContext } from '../../contexts/WebSocketContext';
 import { toast, ToastContainer } from 'react-toastify';
@@ -145,22 +147,22 @@ export default function CustomerLayout() {
     <div className="min-h-screen bg-md-surface flex flex-col md:flex-row text-md-on-surface font-google-sans">
       
       {/* ─── DESKTOP NAV RAIL (Left side, hidden on mobile) ───────────────────────── */}
-      <aside 
-        className={`hidden md:flex flex-col border-r border-md-outline-variant bg-white transition-all duration-300 relative z-30 ${
+      <aside
+        className={`hidden md:flex flex-col border-r border-orange-100/80 bg-gradient-to-b from-orange-50/50 via-white to-white transition-all duration-300 relative z-30 ${
           sidebarCollapsed ? 'w-22' : 'w-68'
         }`}
       >
         {/* Toggle Button */}
-        <button 
+        <button
           onClick={toggleSidebar}
-          className="absolute -right-3.5 top-8 bg-white border border-md-outline-variant rounded-full p-1.5 text-md-outline hover:text-md-primary shadow-shadow-2 hover:scale-115 transition-all cursor-pointer"
+          className="absolute -right-3.5 top-8 bg-white border border-orange-100 rounded-full p-1.5 text-md-outline hover:text-md-primary hover:border-md-primary/40 shadow-shadow-2 hover:scale-115 transition-all cursor-pointer"
         >
           {sidebarCollapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
         </button>
 
-        {/* Brand / Logo */}
-        <div className="p-5 flex items-center gap-3.5 border-b border-md-outline-variant">
-          <div className="w-12 h-12 bg-gradient-to-tr from-md-primary to-md-secondary rounded-radius-lg flex items-center justify-center text-white font-extrabold text-xl shadow-shadow-3 shrink-0">
+        {/* Brand / Logo — bo tròn ấm, tagline thân thiện tạo chất "app đặt món" */}
+        <div className="p-5 flex items-center gap-3.5 border-b border-orange-100/70">
+          <div className="w-12 h-12 bg-gradient-to-tr from-md-primary to-amber-400 rounded-radius-lg flex items-center justify-center text-white font-extrabold text-xl shadow-lg shadow-orange-500/25 shrink-0">
             MD
           </div>
           {!sidebarCollapsed && (
@@ -169,23 +171,27 @@ export default function CustomerLayout() {
                 <span className="text-md-primary">Meal</span>
                 <span className="text-md-secondary">Dash</span>
               </span>
-              <span className="text-[9px] text-md-outline font-bold tracking-widest uppercase mt-1.5">Food System</span>
+              <span className="text-[9px] text-orange-400 font-bold tracking-widest uppercase mt-1.5 flex items-center gap-1">
+                <Sparkles size={9} /> Ngon mỗi ngày
+              </span>
             </div>
           )}
         </div>
 
-        {/* User Quick Info */}
+        {/* Lời chào hero — banner gradient ấm cam, bản sắc riêng của khu Khách hàng */}
         {!sidebarCollapsed && user && (
-          <div className="p-4 mx-4 my-4 bg-gradient-to-r from-md-primary-container/20 to-md-secondary-container/10 border border-md-primary/5 rounded-radius-xl flex items-center gap-3.5 shadow-sm animate-fade-in">
-            <div 
+          <div className="relative overflow-hidden p-4 mx-4 my-4 bg-gradient-to-br from-md-primary via-orange-500 to-amber-500 rounded-radius-xl flex items-center gap-3.5 shadow-lg shadow-orange-500/20 animate-rise-in">
+            <span className="pointer-events-none absolute -top-8 -right-6 w-24 h-24 bg-white/15 rounded-full blur-xl" />
+            <span className="pointer-events-none absolute -bottom-10 -left-4 w-20 h-20 bg-white/10 rounded-full blur-lg" />
+            <div
               onClick={handleAvatarClick}
-              className="relative cursor-pointer group shrink-0"
+              className="relative cursor-pointer group shrink-0 z-10"
               title="Click để đổi ảnh đại diện nhanh"
             >
-              <img 
-                src={getAvatarUrl(user.avatar)} 
-                alt="Avatar" 
-                className="w-11 h-11 rounded-radius-full border-2 border-md-primary/20 object-cover shadow-sm group-hover:opacity-75 transition-opacity"
+              <img
+                src={getAvatarUrl(user.avatar)}
+                alt="Avatar"
+                className="w-11 h-11 rounded-radius-full border-2 border-white/70 object-cover shadow-md group-hover:opacity-75 transition-opacity"
               />
               {uploading && (
                 <div className="absolute inset-0 bg-black/40 rounded-radius-full flex items-center justify-center">
@@ -193,9 +199,12 @@ export default function CustomerLayout() {
                 </div>
               )}
             </div>
-            <div className="flex flex-col min-w-0">
-              <span className="text-sm font-extrabold text-md-on-surface truncate">{user.name}</span>
-              <span className="text-[10px] text-md-primary font-bold tracking-wide uppercase mt-1">
+            <div className="flex flex-col min-w-0 z-10">
+              <span className="text-[10px] text-white/80 font-semibold flex items-center gap-1 leading-none">
+                <Sparkles size={10} className="animate-pulse" /> Xin chào,
+              </span>
+              <span className="text-sm font-extrabold text-white truncate mt-1">{user.name}</span>
+              <span className="text-[9px] text-white/90 font-bold tracking-widest uppercase bg-white/20 px-1.5 py-0.5 rounded-full w-max mt-1.5">
                 Khách hàng
               </span>
             </div>
@@ -204,22 +213,45 @@ export default function CustomerLayout() {
 
         {/* Navigation Items */}
         <div className="flex-1 px-4 py-4 space-y-1.5 overflow-y-auto no-scrollbar">
+          {!sidebarCollapsed && (
+            <span className="block px-3 mb-2 text-[9px] font-extrabold text-orange-400/80 uppercase tracking-widest">Khám phá ẩm thực</span>
+          )}
           <NavMenuList
             items={menuItems}
             collapsed={sidebarCollapsed}
-            itemClass="flex items-center gap-4.5 w-full px-4 py-3.5 rounded-radius-xl transition-all duration-200 group relative cursor-pointer"
-            activeClass="bg-md-primary text-white font-extrabold shadow-shadow-2"
-            inactiveClass="text-md-on-surface-variant hover:bg-md-primary-container/20 hover:text-md-primary"
+            itemClass="flex items-center gap-4.5 w-full px-4 py-3.5 rounded-radius-full transition-all duration-200 group relative cursor-pointer hover:scale-[1.02]"
+            activeClass="bg-gradient-to-r from-md-primary to-amber-500 text-white font-extrabold shadow-md shadow-orange-500/30"
+            inactiveClass="text-md-on-surface-variant hover:bg-orange-50 hover:text-md-primary"
             iconSize={22}
             tooltipClass="absolute left-22 bg-md-on-surface text-white text-xs px-2.5 py-1.5 rounded-radius-md shadow-md opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap z-50"
           />
         </div>
 
+        {/* Thẻ giỏ hàng mini — CTA riêng của khách (dữ liệu THẬT), không role nào khác có */}
+        {!sidebarCollapsed && cartCount > 0 && (
+          <div className="px-4 pb-1">
+            <button
+              onClick={() => navigate('/cart')}
+              className="w-full flex items-center gap-3 p-3 rounded-radius-xl bg-orange-50 border border-orange-100 hover:border-md-primary/40 hover:shadow-sm transition-all cursor-pointer group"
+            >
+              <span className="relative w-9 h-9 rounded-radius-lg bg-gradient-to-tr from-md-primary to-amber-400 text-white flex items-center justify-center shrink-0 shadow-sm group-hover:scale-105 transition-transform">
+                <ShoppingCart size={16} />
+                <span className="absolute -top-1.5 -right-1.5 bg-white text-md-primary text-[9px] font-extrabold w-4 h-4 rounded-full flex items-center justify-center border border-orange-100">{cartCount}</span>
+              </span>
+              <div className="flex flex-col items-start min-w-0 flex-1">
+                <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wide leading-none">Giỏ hàng của bạn</span>
+                <span className="text-sm font-extrabold text-md-primary truncate leading-none mt-1">{formatCurrency(total)}</span>
+              </div>
+              <ChevronRight size={16} className="text-md-primary shrink-0 group-hover:translate-x-0.5 transition-transform" />
+            </button>
+          </div>
+        )}
+
         {/* Bottom Actions */}
-        <div className="p-3 border-t border-md-outline-variant">
+        <div className="p-3 border-t border-orange-100/70">
           <button
             onClick={handleLogout}
-            className={`flex items-center gap-4.5 w-full px-4 py-3.5 text-red-500 rounded-radius-xl hover:bg-red-50 transition-colors cursor-pointer ${
+            className={`flex items-center gap-4.5 w-full px-4 py-3.5 text-red-500 rounded-radius-full hover:bg-red-50 transition-colors cursor-pointer ${
               sidebarCollapsed ? 'justify-center' : 'justify-start'
             }`}
           >
@@ -267,19 +299,20 @@ export default function CustomerLayout() {
         onClose={closeMobileDrawer}
         drawerClass="w-64 max-w-xs bg-white border-l border-md-outline-variant"
       >
-        {/* Header Drawer */}
-        <div className="p-4 flex items-center justify-between border-b border-md-outline-variant bg-gradient-to-r from-md-primary-container/10 to-transparent">
+        {/* Header Drawer — gradient ấm cam đồng bộ desktop */}
+        <div className="relative overflow-hidden p-4 flex items-center justify-between bg-gradient-to-br from-md-primary via-orange-500 to-amber-500">
+          <span className="pointer-events-none absolute -top-6 -right-4 w-20 h-20 bg-white/15 rounded-full blur-lg" />
           {user ? (
-            <div className="flex items-center gap-3">
-              <div 
+            <div className="flex items-center gap-3 z-10">
+              <div
                 onClick={handleAvatarClick}
                 className="relative cursor-pointer group shrink-0"
                 title="Click để đổi ảnh đại diện nhanh"
               >
-                <img 
-                  src={getAvatarUrl(user.avatar)} 
-                  alt="Avatar" 
-                  className="w-10 h-10 rounded-full object-cover border border-md-primary/20 shadow-sm group-hover:opacity-75 transition-opacity"
+                <img
+                  src={getAvatarUrl(user.avatar)}
+                  alt="Avatar"
+                  className="w-10 h-10 rounded-full object-cover border-2 border-white/70 shadow-sm group-hover:opacity-75 transition-opacity"
                 />
                 {uploading && (
                   <div className="absolute inset-0 bg-black/40 rounded-full flex items-center justify-center">
@@ -288,16 +321,17 @@ export default function CustomerLayout() {
                 )}
               </div>
               <div className="flex flex-col min-w-0">
-                <span className="text-xs font-extrabold text-slate-800 truncate">{user.name}</span>
-                <span className="text-[8px] text-md-primary font-bold tracking-widest uppercase">Khách hàng</span>
+                <span className="text-[9px] text-white/80 font-semibold flex items-center gap-1 leading-none"><Sparkles size={9} /> Xin chào,</span>
+                <span className="text-xs font-extrabold text-white truncate mt-0.5">{user.name}</span>
+                <span className="text-[8px] text-white/90 font-bold tracking-widest uppercase mt-0.5">Khách hàng</span>
               </div>
             </div>
           ) : (
-            <span className="font-bold text-slate-800">MealDash</span>
+            <span className="font-bold text-white z-10">MealDash</span>
           )}
-          <button 
+          <button
             onClick={closeMobileDrawer}
-            className="p-1.5 hover:bg-slate-100 rounded-full text-slate-500 transition-colors"
+            className="p-1.5 hover:bg-white/20 rounded-full text-white transition-colors z-10"
           >
             <X size={18} />
           </button>
@@ -308,9 +342,9 @@ export default function CustomerLayout() {
           <NavMenuList
             items={menuItems}
             collapsed={false}
-            itemClass="flex items-center gap-3 w-full px-4 py-3 rounded-xl transition-all cursor-pointer"
-            activeClass="bg-md-primary text-white font-extrabold shadow-sm"
-            inactiveClass="text-md-on-surface-variant hover:bg-slate-100"
+            itemClass="flex items-center gap-3 w-full px-4 py-3 rounded-radius-full transition-all cursor-pointer"
+            activeClass="bg-gradient-to-r from-md-primary to-amber-500 text-white font-extrabold shadow-sm"
+            inactiveClass="text-md-on-surface-variant hover:bg-orange-50 hover:text-md-primary"
             iconSize={18}
             onItemClick={closeMobileDrawer}
           />

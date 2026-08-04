@@ -439,20 +439,26 @@ export default function Register() {
           )}
 
           {/* Lợi ích theo vai trò — mỗi dòng 1 animation idle KHÁC nhau + dấu tích cho phong phú */}
-          <div className="relative z-10 space-y-2" key={`b-${role}`}>
+          <div className="relative z-10 space-y-2 pl-5" key={`b-${role}`}>
+            {/* Đường nối dọc + luồng sáng chạy xuống → 3 mục thành 1 chuỗi liền mạch */}
+            <span className="absolute left-[7px] top-4 bottom-4 w-0.5 rounded-full bg-white/15 overflow-hidden pointer-events-none">
+              <span className="absolute inset-x-0 top-0 h-1/3 bg-gradient-to-b from-transparent via-white/80 to-transparent animate-line-flow" />
+            </span>
             {hero.benefits.map(({ Icon, label }, i) => {
-              // Mỗi mục 1 chuyển động compound có tính cách: đung đưa / pop dẻo / đập bảo vệ
-              const idle = ['animate-sway', 'animate-jelly', 'animate-throb'][i % 3];
+              const d = i * 0.6; // lệch pha → chuyển động chảy nối tiếp qua từng mục
               return (
                 <div
                   key={i}
-                  className="group flex items-center gap-3 rounded-xl p-1.5 -mx-1.5 transition-all duration-300 hover:bg-white/10 hover:translate-x-1 animate-rise-in"
+                  className="group relative flex items-center gap-3 rounded-xl p-1.5 -mx-1.5 transition-all duration-300 hover:bg-white/10 hover:translate-x-1 animate-rise-in"
                   style={{ animationDelay: `${210 + i * 90}ms` }}
                 >
                   <div className="relative w-10 h-10 rounded-xl bg-white/15 backdrop-blur-sm border border-white/20 flex items-center justify-center shrink-0 shadow-sm transition-all group-hover:bg-white/25 group-hover:scale-110">
-                    {/* Lớp chuyển động thứ 2: quầng sáng thở sau chip, mỗi mục lệch nhịp */}
-                    <span className="absolute inset-0 rounded-xl bg-white/40 blur-md animate-soft-halo pointer-events-none" style={{ animationDelay: `${i * 500}ms` }} />
-                    <Icon size={18} className={`relative z-[1] text-white ${idle}`} style={{ transformOrigin: 'center' }} />
+                    {/* Lớp 1 — quầng sáng thở */}
+                    <span className="absolute inset-0 rounded-xl bg-white/40 blur-md animate-soft-halo pointer-events-none" style={{ animationDelay: `${d}s` }} />
+                    {/* Lớp 2 — vòng sóng bung ra */}
+                    <span className="absolute inset-0 rounded-xl border border-white/60 animate-ring-wave pointer-events-none" style={{ animationDelay: `${d}s` }} />
+                    {/* Lớp 3 — icon nhảy nhiều chặng nối liền */}
+                    <Icon size={18} className="relative z-[1] text-white animate-icon-dance" style={{ transformOrigin: 'center', animationDelay: `${d}s` }} />
                     {/* Dấu tích nhỏ — tính năng có sẵn */}
                     <span className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-white flex items-center justify-center shadow z-10" style={{ color: accent }}>
                       <Check size={10} className="stroke-[3px]" />

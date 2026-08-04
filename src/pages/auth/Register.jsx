@@ -356,6 +356,33 @@ export default function Register() {
             </p>
           </div>
 
+          {/* Thẻ QUY TRÌNH DUYỆT — chỉ hiện ở bước cuối cho ĐỐI TÁC: lấp khoảng trống + trấn an "sau khi gửi thì sao" */}
+          {step === 3 && (role === 'OWNER' || role === 'SHIPPER') && (
+            <div className="relative z-10 rounded-2xl bg-white/12 backdrop-blur-md border border-white/20 p-4 shadow-lg animate-rise-in" key={`nx-${role}`}>
+              <p className="text-[11px] font-extrabold uppercase tracking-wider text-white/85 flex items-center gap-1.5 mb-3">
+                <Clock size={13} className="text-amber-200" /> Sau khi đăng ký
+              </p>
+              <div className="relative pl-1 space-y-3">
+                {[
+                  { Icon: FileText, t: 'Hồ sơ được gửi tới Admin' },
+                  { Icon: ShieldCheck, t: 'Admin xét duyệt nhanh chóng' },
+                  { Icon: role === 'OWNER' ? Store : Bike, t: role === 'OWNER' ? 'Mở bán & nhận đơn ngay' : 'Nhận đơn & kiếm thu nhập' },
+                ].map((it, i) => {
+                  const ItIcon = it.Icon;
+                  return (
+                    <div key={i} className="flex items-center gap-3 animate-rise-in" style={{ animationDelay: `${i * 90}ms` }}>
+                      <span className="relative w-7 h-7 rounded-lg bg-white/20 border border-white/20 flex items-center justify-center shrink-0">
+                        <ItIcon size={14} />
+                        <span className="absolute -top-1 -left-1 w-4 h-4 rounded-full bg-white text-[9px] font-black flex items-center justify-center" style={{ color: accent }}>{i + 1}</span>
+                      </span>
+                      <span className="text-[13px] font-bold text-white/95">{it.t}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
           {/* Lợi ích theo vai trò */}
           <div className="relative z-10 space-y-3" key={`b-${role}`}>
             {hero.benefits.map(({ Icon, label }, i) => (
@@ -461,8 +488,12 @@ export default function Register() {
                     <div className="flex flex-col items-center gap-1.5 shrink-0">
                       {/* Vòng tròn bước + halo lan toả khi active */}
                       <div className="relative w-9 h-9">
+                        {/* Halo kép lan toả (radar) khi active */}
                         {active && (
-                          <span className="absolute inset-0 rounded-full border-2 animate-halo pointer-events-none" style={{ borderColor: accent }}></span>
+                          <>
+                            <span className="absolute inset-0 rounded-full border-2 animate-halo pointer-events-none" style={{ borderColor: accent }}></span>
+                            <span className="absolute inset-0 rounded-full border-2 animate-halo pointer-events-none opacity-60" style={{ borderColor: accent, animationDelay: '0.7s' }}></span>
+                          </>
                         )}
                         <div
                           className="relative w-9 h-9 rounded-full flex items-center justify-center shadow-sm transition-all duration-300"
@@ -473,9 +504,11 @@ export default function Register() {
                             boxShadow: active ? `0 6px 16px ${accent}55` : undefined,
                           }}
                         >
-                          {/* Đổi icon↔tích có key để bật ra (pop) khi trạng thái đổi */}
-                          <span key={done ? 'check' : 'icon'} className="flex animate-scale-up">
-                            {done ? <Check size={16} className="stroke-[3px]" /> : <Icon size={16} />}
+                          {/* active: icon "nhún" liên tục (bob); đổi icon↔tích thì bật ra (pop) */}
+                          <span className={active ? 'flex animate-bob' : 'flex'}>
+                            <span key={done ? 'check' : 'icon'} className="flex animate-scale-up">
+                              {done ? <Check size={16} className="stroke-[3px]" /> : <Icon size={16} />}
+                            </span>
                           </span>
                         </div>
                       </div>
@@ -484,9 +517,9 @@ export default function Register() {
                       </span>
                     </div>
 
-                    {/* Thanh nối: track xám + fill chạy 0→100%; khi hoàn thành có VỆT SÁNG CHẢY như dòng nước */}
+                    {/* Thanh nối: track xám + fill chạy 0→100%; đã qua có VỆT SÁNG CHẢY; sắp tới có shimmer gợi ý */}
                     {i < STEPS.length - 1 && (
-                      <div className="flex-1 h-1.5 mx-2 -mt-5 rounded-full bg-slate-200 overflow-hidden">
+                      <div className="relative flex-1 h-1.5 mx-2 -mt-5 rounded-full bg-slate-200 overflow-hidden">
                         <div
                           className="relative h-full rounded-full overflow-hidden transition-all duration-500 ease-out"
                           style={{ width: step > s.id ? '100%' : '0%', backgroundColor: accent }}
@@ -495,6 +528,13 @@ export default function Register() {
                             <span className="absolute inset-y-0 left-0 w-1/2 bg-gradient-to-r from-transparent via-white/60 to-transparent animate-flow" />
                           )}
                         </div>
+                        {/* Shimmer gợi ý bước kế tiếp — chạy trên đoạn nối ngay sau bước đang đứng */}
+                        {s.id === step && (
+                          <span
+                            className="absolute inset-y-0 left-0 w-1/3 rounded-full animate-flow pointer-events-none"
+                            style={{ background: `linear-gradient(90deg, transparent, ${accent}55, transparent)` }}
+                          />
+                        )}
                       </div>
                     )}
                   </React.Fragment>

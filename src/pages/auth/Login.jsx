@@ -292,8 +292,10 @@ export default function Login() {
                   <input
                     type="text"
                     required
+                    inputMode="numeric"
+                    maxLength={10}
                     value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
+                    onChange={(e) => setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
                     placeholder="0901234567..."
                     className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-radius-lg text-xs font-semibold focus:outline-none focus:border-[#FF6B35] focus:bg-white transition-all shadow-sm text-slate-700 placeholder-slate-400"
                   />

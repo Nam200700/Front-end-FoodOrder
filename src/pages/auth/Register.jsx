@@ -471,12 +471,30 @@ export default function Register() {
 
             {/* Lộ trình giao hàng: shipper đạp xe CHÂN THẬT (bánh quay + thân rung + gia tốc + vạch tốc độ) */}
             <div className="relative h-16 mt-4">
-              {/* Mặt đường + đích đến */}
+              {/* Mặt đường */}
               <div className="absolute bottom-4 left-1 right-6 border-t-2 border-dashed border-white/30"></div>
-              <MapPin size={20} className="absolute bottom-2.5 right-0 text-white/85" />
 
-              {/* Shipper di chuyển theo gia tốc */}
-              <div className="absolute bottom-3 left-0 animate-courier">
+              {/* ĐÍCH ĐẾN — khi shipper tới nơi: pin nảy, vòng thành công lan ra, tích "Đã giao" bật lên.
+                  Tách outer (căn giữa) và inner (animation) để transform không đè nhau. */}
+              <div className="absolute bottom-2 right-0 w-7 h-9 pointer-events-none">
+                {/* vòng thành công lan toả */}
+                <span className="absolute left-1/2 bottom-1.5 -translate-x-1/2">
+                  <span className="block w-6 h-6 rounded-full border-2 border-emerald-300 animate-deliver-ring" style={{ transformOrigin: 'center' }} />
+                </span>
+                {/* tích "đã giao" bật lên trên pin */}
+                <span className="absolute left-1/2 -top-0.5 -translate-x-1/2">
+                  <span className="flex w-4 h-4 rounded-full bg-emerald-400 items-center justify-center shadow animate-deliver-pop" style={{ transformOrigin: 'center bottom' }}>
+                    <Check size={10} className="text-white stroke-[3px]" />
+                  </span>
+                </span>
+                {/* pin đích */}
+                <span className="absolute left-1/2 bottom-0 -translate-x-1/2">
+                  <MapPin size={20} className="block text-white/85 animate-pin-react" style={{ transformOrigin: 'center bottom' }} />
+                </span>
+              </div>
+
+              {/* Shipper chạy hết đường tới đích (animate left) */}
+              <div className="absolute bottom-3 left-0 animate-courier-run">
                 <div className="relative animate-vroom">
                   {/* Vạch tốc độ loé sau đuôi */}
                   <span className="absolute top-2 -left-3 h-[2px] w-4 rounded-full bg-white/50 animate-speed" style={{ animationDelay: '0ms' }}></span>

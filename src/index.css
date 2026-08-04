@@ -106,6 +106,11 @@
   --animate-icon-dance: iconDance 3s ease-in-out infinite;
   --animate-ring-wave: ringWave 2.6s ease-out infinite;
   --animate-line-flow: lineFlow 3s ease-in-out infinite;
+  /* Shipper "như người thật": chân đạp (crank quay), thân gồng nhún, đầu gật, bóng co giãn — cùng nhịp bánh */
+  --animate-crank: wheelSpin 0.5s linear infinite;
+  --animate-rider-pump: riderPump 0.5s ease-in-out infinite;
+  --animate-head-bob: headBob 0.5s ease-in-out infinite;
+  --animate-shadow-pulse: shadowPulse 0.5s ease-in-out infinite;
   /* Shipper "chân thật": đi có gia tốc, thân xe rung theo đường, bánh quay, vạch tốc độ */
   --animate-courier: courier 7s cubic-bezier(0.45, 0, 0.55, 1) infinite;
   --animate-vroom: vroom 0.32s ease-in-out infinite;

@@ -1002,7 +1002,7 @@ export default function Home() {
       {cartItemsCount > 0 && (
         <button
           onClick={() => navigate('/cart')}
-          className="fixed bottom-20 left-3 right-3 lg:hidden z-40 bg-[#FF6B35] text-white px-4 py-3 rounded-2xl shadow-xl flex items-center justify-between hover:scale-[1.01] active:scale-[0.99] transition-all font-bold text-sm cursor-pointer"
+          className="fixed bottom-24 left-3 right-3 lg:hidden z-40 bg-[#FF6B35] text-white px-4 py-3 rounded-2xl shadow-xl flex items-center justify-between hover:scale-[1.01] active:scale-[0.99] transition-all font-bold text-sm cursor-pointer"
         >
           <div className="flex items-center gap-3">
             <div className="relative">

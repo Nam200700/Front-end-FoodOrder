@@ -25,11 +25,12 @@ const SPARKLES = [
   { wrap: 'top-[30%] left-[27%]', size: 10, delay: '1600ms' },
 ];
 
-// Điểm nổi bật ở đáy hero — MÔ TẢ TÍNH NĂNG (không dùng số liệu bịa để tránh bị hội đồng chất vấn)
+// Điểm nổi bật ở đáy hero — MÔ TẢ TÍNH NĂNG (không dùng số liệu bịa để tránh bị hội đồng chất vấn).
+// Mỗi mục có MÀU icon riêng + animation idle KHÁC nhau (nhún/trôi/lắc) để sinh động, không lặp.
 const FEATURES = [
-  { Icon: Bike, label: 'Giao hàng tận nơi tiện lợi' },
-  { Icon: Star, label: 'Đa dạng quán ăn & món ngon' },
-  { Icon: ShieldCheck, label: 'Thanh toán an toàn, minh bạch' },
+  { Icon: Bike, label: 'Giao hàng tận nơi tiện lợi', hex: '#34A853', idle: 'animate-bob' },
+  { Icon: Star, label: 'Đa dạng quán ăn & món ngon', hex: '#F59E0B', idle: 'animate-float' },
+  { Icon: ShieldCheck, label: 'Thanh toán an toàn, minh bạch', hex: '#3B82F6', idle: 'animate-wiggle' },
 ];
 
 export default function Login() {
@@ -263,14 +264,21 @@ export default function Login() {
             </div>
           </div>
 
-          {/* Điểm nổi bật */}
-          <div className="relative z-10 space-y-3">
-            {FEATURES.map(({ Icon, label }, i) => (
-              <div key={i} className="group flex items-center gap-3 animate-rise-in" style={{ animationDelay: `${340 + i * 80}ms` }}>
-                <div className="w-9 h-9 rounded-xl bg-white/15 backdrop-blur-sm border border-white/15 flex items-center justify-center shrink-0 transition-all group-hover:bg-white/25 group-hover:scale-110">
-                  <Icon size={17} />
+          {/* Điểm nổi bật — chip trắng + icon MÀU riêng, mỗi dòng animation idle KHÁC nhau, hover trượt phải */}
+          <div className="relative z-10 space-y-2">
+            {FEATURES.map(({ Icon, label, hex, idle }, i) => (
+              <div
+                key={i}
+                className="group flex items-center gap-3 rounded-xl p-1.5 -mx-1.5 transition-all duration-300 hover:bg-white/10 hover:translate-x-1 animate-rise-in"
+                style={{ animationDelay: `${340 + i * 90}ms` }}
+              >
+                <div
+                  className="w-10 h-10 rounded-xl bg-white flex items-center justify-center shrink-0 transition-transform duration-300 group-hover:scale-110"
+                  style={{ boxShadow: `0 6px 16px ${hex}55` }}
+                >
+                  <Icon size={18} className={idle} style={{ color: hex, transformOrigin: 'center' }} />
                 </div>
-                <span className="text-sm font-bold text-white/95">{label}</span>
+                <span className="text-sm font-bold text-white/95 group-hover:text-white transition-colors">{label}</span>
               </div>
             ))}
           </div>

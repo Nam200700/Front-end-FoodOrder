@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../stores/authStore';
 import { Mail, Lock, User, Phone, ChevronRight, ChevronLeft, Store, Bike, FileText, MapPin, Lightbulb, Users, Check, ShieldCheck, ChefHat, Soup, UtensilsCrossed, TrendingUp, Wallet, Route, Hand, Pizza, IceCream, Sparkles, Clock, Gift } from 'lucide-react';
-import { validatePhone, validatePassword, validateName, validateEmail, validateIdCard } from '../../utils/validation';
+import { validatePhone, validatePassword, validateName, validateEmail, validateIdCard, validateLicensePlate, formatLicensePlate } from '../../utils/validation';
 import Button from '../../components/common/Button';
 import Input from '../../components/common/Input';
 import Card from '../../components/common/Card';
@@ -142,7 +142,7 @@ export default function Register() {
   const handleIdCardBlur = () =>
     validateIdCard(idCard) ? clearError('idCard') : setError('idCard', 'CCCD/CMND phải gồm 9 hoặc 12 chữ số.');
   const handleLicensePlateBlur = () =>
-    licensePlate.trim() ? clearError('licensePlate') : setError('licensePlate', 'Vui lòng nhập biển số xe.');
+    validateLicensePlate(licensePlate) ? clearError('licensePlate') : setError('licensePlate', 'Biển số chưa đúng định dạng (VD: 59H1-23456 hoặc 51F-12345).');
 
   const register = useAuthStore((state) => state.register);
 
@@ -173,7 +173,7 @@ export default function Register() {
       if (!restaurantAddress.trim()) localErrors.restaurantAddress = 'Vui lòng chọn địa chỉ quán trên bản đồ.';
     } else if (role === 'SHIPPER') {
       if (!validateIdCard(idCard)) localErrors.idCard = 'CCCD/CMND phải gồm 9 hoặc 12 chữ số.';
-      if (!licensePlate.trim()) localErrors.licensePlate = 'Vui lòng nhập biển số xe.';
+      if (!validateLicensePlate(licensePlate)) localErrors.licensePlate = 'Biển số chưa đúng định dạng (VD: 59H1-23456 hoặc 51F-12345).';
     }
 
     if (Object.keys(localErrors).length > 0) {
@@ -752,13 +752,12 @@ export default function Register() {
                         type="text"
                         required
                         value={licensePlate}
-                        onChange={(e) => setLicensePlate(e.target.value.replace(/[^a-zA-Z0-9-]/g, '').toUpperCase().slice(0, 11))}
+                        onChange={(e) => setLicensePlate(formatLicensePlate(e.target.value))}
                         onBlur={handleLicensePlateBlur}
-                        placeholder="Ví dụ: 29A1-12345..."
+                        placeholder="Ví dụ: 59H1-23456..."
                         icon={Bike}
                         error={errors.licensePlate}
-                        maxLength={11}
-                        helperText="Chữ, số & dấu “-”. VD: 29A1-12345"
+                        helperText="Cứ gõ chữ & số, dấu “-” tự thêm. VD: 59H1-23456"
                       />
                     </div>
 

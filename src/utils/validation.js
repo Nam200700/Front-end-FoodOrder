@@ -19,10 +19,11 @@ export const LICENSE_PLATE_REGEX = /^\d{2}[A-Z]{1,2}\d{4,6}$/;
 // Bỏ mọi ký tự không phải chữ/số rồi viết hoa → dạng "gốc" để kiểm tra & so khớp
 export const normalizeLicensePlate = (v) => (v || '').replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
 export const validateLicensePlate = (v) => LICENSE_PLATE_REGEX.test(normalizeLicensePlate(v));
-// Tự chèn dấu "-" theo cấu trúc để khách CHỈ cần gõ chữ & số (dấu hiện live, KHÔNG nhảy).
+// Tự chèn dấu "-" và "." theo cấu trúc để khách CHỈ cần gõ chữ & số (dấu hiện live, KHÔNG nhảy).
 // Vị trí dấu được xác định theo loại xe → cố định, không phụ thuộc số ký tự đã gõ:
-//   • Xe máy (MOTORBIKE): tỉnh + chữ + 1 số seri  "-"  số đăng ký   (59H1-23456)
-//   • Ô tô   (CAR):       tỉnh + chữ               "-"  số đăng ký   (51F-12345)
+//   • Xe máy (MOTORBIKE): tỉnh + chữ + 1 số seri  "-"  số đăng ký   (59H1-234.56)
+//   • Ô tô   (CAR):       tỉnh + chữ               "-"  số đăng ký   (51F-123.45)
+// Dấu "." đặt cố định sau 3 số đầu của phần đăng ký (chuẩn hiển thị biển VN).
 export const formatLicensePlate = (v, vehicleType = 'MOTORBIKE') => {
   const s = normalizeLicensePlate(v).slice(0, 9); // 2 tỉnh + tối đa 2 chữ + (1 seri) + 5 số
   const m = s.match(/^(\d{0,2})([A-Z]{0,2})(\d{0,6})$/);
@@ -34,6 +35,8 @@ export const formatLicensePlate = (v, vehicleType = 'MOTORBIKE') => {
     tail = digits.slice(1);
   }
   const head = prov + letters + serial;
-  // Chỉ chèn "-" khi đã có phần chữ (seri) và bắt đầu nhập số đăng ký
-  return (letters && tail) ? `${head}-${tail}` : head;
+  // Phần số đăng ký: chèn "." sau 3 số đầu khi đã có từ 4 số trở lên (234.56 / 123.45)
+  const numPart = tail.length >= 4 ? `${tail.slice(0, 3)}.${tail.slice(3)}` : tail;
+  // Chỉ chèn "-" khi đã có phần chữ và bắt đầu nhập số đăng ký
+  return (letters && tail) ? `${head}-${numPart}` : head;
 };

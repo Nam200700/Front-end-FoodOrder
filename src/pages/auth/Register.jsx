@@ -150,7 +150,7 @@ export default function Register() {
     validateLicensePlate(licensePlate)
       ? clearError('licensePlate')
       : setError('licensePlate', licensePlate.trim()
-          ? 'Biển số chưa đúng định dạng (VD: 59H1-23456 hoặc 51F-12345).'
+          ? 'Biển số chưa đúng định dạng (VD: 59H1-234.56 hoặc 51F-123.45).'
           : 'Vui lòng nhập biển số xe.');
   // Đổi loại xe → chèn lại dấu cho đúng cấu trúc xe máy/ô tô (không bắt gõ lại).
   const handleVehicleTypeChange = (next) => {
@@ -187,7 +187,7 @@ export default function Register() {
       if (!restaurantAddress.trim()) localErrors.restaurantAddress = 'Vui lòng chọn địa chỉ quán trên bản đồ.';
     } else if (role === 'SHIPPER') {
       if (!validateIdCard(idCard)) localErrors.idCard = 'CCCD/CMND phải gồm 9 hoặc 12 chữ số.';
-      if (!validateLicensePlate(licensePlate)) localErrors.licensePlate = 'Biển số chưa đúng định dạng (VD: 59H1-23456 hoặc 51F-12345).';
+      if (!validateLicensePlate(licensePlate)) localErrors.licensePlate = 'Biển số chưa đúng định dạng (VD: 59H1-234.56 hoặc 51F-123.45).';
     }
 
     if (Object.keys(localErrors).length > 0) {
@@ -771,7 +771,7 @@ export default function Register() {
                         placeholder="Ví dụ: 59H1-23456..."
                         icon={Bike}
                         error={errors.licensePlate}
-                        helperText="Chỉ gõ chữ & số — dấu “-” tự hiện. VD: 59H1-23456"
+                        helperText="Chỉ gõ chữ & số — dấu “-” “.” tự hiện. VD: 59H1-234.56"
                       />
                     </div>
 

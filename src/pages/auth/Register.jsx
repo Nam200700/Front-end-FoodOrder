@@ -502,12 +502,7 @@ export default function Register() {
               <ChefHat size={26} />
             </div>
 
-            {/* Eyebrow Tag */}
-            <span className="text-[10px] bg-slate-100 text-slate-500 font-extrabold px-3 py-1 rounded-full uppercase tracking-[0.2em] shadow-sm border border-slate-200/40">
-              Hệ thống MealDash
-            </span>
-
-            <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-800 mt-4 tracking-tight text-center lg:text-left">
+            <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-800 tracking-tight text-center lg:text-left">
               Tạo tài khoản mới
             </h2>
             {/* Phụ đề đổi theo từng bước để dẫn dắt, tránh dồn thông tin */}
@@ -661,8 +656,9 @@ export default function Register() {
                 </div>
 
                 {role !== 'CUSTOMER' && (
-                  <p className="text-[10px] sm:text-xs text-amber-600 font-bold mt-4 text-center bg-amber-50/70 border border-amber-100/60 p-3 rounded-radius-lg leading-relaxed shadow-sm inline-flex items-start gap-1.5">
-                    <Lightbulb size={13} className="shrink-0 mt-0.5" /> <span><span className="font-extrabold">Lưu ý:</span> Hồ sơ đăng ký làm đối tác sẽ được gửi trực tiếp đến Admin phê duyệt. Vui lòng cung cấp chính xác thông tin để được duyệt sớm nhất — bạn sẽ nhận thông báo ngay khi hồ sơ được duyệt!</span>
+                  <p className="text-[10px] sm:text-[11px] text-amber-700 font-semibold mt-3 flex items-center gap-1.5 bg-amber-50/70 border border-amber-100/70 px-3 py-2 rounded-radius-lg leading-snug">
+                    <Lightbulb size={12} className="shrink-0 text-amber-500" />
+                    <span>Hồ sơ đối tác cần <b className="font-extrabold">Admin duyệt</b> — điền chính xác để được duyệt nhanh.</span>
                   </p>
                 )}
 

@@ -768,8 +768,21 @@ export default function MerchantMenu() {
       {loading && menuItems.length === 0 ? (
         <Spinner />
       ) : categories.length === 0 ? (
-        <div className="text-center py-12 bg-white rounded-radius-xl border border-slate-200/60 shadow-sm text-slate-400 text-xs font-bold">
-          Chủ quán chưa tạo danh mục nào. Hãy nhấn nút "+ Thêm danh mục" phía trên để bắt đầu!
+        <div className="text-center py-12 px-6 bg-white rounded-radius-xl border border-slate-200/60 shadow-sm flex flex-col items-center animate-rise-in">
+          <span className="w-16 h-16 rounded-full bg-md-secondary/10 text-md-secondary flex items-center justify-center mb-4">
+            <FolderPlus size={30} />
+          </span>
+          <h3 className="text-sm font-extrabold text-slate-700">Bắt đầu bằng danh mục đầu tiên</h3>
+          <p className="text-xs text-slate-400 font-medium mt-1.5 max-w-sm leading-relaxed">
+            Danh mục giúp nhóm món theo loại (Cơm, Món nướng, Đồ uống…) để khách dễ chọn. Tạo 1 danh mục rồi thêm món vào nhé!
+          </p>
+          <button
+            type="button"
+            onClick={handleAddCategoryClick}
+            className="mt-5 inline-flex items-center gap-1.5 px-5 py-2.5 rounded-radius-full bg-md-secondary text-white text-xs font-bold shadow-sm hover:bg-blue-700 active:scale-95 transition-all cursor-pointer"
+          >
+            <FolderPlus size={15} /> Tạo danh mục ngay
+          </button>
         </div>
       ) : displayedItems.length === 0 ? (
         <div className="text-center py-12 bg-white rounded-radius-xl border border-slate-200/60 shadow-sm text-slate-400 text-xs font-bold">

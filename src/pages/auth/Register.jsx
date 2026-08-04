@@ -141,8 +141,22 @@ export default function Register() {
     validatePhone(restaurantPhone) ? clearError('restaurantPhone') : setError('restaurantPhone', 'Số điện thoại quán không hợp lệ (bắt đầu bằng 0, gồm 10 chữ số).');
   const handleIdCardBlur = () =>
     validateIdCard(idCard) ? clearError('idCard') : setError('idCard', 'CCCD/CMND phải gồm 9 hoặc 12 chữ số.');
+  // Gõ tới đâu, dấu "-" hiện tới đó (vị trí cố định theo loại xe → không nhảy). Khách chỉ gõ chữ & số.
+  const handleLicensePlateChange = (raw) => {
+    setLicensePlate(formatLicensePlate(raw, vehicleType));
+    if (errors.licensePlate) clearError('licensePlate');
+  };
   const handleLicensePlateBlur = () =>
-    validateLicensePlate(licensePlate) ? clearError('licensePlate') : setError('licensePlate', 'Biển số chưa đúng định dạng (VD: 59H1-23456 hoặc 51F-12345).');
+    validateLicensePlate(licensePlate)
+      ? clearError('licensePlate')
+      : setError('licensePlate', licensePlate.trim()
+          ? 'Biển số chưa đúng định dạng (VD: 59H1-23456 hoặc 51F-12345).'
+          : 'Vui lòng nhập biển số xe.');
+  // Đổi loại xe → chèn lại dấu cho đúng cấu trúc xe máy/ô tô (không bắt gõ lại).
+  const handleVehicleTypeChange = (next) => {
+    setVehicleType(next);
+    setLicensePlate((prev) => formatLicensePlate(prev, next));
+  };
 
   const register = useAuthStore((state) => state.register);
 
@@ -752,12 +766,12 @@ export default function Register() {
                         type="text"
                         required
                         value={licensePlate}
-                        onChange={(e) => setLicensePlate(formatLicensePlate(e.target.value))}
+                        onChange={(e) => handleLicensePlateChange(e.target.value)}
                         onBlur={handleLicensePlateBlur}
                         placeholder="Ví dụ: 59H1-23456..."
                         icon={Bike}
                         error={errors.licensePlate}
-                        helperText="Cứ gõ chữ & số, dấu “-” tự thêm. VD: 59H1-23456"
+                        helperText="Gõ tự nhiên, dấu “-” tự chuẩn hoá. VD: 59H1-23456"
                       />
                     </div>
 

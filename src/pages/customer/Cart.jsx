@@ -19,7 +19,7 @@ import { useModalState } from '../../hooks/useModalState';
 import MapModal2 from '../../components/common/Map';
 import { formatDateTime } from '../../utils/format';
 
-// Nhận diện loại voucher: icon + màu riêng cho FREESHIP / PERCENT / FIXED (đồng bộ toàn app)
+// Nhận diện loại voucher: icon + màu riêng cho FREESHIP / PERCENT / FIXED 
 const VOUCHER_TYPE_META = {
   FREESHIP: { icon: Truck, label: 'Miễn phí ship', chip: 'bg-teal-100 text-teal-700', strip: 'bg-teal-400', value: 'text-teal-700' },
   PERCENT: { icon: BadgePercent, label: 'Giảm theo %', chip: 'bg-orange-100 text-[#ff6b35]', strip: 'bg-[#ff6b35]', value: 'text-[#ff6b35]' },
@@ -262,6 +262,7 @@ export default function Cart() {
     }
   };
 
+  //chọn địa chỉ
   const handleSelectAddressItem = async (item) => {
     setSelectedAddressId(item.addressId);
     setAddress(item.address);
@@ -316,6 +317,7 @@ export default function Cart() {
     mapModal2.open();
   };
 
+  //cập nhật/thêm mới địa chỉ
   const handleMapConfirmAndSave = async (latVal, lngVal, addressNameVal) => {
     try {
       const payload = {
@@ -402,6 +404,7 @@ export default function Cart() {
     });
   };
 
+  //nhận voucher
   const handleClaimPublicVoucher = async (voucherId) => {
     try {
       await apiClient.post(`/vouchers/${voucherId}/add`);
@@ -421,6 +424,7 @@ export default function Cart() {
     return selectedCarts.reduce((s, c) => s + c.items.reduce((a, i) => a + i.quantity, 0), 0);
   }, [selectedCarts]);
 
+  //Tổng tiền hàng chưa tính phí ship/giảm giá
   const selectedItemsSubtotal = useMemo(() => {
     return selectedCarts.reduce((sum, cart) => sum + cart.subtotal, 0);
   }, [selectedCarts]);
@@ -513,14 +517,8 @@ export default function Cart() {
           <button onClick={() => navigate(-1)} className="p-1.5 rounded-full hover:bg-slate-200 text-slate-600 transition-colors cursor-pointer shrink-0">
             <ArrowLeft size={18} />
           </button>
-          <span className="w-9 h-9 rounded-xl bg-gradient-to-tr from-[#FF6B35] to-[#FF8B5E] text-white flex items-center justify-center shadow-sm shrink-0">
-            <ShoppingBag size={18} />
-          </span>
           <div className="min-w-0">
             <h1 className="text-xl md:text-2xl font-bold text-gray-900 leading-tight">Giỏ Hàng Của Tôi</h1>
-            <p className="text-[11px] font-semibold text-slate-400 leading-none mt-0.5">
-              {carts.length} quán · {carts.reduce((s, c) => s + c.items.reduce((a, i) => a + i.quantity, 0), 0)} món trong giỏ
-            </p>
           </div>
         </div>
 
@@ -733,7 +731,7 @@ export default function Cart() {
                 <div className="px-4 py-2.5 bg-orange-50/40 border-t border-slate-100 flex items-center justify-between gap-3">
                   <div className="flex items-center gap-2 text-xs shrink-0">
                     <BadgePercent size={15} className="text-[#ff6b35]" />
-                    <span className="font-bold text-slate-700">Ưu đãi:</span>
+                    <span className="font-bold text-slate-700">Giảm giá voucher:</span>
                   </div>
 
                   {restaurantVoucher ? (
@@ -796,7 +794,7 @@ export default function Cart() {
                         </div>
                       )}
                       <div className="flex justify-between items-center pt-1.5 border-t border-slate-200/60 mt-1">
-                        <span className="text-xs font-extrabold text-slate-700 flex items-center gap-1.5"><Store size={13} className="text-[#ff6b35]" /> Tổng cộng quán:</span>
+                        <span className="text-xs font-extrabold text-slate-700 flex items-center gap-1.5"><Store size={13} className="text-[#ff6b35]" /> Tổng thanh toán:</span>
                         <span className="font-extrabold text-sm text-[#ff6b35]">
                           {isCalculatingShipping || isUpdatingLocation ? 'Đang tính...' : formatCurrency(cartTotal > 0 ? cartTotal : 0)}
                         </span>
@@ -850,21 +848,6 @@ export default function Cart() {
               </div>
             )}
 
-            {/* Phương thức thanh toán — hiện hỗ trợ COD */}
-            <div className="pt-2 border-t border-slate-100">
-              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5 mb-1.5">
-                <Wallet size={13} /> Thanh toán
-              </span>
-              <div className="flex items-center gap-2.5 p-2.5 rounded-xl border border-[#ff6b35]/40 bg-orange-50/50">
-                <span className="w-8 h-8 rounded-lg bg-[#ff6b35]/10 text-[#ff6b35] flex items-center justify-center shrink-0"><Wallet size={16} /></span>
-                <div className="min-w-0 flex-1">
-                  <p className="text-xs font-extrabold text-slate-800 leading-tight">Tiền mặt khi nhận hàng</p>
-                  <p className="text-[10px] text-slate-500 font-semibold">Thanh toán COD cho tài xế</p>
-                </div>
-                <span className="w-4 h-4 rounded-full bg-[#ff6b35] flex items-center justify-center shrink-0"><span className="w-1.5 h-1.5 rounded-full bg-white" /></span>
-              </div>
-            </div>
-
             <div className="pt-2 border-t border-slate-100 mb-1">
               <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5 mb-1.5">
                 <StickyNote size={13} /> Ghi chú đơn hàng
@@ -895,12 +878,6 @@ export default function Cart() {
             >
               {selectedRestaurantIds.length === 0 ? 'Chọn quán để đặt' : `Đặt Hàng${selectedRestaurantIds.length > 1 ? ` · ${selectedRestaurantIds.length} quán` : ''}`}
             </Button>
-
-            {/* Trấn an / hỗ trợ khách */}
-            <p className="text-[10px] text-slate-400 font-medium flex items-center justify-center gap-1.5 leading-tight text-center">
-              <ShieldCheck size={13} className="text-emerald-500 shrink-0" />
-              Miễn phí huỷ trước khi quán xác nhận · Theo dõi đơn realtime
-            </p>
           </Card>
           
           {/* THÔNG TIN GIAO HÀNG */}
@@ -1175,11 +1152,8 @@ export default function Cart() {
                               : 'border-slate-200/80 hover:border-orange-300 hover:shadow-md bg-white'
                           }`}
                         >
-                          {/* Dải màu bên trái + 2 khấc răng cưa kiểu vé (ticket) */}
                           <div className={`absolute left-0 top-0 bottom-0 w-1.5 ${isSelectedForThisRes ? 'bg-[#ff6b35]' : meta.strip} transition-colors`} />
                           <span className="absolute -left-1 top-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-slate-100 border border-slate-200" />
-
-                          {/* Chip icon loại voucher */}
                           <span className={`shrink-0 w-9 h-9 rounded-xl flex items-center justify-center ${meta.chip} transition-transform group-hover:scale-110`}>
                             <MetaIcon size={17} />
                           </span>
@@ -1273,7 +1247,7 @@ export default function Cart() {
                                 {pub.discountType === 'FREESHIP' && 'Miễn phí vận chuyển'}
                               </span>
                               <span className={`inline-flex items-center gap-1 text-[11px] ${exp.soon ? 'text-rose-500 font-bold' : 'text-slate-500'}`}>
-                                <Clock size={12} className="shrink-0" /> HSD {formatDateTime(pub.endDate)}
+                                <Clock size={12} className="shrink-0" /> Hạn {formatDateTime(pub.endDate)}
                                 {exp.soon && <span className="text-[9px] font-black px-1.5 py-0.5 rounded-full bg-rose-50 text-rose-600 shrink-0">Sắp hết</span>}
                               </span>
                             </div>

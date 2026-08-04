@@ -752,12 +752,13 @@ export default function Register() {
                         type="text"
                         required
                         value={licensePlate}
-                        onChange={(e) => setLicensePlate(e.target.value)}
+                        onChange={(e) => setLicensePlate(e.target.value.replace(/[^a-zA-Z0-9-]/g, '').toUpperCase().slice(0, 11))}
                         onBlur={handleLicensePlateBlur}
                         placeholder="Ví dụ: 29A1-12345..."
                         icon={Bike}
                         error={errors.licensePlate}
-                        helperText="Ví dụ: 29A1-12345"
+                        maxLength={11}
+                        helperText="Chữ, số & dấu “-”. VD: 29A1-12345"
                       />
                     </div>
 

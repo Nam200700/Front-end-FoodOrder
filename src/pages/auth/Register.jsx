@@ -58,6 +58,25 @@ const REG_SPARKLES = [
   { wrap: 'bottom-[34%] right-[30%]', size: 12, delay: '1300ms' },
 ];
 
+// Hành trình "Cách hoạt động" theo vai trò — hiện ở bước chọn vai trò để lấp trống & giúp user mới hình dung
+const HOW_IT_WORKS = {
+  CUSTOMER: [
+    { Icon: Store, t: 'Chọn quán & món' },
+    { Icon: UtensilsCrossed, t: 'Đặt & thanh toán' },
+    { Icon: Bike, t: 'Nhận hàng tận nơi' },
+  ],
+  OWNER: [
+    { Icon: Store, t: 'Đăng ký quán' },
+    { Icon: UtensilsCrossed, t: 'Thêm món vào menu' },
+    { Icon: TrendingUp, t: 'Nhận đơn & bán' },
+  ],
+  SHIPPER: [
+    { Icon: FileText, t: 'Đăng ký hồ sơ' },
+    { Icon: ShieldCheck, t: 'Được Admin duyệt' },
+    { Icon: Wallet, t: 'Nhận đơn kiếm tiền' },
+  ],
+};
+
 export default function Register() {
   const navigate = useNavigate();
   const [role, setRole] = useState('CUSTOMER'); // CUSTOMER, OWNER, SHIPPER
@@ -612,6 +631,29 @@ export default function Register() {
                     <Lightbulb size={13} className="shrink-0 mt-0.5" /> <span><span className="font-extrabold">Lưu ý:</span> Hồ sơ đăng ký làm đối tác sẽ được gửi trực tiếp đến Admin phê duyệt. Vui lòng cung cấp chính xác thông tin để được duyệt sớm nhất — bạn sẽ nhận thông báo ngay khi hồ sơ được duyệt!</span>
                   </p>
                 )}
+
+                {/* Cách hoạt động theo vai trò — lấp khoảng trống & giúp user mới hình dung hành trình */}
+                <div className="mt-4 rounded-radius-lg border border-slate-100 bg-slate-50/60 p-4">
+                  <p className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-1.5">
+                    <Sparkles size={12} style={{ color: accent }} /> Cách hoạt động
+                  </p>
+                  <div className="flex items-center justify-between gap-1">
+                    {HOW_IT_WORKS[role].map((st, i) => {
+                      const StIcon = st.Icon;
+                      return (
+                        <React.Fragment key={i}>
+                          <div className="flex flex-col items-center text-center gap-1.5 flex-1 min-w-0 animate-rise-in" style={{ animationDelay: `${i * 80}ms` }}>
+                            <span className="w-9 h-9 rounded-full flex items-center justify-center shrink-0" style={{ backgroundColor: `${accent}14`, color: accent }}>
+                              <StIcon size={16} />
+                            </span>
+                            <span className="text-[10px] font-bold text-slate-600 leading-tight">{st.t}</span>
+                          </div>
+                          {i < 2 && <ChevronRight size={14} className="text-slate-300 shrink-0 self-center -mt-4" />}
+                        </React.Fragment>
+                      );
+                    })}
+                  </div>
+                </div>
               </div>
             )}
 

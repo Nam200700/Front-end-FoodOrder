@@ -483,18 +483,36 @@ export default function Register() {
                   <span className="absolute top-4 -left-4 h-[2px] w-5 rounded-full bg-white/40 animate-speed" style={{ animationDelay: '200ms' }}></span>
                   <span className="absolute top-6 -left-3 h-[2px] w-4 rounded-full bg-white/50 animate-speed" style={{ animationDelay: '420ms' }}></span>
 
-                  {/* SVG shipper đạp xe (tự vẽ để tách được bánh xe cho quay) */}
-                  <svg width="46" height="29" viewBox="0 0 64 40" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className="text-white drop-shadow-md">
-                    {/* Hộp giao hàng trên giá sau */}
-                    <rect x="13.5" y="9" width="11" height="10" rx="2" fill="rgba(255,255,255,0.18)" />
-                    <path d="M13.5 13 H24.5 M18 9 V7 H21 V9" strokeWidth="1.6" />
+                  {/* SVG shipper đạp xe NHƯ NGƯỜI THẬT — tách nhiều bộ phận cử động cùng nhịp bánh */}
+                  <svg width="48" height="30" viewBox="0 0 64 40" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className="text-white drop-shadow-md">
+                    {/* Bóng đổ dưới xe — co giãn theo nhịp nhún (cảm giác trọng lượng) */}
+                    <ellipse cx="32" cy="38.5" rx="21" ry="1.7" fill="white" stroke="none" className="animate-shadow-pulse" style={{ transformBox: 'fill-box', transformOrigin: 'center' }} />
 
-                    {/* Khung xe đạp */}
+                    {/* Hộp giao hàng + giá đỡ sau */}
+                    <rect x="6.5" y="9" width="11" height="10" rx="2" fill="rgba(255,255,255,0.18)" />
+                    <path d="M6.5 13 H17.5 M11 9 V7 H14 V9" strokeWidth="1.6" />
+                    <path d="M13 30 L11.5 19 M17.5 19 L20.5 25" strokeWidth="1.3" />
+
+                    {/* Khung xe (tĩnh) */}
                     <path d="M13 30 L30 30 L24 17 Z M30 30 L44 15 L51 30 M24 17 L44 15 M42 15 H47.5 M21 17 H26.5" />
 
-                    {/* Người giao (nghiêng về trước) */}
-                    <path d="M24 17 L30 30 M24 17 L36 8 L44 15" />
-                    <circle cx="39" cy="5.4" r="3.2" />
+                    {/* Crank + bàn đạp + bàn chân QUAY (đạp thật) */}
+                    <g style={{ transformBox: 'fill-box', transformOrigin: 'center' }} className="animate-crank">
+                      <path d="M30 26.6 L30 33.4" strokeWidth="1.6" />
+                      <path d="M28.6 26.6 H31.4 M28.6 33.4 H31.4" strokeWidth="1.6" />
+                      <circle cx="30" cy="26.6" r="1.1" fill="currentColor" stroke="none" />
+                      <circle cx="30" cy="33.4" r="1.1" fill="currentColor" stroke="none" />
+                    </g>
+
+                    {/* Người đạp: thân gồng nhún + tay + đùi; đầu gật lệch nhịp (lồng nhau) */}
+                    <g style={{ transformBox: 'fill-box', transformOrigin: 'center' }} className="animate-rider-pump">
+                      <path d="M24 17 L29 27 M24 17 L31 27" strokeWidth="1.8" />
+                      <path d="M24 17 L36 8" />
+                      <path d="M36 8 L45 15" strokeWidth="1.8" />
+                      <g style={{ transformBox: 'fill-box', transformOrigin: 'center' }} className="animate-head-bob">
+                        <circle cx="39" cy="5.4" r="3.2" />
+                      </g>
+                    </g>
 
                     {/* Bánh sau: vành cố định + nan hoa quay */}
                     <circle cx="13" cy="30" r="6" />

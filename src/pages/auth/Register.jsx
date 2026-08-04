@@ -408,7 +408,7 @@ export default function Register() {
               <p className="text-[11px] font-extrabold uppercase tracking-wider text-white/85 flex items-center gap-1.5 mb-3">
                 <Users size={13} className="text-amber-200" /> Nền tảng 3 trong 1
               </p>
-              <div className="flex items-center gap-2">
+              <div className="flex items-stretch gap-2">
                 {[
                   { Icon: User, t: 'Khách hàng' },
                   { Icon: Store, t: 'Quán ăn' },
@@ -419,12 +419,18 @@ export default function Register() {
                   return (
                     <div
                       key={i}
-                      className={`flex-1 flex flex-col items-center gap-1.5 py-2.5 rounded-xl border transition-all ${
-                        isMe ? 'bg-white/20 border-white/40 scale-[1.03]' : 'bg-white/5 border-white/10'
+                      style={{ animationDelay: `${i * 90}ms`, transform: isMe ? 'scale(1.05)' : undefined }}
+                      className={`group relative flex-1 flex flex-col items-center gap-2 py-3 rounded-xl border transition-all duration-300 animate-rise-in hover:-translate-y-0.5 ${
+                        isMe ? 'bg-white/25 border-white/50 shadow-lg' : 'bg-white/5 border-white/10 hover:bg-white/10'
                       }`}
                     >
-                      <ItIcon size={16} className="text-white" />
-                      <span className="text-[10px] font-bold text-white/90">{it.t}</span>
+                      {/* Chấm "đang chọn" nhấp nháy */}
+                      {isMe && <span className="absolute -top-1.5 -right-1.5 w-3 h-3 rounded-full bg-amber-300 border-2 border-white/70 animate-pulse" />}
+                      {/* Chip icon — ô đang chọn: nền trắng + icon màu role, nhún nhẹ */}
+                      <span className={`w-9 h-9 rounded-full flex items-center justify-center transition-transform duration-300 group-hover:scale-110 ${isMe ? 'bg-white shadow-md' : 'bg-white/15'}`}>
+                        <ItIcon size={16} className={isMe ? 'animate-bob' : 'text-white'} style={isMe ? { color: accent } : undefined} />
+                      </span>
+                      <span className={`text-[10px] font-bold ${isMe ? 'text-white' : 'text-white/80'}`}>{it.t}</span>
                     </div>
                   );
                 })}
@@ -432,16 +438,27 @@ export default function Register() {
             </div>
           )}
 
-          {/* Lợi ích theo vai trò */}
-          <div className="relative z-10 space-y-3" key={`b-${role}`}>
-            {hero.benefits.map(({ Icon, label }, i) => (
-              <div key={i} className="group flex items-center gap-3 animate-rise-in" style={{ animationDelay: `${210 + i * 80}ms` }}>
-                <div className="w-9 h-9 rounded-xl bg-white/15 backdrop-blur-sm border border-white/15 flex items-center justify-center shrink-0 transition-all group-hover:bg-white/25 group-hover:scale-110">
-                  <Icon size={17} />
+          {/* Lợi ích theo vai trò — mỗi dòng 1 animation idle KHÁC nhau + dấu tích cho phong phú */}
+          <div className="relative z-10 space-y-2" key={`b-${role}`}>
+            {hero.benefits.map(({ Icon, label }, i) => {
+              const idle = ['animate-bob', 'animate-float', 'animate-wiggle'][i % 3]; // nhún / trôi / lắc
+              return (
+                <div
+                  key={i}
+                  className="group flex items-center gap-3 rounded-xl p-1.5 -mx-1.5 transition-all duration-300 hover:bg-white/10 hover:translate-x-1 animate-rise-in"
+                  style={{ animationDelay: `${210 + i * 90}ms` }}
+                >
+                  <div className="relative w-10 h-10 rounded-xl bg-white/15 backdrop-blur-sm border border-white/20 flex items-center justify-center shrink-0 shadow-sm transition-all group-hover:bg-white/25 group-hover:scale-110">
+                    <Icon size={18} className={idle} style={{ transformOrigin: 'center' }} />
+                    {/* Dấu tích nhỏ — tính năng có sẵn */}
+                    <span className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-white flex items-center justify-center shadow" style={{ color: accent }}>
+                      <Check size={10} className="stroke-[3px]" />
+                    </span>
+                  </div>
+                  <span className="text-sm font-bold text-white/95 group-hover:text-white transition-colors">{label}</span>
                 </div>
-                <span className="text-sm font-bold text-white/95">{label}</span>
-              </div>
-            ))}
+              );
+            })}
 
             {/* Lộ trình giao hàng: shipper đạp xe CHÂN THẬT (bánh quay + thân rung + gia tốc + vạch tốc độ) */}
             <div className="relative h-16 mt-4">

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../stores/authStore';
-import { Mail, Lock, User, Phone, ChevronRight, ChevronLeft, Store, Bike, FileText, MapPin, Lightbulb, Users, Check, ShieldCheck, ChefHat, Soup, UtensilsCrossed, TrendingUp, Wallet, Route, Hand, Pizza, IceCream, Sparkles, Clock, Gift, AtSign, Loader2, LogIn } from 'lucide-react';
+import { Mail, Lock, User, Phone, ChevronRight, ChevronLeft, Store, Bike, FileText, MapPin, Lightbulb, Users, Check, ShieldCheck, ChefHat, Soup, UtensilsCrossed, TrendingUp, Wallet, Route, Hand, Pizza, IceCream, Sparkles, Clock, Gift, AtSign, Loader2, LogIn, Pencil, ClipboardCheck } from 'lucide-react';
 import { validatePhone, validatePassword, validateName, validateEmail, validateIdCard, validateLicensePlate, formatLicensePlate } from '../../utils/validation';
 import Button from '../../components/common/Button';
 import Input from '../../components/common/Input';
@@ -683,22 +683,50 @@ export default function Register() {
             {step === 3 && (
               <div key="step-3" className="animate-rise-in space-y-5">
 
-                {/* Tóm tắt thông tin đã nhập để người dùng rà lại trước khi gửi */}
-                <div className="rounded-radius-lg border border-slate-200 bg-slate-50/70 p-4 space-y-2.5">
+                {/* Tóm tắt thông tin đã nhập — mỗi mục 1 chip icon màu riêng để rà nhanh trước khi gửi */}
+                <div className="rounded-radius-lg border border-slate-200 bg-gradient-to-br from-slate-50 to-white p-4 space-y-3 shadow-sm">
                   <div className="flex items-center justify-between">
-                    <h3 className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest">Xác nhận thông tin</h3>
-                    <button type="button" onClick={() => setStep(2)} className="text-[10px] font-extrabold hover:underline cursor-pointer" style={{ color: accent }}>
-                      Chỉnh sửa
+                    <h3 className="text-[10px] font-extrabold text-slate-500 uppercase tracking-widest flex items-center gap-1.5">
+                      <ClipboardCheck size={13} style={{ color: accent }} /> Xác nhận thông tin
+                    </h3>
+                    <button
+                      type="button"
+                      onClick={() => setStep(2)}
+                      className="group inline-flex items-center gap-1 text-[10px] font-extrabold cursor-pointer px-2 py-1 rounded-full hover:bg-slate-100 transition-colors"
+                      style={{ color: accent }}
+                    >
+                      <Pencil size={11} className="group-hover:rotate-12 transition-transform" /> Chỉnh sửa
                     </button>
                   </div>
-                  {/* Lưới 2×2 cân đối: Họ tên | SĐT  /  Email | Vai trò (vai trò song song email, không để ô trống) */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-2 gap-x-4 text-xs font-bold text-slate-600">
-                    <span className="flex items-center gap-1.5 truncate"><User size={13} className="text-slate-400 shrink-0" /> {name || '—'}</span>
-                    <span className="flex items-center gap-1.5 truncate"><Phone size={13} className="text-slate-400 shrink-0" /> {phone || '—'}</span>
-                    <span className="flex items-center gap-1.5 truncate"><Mail size={13} className="text-slate-400 shrink-0" /> {email || '—'}</span>
-                    <span className="flex items-center gap-1.5 truncate">
-                      <ShieldCheck size={13} className="shrink-0" style={{ color: accent }} /> Vai trò: <span style={{ color: accent }}>{roleLabel}</span>
-                    </span>
+                  {/* Lưới 2×2: Họ tên | SĐT  /  Email | Vai trò — mỗi mục chip icon màu khác nhau */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {[
+                      { icon: User, label: 'Họ tên', value: name || '—', chip: 'bg-indigo-50 text-indigo-500' },
+                      { icon: Phone, label: 'Số điện thoại', value: phone || '—', chip: 'bg-emerald-50 text-emerald-500' },
+                      { icon: Mail, label: 'Email', value: email || '—', chip: 'bg-blue-50 text-blue-500' },
+                      { icon: ShieldCheck, label: 'Vai trò', value: roleLabel, chip: '', accent: true },
+                    ].map((f, i) => {
+                      const FIcon = f.icon;
+                      return (
+                        <div key={i} className="flex items-center gap-2.5 min-w-0">
+                          <span
+                            className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${f.chip}`}
+                            style={f.accent ? { backgroundColor: `${accent}1A`, color: accent } : undefined}
+                          >
+                            <FIcon size={15} />
+                          </span>
+                          <div className="min-w-0">
+                            <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wide block leading-none">{f.label}</span>
+                            <span
+                              className="text-xs font-extrabold truncate block leading-none mt-1"
+                              style={f.accent ? { color: accent } : { color: '#334155' }}
+                            >
+                              {f.value}
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
 
@@ -834,9 +862,9 @@ export default function Register() {
                 <button
                   type="button"
                   onClick={goBack}
-                  className="flex items-center gap-1.5 px-5 py-3.5 rounded-full border border-slate-200 bg-white text-slate-500 font-extrabold text-xs uppercase tracking-wider hover:bg-slate-50 hover:text-slate-700 active:scale-[0.98] transition-all cursor-pointer shrink-0"
+                  className="group flex items-center gap-1.5 px-5 py-3.5 rounded-full border border-slate-200 bg-white text-slate-500 font-extrabold text-xs uppercase tracking-wider hover:bg-slate-50 hover:text-slate-700 hover:border-slate-300 active:scale-[0.98] transition-all cursor-pointer shrink-0"
                 >
-                  <ChevronLeft size={16} className="stroke-[2.5px]" /> Quay lại
+                  <ChevronLeft size={16} className="stroke-[2.5px] transition-transform duration-300 group-hover:-translate-x-1" /> Quay lại
                 </button>
               )}
 

@@ -97,6 +97,25 @@
   --animate-bob: bob 0.5s ease-in-out infinite;
   --animate-steam: steam 2.6s ease-out infinite;
   --animate-wiggle: wiggle 2.2s ease-in-out infinite;
+  /* Micro-interaction "có tính cách" cho lợi ích hero: đung đưa (giao hàng), pop dẻo, đập bảo vệ + quầng sáng thở */
+  --animate-sway: sway 3.2s ease-in-out infinite;
+  --animate-jelly: jelly 2.8s ease-in-out infinite;
+  --animate-throb: throb 2.4s ease-in-out infinite;
+  --animate-soft-halo: softHalo 2.8s ease-in-out infinite;
+  /* Chuỗi nối liền: icon "nhảy" nhiều chặng, vòng sóng bung, luồng sáng chạy dọc đường nối */
+  --animate-icon-dance: iconDance 3s ease-in-out infinite;
+  --animate-ring-wave: ringWave 2.6s ease-out infinite;
+  --animate-line-flow: lineFlow 3s ease-in-out infinite;
+  /* Shipper "như người thật": chân đạp (crank quay), thân gồng nhún, đầu gật, bóng co giãn — cùng nhịp bánh */
+  --animate-crank: wheelSpin 0.5s linear infinite;
+  --animate-rider-pump: riderPump 0.5s ease-in-out infinite;
+  --animate-head-bob: headBob 0.5s ease-in-out infinite;
+  --animate-shadow-pulse: shadowPulse 0.5s ease-in-out infinite;
+  /* Shipper chạy HẾT đường tới đích rồi giao hàng: pin nảy, vòng thành công lan, tích "đã giao" bật lên */
+  --animate-courier-run: courierRun 7s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+  --animate-pin-react: pinReact 7s ease-in-out infinite;
+  --animate-deliver-pop: deliverPop 7s ease-out infinite;
+  --animate-deliver-ring: deliverRing 7s ease-out infinite;
   /* Shipper "chân thật": đi có gia tốc, thân xe rung theo đường, bánh quay, vạch tốc độ */
   --animate-courier: courier 7s cubic-bezier(0.45, 0, 0.55, 1) infinite;
   --animate-vroom: vroom 0.32s ease-in-out infinite;
@@ -329,6 +348,97 @@
   0%, 100% { transform: rotate(-8deg); }
   50% { transform: rotate(10deg); }
 }
+/* ── Micro-interaction hero (compound: nhiều thuộc tính + nhiều nhịp, mỗi cái 1 tính cách) ── */
+/* Đung đưa như đang cầm/đưa hàng: dịch ngang–dọc + nghiêng, 4 nhịp không đối xứng */
+@keyframes sway {
+  0%, 100% { transform: translate(0, 0) rotate(-5deg); }
+  20% { transform: translate(1px, -1px) rotate(3deg); }
+  45% { transform: translate(0, -2px) rotate(-2deg); }
+  70% { transform: translate(-1px, -1px) rotate(4deg); }
+}
+/* Pop dẻo (squash & stretch): bóp giãn scaleX/Y + xoay nhẹ như thạch rung */
+@keyframes jelly {
+  0%, 100% { transform: scale(1, 1) rotate(0deg); }
+  25% { transform: scale(1.14, 0.88) rotate(-3deg); }
+  50% { transform: scale(0.9, 1.12) rotate(2deg); }
+  75% { transform: scale(1.06, 0.96) rotate(-1deg); }
+}
+/* Đập bảo vệ (double-beat): 2 nhịp phồng + xoay nhẹ như nhịp tim/khiên */
+@keyframes throb {
+  0%, 100% { transform: scale(1) rotate(0deg); }
+  18% { transform: scale(1.17) rotate(2deg); }
+  32% { transform: scale(0.98) rotate(0deg); }
+  50% { transform: scale(1.1) rotate(-2deg); }
+  66% { transform: scale(1) rotate(0deg); }
+}
+/* Quầng sáng thở sau chip (lớp chuyển động thứ 2 cho mỗi mục) */
+@keyframes softHalo {
+  0%, 100% { transform: scale(0.8); opacity: 0.1; }
+  50% { transform: scale(1.25); opacity: 0.38; }
+}
+/* Icon "nhảy" NHIỀU CHẶNG NỐI LIỀN: nhấc → nghiêng & dội → nảy nhỏ → lắc → lặng (biên độ rõ) */
+@keyframes iconDance {
+  0%, 62%, 100% { transform: translateY(0) rotate(0deg) scale(1); }
+  10% { transform: translateY(-5px) rotate(-8deg) scale(1.12); }
+  22% { transform: translateY(2px) rotate(7deg) scale(0.9); }
+  34% { transform: translateY(-3px) rotate(-4deg) scale(1.06); }
+  46% { transform: translateY(1px) rotate(3deg) scale(0.98); }
+  54% { transform: translateY(0) rotate(-1deg) scale(1); }
+}
+/* Vòng sóng bung ra từ chip (lớp lan toả) */
+@keyframes ringWave {
+  0% { transform: scale(0.65); opacity: 0.55; }
+  70%, 100% { transform: scale(1.7); opacity: 0; }
+}
+/* Luồng sáng chạy dọc đường nối 3 mục → cảm giác "một dòng chảy nối liền" */
+@keyframes lineFlow {
+  0% { transform: translateY(-120%); opacity: 0; }
+  15% { opacity: 1; }
+  85% { opacity: 1; }
+  100% { transform: translateY(360%); opacity: 0; }
+}
+/* ── Shipper đạp xe như người thật (nhiều lớp cùng nhịp) ── */
+/* Thân người gồng nhún + chồm nhẹ theo nhịp đạp */
+@keyframes riderPump {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  25% { transform: translateY(-1.3px) rotate(-2.5deg); }
+  50% { transform: translateY(0.5px) rotate(0deg); }
+  75% { transform: translateY(-1px) rotate(2.5deg); }
+}
+/* Đầu gật nhẹ theo sức đạp (lệch pha thân một chút) */
+@keyframes headBob {
+  0%, 100% { transform: translateY(0) rotate(-2deg); }
+  50% { transform: translateY(-1.5px) rotate(3deg); }
+}
+/* Bóng đổ dưới xe co giãn theo nhịp nhún → cảm giác trọng lượng thật */
+@keyframes shadowPulse {
+  0%, 100% { transform: scaleX(1); opacity: 0.22; }
+  50% { transform: scaleX(0.8); opacity: 0.12; }
+}
+/* Shipper chạy HẾT chiều ngang tới sát đích (animate 'left' để đi theo bề rộng thật của khung) */
+@keyframes courierRun {
+  0%, 6% { left: 0%; }
+  86%, 100% { left: calc(100% - 3.4rem); }
+}
+/* Đích: pin nảy lên khi shipper vừa tới */
+@keyframes pinReact {
+  0%, 82%, 100% { transform: translateY(0) scale(1); }
+  87% { transform: translateY(-4px) scale(1.28); }
+  93% { transform: translateY(0) scale(1); }
+}
+/* "Đã giao": tích tròn bật lên trên đích rồi tan (khớp lúc shipper tới) */
+@keyframes deliverPop {
+  0%, 84% { opacity: 0; transform: scale(0.2); }
+  89% { opacity: 1; transform: scale(1.3); }
+  94%, 98% { opacity: 1; transform: scale(1); }
+  100% { opacity: 0; transform: scale(1); }
+}
+/* Vòng thành công lan toả ra từ đích khi giao xong */
+@keyframes deliverRing {
+  0%, 84% { opacity: 0; transform: scale(0.3); }
+  85% { opacity: 0.7; transform: scale(0.3); }
+  100% { opacity: 0; transform: scale(2.3); }
+}
 /* Shipper đi có gia tốc, dừng nhẹ ở đích rồi lặp lại (chân thật hơn linear) */
 @keyframes courier {
   0% { transform: translateX(-16%); }
@@ -385,7 +495,11 @@
   .animate-ride, .animate-bob, .animate-steam, .animate-wiggle,
   .animate-courier, .animate-vroom, .animate-wheel, .animate-speed, .animate-halo,
   .animate-slide-in-right, .animate-nav-in, .animate-flow, .animate-star-pop,
-  .animate-heart-pop, .animate-heart-burst, .animate-heart-beat, .animate-shake { animation: none !important; }
+  .animate-heart-pop, .animate-heart-burst, .animate-heart-beat, .animate-shake,
+  .animate-sway, .animate-jelly, .animate-throb, .animate-soft-halo,
+  .animate-icon-dance, .animate-ring-wave, .animate-line-flow,
+  .animate-crank, .animate-rider-pump, .animate-head-bob, .animate-shadow-pulse,
+  .animate-courier-run, .animate-pin-react, .animate-deliver-pop, .animate-deliver-ring { animation: none !important; }
 }
 
 /* ─── Parallax Effect ────────────────────────────── */

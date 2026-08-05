@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../stores/authStore';
-import { Mail, Lock, User, Phone, ChevronRight, ChevronLeft, Store, Bike, FileText, MapPin, Lightbulb, Users, Check, ShieldCheck, ChefHat, Soup, UtensilsCrossed, TrendingUp, Wallet, Route, Hand, Pizza, IceCream, Sparkles } from 'lucide-react';
-import { validatePhone, validatePassword, validateName, validateEmail, validateIdCard } from '../../utils/validation';
+import { Mail, Lock, User, Phone, ChevronRight, ChevronLeft, Store, Bike, FileText, MapPin, Lightbulb, Users, Check, ShieldCheck, ChefHat, Soup, UtensilsCrossed, TrendingUp, Wallet, Route, Hand, Pizza, IceCream, Sparkles, Clock, Gift, AtSign, Loader2, LogIn, Pencil, ClipboardCheck } from 'lucide-react';
+import { validatePhone, validatePassword, validateName, validateEmail, validateIdCard, validateLicensePlate, formatLicensePlate } from '../../utils/validation';
 import Button from '../../components/common/Button';
 import Input from '../../components/common/Input';
 import Card from '../../components/common/Card';
@@ -57,6 +57,25 @@ const REG_SPARKLES = [
   { wrap: 'top-[58%] right-[16%]', size: 11, delay: '800ms' },
   { wrap: 'bottom-[34%] right-[30%]', size: 12, delay: '1300ms' },
 ];
+
+// Hành trình "Cách hoạt động" theo vai trò — hiện ở bước chọn vai trò để lấp trống & giúp user mới hình dung
+const HOW_IT_WORKS = {
+  CUSTOMER: [
+    { Icon: Store, t: 'Chọn quán & món' },
+    { Icon: UtensilsCrossed, t: 'Đặt & thanh toán' },
+    { Icon: Bike, t: 'Nhận hàng tận nơi' },
+  ],
+  OWNER: [
+    { Icon: Store, t: 'Đăng ký quán' },
+    { Icon: UtensilsCrossed, t: 'Thêm món vào menu' },
+    { Icon: TrendingUp, t: 'Nhận đơn & bán' },
+  ],
+  SHIPPER: [
+    { Icon: FileText, t: 'Đăng ký hồ sơ' },
+    { Icon: ShieldCheck, t: 'Được Admin duyệt' },
+    { Icon: Wallet, t: 'Nhận đơn kiếm tiền' },
+  ],
+};
 
 export default function Register() {
   const navigate = useNavigate();
@@ -141,8 +160,22 @@ export default function Register() {
     validatePhone(restaurantPhone) ? clearError('restaurantPhone') : setError('restaurantPhone', 'Số điện thoại quán không hợp lệ (bắt đầu bằng 0, gồm 10 chữ số).');
   const handleIdCardBlur = () =>
     validateIdCard(idCard) ? clearError('idCard') : setError('idCard', 'CCCD/CMND phải gồm 9 hoặc 12 chữ số.');
+  // Gõ tới đâu, dấu "-" hiện tới đó (vị trí cố định theo loại xe → không nhảy). Khách chỉ gõ chữ & số.
+  const handleLicensePlateChange = (raw) => {
+    setLicensePlate(formatLicensePlate(raw, vehicleType));
+    if (errors.licensePlate) clearError('licensePlate');
+  };
   const handleLicensePlateBlur = () =>
-    licensePlate.trim() ? clearError('licensePlate') : setError('licensePlate', 'Vui lòng nhập biển số xe.');
+    validateLicensePlate(licensePlate)
+      ? clearError('licensePlate')
+      : setError('licensePlate', licensePlate.trim()
+          ? 'Biển số chưa đúng định dạng (VD: 59H1-234.56 hoặc 51F-123.45).'
+          : 'Vui lòng nhập biển số xe.');
+  // Đổi loại xe → chèn lại dấu cho đúng cấu trúc xe máy/ô tô (không bắt gõ lại).
+  const handleVehicleTypeChange = (next) => {
+    setVehicleType(next);
+    setLicensePlate((prev) => formatLicensePlate(prev, next));
+  };
 
   const register = useAuthStore((state) => state.register);
 
@@ -173,7 +206,7 @@ export default function Register() {
       if (!restaurantAddress.trim()) localErrors.restaurantAddress = 'Vui lòng chọn địa chỉ quán trên bản đồ.';
     } else if (role === 'SHIPPER') {
       if (!validateIdCard(idCard)) localErrors.idCard = 'CCCD/CMND phải gồm 9 hoặc 12 chữ số.';
-      if (!licensePlate.trim()) localErrors.licensePlate = 'Vui lòng nhập biển số xe.';
+      if (!validateLicensePlate(licensePlate)) localErrors.licensePlate = 'Biển số chưa đúng định dạng (VD: 59H1-234.56 hoặc 51F-123.45).';
     }
 
     if (Object.keys(localErrors).length > 0) {
@@ -232,9 +265,9 @@ export default function Register() {
   };
 
   const roles = [
-    { id: 'CUSTOMER', label: 'Khách Hàng', desc: 'Đặt đồ ăn giao tận nơi', icon: User, color: 'border-md-primary text-md-primary bg-md-primary-container/10' },
-    { id: 'OWNER', label: 'Quán Ăn', desc: 'Bán đồ ăn trên hệ thống', icon: Store, color: 'border-md-secondary text-md-secondary bg-md-secondary-container/10' },
-    { id: 'SHIPPER', label: 'Tài Xế', desc: 'Giao đồ ăn kiếm thu nhập', icon: Bike, color: 'border-md-tertiary text-md-tertiary bg-md-tertiary-container/10' },
+    { id: 'CUSTOMER', label: 'Khách Hàng', desc: 'Đặt đồ ăn giao tận nơi', icon: User, hex: '#FF6B35' },
+    { id: 'OWNER', label: 'Quán Ăn', desc: 'Bán đồ ăn trên hệ thống', icon: Store, hex: '#1A73E8' },
+    { id: 'SHIPPER', label: 'Tài Xế', desc: 'Giao đồ ăn kiếm thu nhập', icon: Bike, hex: '#34A853' },
   ];
 
   // Màu nhấn của wizard đổi theo vai trò đang chọn (đồng bộ nhận diện role)
@@ -247,6 +280,22 @@ export default function Register() {
     { id: 2, label: 'Tài khoản', icon: User },
     { id: 3, label: 'Hoàn tất', icon: ShieldCheck },
   ];
+
+  // ── Gợi ý ĐỘ MẠNH mật khẩu (hỗ trợ trực quan; điều kiện bắt buộc duy nhất là ≥8 ký tự) ──
+  const pwLen = password.length;
+  const pwHasMin = pwLen >= 8;
+  const pwVariety = /[a-zA-Z]/.test(password) && /\d/.test(password);
+  const pwLevel = pwLen === 0 ? 0 : (!pwHasMin ? 1 : (pwVariety || pwLen >= 12 ? 3 : 2));
+  const PW_META = { 1: { label: 'Yếu', color: '#ef4444' }, 2: { label: 'Trung bình', color: '#f59e0b' }, 3: { label: 'Mạnh', color: '#22c55e' } };
+
+  // ── Gợi ý tên miền email phổ biến → khách khỏi gõ "@gmail.com…" ──
+  const EMAIL_DOMAINS = ['@gmail.com'];
+  const emailLocal = email.split('@')[0];
+  const emailTypedDomain = email.includes('@') ? '@' + email.split('@').slice(1).join('@') : '';
+  const emailSuggestions = (emailLocal.length > 0 && !validateEmail(email))
+    ? EMAIL_DOMAINS.filter((d) => emailTypedDomain === '' || (d.startsWith(emailTypedDomain.toLowerCase()) && d !== emailTypedDomain.toLowerCase()))
+    : [];
+  const applyEmailDomain = (d) => { setEmail(emailLocal + d); clearError('email'); };
 
   // Kiểm tra 4 field cơ bản trước khi cho qua bước tiếp theo (chặn đi tiếp khi còn lỗi)
   const validateStep2 = () => {
@@ -310,8 +359,8 @@ export default function Register() {
             <Hand size={18} className="text-amber-200 animate-wiggle origin-bottom ml-0.5" />
           </div>
 
-          {/* Khối giữa gom title + lợi ích, chiếm hết chiều cao còn lại và canh giữa dọc */}
-          <div className="relative z-10 flex-1 flex flex-col justify-center gap-8 py-8">
+          {/* Khối giữa: phân bố ĐỀU top–giữa–đáy để lấp hết chiều cao (không cụm giữa gây trống 2 đầu) */}
+          <div className="relative z-10 flex-1 flex flex-col justify-between gap-6 py-6">
 
           {/* Tiêu đề + icon vai trò (đổi theo role, re-animate nhờ key) */}
           <div key={role}>
@@ -326,43 +375,162 @@ export default function Register() {
             </p>
           </div>
 
-          {/* Lợi ích theo vai trò */}
-          <div className="relative z-10 space-y-3" key={`b-${role}`}>
-            {hero.benefits.map(({ Icon, label }, i) => (
-              <div key={i} className="group flex items-center gap-3 animate-rise-in" style={{ animationDelay: `${210 + i * 80}ms` }}>
-                <div className="w-9 h-9 rounded-xl bg-white/15 backdrop-blur-sm border border-white/15 flex items-center justify-center shrink-0 transition-all group-hover:bg-white/25 group-hover:scale-110">
-                  <Icon size={17} />
-                </div>
-                <span className="text-sm font-bold text-white/95">{label}</span>
+          {/* Thẻ QUY TRÌNH DUYỆT — chỉ hiện ở bước cuối cho ĐỐI TÁC: lấp khoảng trống + trấn an "sau khi gửi thì sao" */}
+          {step === 3 && (role === 'OWNER' || role === 'SHIPPER') && (
+            <div className="relative z-10 rounded-2xl bg-white/12 backdrop-blur-md border border-white/20 p-4 shadow-lg animate-rise-in" key={`nx-${role}`}>
+              <p className="text-[11px] font-extrabold uppercase tracking-wider text-white/85 flex items-center gap-1.5 mb-3">
+                <Clock size={13} className="text-amber-200" /> Sau khi đăng ký
+              </p>
+              <div className="relative pl-1 space-y-3">
+                {[
+                  { Icon: FileText, t: 'Hồ sơ được gửi tới Admin' },
+                  { Icon: ShieldCheck, t: 'Admin xét duyệt nhanh chóng' },
+                  { Icon: role === 'OWNER' ? Store : Bike, t: role === 'OWNER' ? 'Mở bán & nhận đơn ngay' : 'Nhận đơn & kiếm thu nhập' },
+                ].map((it, i) => {
+                  const ItIcon = it.Icon;
+                  return (
+                    <div key={i} className="flex items-center gap-3 animate-rise-in" style={{ animationDelay: `${i * 90}ms` }}>
+                      <span className="relative w-7 h-7 rounded-lg bg-white/20 border border-white/20 flex items-center justify-center shrink-0">
+                        <ItIcon size={14} />
+                        <span className="absolute -top-1 -left-1 w-4 h-4 rounded-full bg-white text-[9px] font-black flex items-center justify-center" style={{ color: accent }}>{i + 1}</span>
+                      </span>
+                      <span className="text-[13px] font-bold text-white/95">{it.t}</span>
+                    </div>
+                  );
+                })}
               </div>
-            ))}
+            </div>
+          )}
+
+          {/* Thẻ giữa mặc định: NỀN TẢNG 3 TRONG 1 — giữ hero luôn đầy ở các bước không phải bước-3-đối-tác */}
+          {!(step === 3 && (role === 'OWNER' || role === 'SHIPPER')) && (
+            <div className="relative z-10 rounded-2xl bg-white/12 backdrop-blur-md border border-white/20 p-4 shadow-lg animate-rise-in">
+              <p className="text-[11px] font-extrabold uppercase tracking-wider text-white/85 flex items-center gap-1.5 mb-3">
+                <Users size={13} className="text-amber-200" /> Nền tảng 3 trong 1
+              </p>
+              <div className="flex items-stretch gap-2">
+                {[
+                  { Icon: User, t: 'Khách hàng' },
+                  { Icon: Store, t: 'Quán ăn' },
+                  { Icon: Bike, t: 'Tài xế' },
+                ].map((it, i) => {
+                  const ItIcon = it.Icon;
+                  const isMe = (role === 'OWNER' && it.t === 'Quán ăn') || (role === 'SHIPPER' && it.t === 'Tài xế') || (role === 'CUSTOMER' && it.t === 'Khách hàng');
+                  return (
+                    <div
+                      key={i}
+                      style={{ animationDelay: `${i * 90}ms`, transform: isMe ? 'scale(1.05)' : undefined }}
+                      className={`group relative flex-1 flex flex-col items-center gap-2 py-3 rounded-xl border transition-all duration-300 animate-rise-in hover:-translate-y-0.5 ${
+                        isMe ? 'bg-white/25 border-white/50 shadow-lg' : 'bg-white/5 border-white/10 hover:bg-white/10'
+                      }`}
+                    >
+                      {/* Chấm "đang chọn" nhấp nháy */}
+                      {isMe && <span className="absolute -top-1.5 -right-1.5 w-3 h-3 rounded-full bg-amber-300 border-2 border-white/70 animate-pulse" />}
+                      {/* Chip icon — ô đang chọn: nền trắng + icon màu role, nhún nhẹ */}
+                      <span className={`w-9 h-9 rounded-full flex items-center justify-center transition-transform duration-300 group-hover:scale-110 ${isMe ? 'bg-white shadow-md' : 'bg-white/15'}`}>
+                        <ItIcon size={16} className={isMe ? 'animate-jelly' : 'text-white'} style={isMe ? { color: accent } : undefined} />
+                      </span>
+                      <span className={`text-[10px] font-bold ${isMe ? 'text-white' : 'text-white/80'}`}>{it.t}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Lợi ích theo vai trò — mỗi dòng 1 animation idle KHÁC nhau + dấu tích cho phong phú */}
+          <div className="relative z-10 space-y-2 pl-5" key={`b-${role}`}>
+            {/* Đường nối dọc + luồng sáng chạy xuống → 3 mục thành 1 chuỗi liền mạch */}
+            <span className="absolute left-[7px] top-4 bottom-4 w-0.5 rounded-full bg-white/15 overflow-hidden pointer-events-none">
+              <span className="absolute inset-x-0 top-0 h-1/3 bg-gradient-to-b from-transparent via-white/80 to-transparent animate-line-flow" />
+            </span>
+            {hero.benefits.map(({ Icon, label }, i) => {
+              const d = i * 0.6; // lệch pha → chuyển động chảy nối tiếp qua từng mục
+              return (
+                <div
+                  key={i}
+                  className="group relative flex items-center gap-3 rounded-xl p-1.5 -mx-1.5 transition-all duration-300 hover:bg-white/10 hover:translate-x-1 animate-rise-in"
+                  style={{ animationDelay: `${210 + i * 90}ms` }}
+                >
+                  <div className="relative w-10 h-10 rounded-xl bg-white/15 backdrop-blur-sm border border-white/20 flex items-center justify-center shrink-0 shadow-sm transition-all group-hover:bg-white/25 group-hover:scale-110">
+                    {/* Lớp 1 — quầng sáng thở */}
+                    <span className="absolute inset-0 rounded-xl bg-white/40 blur-md animate-soft-halo pointer-events-none" style={{ animationDelay: `${d}s` }} />
+                    {/* Lớp 2 — vòng sóng bung ra */}
+                    <span className="absolute inset-0 rounded-xl border border-white/60 animate-ring-wave pointer-events-none" style={{ animationDelay: `${d}s` }} />
+                    {/* Lớp 3 — icon nhảy nhiều chặng nối liền */}
+                    <Icon size={18} className="relative z-[1] text-white animate-icon-dance" style={{ transformOrigin: 'center', animationDelay: `${d}s` }} />
+                    {/* Dấu tích nhỏ — tính năng có sẵn */}
+                    <span className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-white flex items-center justify-center shadow z-10" style={{ color: accent }}>
+                      <Check size={10} className="stroke-[3px]" />
+                    </span>
+                  </div>
+                  <span className="text-sm font-bold text-white/95 group-hover:text-white transition-colors">{label}</span>
+                </div>
+              );
+            })}
 
             {/* Lộ trình giao hàng: shipper đạp xe CHÂN THẬT (bánh quay + thân rung + gia tốc + vạch tốc độ) */}
             <div className="relative h-16 mt-4">
-              {/* Mặt đường + đích đến */}
+              {/* Mặt đường */}
               <div className="absolute bottom-4 left-1 right-6 border-t-2 border-dashed border-white/30"></div>
-              <MapPin size={20} className="absolute bottom-2.5 right-0 text-white/85" />
 
-              {/* Shipper di chuyển theo gia tốc */}
-              <div className="absolute bottom-3 left-0 animate-courier">
+              {/* ĐÍCH ĐẾN — khi shipper tới nơi: pin nảy, vòng thành công lan ra, tích "Đã giao" bật lên.
+                  Tách outer (căn giữa) và inner (animation) để transform không đè nhau. */}
+              <div className="absolute bottom-2 right-0 w-7 h-9 pointer-events-none">
+                {/* vòng thành công lan toả */}
+                <span className="absolute left-1/2 bottom-1.5 -translate-x-1/2">
+                  <span className="block w-6 h-6 rounded-full border-2 border-emerald-300 animate-deliver-ring" style={{ transformOrigin: 'center' }} />
+                </span>
+                {/* tích "đã giao" bật lên trên pin */}
+                <span className="absolute left-1/2 -top-0.5 -translate-x-1/2">
+                  <span className="flex w-4 h-4 rounded-full bg-emerald-400 items-center justify-center shadow animate-deliver-pop" style={{ transformOrigin: 'center bottom' }}>
+                    <Check size={10} className="text-white stroke-[3px]" />
+                  </span>
+                </span>
+                {/* pin đích */}
+                <span className="absolute left-1/2 bottom-0 -translate-x-1/2">
+                  <MapPin size={20} className="block text-white/85 animate-pin-react" style={{ transformOrigin: 'center bottom' }} />
+                </span>
+              </div>
+
+              {/* Shipper chạy hết đường tới đích (animate left) */}
+              <div className="absolute bottom-3 left-0 animate-courier-run">
                 <div className="relative animate-vroom">
                   {/* Vạch tốc độ loé sau đuôi */}
                   <span className="absolute top-2 -left-3 h-[2px] w-4 rounded-full bg-white/50 animate-speed" style={{ animationDelay: '0ms' }}></span>
                   <span className="absolute top-4 -left-4 h-[2px] w-5 rounded-full bg-white/40 animate-speed" style={{ animationDelay: '200ms' }}></span>
                   <span className="absolute top-6 -left-3 h-[2px] w-4 rounded-full bg-white/50 animate-speed" style={{ animationDelay: '420ms' }}></span>
 
-                  {/* SVG shipper đạp xe (tự vẽ để tách được bánh xe cho quay) */}
-                  <svg width="46" height="29" viewBox="0 0 64 40" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className="text-white drop-shadow-md">
-                    {/* Hộp giao hàng trên giá sau */}
-                    <rect x="13.5" y="9" width="11" height="10" rx="2" fill="rgba(255,255,255,0.18)" />
-                    <path d="M13.5 13 H24.5 M18 9 V7 H21 V9" strokeWidth="1.6" />
+                  {/* SVG shipper đạp xe NHƯ NGƯỜI THẬT — tách nhiều bộ phận cử động cùng nhịp bánh */}
+                  <svg width="48" height="30" viewBox="0 0 64 40" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className="text-white drop-shadow-md">
+                    {/* Bóng đổ dưới xe — co giãn theo nhịp nhún (cảm giác trọng lượng) */}
+                    <ellipse cx="32" cy="38.5" rx="21" ry="1.7" fill="white" stroke="none" className="animate-shadow-pulse" style={{ transformBox: 'fill-box', transformOrigin: 'center' }} />
 
-                    {/* Khung xe đạp */}
+                    {/* Hộp giao hàng + giá đỡ sau */}
+                    <rect x="6.5" y="9" width="11" height="10" rx="2" fill="rgba(255,255,255,0.18)" />
+                    <path d="M6.5 13 H17.5 M11 9 V7 H14 V9" strokeWidth="1.6" />
+                    <path d="M13 30 L11.5 19 M17.5 19 L20.5 25" strokeWidth="1.3" />
+
+                    {/* Khung xe (tĩnh) */}
                     <path d="M13 30 L30 30 L24 17 Z M30 30 L44 15 L51 30 M24 17 L44 15 M42 15 H47.5 M21 17 H26.5" />
 
-                    {/* Người giao (nghiêng về trước) */}
-                    <path d="M24 17 L30 30 M24 17 L36 8 L44 15" />
-                    <circle cx="39" cy="5.4" r="3.2" />
+                    {/* Crank + bàn đạp + bàn chân QUAY (đạp thật) */}
+                    <g style={{ transformBox: 'fill-box', transformOrigin: 'center' }} className="animate-crank">
+                      <path d="M30 26.6 L30 33.4" strokeWidth="1.6" />
+                      <path d="M28.6 26.6 H31.4 M28.6 33.4 H31.4" strokeWidth="1.6" />
+                      <circle cx="30" cy="26.6" r="1.1" fill="currentColor" stroke="none" />
+                      <circle cx="30" cy="33.4" r="1.1" fill="currentColor" stroke="none" />
+                    </g>
+
+                    {/* Người đạp: thân gồng nhún + tay + đùi; đầu gật lệch nhịp (lồng nhau) */}
+                    <g style={{ transformBox: 'fill-box', transformOrigin: 'center' }} className="animate-rider-pump">
+                      <path d="M24 17 L29 27 M24 17 L31 27" strokeWidth="1.8" />
+                      <path d="M24 17 L36 8" />
+                      <path d="M36 8 L45 15" strokeWidth="1.8" />
+                      <g style={{ transformBox: 'fill-box', transformOrigin: 'center' }} className="animate-head-bob">
+                        <circle cx="39" cy="5.4" r="3.2" />
+                      </g>
+                    </g>
 
                     {/* Bánh sau: vành cố định + nan hoa quay */}
                     <circle cx="13" cy="30" r="6" />
@@ -396,12 +564,7 @@ export default function Register() {
               <ChefHat size={26} />
             </div>
 
-            {/* Eyebrow Tag */}
-            <span className="text-[10px] bg-slate-100 text-slate-500 font-extrabold px-3 py-1 rounded-full uppercase tracking-[0.2em] shadow-sm border border-slate-200/40">
-              Hệ thống MealDash
-            </span>
-
-            <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-800 mt-4 tracking-tight text-center lg:text-left">
+            <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-800 tracking-tight text-center lg:text-left">
               Tạo tài khoản mới
             </h2>
             {/* Phụ đề đổi theo từng bước để dẫn dắt, tránh dồn thông tin */}
@@ -431,8 +594,12 @@ export default function Register() {
                     <div className="flex flex-col items-center gap-1.5 shrink-0">
                       {/* Vòng tròn bước + halo lan toả khi active */}
                       <div className="relative w-9 h-9">
+                        {/* Halo kép lan toả (radar) khi active */}
                         {active && (
-                          <span className="absolute inset-0 rounded-full border-2 animate-halo pointer-events-none" style={{ borderColor: accent }}></span>
+                          <>
+                            <span className="absolute inset-0 rounded-full border-2 animate-halo pointer-events-none" style={{ borderColor: accent }}></span>
+                            <span className="absolute inset-0 rounded-full border-2 animate-halo pointer-events-none opacity-60" style={{ borderColor: accent, animationDelay: '0.7s' }}></span>
+                          </>
                         )}
                         <div
                           className="relative w-9 h-9 rounded-full flex items-center justify-center shadow-sm transition-all duration-300"
@@ -443,9 +610,11 @@ export default function Register() {
                             boxShadow: active ? `0 6px 16px ${accent}55` : undefined,
                           }}
                         >
-                          {/* Đổi icon↔tích có key để bật ra (pop) khi trạng thái đổi */}
-                          <span key={done ? 'check' : 'icon'} className="flex animate-scale-up">
-                            {done ? <Check size={16} className="stroke-[3px]" /> : <Icon size={16} />}
+                          {/* active: icon "nhún" liên tục (bob); đổi icon↔tích thì bật ra (pop) */}
+                          <span className={active ? 'flex animate-bob' : 'flex'}>
+                            <span key={done ? 'check' : 'icon'} className="flex animate-scale-up">
+                              {done ? <Check size={16} className="stroke-[3px]" /> : <Icon size={16} />}
+                            </span>
                           </span>
                         </div>
                       </div>
@@ -454,9 +623,9 @@ export default function Register() {
                       </span>
                     </div>
 
-                    {/* Thanh nối: track xám + fill chạy 0→100%; khi hoàn thành có VỆT SÁNG CHẢY như dòng nước */}
+                    {/* Thanh nối: track xám + fill chạy 0→100%; đã qua có VỆT SÁNG CHẢY; sắp tới có shimmer gợi ý */}
                     {i < STEPS.length - 1 && (
-                      <div className="flex-1 h-1.5 mx-2 -mt-5 rounded-full bg-slate-200 overflow-hidden">
+                      <div className="relative flex-1 h-1.5 mx-2 -mt-5 rounded-full bg-slate-200 overflow-hidden">
                         <div
                           className="relative h-full rounded-full overflow-hidden transition-all duration-500 ease-out"
                           style={{ width: step > s.id ? '100%' : '0%', backgroundColor: accent }}
@@ -465,6 +634,13 @@ export default function Register() {
                             <span className="absolute inset-y-0 left-0 w-1/2 bg-gradient-to-r from-transparent via-white/60 to-transparent animate-flow" />
                           )}
                         </div>
+                        {/* Shimmer gợi ý bước kế tiếp — chạy trên đoạn nối ngay sau bước đang đứng */}
+                        {s.id === step && (
+                          <span
+                            className="absolute inset-y-0 left-0 w-1/3 rounded-full animate-flow pointer-events-none"
+                            style={{ background: `linear-gradient(90deg, transparent, ${accent}55, transparent)` }}
+                          />
+                        )}
                       </div>
                     )}
                   </React.Fragment>
@@ -486,49 +662,90 @@ export default function Register() {
                   {roles.map((r) => {
                     const Icon = r.icon;
                     const isActive = role === r.id;
-
-                    // Customize border, background and text colors based on active role
-                    let activeColorClasses = "";
-                    if (r.id === 'CUSTOMER') {
-                      activeColorClasses = isActive
-                        ? "border-[#FF6B35] bg-[#FF6B35]/5 text-[#FF6B35] shadow-[0_4px_16px_rgba(255,107,53,0.06)]"
-                        : "border-slate-200/50 bg-white hover:bg-slate-50 text-slate-500 hover:text-slate-700";
-                    } else if (r.id === 'OWNER') {
-                      activeColorClasses = isActive
-                        ? "border-[#1A73E8] bg-[#1A73E8]/5 text-[#1A73E8] shadow-[0_4px_16px_rgba(26,115,232,0.06)]"
-                        : "border-slate-200/50 bg-white hover:bg-slate-50 text-slate-500 hover:text-slate-700";
-                    } else if (r.id === 'SHIPPER') {
-                      activeColorClasses = isActive
-                        ? "border-[#34A853] bg-[#34A853]/5 text-[#34A853] shadow-[0_4px_16px_rgba(52,168,83,0.06)]"
-                        : "border-slate-200/50 bg-white hover:bg-slate-50 text-slate-500 hover:text-slate-700";
-                    }
-
+                    const hex = r.hex;
                     return (
                       <button
                         key={r.id}
                         type="button"
                         onClick={() => setRole(r.id)}
-                        className={`relative flex flex-col items-center p-3.5 sm:p-4.5 rounded-radius-xl border text-center transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] cursor-pointer ${activeColorClasses}`}
+                        className="group relative overflow-hidden flex flex-col items-center p-3.5 sm:p-4.5 rounded-radius-xl border text-center transition-all duration-200 hover:-translate-y-0.5 active:scale-[0.97] cursor-pointer"
+                        style={{
+                          borderColor: isActive ? hex : '#e2e8f0',
+                          backgroundColor: isActive ? `${hex}0D` : '#fff',
+                          boxShadow: isActive ? `0 10px 26px ${hex}26` : undefined,
+                        }}
                       >
-                        {/* Dấu tích khi vai trò được chọn */}
+                        {/* Dải sáng đỉnh khi chọn */}
                         {isActive && (
-                          <span className="absolute top-2 right-2 w-4.5 h-4.5 rounded-full flex items-center justify-center text-white" style={{ backgroundColor: accent }}>
-                            <Check size={11} className="stroke-[3px]" />
+                          <span className="absolute inset-x-0 top-0 h-1" style={{ background: `linear-gradient(90deg, transparent, ${hex}, transparent)` }} />
+                        )}
+
+                        {/* Tick góc phải — pop khi chọn */}
+                        {isActive && (
+                          <span className="absolute top-2 right-2 w-5 h-5 rounded-full flex items-center justify-center text-white animate-scale-up shadow-sm" style={{ backgroundColor: hex }}>
+                            <Check size={12} className="stroke-[3px]" />
                           </span>
                         )}
-                        <Icon size={24} className="mb-2 shrink-0 stroke-[2px]" />
-                        <span className="text-xs sm:text-sm font-extrabold block leading-tight">{r.label}</span>
+
+                        {/* Chip icon — tô màu role khi chọn, phóng nhẹ khi hover */}
+                        <span
+                          className="w-12 h-12 rounded-2xl flex items-center justify-center mb-2.5 shrink-0 transition-all duration-300 group-hover:scale-110"
+                          style={isActive
+                            ? { backgroundColor: hex, color: '#fff', boxShadow: `0 6px 16px ${hex}55` }
+                            : { backgroundColor: '#f1f5f9', color: '#94a3b8' }}
+                        >
+                          <Icon size={22} className={`stroke-[2px] ${isActive ? 'animate-bob' : ''}`} />
+                        </span>
+
+                        <span className="text-xs sm:text-sm font-extrabold block leading-tight" style={{ color: isActive ? hex : '#334155' }}>{r.label}</span>
                         <span className="text-[10px] text-slate-400 leading-tight mt-1.5 hidden sm:block font-semibold">{r.desc}</span>
                       </button>
                     );
                   })}
                 </div>
 
+                {/* Chip trấn an — giảm ngần ngại, khuyến khích user mới hoàn tất đăng ký */}
+                <div className="flex items-center justify-center gap-2 flex-wrap mt-4">
+                  {[
+                    { Icon: Gift, label: 'Miễn phí đăng ký' },
+                    { Icon: Clock, label: 'Chỉ vài phút' },
+                    { Icon: ShieldCheck, label: 'Bảo mật thông tin' },
+                  ].map(({ Icon, label }, i) => (
+                    <span key={i} className="inline-flex items-center gap-1.5 text-[10px] sm:text-[11px] font-bold text-slate-500 bg-slate-50 border border-slate-200/70 px-2.5 py-1.5 rounded-full">
+                      <Icon size={12} style={{ color: accent }} /> {label}
+                    </span>
+                  ))}
+                </div>
+
                 {role !== 'CUSTOMER' && (
-                  <p className="text-[10px] sm:text-xs text-amber-600 font-bold mt-4 text-center bg-amber-50/70 border border-amber-100/60 p-3 rounded-radius-lg leading-relaxed shadow-sm inline-flex items-start gap-1.5">
-                    <Lightbulb size={13} className="shrink-0 mt-0.5" /> <span><span className="font-extrabold">Lưu ý:</span> Hồ sơ đăng ký làm đối tác sẽ được gửi trực tiếp đến Admin phê duyệt. Vui lòng cung cấp chính xác thông tin để được duyệt sớm nhất!</span>
+                  <p className="text-[10px] sm:text-[11px] text-amber-700 font-semibold mt-3 flex items-center gap-1.5 bg-amber-50/70 border border-amber-100/70 px-3 py-2 rounded-radius-lg leading-snug">
+                    <Lightbulb size={12} className="shrink-0 text-amber-500" />
+                    <span>Hồ sơ đối tác cần <b className="font-extrabold">Admin duyệt</b> — điền chính xác để được duyệt nhanh.</span>
                   </p>
                 )}
+
+                {/* Cách hoạt động theo vai trò — lấp khoảng trống & giúp user mới hình dung hành trình */}
+                <div className="mt-4 rounded-radius-lg border border-slate-100 bg-slate-50/60 p-4">
+                  <p className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-1.5">
+                    <Sparkles size={12} style={{ color: accent }} /> Cách hoạt động
+                  </p>
+                  <div className="flex items-center justify-between gap-1">
+                    {HOW_IT_WORKS[role].map((st, i) => {
+                      const StIcon = st.Icon;
+                      return (
+                        <React.Fragment key={i}>
+                          <div className="flex flex-col items-center text-center gap-1.5 flex-1 min-w-0 animate-rise-in" style={{ animationDelay: `${i * 80}ms` }}>
+                            <span className="w-9 h-9 rounded-full flex items-center justify-center shrink-0" style={{ backgroundColor: `${accent}14`, color: accent }}>
+                              <StIcon size={16} />
+                            </span>
+                            <span className="text-[10px] font-bold text-slate-600 leading-tight">{st.t}</span>
+                          </div>
+                          {i < 2 && <ChevronRight size={14} className="text-slate-300 shrink-0 self-center -mt-4" />}
+                        </React.Fragment>
+                      );
+                    })}
+                  </div>
+                </div>
               </div>
             )}
 
@@ -547,29 +764,50 @@ export default function Register() {
                   error={errors.fullName}
                 />
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                  <Input
-                    label="Địa chỉ Email"
-                    type="email"
-                    required
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    onBlur={handleEmailBlur}
-                    placeholder="ten@example.com..."
-                    icon={Mail}
-                    error={errors.email}
-                  />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 items-start">
+                  <div>
+                    <Input
+                      label="Địa chỉ Email"
+                      type="email"
+                      required
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      onBlur={handleEmailBlur}
+                      placeholder="ten@example.com..."
+                      icon={Mail}
+                      error={errors.email}
+                    />
+                    {/* Chip gợi ý tên miền — bấm để tự thêm @gmail.com… khỏi gõ */}
+                    {emailSuggestions.length > 0 && (
+                      <div className="flex flex-wrap gap-1.5 mt-2 animate-rise-in">
+                        {emailSuggestions.map((d) => (
+                          <button
+                            key={d}
+                            type="button"
+                            onClick={() => applyEmailDomain(d)}
+                            className="group inline-flex items-center gap-1 text-[10px] font-bold text-slate-500 bg-slate-50 border border-slate-200 hover:border-md-primary hover:text-md-primary hover:bg-md-primary/5 px-2.5 py-1 rounded-full transition-all active:scale-95 cursor-pointer"
+                          >
+                            <AtSign size={10} className="text-md-primary group-hover:rotate-12 transition-transform" />
+                            {d}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
 
                   <Input
                     label="Số điện thoại"
                     type="tel"
                     required
                     value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
+                    onChange={(e) => setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
                     onBlur={handlePhoneBlur}
                     placeholder="0901234567..."
                     icon={Phone}
                     error={errors.phone}
+                    inputMode="numeric"
+                    maxLength={10}
+                    helperText="10 chữ số, bắt đầu bằng 0"
                   />
                 </div>
 
@@ -584,6 +822,34 @@ export default function Register() {
                   icon={Lock}
                   error={errors.password}
                 />
+
+                {/* Gợi ý độ mạnh mật khẩu — chỉ hiện khi bắt đầu gõ, giúp người dùng đặt pass an toàn */}
+                {pwLen > 0 && (
+                  <div className="-mt-2.5 space-y-2 animate-rise-in">
+                    <div className="flex items-center gap-2.5">
+                      <div className="flex-1 h-1.5 rounded-full bg-slate-100 overflow-hidden flex gap-1">
+                        {[1, 2, 3].map((seg) => (
+                          <span
+                            key={seg}
+                            className="flex-1 rounded-full transition-all duration-300"
+                            style={{ backgroundColor: seg <= pwLevel ? PW_META[pwLevel].color : '#e2e8f0' }}
+                          />
+                        ))}
+                      </div>
+                      <span className="text-[10px] font-extrabold tabular-nums shrink-0" style={{ color: PW_META[pwLevel].color }}>
+                        {PW_META[pwLevel].label}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-4 flex-wrap">
+                      <span className={`inline-flex items-center gap-1 text-[11px] font-bold transition-colors ${pwHasMin ? 'text-emerald-600' : 'text-slate-400'}`}>
+                        <Check size={12} className={pwHasMin ? 'opacity-100' : 'opacity-40'} /> Ít nhất 8 ký tự
+                      </span>
+                      <span className={`inline-flex items-center gap-1 text-[11px] font-semibold transition-colors ${pwVariety ? 'text-emerald-600' : 'text-slate-400'}`}>
+                        <Check size={12} className={pwVariety ? 'opacity-100' : 'opacity-40'} /> Có cả chữ & số <span className="text-slate-300 font-normal">(khuyến nghị)</span>
+                      </span>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
@@ -591,22 +857,50 @@ export default function Register() {
             {step === 3 && (
               <div key="step-3" className="animate-rise-in space-y-5">
 
-                {/* Tóm tắt thông tin đã nhập để người dùng rà lại trước khi gửi */}
-                <div className="rounded-radius-lg border border-slate-200 bg-slate-50/70 p-4 space-y-2.5">
+                {/* Tóm tắt thông tin đã nhập — mỗi mục 1 chip icon màu riêng để rà nhanh trước khi gửi */}
+                <div className="rounded-radius-lg border border-slate-200 bg-gradient-to-br from-slate-50 to-white p-4 space-y-3 shadow-sm">
                   <div className="flex items-center justify-between">
-                    <h3 className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest">Xác nhận thông tin</h3>
-                    <button type="button" onClick={() => setStep(2)} className="text-[10px] font-extrabold hover:underline cursor-pointer" style={{ color: accent }}>
-                      Chỉnh sửa
+                    <h3 className="text-[10px] font-extrabold text-slate-500 uppercase tracking-widest flex items-center gap-1.5">
+                      <ClipboardCheck size={13} style={{ color: accent }} /> Xác nhận thông tin
+                    </h3>
+                    <button
+                      type="button"
+                      onClick={() => setStep(2)}
+                      className="group inline-flex items-center gap-1 text-[10px] font-extrabold cursor-pointer px-2 py-1 rounded-full hover:bg-slate-100 transition-colors"
+                      style={{ color: accent }}
+                    >
+                      <Pencil size={11} className="group-hover:rotate-12 transition-transform" /> Chỉnh sửa
                     </button>
                   </div>
-                  {/* Lưới 2×2 cân đối: Họ tên | SĐT  /  Email | Vai trò (vai trò song song email, không để ô trống) */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-2 gap-x-4 text-xs font-bold text-slate-600">
-                    <span className="flex items-center gap-1.5 truncate"><User size={13} className="text-slate-400 shrink-0" /> {name || '—'}</span>
-                    <span className="flex items-center gap-1.5 truncate"><Phone size={13} className="text-slate-400 shrink-0" /> {phone || '—'}</span>
-                    <span className="flex items-center gap-1.5 truncate"><Mail size={13} className="text-slate-400 shrink-0" /> {email || '—'}</span>
-                    <span className="flex items-center gap-1.5 truncate">
-                      <ShieldCheck size={13} className="shrink-0" style={{ color: accent }} /> Vai trò: <span style={{ color: accent }}>{roleLabel}</span>
-                    </span>
+                  {/* Lưới 2×2: Họ tên | SĐT  /  Email | Vai trò — mỗi mục chip icon màu khác nhau */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {[
+                      { icon: User, label: 'Họ tên', value: name || '—', chip: 'bg-indigo-50 text-indigo-500' },
+                      { icon: Phone, label: 'Số điện thoại', value: phone || '—', chip: 'bg-emerald-50 text-emerald-500' },
+                      { icon: Mail, label: 'Email', value: email || '—', chip: 'bg-blue-50 text-blue-500' },
+                      { icon: ShieldCheck, label: 'Vai trò', value: roleLabel, chip: '', accent: true },
+                    ].map((f, i) => {
+                      const FIcon = f.icon;
+                      return (
+                        <div key={i} className="flex items-center gap-2.5 min-w-0">
+                          <span
+                            className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${f.chip}`}
+                            style={f.accent ? { backgroundColor: `${accent}1A`, color: accent } : undefined}
+                          >
+                            <FIcon size={15} />
+                          </span>
+                          <div className="min-w-0">
+                            <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wide block leading-none">{f.label}</span>
+                            <span
+                              className="text-xs font-extrabold truncate block leading-none mt-1"
+                              style={f.accent ? { color: accent } : { color: '#334155' }}
+                            >
+                              {f.value}
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
 
@@ -635,11 +929,14 @@ export default function Register() {
                         type="tel"
                         required
                         value={restaurantPhone}
-                        onChange={(e) => setRestaurantPhone(e.target.value)}
+                        onChange={(e) => setRestaurantPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
                         onBlur={handleRestaurantPhoneBlur}
                         placeholder="Để khách liên hệ..."
                         icon={Phone}
                         error={errors.restaurantPhone}
+                        inputMode="numeric"
+                        maxLength={10}
+                        helperText="Số để khách & shipper liên hệ khi giao"
                       />
 
                       <div className="cursor-pointer" onClick={() => setOpenMap(true)}>
@@ -683,11 +980,14 @@ export default function Register() {
                         type="text"
                         required
                         value={idCard}
-                        onChange={(e) => setIdCard(e.target.value)}
+                        onChange={(e) => setIdCard(e.target.value.replace(/\D/g, '').slice(0, 12))}
                         onBlur={handleIdCardBlur}
                         placeholder="Số CCCD 12 số..."
                         icon={FileText}
                         error={errors.idCard}
+                        inputMode="numeric"
+                        maxLength={12}
+                        helperText="Gồm 9 hoặc 12 chữ số trên căn cước"
                       />
 
                       <Input
@@ -695,11 +995,12 @@ export default function Register() {
                         type="text"
                         required
                         value={licensePlate}
-                        onChange={(e) => setLicensePlate(e.target.value)}
+                        onChange={(e) => handleLicensePlateChange(e.target.value)}
                         onBlur={handleLicensePlateBlur}
-                        placeholder="Ví dụ: 29A1-12345..."
+                        placeholder="Ví dụ: 59H1-23456..."
                         icon={Bike}
                         error={errors.licensePlate}
+                        helperText="Chỉ gõ chữ & số — dấu “-” “.” tự hiện. VD: 59H1-234.56"
                       />
                     </div>
 
@@ -710,7 +1011,7 @@ export default function Register() {
                       <div className="relative">
                         <select
                           value={vehicleType}
-                          onChange={(e) => setVehicleType(e.target.value)}
+                          onChange={(e) => handleVehicleTypeChange(e.target.value)}
                           className="w-full bg-slate-50 border border-slate-200 rounded-radius-lg p-3 text-xs sm:text-sm font-semibold focus:outline-none focus:border-[#FF6B35] focus:bg-white transition-all shadow-sm text-slate-700"
                         >
                           <option value="MOTORBIKE">Xe Máy (Motorbike)</option>
@@ -735,9 +1036,9 @@ export default function Register() {
                 <button
                   type="button"
                   onClick={goBack}
-                  className="flex items-center gap-1.5 px-5 py-3.5 rounded-full border border-slate-200 bg-white text-slate-500 font-extrabold text-xs uppercase tracking-wider hover:bg-slate-50 hover:text-slate-700 active:scale-[0.98] transition-all cursor-pointer shrink-0"
+                  className="group flex items-center gap-1.5 px-5 py-3.5 rounded-full border border-slate-200 bg-white text-slate-500 font-extrabold text-xs uppercase tracking-wider hover:bg-slate-50 hover:text-slate-700 hover:border-slate-300 active:scale-[0.98] transition-all cursor-pointer shrink-0"
                 >
-                  <ChevronLeft size={16} className="stroke-[2.5px]" /> Quay lại
+                  <ChevronLeft size={16} className="stroke-[2.5px] transition-transform duration-300 group-hover:-translate-x-1" /> Quay lại
                 </button>
               )}
 
@@ -746,11 +1047,14 @@ export default function Register() {
                   key="btn-next"
                   type="button"
                   onClick={goNext}
-                  className="flex-1 text-white font-extrabold py-3.5 px-3.5 pl-6 rounded-full flex items-center justify-between shadow-shadow-2 hover:brightness-105 active:scale-[0.98] transition-all cursor-pointer group"
-                  style={{ backgroundColor: accent }}
+                  className="relative overflow-hidden flex-1 text-white font-extrabold py-3.5 px-3.5 pl-6 rounded-full flex items-center justify-between shadow-shadow-2 hover:brightness-105 hover:scale-[1.01] active:scale-[0.98] transition-all cursor-pointer group"
+                  style={{ backgroundColor: accent, boxShadow: `0 8px 22px ${accent}44` }}
                 >
-                  <span className="uppercase tracking-wider text-xs">Tiếp tục</span>
-                  <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center text-white group-hover:translate-x-1.5 transition-transform shrink-0">
+                  <span className="pointer-events-none absolute inset-y-0 -left-1/3 w-1/3 -skew-x-12 bg-gradient-to-r from-transparent via-white/25 to-transparent translate-x-[-160%] group-hover:translate-x-[460%] transition-transform duration-700 ease-out" />
+                  <span className="relative flex items-center gap-2 uppercase tracking-wider text-xs">
+                    <Sparkles size={14} className="animate-pulse" /> Tiếp tục
+                  </span>
+                  <div className="relative w-8 h-8 bg-white/20 rounded-full flex items-center justify-center text-white group-hover:translate-x-1.5 group-hover:bg-white/30 transition-all shrink-0">
                     <ChevronRight size={18} className="stroke-[2.5px]" />
                   </div>
                 </button>
@@ -759,13 +1063,15 @@ export default function Register() {
                   key="btn-submit"
                   type="submit"
                   disabled={loading}
-                  className="flex-1 text-white font-extrabold py-3.5 px-3.5 pl-6 rounded-full flex items-center justify-between shadow-shadow-2 hover:brightness-105 active:scale-[0.98] transition-all cursor-pointer group disabled:opacity-70"
-                  style={{ backgroundColor: accent }}
+                  className="relative overflow-hidden flex-1 text-white font-extrabold py-3.5 px-3.5 pl-6 rounded-full flex items-center justify-between shadow-shadow-2 hover:brightness-105 hover:scale-[1.01] active:scale-[0.98] transition-all cursor-pointer group disabled:opacity-70"
+                  style={{ backgroundColor: accent, boxShadow: `0 8px 22px ${accent}44` }}
                 >
-                  <span className="uppercase tracking-wider text-xs">
+                  <span className="pointer-events-none absolute inset-y-0 -left-1/3 w-1/3 -skew-x-12 bg-gradient-to-r from-transparent via-white/25 to-transparent translate-x-[-160%] group-hover:translate-x-[460%] transition-transform duration-700 ease-out" />
+                  <span className="relative flex items-center gap-2 uppercase tracking-wider text-xs">
+                    {loading ? <Loader2 size={15} className="animate-spin" /> : <ShieldCheck size={15} />}
                     {loading ? 'Đang đăng ký...' : 'Đăng Ký Tài Khoản'}
                   </span>
-                  <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center text-white group-hover:translate-x-1.5 transition-transform shrink-0">
+                  <div className="relative w-8 h-8 bg-white/20 rounded-full flex items-center justify-center text-white group-hover:translate-x-1.5 group-hover:bg-white/30 transition-all shrink-0">
                     <ChevronRight size={18} className="stroke-[2.5px]" />
                   </div>
                 </button>
@@ -773,14 +1079,19 @@ export default function Register() {
             </div>
           </form>
 
-          {/* Footer Navigation */}
-          <div className="mt-8 text-center text-xs sm:text-sm text-slate-500 relative z-10 font-semibold">
-            Đã có tài khoản?{' '}
-            <button 
-              onClick={() => navigate('/login')} 
-              className="text-[#FF6B35] font-extrabold hover:underline cursor-pointer"
+          {/* Footer Navigation — link đăng nhập có icon + gạch chân chạy (đổi màu theo role) */}
+          <div className="mt-8 flex items-center justify-center gap-1.5 relative z-10">
+            <span className="text-xs sm:text-sm text-slate-500 font-semibold">Đã có tài khoản?</span>
+            <button
+              onClick={() => navigate('/login')}
+              className="group inline-flex items-center gap-1 text-xs sm:text-sm font-extrabold cursor-pointer"
+              style={{ color: accent }}
             >
-              Đăng nhập
+              <LogIn size={14} className="transition-transform duration-300 group-hover:-translate-x-0.5" />
+              <span className="relative">
+                Đăng nhập
+                <span className="absolute -bottom-0.5 left-0 h-0.5 w-0 rounded-full transition-all duration-300 group-hover:w-full" style={{ backgroundColor: accent }} />
+              </span>
             </button>
           </div>
 

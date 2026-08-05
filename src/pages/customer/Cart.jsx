@@ -18,7 +18,7 @@ import Modal from '../../components/common/Modal';
 import Card from '../../components/common/Card'; 
 import { useModalState } from '../../hooks/useModalState';
 import MapModal2 from '../../components/common/Map';
-import { formatDateTime } from '../../utils/format';
+import { formatDateTime} from '../../utils/format';
 
 // Nhận diện loại voucher: icon + màu riêng cho FREESHIP / PERCENT / FIXED 
 const VOUCHER_TYPE_META = {
@@ -106,20 +106,28 @@ export default function Cart() {
     }
   }, [deliveryLat, deliveryLng, JSON.stringify(restaurantIds)]);
 
-  // Tự động chọn và cuộn màn hình đến quán ăn được điều hướng từ RestaurantDetail
+  // Dùng useRef để đánh dấu đã xử lý điều hướng, chống chạy lặp lại 2 lần do StrictMode/Re-render
+  const hasHandledTargetRef = React.useRef(false);
+
   useEffect(() => {
-    if (targetRestaurantId && carts.length > 0) {
+    if (targetRestaurantId && carts.length > 0 && !hasHandledTargetRef.current) {
       const numericId = Number(targetRestaurantId);
-      const hasCart = carts.some(cart => Number(cart.restaurantId) === numericId);
+      const targetCart = carts.find(cart => Number(cart.restaurantId) === numericId);
       
-      if (hasCart && !selectedRestaurantIds.includes(numericId)) {
-        setSelectedRestaurantIds(prev => {
-          const numericPrev = prev.map(id => Number(id));
-          if (!numericPrev.includes(numericId)) {
-            return [...prev, numericId];
-          }
-          return prev;
-        });
+      if (targetCart) {
+        hasHandledTargetRef.current = true; // Khóa lại ngay lập tức tránh chạy lần 2
+
+        if (targetCart.isOpen === false) {
+          toast.error(`Quán "${targetCart.restaurantName}" hiện đang đóng cửa!`);
+        } else {
+          setSelectedRestaurantIds(prev => {
+            const numericPrev = prev.map(id => Number(id));
+            if (!numericPrev.includes(numericId)) {
+              return [...prev, numericId];
+            }
+            return prev;
+          });
+        }
         
         setTimeout(() => {
           const element = document.getElementById(`restaurant-card-${numericId}`);
@@ -127,6 +135,8 @@ export default function Cart() {
             element.scrollIntoView({ behavior: 'smooth', block: 'center' });
           }
         }, 300); 
+        
+        // Xóa state điều hướng để lần sau refresh không bị lặp lại
         navigate(location.pathname, { replace: true, state: {} });
       }
     }
@@ -160,9 +170,8 @@ export default function Cart() {
         return;
       }
 
-      // 2. Kiểm tra giờ hoạt động (opensAt, closesAt)
-      if (!isRestaurantOpen(cart.opensAt, cart.closesAt)) {
-        toast.error(`Quán "${cart.restaurantName}" hiện chưa tới giờ hoạt động hoặc đã đóng cửa (Giờ mở cửa: ${cart.opensAt || 'N/A'} - ${cart.closesAt || 'N/A'})!`);
+      if (cart.open === false) {
+        toast.error(`Quán "${cart.restaurantName}" hiện đã đóng cửa!`);
         return;
       }
     }
@@ -226,6 +235,14 @@ export default function Cart() {
   // Chuyển đổi trạng thái chọn/bỏ chọn một quán
   const handleToggleSelectRestaurant = (restaurantId) => {
     const numericId = Number(restaurantId);
+    const targetCart = carts.find(c => Number(c.restaurantId) === numericId);
+
+    // Nếu quán đã đóng cửa và người dùng đang muốn tích chọn (chưa có trong danh sách chọn)
+    if (targetCart && targetCart.isOpen === false && !selectedRestaurantIds.includes(numericId)) {
+      toast.error(`Quán "${targetCart.restaurantName}" hiện đã đóng cửa!`);
+      return; 
+    }
+
     setSelectedRestaurantIds(prev =>
       prev.includes(numericId) ? prev.filter(id => id !== numericId) : [...prev, numericId]
     );
@@ -507,28 +524,6 @@ export default function Cart() {
     return total > 0 ? total : 0;
   }, [selectedItemsSubtotal, totalShippingFee, totalDiscountAmount]);
 
-  // Hàm kiểm tra quán có đang mở cửa không
-  const isRestaurantOpen = (opensAt, closesAt) => {
-    if (!opensAt || !closesAt) return true; // Nếu quán không cài đặt giờ thì coi như mở cửa
-    
-    const now = new Date();
-    const currentMinutes = now.getHours() * 60 + now.getMinutes();
-
-    const [openH, openM] = opensAt.split(':').map(Number);
-    const openMinutes = openH * 60 + openM;
-
-    const [closeH, closeM] = closesAt.split(':').map(Number);
-    const closeMinutes = closeH * 60 + closeM;
-
-    if (openMinutes < closeMinutes) {
-      // Trong cùng 1 ngày (VD: 07:00 - 22:00)
-      return currentMinutes >= openMinutes && currentMinutes <= closeMinutes;
-    } else {
-      // Mở qua đêm (VD: 18:00 - 02:00)
-      return currentMinutes >= openMinutes || currentMinutes <= closeMinutes;
-    }
-  };
-
   if (loading && carts.length === 0) return <Spinner fullScreen />;
 
   if (carts.length === 0) {
@@ -627,6 +622,8 @@ export default function Cart() {
             const cartDiscount = calculateCartDiscount(cart);
             const cartTotal = (cart.subtotal + shippingFee) - cartDiscount;
 
+            const isOpen = cart.isOpen;
+
             return (
               <Card 
                 key={cart.restaurantId} 
@@ -658,6 +655,15 @@ export default function Cart() {
                       <span className="font-extrabold text-sm text-slate-800 truncate" title={cart.restaurantName}>
                         Quán {cart.restaurantName}
                       </span>
+                      {isOpen ? (
+                        <span className="text-[11px] font-bold px-2 py-0.5 bg-emerald-50 text-emerald-600 rounded-full shrink-0">
+                          Đang mở cửa
+                        </span>
+                      ) : (
+                        <span className="text-[11px] font-bold px-2 py-0.5 bg-rose-50 text-rose-600 rounded-full shrink-0">
+                          Đã đóng cửa
+                        </span>
+                      )}
                     </div>
                   </div>
                   
@@ -678,10 +684,9 @@ export default function Cart() {
                   const distance = shipInfo?.distanceKm || 0;
                   const opensAt = cart.opensAt || cart.restaurant?.opensAt;
                   const closesAt = cart.closesAt || cart.restaurant?.closesAt;
-                  const isOpen = isRestaurantOpen(opensAt, closesAt);
                   const isTooFar = distance > 10;
 
-                  if (isTooFar || !isOpen) {
+                  if (isTooFar) {
                     return (
                       <div className="mx-4 my-3 p-3 bg-red-50 border border-red-200 rounded-xl text-red-700 text-xs flex items-start gap-2.5 font-medium shadow-sm">
                         <XCircle size={18} className="shrink-0 text-red-500 mt-0.5" />
@@ -689,11 +694,6 @@ export default function Cart() {
                           {isTooFar && (
                             <p className="leading-snug">
                               ⚠️ <span className="font-extrabold text-red-800">Không thể đặt hàng:</span> Quán cách bạn <span className="font-bold text-red-900">{distance.toFixed(1)} km</span> (vượt quá bán kính tối đa <span className="font-bold">10 km</span>).
-                            </p>
-                          )}
-                          {!isOpen && (
-                            <p className="leading-snug">
-                              ⏰ <span className="font-extrabold text-red-800">Không thể đặt hàng:</span> Quán hiện không trong khung giờ hoạt động. Giờ mở cửa: <span className="font-bold text-red-900">{opensAt || 'N/A'} - {closesAt || 'N/A'}</span>.
                             </p>
                           )}
                         </div>
@@ -915,76 +915,6 @@ export default function Cart() {
 
         {/* CỘT PHẢI: THÔNG TIN GIAO HÀNG & TỔNG QUAN ĐƠN HÀNG */}
         <aside className="w-full lg:w-80 shrink-0 lg:sticky lg:top-5 space-y-4">
-
-          {/* TỔNG QUAN ĐƠN HÀNG */}
-          <Card variant="flat" className="p-4 !border-slate-200 !rounded-2xl flex flex-col space-y-3">
-            <h3 className="text-xs font-extrabold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
-              <Receipt size={15} className="text-[#ff6b35]" /> Tổng quan đơn hàng
-            </h3>
-
-            <div className="flex items-center justify-between text-xs text-slate-600">
-              <span className="flex items-center gap-1.5"><Store size={13} className="text-slate-400" /> Số quán đã chọn:</span>
-              <span className="font-extrabold text-slate-800">{selectedRestaurantIds.length} / {carts.length}</span>
-            </div>
-
-            <div className="flex items-center justify-between text-xs text-slate-600">
-              <span className="flex items-center gap-1.5"><ShoppingBag size={13} className="text-slate-400" /> Tổng số món:</span>
-              <span className="font-extrabold text-slate-800">{totalItems} món</span>
-            </div>
-
-            {/* Hiển thị Tạm tính tiền hàng */}
-            <div className="flex items-center justify-between text-xs text-slate-600">
-              <span className="flex items-center gap-1.5"><Receipt size={13} className="text-slate-400" /> Tiền hàng:</span>
-              <span className="font-bold text-slate-800">{formatCurrency(selectedItemsSubtotal)}</span>
-            </div>
-
-            {/* Hiển thị Phí vận chuyển */}
-            <div className="flex items-center justify-between text-xs text-slate-600">
-              <span className="flex items-center gap-1.5"><Bike size={13} className="text-slate-400" /> Phí vận chuyển:</span>
-              <span className="font-bold text-slate-800">
-                {isCalculatingShipping ? 'Đang tính...' : formatCurrency(totalShippingFee)}
-              </span>
-            </div>
-
-            {/* Tổng giảm giá từ tất cả voucher đã chọn */}
-            {totalDiscountAmount > 0 && (
-              <div className="flex items-center justify-between text-xs text-emerald-600 font-bold bg-emerald-50/70 -mx-1 px-2 py-1.5 rounded-lg">
-                <span className="flex items-center gap-1.5"><BadgePercent size={13} /> Tiết kiệm từ voucher:</span>
-                <span>- {formatCurrency(totalDiscountAmount)}</span>
-              </div>
-            )}
-
-            <div className="pt-2 border-t border-slate-100 mb-1">
-              <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5 mb-1.5">
-                <StickyNote size={13} /> Ghi chú đơn hàng
-              </label>
-              <textarea
-                rows={2}
-                value={orderNotes}
-                onChange={(e) => setOrderNotes(e.target.value)}
-                placeholder="Thêm ghi chú cho đơn hàng"
-                className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl bg-white text-slate-700 font-semibold focus:outline-none focus:border-[#ff6b35] focus:ring-1 focus:ring-orange-100 transition-all duration-200 resize-none"
-              />
-            </div>
-
-            {/* Tổng thanh toán cuối cùng */}
-            <div className="flex items-center justify-between text-sm text-slate-600 pt-2 border-t border-slate-100 mt-1">
-              <span className="font-bold text-slate-700">Tổng thanh toán:</span>
-              <span className="font-black text-[#ff6b35] text-lg">
-                {isCalculatingShipping || isUpdatingLocation ? 'Đang tính...' : formatCurrency(finalTotalAmount)}
-              </span>
-            </div>
-
-            <Button
-              onClick={handleBulkPlaceOrder}
-              disabled={selectedRestaurantIds.length === 0 || submittingCartId === 'BULK_ORDER' || isUpdatingLocation || isCalculatingShipping}
-              loading={submittingCartId === 'BULK_ORDER'}
-              icon={ShoppingBag}
-              className="w-full !mt-0 !bg-orange-600 hover:!bg-orange-700 text-white font-bold py-3 rounded-xl flex items-center justify-center gap-2"
-            >
-              {selectedRestaurantIds.length === 0 ? 'Chọn quán để đặt' : `Đặt Hàng${selectedRestaurantIds.length > 1 ? ` · ${selectedRestaurantIds.length} quán` : ''}`}
-            </Button>
-          </Card>
           
           {/* THÔNG TIN GIAO HÀNG */}
           <Card variant="flat" className="p-5 !border-slate-200/80 !rounded-2xl space-y-4">
@@ -1054,6 +984,76 @@ export default function Cart() {
                 </Button>
               </div>
             </div>
+          </Card>
+
+          {/* TỔNG QUAN ĐƠN HÀNG */}
+          <Card variant="flat" className="p-4 !border-slate-200 !rounded-2xl flex flex-col space-y-3">
+            <h3 className="text-xs font-extrabold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+              <Receipt size={15} className="text-[#ff6b35]" /> Tổng quan đơn hàng
+            </h3>
+
+            <div className="flex items-center justify-between text-xs text-slate-600">
+              <span className="flex items-center gap-1.5"><Store size={13} className="text-slate-400" /> Số quán đã chọn:</span>
+              <span className="font-extrabold text-slate-800">{selectedRestaurantIds.length} / {carts.length}</span>
+            </div>
+
+            <div className="flex items-center justify-between text-xs text-slate-600">
+              <span className="flex items-center gap-1.5"><ShoppingBag size={13} className="text-slate-400" /> Tổng số món:</span>
+              <span className="font-extrabold text-slate-800">{totalItems} món</span>
+            </div>
+
+            {/* Hiển thị Tạm tính tiền hàng */}
+            <div className="flex items-center justify-between text-xs text-slate-600">
+              <span className="flex items-center gap-1.5"><Receipt size={13} className="text-slate-400" /> Tiền hàng:</span>
+              <span className="font-bold text-slate-800">{formatCurrency(selectedItemsSubtotal)}</span>
+            </div>
+
+            {/* Hiển thị Phí vận chuyển */}
+            <div className="flex items-center justify-between text-xs text-slate-600">
+              <span className="flex items-center gap-1.5"><Bike size={13} className="text-slate-400" /> Phí vận chuyển:</span>
+              <span className="font-bold text-slate-800">
+                {isCalculatingShipping ? 'Đang tính...' : formatCurrency(totalShippingFee)}
+              </span>
+            </div>
+
+            {/* Tổng giảm giá từ tất cả voucher đã chọn */}
+            {totalDiscountAmount > 0 && (
+              <div className="flex items-center justify-between text-xs text-emerald-600 font-bold bg-emerald-50/70 -mx-1 px-2 py-1.5 rounded-lg">
+                <span className="flex items-center gap-1.5"><BadgePercent size={13} /> Tiết kiệm từ voucher:</span>
+                <span>- {formatCurrency(totalDiscountAmount)}</span>
+              </div>
+            )}
+
+            <div className="pt-2 border-t border-slate-100 mb-1">
+              <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5 mb-1.5">
+                <StickyNote size={13} /> Ghi chú đơn hàng
+              </label>
+              <textarea
+                rows={2}
+                value={orderNotes}
+                onChange={(e) => setOrderNotes(e.target.value)}
+                placeholder="Thêm ghi chú cho đơn hàng"
+                className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl bg-white text-slate-700 font-semibold focus:outline-none focus:border-[#ff6b35] focus:ring-1 focus:ring-orange-100 transition-all duration-200 resize-none"
+              />
+            </div>
+
+            {/* Tổng thanh toán cuối cùng */}
+            <div className="flex items-center justify-between text-sm text-slate-600 pt-2 border-t border-slate-100 mt-1">
+              <span className="font-bold text-slate-700">Tổng thanh toán:</span>
+              <span className="font-black text-[#ff6b35] text-lg">
+                {isCalculatingShipping || isUpdatingLocation ? 'Đang tính...' : formatCurrency(finalTotalAmount)}
+              </span>
+            </div>
+
+            <Button
+              onClick={handleBulkPlaceOrder}
+              disabled={selectedRestaurantIds.length === 0 || submittingCartId === 'BULK_ORDER' || isUpdatingLocation || isCalculatingShipping}
+              loading={submittingCartId === 'BULK_ORDER'}
+              icon={ShoppingBag}
+              className="w-full !mt-0 !bg-orange-600 hover:!bg-orange-700 text-white font-bold py-3 rounded-xl flex items-center justify-center gap-2"
+            >
+              {selectedRestaurantIds.length === 0 ? 'Chọn quán để đặt' : `Đặt Hàng${selectedRestaurantIds.length > 1 ? ` · ${selectedRestaurantIds.length} quán` : ''}`}
+            </Button>
           </Card>
         </aside>
       </div>

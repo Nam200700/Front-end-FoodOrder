@@ -23,6 +23,7 @@ export const useCartStore = create((set, get) => ({
         subtotal: Number(cart.subtotal || 0),
         latitude: cart.latitude ? Number(cart.latitude) : null,
         longitude: cart.longitude ? Number(cart.longitude) : null,
+        isOpen: cart.open,
         items: (cart.items || []).map(item => ({
           cartItemId: item.cartItemId,
           id: item.foodId,

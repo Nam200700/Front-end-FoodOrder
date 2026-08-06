@@ -233,10 +233,10 @@ export default function Cart() {
   };
 
   const handleToggleSelectRestaurant = (cart, distance) => {
-    const numericId = Number(cart.restaurantId);
+    const restaurantId = Number(cart.restaurantId);
 
-    if (selectedRestaurantIds.includes(numericId)) {
-      setSelectedRestaurantIds(prev => prev.filter(id => id !== numericId));
+    if (selectedRestaurantIds.includes(restaurantId)) {
+      setSelectedRestaurantIds(prev => prev.filter(id => id !== restaurantId));
       return;
     }
 
@@ -251,7 +251,7 @@ export default function Cart() {
       return; 
     }
 
-    setSelectedRestaurantIds(prev => [...prev, numericId]);
+    setSelectedRestaurantIds(prev => [...prev, restaurantId]);
   };
 
   const isAllSelected = carts.length > 0 && selectedRestaurantIds.length === carts.length;

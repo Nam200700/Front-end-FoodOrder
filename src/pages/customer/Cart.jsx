@@ -889,7 +889,7 @@ export default function Cart() {
                       </div>
                       {cartDiscount > 0 && (
                         <div className="flex justify-between items-center text-emerald-600">
-                          <span className="text-xs font-bold flex items-center gap-1.5"><BadgePercent size={13} /> Giảm giá voucher:</span>
+                          <span className="text-xs font-bold flex items-center gap-1.5"><BadgePercent size={13} /> Giảm giá từ voucher:</span>
                           <span className="font-bold text-xs">- {formatCurrency(cartDiscount)}</span>
                         </div>
                       )}
@@ -1013,7 +1013,7 @@ export default function Cart() {
             {/* Tổng giảm giá từ tất cả voucher đã chọn */}
             {totalDiscountAmount > 0 && (
               <div className="flex items-center justify-between text-xs text-emerald-600 font-bold bg-emerald-50/70 -mx-1 px-2 py-1.5 rounded-lg">
-                <span className="flex items-center gap-1.5"><BadgePercent size={13} /> Tiết kiệm từ voucher:</span>
+                <span className="flex items-center gap-1.5"><BadgePercent size={13} /> Giảm giá từ voucher:</span>
                 <span>- {formatCurrency(totalDiscountAmount)}</span>
               </div>
             )}

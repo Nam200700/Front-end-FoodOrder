@@ -118,7 +118,7 @@ export default function Cart() {
         hasHandledTargetRef.current = true; // Khóa lại ngay lập tức tránh chạy lần 2
 
         if (targetCart.isOpen === false) {
-          toast.error(`Quán "${targetCart.restaurantName}" hiện đang đóng cửa!`);
+          toast.error(`Quán "${targetCart.restaurantName}" hiện đã đóng cửa (Giờ mở cửa ${targetCart.opensAt} - ${targetCart.closesAt}). Vui lòng quay lại sau!`);
         } else {
           setSelectedRestaurantIds(prev => {
             const numericPrev = prev.map(id => Number(id));
@@ -171,7 +171,7 @@ export default function Cart() {
       }
 
       if (cart.open === false) {
-        toast.error(`Quán "${cart.restaurantName}" hiện đã đóng cửa!`);
+        toast.error(`Quán "${cart.restaurantName}" hiện đã đóng cửa (Giờ mở cửa ${cart.opensAt} - ${cart.closesAt}). Vui lòng quay lại sau!`);
         return;
       }
     }
@@ -242,12 +242,12 @@ export default function Cart() {
 
     const currentDistance = Number(distance) || 0;
     if (currentDistance > 10) {
-      toast.error(`Quán này cách bạn quá xa (${currentDistance.toFixed(1)} km). Hệ thống chỉ hỗ trợ đặt quán trong phạm vi 10 km!`);
+      toast.error(`Quán "${cart.restaurantName}" cách bạn ${currentDistance.toFixed(1)} km. Hệ thống chỉ hỗ trợ đặt quán trong phạm vi 10 km!`);
       return;
     }
 
     if (cart && cart.isOpen === false) {
-      toast.error(`Quán "${cart.restaurantName}" hiện đã đóng cửa!`);
+      toast.error(`Quán "${cart.restaurantName}" hiện đã đóng cửa (Giờ mở cửa ${cart.opensAt} - ${cart.closesAt}). Vui lòng quay lại sau!`);
       return; 
     }
 

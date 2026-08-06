@@ -232,20 +232,26 @@ export default function Cart() {
     }
   };
 
-  // Chuyển đổi trạng thái chọn/bỏ chọn một quán
-  const handleToggleSelectRestaurant = (restaurantId) => {
-    const numericId = Number(restaurantId);
-    const targetCart = carts.find(c => Number(c.restaurantId) === numericId);
+  const handleToggleSelectRestaurant = (cart, distance) => {
+    const numericId = Number(cart.restaurantId);
 
-    // Nếu quán đã đóng cửa và người dùng đang muốn tích chọn (chưa có trong danh sách chọn)
-    if (targetCart && targetCart.isOpen === false && !selectedRestaurantIds.includes(numericId)) {
-      toast.error(`Quán "${targetCart.restaurantName}" hiện đã đóng cửa!`);
+    if (selectedRestaurantIds.includes(numericId)) {
+      setSelectedRestaurantIds(prev => prev.filter(id => id !== numericId));
+      return;
+    }
+
+    const currentDistance = Number(distance) || 0;
+    if (currentDistance > 10) {
+      toast.error(`Quán này cách bạn quá xa (${currentDistance.toFixed(1)} km). Hệ thống chỉ hỗ trợ đặt quán trong phạm vi 10 km!`);
+      return;
+    }
+
+    if (cart && cart.isOpen === false) {
+      toast.error(`Quán "${cart.restaurantName}" hiện đã đóng cửa!`);
       return; 
     }
 
-    setSelectedRestaurantIds(prev =>
-      prev.includes(numericId) ? prev.filter(id => id !== numericId) : [...prev, numericId]
-    );
+    setSelectedRestaurantIds(prev => [...prev, numericId]);
   };
 
   const isAllSelected = carts.length > 0 && selectedRestaurantIds.length === carts.length;
@@ -611,7 +617,7 @@ export default function Cart() {
           {carts.map(cart => {
             const shipInfo = shippingInfos[cart.restaurantId] || { shippingFee: 0, distanceKm: 0, durationMinutes: 0 };
             const shippingFee = shipInfo.shippingFee;
-            const distance = shipInfo.distanceKm;
+            const distance = shipInfo.distanceKm || 0;
             const duration = shipInfo.durationMinutes;
             
             const cartItemCount = cart.items.reduce((a, i) => a + i.quantity, 0);
@@ -624,6 +630,8 @@ export default function Cart() {
 
             const isOpen = cart.isOpen;
 
+            const isTooFar = distance > 10;
+
             return (
               <Card 
                 key={cart.restaurantId} 
@@ -635,7 +643,7 @@ export default function Cart() {
                 <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100 bg-gradient-to-r from-slate-50 to-white">
                   <div className="flex items-center gap-3 min-w-0">
                     <button 
-                      onClick={() => handleToggleSelectRestaurant(cart.restaurantId)}
+                      onClick={() => handleToggleSelectRestaurant(cart, distance)}
                       className="text-md-primary hover:scale-105 transition-transform cursor-pointer"
                     >
                       {isChecked ? (
@@ -678,30 +686,16 @@ export default function Cart() {
                   </Button>
                 </div>
 
-                {/* --- CẢNH BÁO ĐỎ: QUÁN XA > 10KM HOẶC ĐÓNG CỬA --- */}
-                {(() => {
-                  const shipInfo = shippingInfos[cart.restaurantId];
-                  const distance = shipInfo?.distanceKm || 0;
-                  const opensAt = cart.opensAt || cart.restaurant?.opensAt;
-                  const closesAt = cart.closesAt || cart.restaurant?.closesAt;
-                  const isTooFar = distance > 10;
-
-                  if (isTooFar) {
-                    return (
-                      <div className="mx-4 my-3 p-3 bg-red-50 border border-red-200 rounded-xl text-red-700 text-xs flex items-start gap-2.5 font-medium shadow-sm">
-                        <XCircle size={18} className="shrink-0 text-red-500 mt-0.5" />
-                        <div className="space-y-1">
-                          {isTooFar && (
-                            <p className="leading-snug">
-                              ⚠️ <span className="font-extrabold text-red-800">Không thể đặt hàng:</span> Quán cách bạn <span className="font-bold text-red-900">{distance.toFixed(1)} km</span> (vượt quá bán kính tối đa <span className="font-bold">10 km</span>).
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  }
-                  return null;
-                })()}
+                {isTooFar && (
+                  <div className="mx-4 my-3 p-3 bg-red-50 border border-red-200 rounded-xl text-red-700 text-xs flex items-start gap-2.5 font-medium shadow-sm">
+                    <XCircle size={18} className="shrink-0 text-red-500 mt-0.5" />
+                    <div className="space-y-1">
+                        <p className="leading-snug">
+                          <span className="font-extrabold text-red-800">Không thể đặt hàng:</span> Quán cách bạn <span className="font-bold text-red-900">{distance.toFixed(1)} km</span> (vượt quá bán kính tối đa <span className="font-bold">10 km</span>).
+                        </p>
+                    </div>
+                  </div>
+                )}
 
                 {/* Danh sách món ăn */}
                 <div className="divide-y divide-slate-100">

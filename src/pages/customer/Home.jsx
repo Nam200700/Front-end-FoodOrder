@@ -33,7 +33,6 @@ const PAGE_SIZE = 6;
 const DEFAULT_LAT = 10.762622;
 const DEFAULT_LNG = 106.660172;
 
-// Backend lọc theo TÊN danh mục (vd: "Cơm Tấm"), không phải id nội bộ ở FE (vd: "com").
 function getCategoryName(categoryId) {
   const cat = CATEGORIES.find((c) => c.id === categoryId);
   return cat ? cat.name : null;
@@ -72,16 +71,12 @@ export default function Home() {
   const customerLat = user?.lat || DEFAULT_LAT;
   const customerLng = user?.lng || DEFAULT_LNG;
 
-  // ─── Danh sách "Khám phá quán ăn": luôn lấy trực tiếp từ API theo keyword + category ───
   const [restaurants, setRestaurants] = useState([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(0);
   const [hasMore, setHasMore] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
 
-  // ─── Nguồn dữ liệu riêng, KHÔNG phụ thuộc vào search/category, dùng cho các section gợi ý
-  //     (Nổi bật / Dành riêng cho bạn / Đặt lại quán cũ) để chúng không bị "biến mất" khi user
-  //     đang gõ tìm kiếm hoặc chọn danh mục ở section Khám phá.
   const [suggestionPool, setSuggestionPool] = useState([]);
   const [poolLoading, setPoolLoading] = useState(true);
 
@@ -99,8 +94,6 @@ export default function Home() {
   const [visibleRecomCount, setVisibleRecomCount] = useState(6);
   const [visibleOrderAgainCount, setVisibleOrderAgainCount] = useState(6);
 
-  // Quick filters — đã bỏ "Đánh giá 4.5★+" và "Ship ≤ 15k" vì trước đây hai cờ này
-  // KHÔNG được áp dụng trong bộ lọc thực tế (state tồn tại nhưng chưa từng dùng để filter).
   const [onlyOpen, setOnlyOpen] = useState(false);
   const [onlyFavorites, setOnlyFavorites] = useState(false);
 
@@ -110,12 +103,10 @@ export default function Home() {
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
-  // Gọi API lấy danh sách quán cho "Khám Phá Quán Ăn" — search & category đều do BACKEND xử lý.
-  // Có cờ `ignore` để tránh race-condition: nếu người dùng gõ nhanh, request cũ trả về sau
-  // request mới sẽ bị bỏ qua thay vì ghi đè kết quả mới hơn.
   useEffect(() => {
     let ignore = false;
 
+    //lấy danh sách quán ăn
     const fetchRestaurants = async () => {
       try {
         setLoading(true);
@@ -172,6 +163,7 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
+    //lấy danh sách quán yêu thích
     const fetchFavorites = async () => {
       if (!user) {
         setFavorites([]);
@@ -188,6 +180,7 @@ export default function Home() {
     };
     fetchFavorites();
 
+    //lấy danh sách orders
     const fetchPastOrders = async () => {
       if (!user) {
         setPastOrders([]);
@@ -288,7 +281,7 @@ export default function Home() {
     });
   }, [filteredRestaurants, sortByFilter]);
 
-  // QUÁN NỔI BẬT: dựa trên pool riêng, không bị ảnh hưởng bởi ô tìm kiếm / danh mục đang chọn
+  // QUÁN NỔI BẬT:
   const featuredRestaurants = useMemo(() => {
     const sorted = [...poolWithDistance].sort((a, b) => {
       if (b.rating !== a.rating) return b.rating - a.rating;
@@ -305,7 +298,7 @@ export default function Home() {
     return unique;
   }, [poolWithDistance]);
 
-  // ĐẶT LẠI QUÁN CŨ: dựa trên pool riêng + lịch sử đơn hàng
+  // ĐẶT LẠI QUÁN CŨ: 
   const orderAgainRestaurants = useMemo(() => {
     if (pastOrders.length === 0) return [];
     const orderedResIds = [...new Set(pastOrders.map(ord => {
@@ -316,7 +309,7 @@ export default function Home() {
     return poolWithDistance.filter(res => orderedResIds.includes(res.id));
   }, [pastOrders, poolWithDistance]);
 
-  // DÀNH RIÊNG CHO BẠN: dựa trên pool riêng + phân tích lịch sử món đã đặt
+  // DÀNH RIÊNG CHO BẠN: 
   const { recommendedRestaurants, favCuisineName } = useMemo(() => {
     const allOrderedFoods = [];
     pastOrders.forEach(ord => {
@@ -412,12 +405,8 @@ export default function Home() {
     }
   };
 
-  // Chỉ tính "đang lọc" theo những tiêu chí ảnh hưởng tới việc HIỂN thị nút "Xóa bộ lọc"
   const isFilterActive = searchQuery !== '' || activeCategory !== 'all' || sortByFilter !== 'distance' || onlyOpen || onlyFavorites;
 
-  // Riêng cờ này dùng để quyết định có ẩn bớt các section gợi ý (Nổi bật / Dành riêng cho bạn /
-  // Đặt lại quán cũ) hay không — chỉ nên ẩn khi người dùng thực sự đang tìm/lọc quán cụ thể,
-  // không nên ẩn chỉ vì họ đổi tab sắp xếp (trước đây "isFilterActive" gộp chung cả hai việc này).
   const isSearchingOrFiltering = searchQuery !== '' || activeCategory !== 'all' || onlyOpen || onlyFavorites;
 
   const resetFilters = () => {

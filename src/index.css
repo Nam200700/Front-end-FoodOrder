@@ -590,7 +590,7 @@
   .animate-parcel-travel,
   .animate-node-glow, .animate-fr-steam, .animate-fr-wave, .animate-fr-blink,
   .animate-fr-awning, .animate-fr-pedal, .animate-fr-bob, .animate-fr-serve,
-  .animate-rock { animation: none !important; }
+  .animate-rock, .animate-patrol, .animate-dash { animation: none !important; }
 }
 
 /* ─── Parallax Effect ────────────────────────────── */

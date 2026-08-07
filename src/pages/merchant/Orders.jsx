@@ -100,9 +100,9 @@ export default function MerchantOrders() {
   const [loading, setLoading] = useState(true);
   // Đã tải dữ liệu lần đầu chưa — dùng để chỉ chạy animation "bay lên" cho lần tải đầu,
   const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
-  // Đếm số đơn theo từng trạng thái để hiện badge trên tab (dễ quản lý, không cần bấm vào từng tab)
+  // Đếm số đơn theo từng trạng thái để hiện badge trên tab 
   const [statusCounts, setStatusCounts] = useState({});
-  // Đơn đang xử lý thao tác (nhận/chuẩn bị/sẵn sàng) → disable + spinner, tránh double-click
+
   const [actionLoadingId, setActionLoadingId] = useState(null);
 
   // STATE PHÂN TRANG & TÌM KIẾM
@@ -127,9 +127,9 @@ export default function MerchantOrders() {
 
   // ─── HỖ TRỢ KHÔNG BỎ SÓT ĐƠN: báo động đơn mới + auto-refresh ───
   const [soundOn, setSoundOn] = useState(() => localStorage.getItem('merchant-order-sound') !== 'off');
-  const [newOrderIds, setNewOrderIds] = useState(new Set()); // đơn PENDING vừa tới → gắn nhãn "MỚI"
+  const [newOrderIds, setNewOrderIds] = useState(new Set()); 
   const [lastUpdated, setLastUpdated] = useState(null);
-  const prevPendingIdsRef = useRef(null); // baseline id đơn chờ để phát hiện đơn mới
+  const prevPendingIdsRef = useRef(null); 
   const audioCtxRef = useRef(null);
 
   useEffect(() => { localStorage.setItem('merchant-order-sound', soundOn ? 'on' : 'off'); }, [soundOn]);

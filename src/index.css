@@ -143,7 +143,12 @@
   --animate-fr-pedal: frPedal 0.66s steps(6) infinite;   /* bàn đạp/bánh xe quay 6 nấc (giật) */
   --animate-fr-bob: frBob 0.66s step-end infinite;       /* thân nhún theo nhịp đạp */
   --animate-fr-serve: frServe 0.8s step-end infinite;    /* chảo lật / bưng món */
-  --animate-rock: rock 2.4s ease-in-out infinite;        /* tô đổ lắc lư ở màn báo lỗi */
+  /* "Hoạt hình 2D" cho tô mì lo lắng (màn báo lỗi) — step-end → khung hình rõ, giật như vẽ tay */
+  --animate-bowl-jitter: bowlJitter 1.3s step-end infinite;  /* thân tô run rẩy bồn chồn */
+  --animate-blink-2d: blink2d 3.2s step-end infinite;        /* chớp mắt (kép) */
+  --animate-dart-eyes: dartEyes 3.6s step-end infinite;      /* liếc mắt nhìn quanh */
+  --animate-mouth-quiver: mouthQuiver 0.5s step-end infinite;/* miệng run lập cập */
+  --animate-sweat-2d: sweat2d 2.6s step-end infinite;        /* giọt mồ hôi nhỏ giọt trượt xuống rồi rơi */
   --animate-patrol: patrol 6s ease-in-out infinite;      /* shipper đi tuần tìm địa chỉ (404) */
   --animate-dash: dashmove 0.9s linear infinite;         /* nét đứt con đường chạy */
 }
@@ -558,10 +563,48 @@
   33% { transform: translateY(-2px) rotate(-12deg); }
   66% { transform: translateY(-1px) rotate(6deg); }
 }
-/* Tô đổ lắc lư qua lại (màn báo lỗi) — origin đặt ở đáy */
-@keyframes rock {
-  0%, 100% { transform: rotate(-7deg); }
-  50% { transform: rotate(7deg); }
+/* Thân tô run rẩy bồn chồn — nhiều khung lệch vị trí + xoay (origin đáy) */
+@keyframes bowlJitter {
+  0%   { transform: translate(0, 0) rotate(0deg); }
+  12%  { transform: translate(-1px, 0) rotate(-3deg); }
+  24%  { transform: translate(1px, -0.5px) rotate(2deg); }
+  36%  { transform: translate(-0.5px, 0) rotate(-2deg); }
+  48%  { transform: translate(1px, 0) rotate(3deg); }
+  60%  { transform: translate(-1px, 0.5px) rotate(-2deg); }
+  72%  { transform: translate(0.5px, 0) rotate(2deg); }
+  84%  { transform: translate(-1px, 0) rotate(-3deg); }
+  100% { transform: translate(0, 0) rotate(0deg); }
+}
+/* Chớp mắt: mở lâu rồi nhắm nhanh 2 nhịp (scaleY quanh tâm) */
+@keyframes blink2d {
+  0%, 82% { transform: scaleY(1); }
+  86% { transform: scaleY(0.14); }
+  90% { transform: scaleY(1); }
+  93% { transform: scaleY(0.14); }
+  96%, 100% { transform: scaleY(1); }
+}
+/* Con ngươi liếc trái – phải (nhìn quanh lo lắng) */
+@keyframes dartEyes {
+  0%, 22% { transform: translateX(0); }
+  30%, 48% { transform: translateX(-2px); }
+  56%, 74% { transform: translateX(2px); }
+  82%, 100% { transform: translateX(0); }
+}
+/* Miệng run lập cập — vài khung lệch nhẹ */
+@keyframes mouthQuiver {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-1px); }
+  50% { transform: translateX(1px); }
+  75% { transform: translateX(-0.5px); }
+}
+/* Giọt mồ hôi: hiện ra, trượt xuống theo nấc rồi rơi mất */
+@keyframes sweat2d {
+  0%, 20% { transform: translateY(0); opacity: 0; }
+  28% { transform: translateY(0); opacity: 1; }
+  50% { transform: translateY(5px); opacity: 1; }
+  72% { transform: translateY(10px); opacity: 1; }
+  86% { transform: translateY(16px); opacity: 0.5; }
+  92%, 100% { transform: translateY(19px); opacity: 0; }
 }
 /* Shipper 404 đi tuần: sang phải rồi QUAY ĐẦU (scaleX) đi lại — như đang dò tìm địa chỉ */
 @keyframes patrol {
@@ -590,7 +633,8 @@
   .animate-parcel-travel,
   .animate-node-glow, .animate-fr-steam, .animate-fr-wave, .animate-fr-blink,
   .animate-fr-awning, .animate-fr-pedal, .animate-fr-bob, .animate-fr-serve,
-  .animate-rock, .animate-patrol, .animate-dash { animation: none !important; }
+  .animate-bowl-jitter, .animate-blink-2d, .animate-dart-eyes, .animate-mouth-quiver,
+  .animate-sweat-2d, .animate-patrol, .animate-dash { animation: none !important; }
 }
 
 /* ─── Parallax Effect ────────────────────────────── */

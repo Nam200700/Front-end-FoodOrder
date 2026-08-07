@@ -563,6 +563,18 @@
   0%, 100% { transform: rotate(-7deg); }
   50% { transform: rotate(7deg); }
 }
+/* Shipper 404 đi tuần: sang phải rồi QUAY ĐẦU (scaleX) đi lại — như đang dò tìm địa chỉ */
+@keyframes patrol {
+  0%   { transform: translateX(-70px) scaleX(1); }
+  45%  { transform: translateX(70px) scaleX(1); }
+  50%  { transform: translateX(70px) scaleX(-1); }
+  95%  { transform: translateX(-70px) scaleX(-1); }
+  100% { transform: translateX(-70px) scaleX(1); }
+}
+/* Nét đứt của con đường chạy đều */
+@keyframes dashmove {
+  to { stroke-dashoffset: -24; }
+}
 /* Tôn trọng người dùng tắt hiệu ứng chuyển động */
 @media (prefers-reduced-motion: reduce) {
   .animate-float, .animate-fab-in, .animate-scale-up, .animate-rise-in,

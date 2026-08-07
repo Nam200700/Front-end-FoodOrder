@@ -7,7 +7,7 @@ import {
   ShoppingBag, CheckSquare, Square,
   User, Truck, Edit2, Plus, Tag,
   Minus, Wallet, BadgePercent, Bike, ShieldCheck, Receipt, Clock, ChevronRight, StickyNote, Check, Sparkles,
-  Search, Heart, Package
+  Search, Heart, Package, Ticket, Gift, AlertCircle
 } from 'lucide-react';
 import { formatCurrency } from '../../utils/format';
 import Button from '../../components/common/Button';
@@ -20,11 +20,12 @@ import { useModalState } from '../../hooks/useModalState';
 import MapModal2 from '../../components/common/Map';
 import { formatDateTime} from '../../utils/format';
 
-// Nhận diện loại voucher: icon + màu riêng cho FREESHIP / PERCENT / FIXED 
+// Nhận diện loại voucher: icon + màu riêng cho FREESHIP / PERCENT / FIXED
+// grad = nền gradient cho icon chip; anim = chuyển động idle RIÊNG theo loại (xe chạy / % lắc / ví nảy)
 const VOUCHER_TYPE_META = {
-  FREESHIP: { icon: Truck, label: 'Miễn phí ship', chip: 'bg-teal-100 text-teal-700', strip: 'bg-teal-400', value: 'text-teal-700' },
-  PERCENT: { icon: BadgePercent, label: 'Giảm theo %', chip: 'bg-orange-100 text-[#ff6b35]', strip: 'bg-[#ff6b35]', value: 'text-[#ff6b35]' },
-  FIXED: { icon: Wallet, label: 'Giảm tiền mặt', chip: 'bg-blue-100 text-blue-700', strip: 'bg-blue-400', value: 'text-blue-700' },
+  FREESHIP: { icon: Truck, label: 'Miễn phí ship', chip: 'bg-teal-100 text-teal-700', strip: 'bg-teal-400', value: 'text-teal-700', grad: 'from-teal-400 to-emerald-500', anim: 'animate-wiggle' },
+  PERCENT: { icon: BadgePercent, label: 'Giảm theo %', chip: 'bg-orange-100 text-[#ff6b35]', strip: 'bg-[#ff6b35]', value: 'text-[#ff6b35]', grad: 'from-amber-400 to-[#ff6b35]', anim: 'animate-bob' },
+  FIXED: { icon: Wallet, label: 'Giảm tiền mặt', chip: 'bg-blue-100 text-blue-700', strip: 'bg-blue-400', value: 'text-blue-700', grad: 'from-blue-400 to-indigo-500', anim: 'animate-float' },
 };
 const vmeta = (t) => VOUCHER_TYPE_META[t] || VOUCHER_TYPE_META.FIXED;
 
@@ -1204,23 +1205,26 @@ export default function Cart() {
             <button
               type="button"
               onClick={() => setActiveVoucherTab('my')}
-              className={`flex-1 py-1.5 sm:py-2 text-xs font-bold transition-all rounded-xl cursor-pointer ${
-                activeVoucherTab === 'my' 
-                  ? 'bg-white text-[#ff6b35] shadow-sm' 
+              className={`flex-1 inline-flex items-center justify-center gap-1.5 py-1.5 sm:py-2 text-xs font-bold transition-all rounded-xl cursor-pointer ${
+                activeVoucherTab === 'my'
+                  ? 'bg-white text-[#ff6b35] shadow-sm'
                   : 'text-slate-500 hover:text-slate-700'
               }`}
             >
-              Voucher Của Tôi ({myVouchers.length})
+              <Ticket size={14} className={activeVoucherTab === 'my' ? 'animate-wiggle' : ''} style={{ transformBox: 'fill-box', transformOrigin: 'center' }} />
+              Voucher Của Tôi
+              <span className={`text-[10px] font-black px-1.5 py-0.5 rounded-full leading-none ${activeVoucherTab === 'my' ? 'bg-[#ff6b35] text-white' : 'bg-slate-200 text-slate-500'}`}>{myVouchers.length}</span>
             </button>
             <button
               type="button"
               onClick={() => setActiveVoucherTab('public')}
-              className={`flex-1 py-1.5 sm:py-2 text-xs font-bold transition-all rounded-xl cursor-pointer ${
-                activeVoucherTab === 'public' 
-                  ? 'bg-white text-[#ff6b35] shadow-sm' 
+              className={`flex-1 inline-flex items-center justify-center gap-1.5 py-1.5 sm:py-2 text-xs font-bold transition-all rounded-xl cursor-pointer ${
+                activeVoucherTab === 'public'
+                  ? 'bg-white text-[#ff6b35] shadow-sm'
                   : 'text-slate-500 hover:text-slate-700'
               }`}
             >
+              <Gift size={14} className={activeVoucherTab === 'public' ? 'animate-bob' : ''} style={{ transformBox: 'fill-box', transformOrigin: 'center' }} />
               Nhận Thêm Voucher
             </button>
           </div>
@@ -1253,9 +1257,11 @@ export default function Cart() {
                           }`}
                         >
                           <div className={`absolute left-0 top-0 bottom-0 w-1.5 ${isSelectedForThisRes ? 'bg-[#ff6b35]' : meta.strip} transition-colors`} />
+                          {/* Notch xé vé 2 đầu — cảm giác "tấm vé" thật */}
                           <span className="absolute -left-1 top-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-slate-100 border border-slate-200" />
-                          <span className={`shrink-0 w-9 h-9 rounded-xl flex items-center justify-center ${meta.chip} transition-transform group-hover:scale-110`}>
-                            <MetaIcon size={17} />
+                          <span className="absolute -right-1 top-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-slate-100 border border-slate-200" />
+                          <span className={`shrink-0 w-10 h-10 rounded-xl flex items-center justify-center bg-gradient-to-br ${meta.grad} text-white shadow-sm transition-transform group-hover:scale-110 group-hover:-rotate-3`}>
+                            <MetaIcon size={18} className={meta.anim} style={{ transformBox: 'fill-box', transformOrigin: 'center' }} />
                           </span>
 
                           <div className="space-y-1 min-w-0 flex-1">
@@ -1266,7 +1272,7 @@ export default function Cart() {
                               <span className="font-bold text-xs sm:text-sm text-slate-800 truncate">{item.name}</span>
                               {isBest && (
                                 <span className="inline-flex items-center gap-0.5 text-[9px] font-black px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 shrink-0">
-                                  <Sparkles size={9} /> Tiết kiệm nhất
+                                  <Sparkles size={9} className="animate-twinkle" /> Tiết kiệm nhất
                                 </span>
                               )}
                             </div>
@@ -1289,15 +1295,15 @@ export default function Cart() {
                             <div className={`flex items-center gap-1.5 text-[11px] sm:text-xs ${exp.soon ? 'text-rose-500 font-bold' : 'text-slate-500'}`}>
                               <Clock size={13} className="shrink-0" />
                               <span className="truncate">Hạn: {formatDateTime(item.expiredAt)}</span>
-                              {exp.soon && <span className="text-[9px] font-black px-1.5 py-0.5 rounded-full bg-rose-50 text-rose-600 shrink-0">Sắp hết hạn</span>}
+                              {exp.soon && <span className="inline-flex items-center gap-0.5 text-[9px] font-black px-1.5 py-0.5 rounded-full bg-rose-50 text-rose-600 shrink-0"><AlertCircle size={9} className="animate-pulse-slow" /> Sắp hết hạn</span>}
                             </div>
                           </div>
 
                           <div className="flex items-center pr-1 shrink-0">
                             <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${
-                              isSelectedForThisRes ? 'border-[#ff6b35] bg-[#ff6b35]' : 'border-slate-300 bg-white group-hover:border-slate-400'
+                              isSelectedForThisRes ? 'border-[#ff6b35] bg-[#ff6b35] shadow-sm shadow-[#ff6b35]/40' : 'border-slate-300 bg-white group-hover:border-slate-400 group-hover:scale-110'
                             }`}>
-                              {isSelectedForThisRes && <Check size={12} className="text-white" strokeWidth={3.5} />}
+                              {isSelectedForThisRes && <Check size={12} className="text-white animate-scale-up" strokeWidth={3.5} />}
                             </div>
                           </div>
                         </div>
@@ -1305,9 +1311,17 @@ export default function Cart() {
                     })}
                     {myVouchers.length === 0 && (
                       <div className="flex flex-col items-center justify-center py-12 text-center px-4">
-                        <div className="w-12 h-12 bg-orange-50 rounded-full flex items-center justify-center text-[#ff6b35] mb-2.5 text-base font-bold">🎟️</div>
-                        <p className="text-xs font-medium text-slate-600">Bạn chưa có voucher nào trong ví.</p>
+                        <div className="relative w-16 h-16 mb-3">
+                          <span className="absolute inset-0 rounded-2xl bg-orange-200/50 animate-halo" style={{ transformBox: 'fill-box', transformOrigin: 'center' }} />
+                          <div className="relative w-16 h-16 bg-gradient-to-br from-orange-100 to-orange-50 rounded-2xl flex items-center justify-center text-[#ff6b35] animate-float">
+                            <Ticket size={28} />
+                          </div>
+                        </div>
+                        <p className="text-xs font-bold text-slate-600">Bạn chưa có voucher nào trong ví.</p>
                         <p className="text-[11px] text-slate-400 mt-0.5">Hãy sang tab "Nhận Thêm Voucher" để săn mã giảm giá nhé!</p>
+                        <button type="button" onClick={() => setActiveVoucherTab('public')} className="mt-3 inline-flex items-center gap-1.5 text-xs font-bold text-[#ff6b35] bg-orange-50 hover:bg-orange-100 px-3.5 py-2 rounded-full transition-colors cursor-pointer">
+                          <Gift size={14} /> Săn voucher ngay
+                        </button>
                       </div>
                     )}
                   </>
@@ -1328,9 +1342,10 @@ export default function Cart() {
                         >
                           <div className={`absolute left-0 top-0 bottom-0 w-1.5 ${meta.strip} transition-colors`} />
                           <span className="absolute -left-1 top-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-slate-100 border border-slate-200" />
+                          <span className="absolute -right-1 top-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-slate-100 border border-slate-200" />
 
-                          <span className={`shrink-0 w-9 h-9 rounded-xl flex items-center justify-center ${meta.chip} transition-transform group-hover:scale-110`}>
-                            <MetaIcon size={17} />
+                          <span className={`shrink-0 w-10 h-10 rounded-xl flex items-center justify-center bg-gradient-to-br ${meta.grad} text-white shadow-sm transition-transform group-hover:scale-110 group-hover:-rotate-3`}>
+                            <MetaIcon size={18} className={meta.anim} style={{ transformBox: 'fill-box', transformOrigin: 'center' }} />
                           </span>
 
                           <div className="space-y-1 min-w-0 flex-1">
@@ -1348,7 +1363,7 @@ export default function Cart() {
                               </span>
                               <span className={`inline-flex items-center gap-1 text-[11px] ${exp.soon ? 'text-rose-500 font-bold' : 'text-slate-500'}`}>
                                 <Clock size={12} className="shrink-0" /> Hạn {formatDateTime(pub.endDate)}
-                                {exp.soon && <span className="text-[9px] font-black px-1.5 py-0.5 rounded-full bg-rose-50 text-rose-600 shrink-0">Sắp hết</span>}
+                                {exp.soon && <span className="inline-flex items-center gap-0.5 text-[9px] font-black px-1.5 py-0.5 rounded-full bg-rose-50 text-rose-600 shrink-0"><AlertCircle size={9} className="animate-pulse-slow" /> Sắp hết</span>}
                               </span>
                             </div>
                           </div>
@@ -1356,17 +1371,20 @@ export default function Cart() {
                           <Button
                             type="button"
                             onClick={() => handleClaimPublicVoucher(pub.voucherId || pub.id)}
-                            className="!bg-[#ff6b35] hover:!bg-orange-600 text-white !text-[11px] sm:!text-xs !font-bold !py-1.5 sm:!py-2 !px-3 sm:!px-4 !rounded-xl shadow-sm hover:shadow transition-all cursor-pointer shrink-0"
+                            className="group/btn !bg-[#ff6b35] hover:!bg-orange-600 text-white !text-[11px] sm:!text-xs !font-bold !py-1.5 sm:!py-2 !px-3 sm:!px-4 !rounded-xl shadow-sm hover:shadow transition-all cursor-pointer shrink-0 inline-flex items-center gap-1"
                           >
-                            Nhận mã
+                            <Plus size={13} className="stroke-[3px] transition-transform group-hover/btn:rotate-90" /> Nhận mã
                           </Button>
                         </div>
                       );
                     })}
                     {publicVouchers.length === 0 && (
                       <div className="flex flex-col items-center justify-center py-12 text-center px-4">
-                        <div className="w-12 h-12 bg-slate-100 rounded-full flex items-center justify-center text-slate-400 mb-2.5 text-base">🏷️</div>
-                        <p className="text-xs font-medium text-slate-600">Hiện không có voucher nào khả dụng.</p>
+                        <div className="w-16 h-16 bg-slate-100 rounded-2xl flex items-center justify-center text-slate-400 mb-3 animate-float">
+                          <Tag size={26} />
+                        </div>
+                        <p className="text-xs font-bold text-slate-600">Hiện không có voucher nào khả dụng.</p>
+                        <p className="text-[11px] text-slate-400 mt-0.5">Quay lại sau để không bỏ lỡ ưu đãi mới nhé!</p>
                       </div>
                     )}
                   </>

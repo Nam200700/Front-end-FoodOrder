@@ -143,6 +143,7 @@
   --animate-fr-pedal: frPedal 0.66s steps(6) infinite;   /* bàn đạp/bánh xe quay 6 nấc (giật) */
   --animate-fr-bob: frBob 0.66s step-end infinite;       /* thân nhún theo nhịp đạp */
   --animate-fr-serve: frServe 0.8s step-end infinite;    /* chảo lật / bưng món */
+  --animate-rock: rock 2.4s ease-in-out infinite;        /* tô đổ lắc lư ở màn báo lỗi */
 }
 
 /* ─── Custom Classes & Utilities ────────────────────── */
@@ -555,6 +556,11 @@
   33% { transform: translateY(-2px) rotate(-12deg); }
   66% { transform: translateY(-1px) rotate(6deg); }
 }
+/* Tô đổ lắc lư qua lại (màn báo lỗi) — origin đặt ở đáy */
+@keyframes rock {
+  0%, 100% { transform: rotate(-7deg); }
+  50% { transform: rotate(7deg); }
+}
 /* Tôn trọng người dùng tắt hiệu ứng chuyển động */
 @media (prefers-reduced-motion: reduce) {
   .animate-float, .animate-fab-in, .animate-scale-up, .animate-rise-in,
@@ -569,7 +575,8 @@
   .animate-courier-run, .animate-pin-react, .animate-deliver-pop, .animate-deliver-ring,
   .animate-parcel-travel,
   .animate-node-glow, .animate-fr-steam, .animate-fr-wave, .animate-fr-blink,
-  .animate-fr-awning, .animate-fr-pedal, .animate-fr-bob, .animate-fr-serve { animation: none !important; }
+  .animate-fr-awning, .animate-fr-pedal, .animate-fr-bob, .animate-fr-serve,
+  .animate-rock { animation: none !important; }
 }
 
 /* ─── Parallax Effect ────────────────────────────── */

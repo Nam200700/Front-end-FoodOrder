@@ -143,6 +143,7 @@
   --animate-fr-pedal: frPedal 0.66s steps(6) infinite;   /* bàn đạp/bánh xe quay 6 nấc (giật) */
   --animate-fr-bob: frBob 0.66s step-end infinite;       /* thân nhún theo nhịp đạp */
   --animate-fr-serve: frServe 0.8s step-end infinite;    /* chảo lật / bưng món */
+  --animate-fr-scan: frScan 1.9s steps(5) infinite;      /* Admin — đường quét radar trên khiên */
   /* "Hoạt hình 2D" cho tô mì lo lắng (màn báo lỗi) — step-end → khung hình rõ, giật như vẽ tay */
   --animate-bowl-jitter: bowlJitter 1.3s step-end infinite;  /* thân tô run rẩy bồn chồn */
   --animate-blink-2d: blink2d 3.2s step-end infinite;        /* chớp mắt (kép) */
@@ -563,6 +564,13 @@
   33% { transform: translateY(-2px) rotate(-12deg); }
   66% { transform: translateY(-1px) rotate(6deg); }
 }
+/* Admin — đường quét radar chạy dọc khiên (giám sát hệ thống) */
+@keyframes frScan {
+  0% { transform: translateY(-5px); opacity: 0; }
+  20% { opacity: 1; }
+  80% { opacity: 1; }
+  100% { transform: translateY(5px); opacity: 0; }
+}
 /* Thân tô run rẩy bồn chồn — nhiều khung lệch vị trí + xoay (origin đáy) */
 @keyframes bowlJitter {
   0%   { transform: translate(0, 0) rotate(0deg); }
@@ -632,7 +640,7 @@
   .animate-courier-run, .animate-pin-react, .animate-deliver-pop, .animate-deliver-ring,
   .animate-parcel-travel,
   .animate-node-glow, .animate-fr-steam, .animate-fr-wave, .animate-fr-blink,
-  .animate-fr-awning, .animate-fr-pedal, .animate-fr-bob, .animate-fr-serve,
+  .animate-fr-awning, .animate-fr-pedal, .animate-fr-bob, .animate-fr-serve, .animate-fr-scan,
   .animate-bowl-jitter, .animate-blink-2d, .animate-dart-eyes, .animate-mouth-quiver,
   .animate-sweat-2d, .animate-patrol, .animate-dash { animation: none !important; }
 }

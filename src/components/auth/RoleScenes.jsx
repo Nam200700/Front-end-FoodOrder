@@ -103,9 +103,28 @@ export function ShipperScene({ size = 26, play = true, className = '', style }) 
   );
 }
 
-// Tra cứu theo id vai trò để dùng linh hoạt.
+// ─── ADMIN: khiên bảo vệ + đường quét radar giám sát + dấu duyệt nhấp nháy ───
+export function AdminScene({ size = 26, play = true, className = '', style }) {
+  const SC = play ? 'animate-fr-scan' : '';
+  const BL = play ? 'animate-fr-blink' : '';
+  return (
+    <svg width={size} height={size} viewBox="0 0 32 32" fill="none" stroke="currentColor"
+      strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} style={style}>
+      {/* Khiên */}
+      <path d="M16 3.4 L26 7 V15.5 C26 22.4 21.4 26.4 16 28.6 C10.6 26.4 6 22.4 6 15.5 V7 Z" fill="rgba(255,255,255,0.14)" />
+      {/* Đường quét radar chạy dọc */}
+      <path d="M11 15 H21" strokeWidth="1.5" className={SC} style={{ transformBox: 'fill-box', transformOrigin: 'center' }} />
+      {/* Dấu duyệt (tick) nhấp nháy */}
+      <path d="M12 16.4 L15 19.4 L20.5 13.4" strokeWidth="2.4" className={BL} />
+    </svg>
+  );
+}
+
+// Tra cứu theo id vai trò để dùng linh hoạt (MERCHANT dùng chung cảnh với OWNER).
 export const ROLE_SCENE = {
   CUSTOMER: CustomerScene,
   OWNER: OwnerScene,
+  MERCHANT: OwnerScene,
   SHIPPER: ShipperScene,
+  ADMIN: AdminScene,
 };

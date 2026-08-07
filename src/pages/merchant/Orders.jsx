@@ -105,10 +105,12 @@ export default function MerchantOrders() {
   // Đơn đang xử lý thao tác (nhận/chuẩn bị/sẵn sàng) → disable + spinner, tránh double-click
   const [actionLoadingId, setActionLoadingId] = useState(null);
 
-  // STATE PHÂN TRANG
+  // STATE PHÂN TRANG & TÌM KIẾM
   const [page, setPage] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
-  const pageSize = 5; 
+  const pageSize = 5;
+  const [keywordInput, setKeywordInput] = useState('');
+  const [debouncedKeyword, setDebouncedKeyword] = useState('');
 
   // State lý do từ chối đơn hàng 
   const [cancelReasonInput, setCancelReasonInput] = useState('');
@@ -179,6 +181,15 @@ export default function MerchantOrders() {
   }, [playBeep]);
 
   useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedKeyword(keywordInput);
+      setPage(0); 
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [keywordInput]);
+
+  // Reset về trang 0 khi đổi tab
+  useEffect(() => {
     setPage(0);
   }, [activeTab]);
 
@@ -219,6 +230,7 @@ export default function MerchantOrders() {
           params: {
             restaurantId: restaurantId,
             status: activeTab === 'ALL' ? undefined : activeTab,
+            keyword: debouncedKeyword || undefined,
             page: page,
             size: pageSize
           }
@@ -554,14 +566,42 @@ export default function MerchantOrders() {
           </div>
         )}
 
-        <div className="mb-6 border-b border-slate-200 pb-3 overflow-x-auto scrollbar-none w-full">
-          <FilterTabs
-            tabs={ORDER_STATUS_TABS}
-            activeTab={activeTab}
-            onTabChange={setActiveTab}
-            counts={statusCounts}
-            className="flex flex-row !flex-nowrap whitespace-nowrap [&_div]:flex [&_div]:flex-row [&_div]:flex-nowrap [&_button]:shrink-0 [&_button.bg-md-primary]:!bg-blue-600 [&_button.bg-md-primary]:!text-white [&_button.bg-md-primary]:!shadow-blue-100"
-          />
+        {/* THANH TAB TRẠNG THÁI VÀ Ô TÌM KIẾM BÊN */}
+        <div className="mb-6 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4 border-b border-slate-200 pb-3">
+          <div className="overflow-x-auto scrollbar-none w-full md:w-auto">
+            <FilterTabs
+              tabs={ORDER_STATUS_TABS}
+              activeTab={activeTab}
+              onTabChange={setActiveTab}
+              counts={statusCounts}
+              className="flex flex-row !flex-nowrap whitespace-nowrap [&_div]:flex [&_div]:flex-row [&_div]:flex-nowrap [&_button]:shrink-0 [&_button.bg-md-primary]:!bg-blue-600 [&_button.bg-md-primary]:!text-white [&_button.bg-md-primary]:!shadow-blue-100"
+            />
+          </div>
+
+          {/* Ô tìm kiếm góc phải */}
+          <div className="relative min-w-[240px] md:w-72 shrink-0">
+            <span className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-slate-400">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+              </svg>
+            </span>
+            <input
+              type="text"
+              value={keywordInput}
+              onChange={(e) => setKeywordInput(e.target.value)}
+              placeholder="Tìm theo mã đơn, tên khách hàng"
+              className="w-full pl-9 pr-8 py-2 bg-white border border-slate-200 rounded-xl text-xs md:text-sm focus:outline-none focus:border-blue-500 text-slate-800 placeholder-slate-400 shadow-sm transition-all"
+            />
+            {keywordInput && (
+              <button
+                type="button"
+                onClick={() => setKeywordInput('')}
+                className="absolute inset-y-0 right-0 flex items-center pr-3 text-slate-400 hover:text-slate-600 text-xs font-bold cursor-pointer"
+              >
+                ✕
+              </button>
+            )}
+          </div>
         </div>
 
         <div className="min-h-[600px] w-full">

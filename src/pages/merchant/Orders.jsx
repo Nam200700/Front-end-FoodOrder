@@ -108,7 +108,7 @@ export default function MerchantOrders() {
   // STATE PHÂN TRANG & TÌM KIẾM
   const [page, setPage] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
-  const pageSize = 5;
+  const pageSize = 10;
   const [keywordInput, setKeywordInput] = useState('');
   const [debouncedKeyword, setDebouncedKeyword] = useState('');
 
@@ -230,7 +230,7 @@ export default function MerchantOrders() {
           params: {
             restaurantId: restaurantId,
             status: activeTab === 'ALL' ? undefined : activeTab,
-            keyword: debouncedKeyword || undefined,
+            keyword: debouncedKeyword.trim() || undefined,
             page: page,
             size: pageSize
           }
@@ -270,7 +270,7 @@ export default function MerchantOrders() {
     } finally {
       if (!background) setLoading(false);
     }
-  }, [restaurantId, activeTab, page]);
+  }, [restaurantId, activeTab, page, debouncedKeyword]);
 
   useEffect(() => {
     fetchOrders();

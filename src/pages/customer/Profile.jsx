@@ -76,7 +76,7 @@ export default function Profile() {
       locMapInstance.current = null;
     }
 
-    const map = L.map(locMapRef.current, { scrollWheelZoom: true }).setView([la, ln], 15);
+    const map = L.map(locMapRef.current, { scrollWheelZoom: true, attributionControl: false  }).setView([la, ln], 15);
     locMapInstance.current = map;
     addVietnamBaseMap(map); // Goong nếu có key, không thì CARTO + nhãn chủ quyền
 

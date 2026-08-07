@@ -516,10 +516,33 @@ export default function OrderHistory() {
                       </div>
                     )}
 
+                    {/* Nhắc đánh giá: đơn đã giao thành công nhưng khách chưa đánh giá */}
+                    {order.status === 'COMPLETED' && !order.reviewed && (
+                      <button
+                        onClick={(e) => { e.stopPropagation(); navigate(`/reviews/${order.id}`); }}
+                        className="group/rate w-full flex items-center gap-3 bg-gradient-to-r from-amber-50 to-orange-50/40 border border-amber-100 rounded-xl px-3 py-2.5 text-left hover:border-amber-300 hover:shadow-sm transition-all cursor-pointer"
+                      >
+                        <span className="relative w-8 h-8 rounded-lg bg-amber-100 text-amber-500 flex items-center justify-center shrink-0">
+                          <span className="absolute inset-0 rounded-lg bg-amber-300/60 animate-halo" style={{ transformBox: 'fill-box', transformOrigin: 'center' }} />
+                          <Star size={16} className="relative fill-amber-400 text-amber-400 animate-bob" style={{ transformBox: 'fill-box', transformOrigin: 'center' }} />
+                        </span>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-[11px] sm:text-xs font-extrabold text-slate-700">Món ăn thế nào? Đánh giá ngay!</p>
+                          <div className="flex items-center gap-0.5 mt-1">
+                            {[0, 1, 2, 3, 4].map((i) => (
+                              <Star key={i} size={13} className="text-amber-300 group-hover/rate:fill-amber-400 group-hover/rate:text-amber-400 transition-colors" style={{ transitionDelay: `${i * 45}ms` }} />
+                            ))}
+                            <span className="text-[10px] text-slate-400 font-semibold ml-1.5 hidden sm:inline">Chia sẻ trải nghiệm giúp quán tốt hơn</span>
+                          </div>
+                        </div>
+                        <ChevronRight size={15} className="text-amber-400 shrink-0 group-hover/rate:translate-x-0.5 transition-transform" />
+                      </button>
+                    )}
+
                     {/* Danh sách món ăn */}
                     <div className="w-full">
-                      <div 
-                        className="w-full overflow-x-auto scrollbar-none touch-pan-x" 
+                      <div
+                        className="w-full overflow-x-auto scrollbar-none touch-pan-x"
                         onClick={(e) => e.stopPropagation()}
                       >
                         <div className="flex flex-row gap-3 sm:gap-4 w-max max-w-full pb-1">

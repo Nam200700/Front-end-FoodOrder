@@ -130,6 +130,28 @@
   --animate-nav-in: navIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) both;
   /* Vệt sáng chảy dọc thanh tiến trình (như dòng nước) */
   --animate-flow: flow 1.6s linear infinite;
+
+  /* Chuyển động cho sơ đồ hệ sinh thái */
+  --animate-parcel-travel: parcelTravel 3.8s cubic-bezier(0.45, 0, 0.55, 1) infinite; /* đơn hàng chạy trên tuyến */
+  --animate-node-glow: nodeGlow 2.6s ease-in-out infinite;     /* nút hệ sinh thái đang chọn thở nhẹ */
+
+  /* Minh hoạ role kiểu "TỪNG KHUNG HÌNH" (step-end/steps) — cảm giác phim hoạt hình 2D vẽ tay */
+  --animate-fr-steam: frSteam 1.4s steps(4) infinite;    /* hơi/khói bốc lên theo nấc */
+  --animate-fr-wave: frWave 0.9s step-end infinite;      /* tay vẫy chào */
+  --animate-fr-blink: frBlink 1.5s step-end infinite;    /* biển "OPEN" nhấp nháy */
+  --animate-fr-awning: frAwning 1.1s step-end infinite;  /* mái hiên phập phồng */
+  --animate-fr-pedal: frPedal 0.66s steps(6) infinite;   /* bàn đạp/bánh xe quay 6 nấc (giật) */
+  --animate-fr-bob: frBob 0.66s step-end infinite;       /* thân nhún theo nhịp đạp */
+  --animate-fr-serve: frServe 0.8s step-end infinite;    /* chảo lật / bưng món */
+  --animate-fr-scan: frScan 1.9s steps(5) infinite;      /* Admin — đường quét radar trên khiên */
+  /* "Hoạt hình 2D" cho tô mì lo lắng (màn báo lỗi) — step-end → khung hình rõ, giật như vẽ tay */
+  --animate-bowl-jitter: bowlJitter 1.3s step-end infinite;  /* thân tô run rẩy bồn chồn */
+  --animate-blink-2d: blink2d 3.2s step-end infinite;        /* chớp mắt (kép) */
+  --animate-dart-eyes: dartEyes 3.6s step-end infinite;      /* liếc mắt nhìn quanh */
+  --animate-mouth-quiver: mouthQuiver 0.5s step-end infinite;/* miệng run lập cập */
+  --animate-sweat-2d: sweat2d 2.6s step-end infinite;        /* giọt mồ hôi nhỏ giọt trượt xuống rồi rơi */
+  --animate-patrol: patrol 6s ease-in-out infinite;      /* shipper đi tuần tìm địa chỉ (404) */
+  --animate-dash: dashmove 0.9s linear infinite;         /* nét đứt con đường chạy */
 }
 
 /* ─── Custom Classes & Utilities ────────────────────── */
@@ -488,6 +510,122 @@
   0% { transform: translateX(-100%); }
   100% { transform: translateX(250%); }
 }
+/* Đơn hàng chạy dọc tuyến hệ sinh thái Khách → Quán → Tài xế */
+@keyframes parcelTravel {
+  0% { left: 4%; opacity: 0; transform: translate(-50%, -50%) scale(0.6); }
+  10% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  90% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  100% { left: 96%; opacity: 0; transform: translate(-50%, -50%) scale(0.6); }
+}
+/* Nút hệ sinh thái đang chọn — quầng sáng thở */
+@keyframes nodeGlow {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.5); }
+  50% { box-shadow: 0 0 0 6px rgba(255, 255, 255, 0); }
+}
+
+/* ─── Khung hình cho minh hoạ role (step-end → giữ nguyên rồi "nhảy" sang khung kế) ─── */
+/* Hơi nước / khói bốc lên rồi tan (dùng steps(4) → 4 khung rõ) */
+@keyframes frSteam {
+  0%   { transform: translateY(2px); opacity: 0; }
+  25%  { transform: translateY(0);   opacity: 0.95; }
+  50%  { transform: translateY(-2px); opacity: 0.7; }
+  75%  { transform: translateY(-4px); opacity: 0.3; }
+  100% { transform: translateY(-6px); opacity: 0; }
+}
+/* Tay vẫy chào — 4 khung */
+@keyframes frWave {
+  0%, 100% { transform: rotate(0deg); }
+  33% { transform: rotate(-28deg); }
+  66% { transform: rotate(-8deg); }
+}
+/* Biển OPEN nhấp nháy */
+@keyframes frBlink {
+  0%, 55%  { opacity: 1; }
+  56%, 100% { opacity: 0.18; }
+}
+/* Mái hiên phập phồng đón khách */
+@keyframes frAwning {
+  0%, 100% { transform: scaleY(1); }
+  50% { transform: scaleY(0.8); }
+}
+/* Bàn đạp & bánh xe quay theo nấc (steps(6) trên token → giật như hoạt hình) */
+@keyframes frPedal {
+  0%   { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+/* Thân người nhún lên xuống theo nhịp đạp — 2 khung */
+@keyframes frBob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-1.5px); }
+}
+/* Chảo lật / cánh tay bưng món — 3 khung */
+@keyframes frServe {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  33% { transform: translateY(-2px) rotate(-12deg); }
+  66% { transform: translateY(-1px) rotate(6deg); }
+}
+/* Admin — đường quét radar chạy dọc khiên (giám sát hệ thống) */
+@keyframes frScan {
+  0% { transform: translateY(-5px); opacity: 0; }
+  20% { opacity: 1; }
+  80% { opacity: 1; }
+  100% { transform: translateY(5px); opacity: 0; }
+}
+/* Thân tô run rẩy bồn chồn — nhiều khung lệch vị trí + xoay (origin đáy) */
+@keyframes bowlJitter {
+  0%   { transform: translate(0, 0) rotate(0deg); }
+  12%  { transform: translate(-1px, 0) rotate(-3deg); }
+  24%  { transform: translate(1px, -0.5px) rotate(2deg); }
+  36%  { transform: translate(-0.5px, 0) rotate(-2deg); }
+  48%  { transform: translate(1px, 0) rotate(3deg); }
+  60%  { transform: translate(-1px, 0.5px) rotate(-2deg); }
+  72%  { transform: translate(0.5px, 0) rotate(2deg); }
+  84%  { transform: translate(-1px, 0) rotate(-3deg); }
+  100% { transform: translate(0, 0) rotate(0deg); }
+}
+/* Chớp mắt: mở lâu rồi nhắm nhanh 2 nhịp (scaleY quanh tâm) */
+@keyframes blink2d {
+  0%, 82% { transform: scaleY(1); }
+  86% { transform: scaleY(0.14); }
+  90% { transform: scaleY(1); }
+  93% { transform: scaleY(0.14); }
+  96%, 100% { transform: scaleY(1); }
+}
+/* Con ngươi liếc trái – phải (nhìn quanh lo lắng) */
+@keyframes dartEyes {
+  0%, 22% { transform: translateX(0); }
+  30%, 48% { transform: translateX(-2px); }
+  56%, 74% { transform: translateX(2px); }
+  82%, 100% { transform: translateX(0); }
+}
+/* Miệng run lập cập — vài khung lệch nhẹ */
+@keyframes mouthQuiver {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-1px); }
+  50% { transform: translateX(1px); }
+  75% { transform: translateX(-0.5px); }
+}
+/* Giọt mồ hôi: hiện ra, trượt xuống theo nấc rồi rơi mất */
+@keyframes sweat2d {
+  0%, 20% { transform: translateY(0); opacity: 0; }
+  28% { transform: translateY(0); opacity: 1; }
+  50% { transform: translateY(5px); opacity: 1; }
+  72% { transform: translateY(10px); opacity: 1; }
+  86% { transform: translateY(16px); opacity: 0.5; }
+  92%, 100% { transform: translateY(19px); opacity: 0; }
+}
+/* Shipper 404 đi tuần: sang phải rồi QUAY ĐẦU (scaleX) đi lại — như đang dò tìm địa chỉ */
+@keyframes patrol {
+  0%   { transform: translateX(-70px) scaleX(1); }
+  45%  { transform: translateX(70px) scaleX(1); }
+  50%  { transform: translateX(70px) scaleX(-1); }
+  95%  { transform: translateX(-70px) scaleX(-1); }
+  100% { transform: translateX(-70px) scaleX(1); }
+}
+/* Nét đứt của con đường chạy đều */
+@keyframes dashmove {
+  to { stroke-dashoffset: -24; }
+}
 /* Tôn trọng người dùng tắt hiệu ứng chuyển động */
 @media (prefers-reduced-motion: reduce) {
   .animate-float, .animate-fab-in, .animate-scale-up, .animate-rise-in,
@@ -499,7 +637,12 @@
   .animate-sway, .animate-jelly, .animate-throb, .animate-soft-halo,
   .animate-icon-dance, .animate-ring-wave, .animate-line-flow,
   .animate-crank, .animate-rider-pump, .animate-head-bob, .animate-shadow-pulse,
-  .animate-courier-run, .animate-pin-react, .animate-deliver-pop, .animate-deliver-ring { animation: none !important; }
+  .animate-courier-run, .animate-pin-react, .animate-deliver-pop, .animate-deliver-ring,
+  .animate-parcel-travel,
+  .animate-node-glow, .animate-fr-steam, .animate-fr-wave, .animate-fr-blink,
+  .animate-fr-awning, .animate-fr-pedal, .animate-fr-bob, .animate-fr-serve, .animate-fr-scan,
+  .animate-bowl-jitter, .animate-blink-2d, .animate-dart-eyes, .animate-mouth-quiver,
+  .animate-sweat-2d, .animate-patrol, .animate-dash { animation: none !important; }
 }
 
 /* ─── Parallax Effect ────────────────────────────── */

@@ -5,8 +5,9 @@ import {
   Shield, User, Store, Bike, ChevronLeft,
   Home, ClipboardList, Map, Settings, ArrowRight,
   Search, ShoppingBag, Heart, MessageSquare, BookOpen, BarChart3, Star, Wallet, Users, AlertTriangle,
-  Eye, EyeOff, LogOut
+  Eye, EyeOff, LogOut, ArrowUp, RefreshCw, LifeBuoy
 } from 'lucide-react';
+import { ROLE_SCENE } from '../auth/RoleScenes';
 
 export default function RoleSwitcher() {
   const { role, isLoggedIn } = useAuthStore();
@@ -33,6 +34,8 @@ export default function RoleSwitcher() {
       desc: 'Đặt món & theo dõi',
       icon: User,
       color: 'bg-orange-500 text-white',
+      grad: 'from-orange-400 to-orange-600',
+      cardBg: 'from-orange-50 to-white',
       activeBorder: 'border-orange-500/20 ring-2 ring-orange-500/5',
       chip: 'bg-orange-100 text-orange-600',
       linkActive: 'bg-orange-50 text-orange-700 border-orange-200',
@@ -43,6 +46,8 @@ export default function RoleSwitcher() {
       desc: 'Quản lý thực đơn & đơn',
       icon: Store,
       color: 'bg-blue-600 text-white',
+      grad: 'from-blue-500 to-indigo-600',
+      cardBg: 'from-blue-50 to-white',
       activeBorder: 'border-blue-500/20 ring-2 ring-blue-500/5',
       chip: 'bg-blue-100 text-blue-600',
       linkActive: 'bg-blue-50 text-blue-700 border-blue-200',
@@ -53,6 +58,8 @@ export default function RoleSwitcher() {
       desc: 'Nhận đơn & giao nhận',
       icon: Bike,
       color: 'bg-emerald-600 text-white',
+      grad: 'from-emerald-500 to-teal-600',
+      cardBg: 'from-emerald-50 to-white',
       activeBorder: 'border-emerald-500/20 ring-2 ring-emerald-500/5',
       chip: 'bg-emerald-100 text-emerald-600',
       linkActive: 'bg-emerald-50 text-emerald-700 border-emerald-200',
@@ -63,6 +70,8 @@ export default function RoleSwitcher() {
       desc: 'Quản trị & phê duyệt',
       icon: Shield,
       color: 'bg-purple-600 text-white',
+      grad: 'from-purple-500 to-fuchsia-600',
+      cardBg: 'from-purple-50 to-white',
       activeBorder: 'border-purple-500/20 ring-2 ring-purple-500/5',
       chip: 'bg-purple-100 text-purple-600',
       linkActive: 'bg-purple-50 text-purple-700 border-purple-200',
@@ -128,9 +137,24 @@ export default function RoleSwitcher() {
     }
   };
 
-  const currentRoleObj = roles.find((r) => r.id === role) || roles[0];
-  const CurrentIcon = currentRoleObj.icon;
+  // Chuẩn hoá MERCHANT→OWNER để nhận diện nhất quán (branding, cảnh động)
+  const normRole = role === 'MERCHANT' ? 'OWNER' : (role || 'CUSTOMER');
+  const currentRoleObj = roles.find((r) => r.id === normRole) || roles[0];
+  const Scene = ROLE_SCENE[normRole] || ROLE_SCENE.CUSTOMER; // cảnh động theo phong cách role
   const quickLinks = getQuickLinks(role || 'CUSTOMER');
+
+  // Đường dẫn "trang chủ" & "hỗ trợ/chat" theo role → dùng cho hàng công cụ nhanh
+  const HOME_PATH = { CUSTOMER: '/', OWNER: '/merchant', SHIPPER: '/shipper', ADMIN: '/admin' };
+  const CHAT_PATH = { CUSTOMER: '/chat', OWNER: '/merchant/chat', SHIPPER: '/shipper/chat', ADMIN: null };
+  const go = (path) => { if (path) { navigate(path); setExpanded(false); } };
+
+  // Công cụ hỗ trợ nhanh (đủ dùng cho mọi role, có cái tuỳ role bật/tắt)
+  const tools = [
+    { label: 'Trang chủ', icon: Home, onClick: () => go(HOME_PATH[normRole]) },
+    { label: 'Hỗ trợ', icon: LifeBuoy, onClick: () => go(CHAT_PATH[normRole]), disabled: !CHAT_PATH[normRole] },
+    { label: 'Lên đầu', icon: ArrowUp, onClick: () => window.scrollTo({ top: 0, behavior: 'smooth' }) },
+    { label: 'Tải lại', icon: RefreshCw, onClick: () => window.location.reload() },
+  ];
 
   // MOBILE: neo widget ở khu giữa-phải (~1/4 màn hình) → vừa tầm ngón cái khi lướt & KHÔNG đè
   // các thanh nổi ở đáy (bottom nav + thanh giỏ hàng). DESKTOP: giữ góc phải-dưới quen thuộc.
@@ -150,17 +174,23 @@ export default function RoleSwitcher() {
   }
 
   return (
-    <div className={`fixed ${anchorClass} z-[9999] flex flex-col items-end gap-3 font-google-sans select-none`}>
+    <>
+      {/* Lớp nền bấm ra ngoài để ĐÓNG panel → không còn "vướng"/kẹt mở */}
+      {expanded && (
+        <div className="fixed inset-0 z-[9998] bg-slate-900/5" onClick={() => setExpanded(false)} aria-hidden="true" />
+      )}
+
+      <div className={`fixed ${anchorClass} z-[9999] flex flex-col items-end gap-3 font-google-sans select-none`}>
 
       {/* Expanded Panel */}
       {expanded && (
-        <div className="w-[280px] backdrop-blur-xl bg-white/90 border border-slate-200/60 rounded-3xl p-5 shadow-[0_20px_50px_rgba(0,0,0,0.12)] flex flex-col gap-4 animate-scale-up origin-bottom-right">
+        <div className="w-[290px] max-h-[80vh] backdrop-blur-xl bg-white/90 border border-slate-200/60 rounded-3xl p-5 shadow-[0_20px_50px_rgba(0,0,0,0.12)] flex flex-col gap-4 animate-scale-up origin-bottom-right">
 
           {/* Header */}
           <div className="flex items-center justify-between pb-3 border-b border-slate-100">
             <div className="flex items-center gap-3">
-              <div className={`p-2 rounded-xl ${currentRoleObj.color}`}>
-                <CurrentIcon size={16} />
+              <div className={`p-2 rounded-xl bg-gradient-to-br ${currentRoleObj.grad}`}>
+                <Scene size={18} play style={{ color: '#fff' }} />
               </div>
               <div>
                 <h3 className="text-sm font-black text-slate-800 leading-none">
@@ -183,16 +213,19 @@ export default function RoleSwitcher() {
           </div>
 
           {/* Current Active Role Card */}
-          <div className={`p-3.5 rounded-2xl border text-left flex items-center gap-3 bg-white shadow-sm ${currentRoleObj.activeBorder}`}>
-            <div className={`p-2.5 rounded-xl ${currentRoleObj.color} shrink-0`}>
-              <CurrentIcon size={18} />
+          <div className={`p-3.5 rounded-2xl border text-left flex items-center gap-3 bg-gradient-to-br ${currentRoleObj.cardBg} shadow-sm ${currentRoleObj.activeBorder}`}>
+            <div className={`p-2.5 rounded-xl bg-gradient-to-br ${currentRoleObj.grad} shrink-0 shadow-sm`}>
+              <Scene size={20} play style={{ color: '#fff' }} />
             </div>
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-1.5">
                 <h5 className="text-xs font-extrabold leading-none text-slate-800">
                   {currentRoleObj.name}
                 </h5>
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+                <span className="relative flex w-1.5 h-1.5 shrink-0">
+                  <span className="absolute inset-0 rounded-full bg-emerald-400 animate-halo" style={{ transformBox: 'fill-box', transformOrigin: 'center' }} />
+                  <span className="relative w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                </span>
               </div>
               <p className="text-[9px] text-slate-400 font-medium mt-1.5 leading-tight">
                 {currentRoleObj.desc}
@@ -200,9 +233,29 @@ export default function RoleSwitcher() {
             </div>
           </div>
 
+          {/* Công cụ hỗ trợ nhanh */}
+          <div className="grid grid-cols-4 gap-2">
+            {tools.map((t, i) => {
+              const TIcon = t.icon;
+              return (
+                <button
+                  key={i}
+                  type="button"
+                  onClick={t.onClick}
+                  disabled={t.disabled}
+                  title={t.label}
+                  className="group flex flex-col items-center gap-1 py-2 rounded-xl border border-slate-100 bg-white text-slate-600 transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed hover:-translate-y-0.5 hover:shadow-sm hover:border-slate-200 hover:text-slate-800"
+                >
+                  <span className={`w-7 h-7 rounded-lg flex items-center justify-center transition-transform group-hover:scale-110 ${currentRoleObj.chip}`}><TIcon size={14} /></span>
+                  <span className="text-[9px] font-bold leading-none">{t.label}</span>
+                </button>
+              );
+            })}
+          </div>
+
           {/* Quick Navigation Links */}
           {quickLinks.length > 0 && (
-            <div className="bg-slate-50/60 border border-slate-100 rounded-2xl p-3.5 space-y-2.5 max-h-[320px] overflow-y-auto scrollbar-thin">
+            <div className="bg-slate-50/60 border border-slate-100 rounded-2xl p-3.5 space-y-2.5 flex-1 min-h-0 overflow-y-auto scrollbar-thin">
               <div className="flex items-center justify-between">
                 <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block">
                   Liên kết đi nhanh
@@ -275,11 +328,13 @@ export default function RoleSwitcher() {
             onClick={() => setExpanded(!expanded)}
             aria-expanded={expanded}
             aria-label={currentRoleObj.name}
-            className={`group flex items-center h-14 min-w-14 pl-4 pr-4 rounded-full shadow-[0_8px_30px_rgb(0,0,0,0.18)] text-white transition-all duration-300 hover:shadow-[0_10px_34px_rgb(0,0,0,0.24)] active:scale-95 cursor-pointer border border-white/15 ${currentRoleObj.color}`}
+            className={`group relative flex items-center h-14 min-w-14 pl-4 pr-4 rounded-full shadow-[0_8px_30px_rgb(0,0,0,0.18)] text-white transition-all duration-300 hover:shadow-[0_10px_34px_rgb(0,0,0,0.24)] active:scale-95 cursor-pointer border border-white/15 bg-gradient-to-br overflow-hidden ${currentRoleObj.grad}`}
             title={currentRoleObj.name}
           >
+            {/* Vệt sáng chạy ngang FAB cho sinh động */}
+            <span className="absolute inset-y-0 -left-1/3 w-1/3 bg-gradient-to-r from-transparent via-white/25 to-transparent animate-shine pointer-events-none" />
             <div className="relative shrink-0 transition-transform duration-300 group-hover:scale-110">
-              <CurrentIcon size={20} className={`transition-transform duration-500 ${expanded ? 'rotate-[360deg]' : ''}`} />
+              <Scene size={24} play className={`transition-transform duration-500 ${expanded ? 'rotate-[360deg]' : ''}`} style={{ color: '#fff' }} />
               <span className="absolute -top-1.5 -right-1.5 w-2.5 h-2.5 rounded-full bg-emerald-400 border-2 border-white animate-pulse" />
             </div>
             {/* Nhãn ẩn mặc định (max-w-0) → bung khi hover hoặc khi panel mở */}
@@ -300,6 +355,7 @@ export default function RoleSwitcher() {
         </div>
       </div>
 
-    </div>
+      </div>
+    </>
   );
 }

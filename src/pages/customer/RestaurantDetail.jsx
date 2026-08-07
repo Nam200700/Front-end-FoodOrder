@@ -8,7 +8,6 @@ import { formatCurrency } from '../../utils/format';
 import { getFoodImageUrl, DEFAULT_FOOD_IMAGE } from '../../utils/avatarHelper';
 import Button from '../../components/common/Button';
 import Card from '../../components/common/Card';
-import Spinner from '../../components/common/Spinner';
 import Modal from '../../components/common/Modal';
 import apiClient from '../../services/api';
 import { calculateHaversineDistance } from '../../utils/haversine';
@@ -446,6 +445,64 @@ function ReviewsTab({ restaurantId, globalRating, globalCount, restaurantName, o
   );
 }
 
+// Skeleton đúng bố cục trang → cảm giác tải nhanh, đỡ "màn hình trắng + spinner" chờ lâu.
+function DetailSkeleton() {
+  const Bar = ({ className = '' }) => <div className={`bg-slate-200/70 rounded-radius-md animate-pulse ${className}`} />;
+  return (
+    <div className="flex-1 font-google-sans bg-md-surface pb-24">
+      {/* Ảnh bìa */}
+      <div className="relative h-56 xs:h-64 sm:h-76 md:h-84 w-full bg-slate-200 animate-pulse" />
+      {/* Thẻ thông tin */}
+      <div className="px-4 sm:px-6 max-w-5xl mx-auto -mt-14 relative z-10">
+        <div className="bg-white rounded-radius-xl shadow-shadow-3 p-4 sm:p-6 md:p-8">
+          <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-6">
+            <div className="flex-1 space-y-3">
+              <Bar className="h-7 w-2/3" />
+              <div className="flex gap-2">
+                <Bar className="h-7 w-32 rounded-radius-md" />
+                <Bar className="h-7 w-24 rounded-radius-md" />
+                <Bar className="h-7 w-20 rounded-radius-md" />
+              </div>
+            </div>
+            <div className="flex gap-3">
+              <Bar className="h-10 w-32 rounded-radius-full" />
+              <Bar className="h-10 w-28 rounded-radius-full" />
+            </div>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 mt-6 pt-6 border-t border-md-outline-variant/30">
+            {[...Array(4)].map((_, i) => <Bar key={i} className="h-12 w-full rounded-radius-md" />)}
+          </div>
+        </div>
+      </div>
+      {/* Tab bar */}
+      <div className="max-w-5xl mx-auto flex items-center justify-around mt-8 py-4 border-b border-md-outline-variant/30">
+        {[...Array(3)].map((_, i) => <Bar key={i} className="h-6 w-24" />)}
+      </div>
+      {/* Danh mục + món */}
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 mt-8 flex flex-col md:flex-row gap-8">
+        <div className="w-full md:w-52 shrink-0 space-y-2.5">
+          {[...Array(4)].map((_, i) => <Bar key={i} className="h-11 w-full rounded-radius-lg" />)}
+        </div>
+        <div className="flex-1 space-y-4">
+          {[...Array(4)].map((_, i) => (
+            <div key={i} className="flex gap-4 p-4 bg-white rounded-radius-lg border border-slate-100">
+              <Bar className="w-24 h-24 rounded-radius-md shrink-0" />
+              <div className="flex-1 space-y-2.5 py-1">
+                <Bar className="h-5 w-1/2" />
+                <Bar className="h-4 w-3/4" />
+                <div className="flex justify-between items-center pt-2">
+                  <Bar className="h-5 w-20" />
+                  <Bar className="h-9 w-9 rounded-radius-full" />
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function RestaurantDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -464,13 +521,13 @@ export default function RestaurantDetail() {
   const [favBurst, setFavBurst] = useState(false); // 1 nhịp animation khi vừa thả tim
   const [activeTab, setActiveTab] = useState('menu'); 
   const [activeCategory, setActiveCategory] = useState(null);
-  const [scrollY, setScrollY] = useState(0);
-  const [addingIds, setAddingIds] = useState({}); 
+  const [addingIds, setAddingIds] = useState({});
   const reportModal = useModalState();
   const [reportReason, setReportReason] = useState('');
   const [submittingReport, setSubmittingReport] = useState(false);
 
   const menuSectionsRef = useRef({});
+  const heroImgRef = useRef(null); // parallax ghi thẳng vào DOM, KHÔNG qua state (tránh re-render cả trang khi cuộn)
 
   // State quản lý phóng to ảnh trong tab hiện tại (dùng chung cho lightbox ảnh đánh giá)
   const [selectedImage, setSelectedImage] = useState(null);
@@ -564,13 +621,20 @@ export default function RestaurantDetail() {
     fetchFavoriteStatus();
   }, [id, user?.lat, user?.lng]);
 
-  // Parallax scroll effect
+  // Parallax ảnh bìa — ghi transform trực tiếp vào DOM qua rAF (không setState mỗi frame → hết giật).
   useEffect(() => {
-    const handleScroll = () => {
-      setScrollY(window.scrollY);
+    if (prefersReducedMotion()) return; // tôn trọng người tắt hiệu ứng
+    let raf = 0;
+    const onScroll = () => {
+      if (raf) return;
+      raf = requestAnimationFrame(() => {
+        raf = 0;
+        const el = heroImgRef.current;
+        if (el) el.style.transform = `translateY(${window.scrollY * 0.4}px) scale(1.06)`;
+      });
     };
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => { window.removeEventListener('scroll', onScroll); if (raf) cancelAnimationFrame(raf); };
   }, []);
 
   //thêm vào giỏ hàng
@@ -658,7 +722,7 @@ export default function RestaurantDetail() {
   };
 
   if (loading) {
-    return <Spinner fullScreen />;
+    return <DetailSkeleton />;
   }
 
   if (errorMsg || !restaurant) {
@@ -680,11 +744,12 @@ export default function RestaurantDetail() {
     <div className="flex-1 font-google-sans bg-md-surface pb-24 relative">
       
       <div className="relative h-56 xs:h-64 sm:h-76 md:h-84 overflow-hidden w-full bg-slate-900 z-0">
-        <div 
-          className="absolute inset-0 w-full h-full bg-cover bg-center transition-transform duration-75 scale-105"
-          style={{ 
+        <div
+          ref={heroImgRef}
+          className="absolute inset-0 w-full h-full bg-cover bg-center will-change-transform"
+          style={{
             backgroundImage: `url(${restaurant.image})`,
-            transform: `translateY(${scrollY * 0.4}px)` 
+            transform: 'scale(1.06)',
           }}
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/75 to-black/20" />
@@ -734,14 +799,34 @@ export default function RestaurantDetail() {
 
       {/* ─── thông tin quán ăn ────────────────── */}
       <div className="px-4 sm:px-6 max-w-5xl mx-auto -mt-14 relative z-10">
-        <Card variant="glass" className="p-4 sm:p-6 md:p-8 shadow-shadow-3 text-center sm:text-left">
+        <Card variant="glass" className="p-4 sm:p-6 md:p-8 shadow-shadow-3 text-center sm:text-left animate-rise-in">
           <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-6">
             <div className="flex-1 min-w-0">
               <h1 className="text-xl xs:text-2xl md:text-3xl font-extrabold text-md-on-surface tracking-tight leading-snug">
                 {restaurant.name}
               </h1>
-              
-              <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 sm:gap-4 mt-3 xs:mt-4.5 text-xs md:text-sm font-bold text-md-on-surface-variant">
+
+              {/* Trạng thái mở/đóng cửa — chấm sống (live) + khung giờ */}
+              <div className="flex items-center justify-center sm:justify-start gap-2 mt-2.5">
+                {restaurant.isOpen !== false ? (
+                  <span className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-radius-full">
+                    <span className="relative flex w-2 h-2">
+                      <span className="absolute inset-0 rounded-full bg-emerald-400 animate-halo" style={{ transformBox: 'fill-box', transformOrigin: 'center' }} />
+                      <span className="relative w-2 h-2 rounded-full bg-emerald-500" />
+                    </span>
+                    Đang mở cửa
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-500 bg-slate-100 border border-slate-200 px-2.5 py-1 rounded-radius-full">
+                    <span className="w-2 h-2 rounded-full bg-slate-400" /> Đã đóng cửa
+                  </span>
+                )}
+                {restaurant.openTime && restaurant.openTime !== '--' && (
+                  <span className="text-[11px] font-semibold text-md-outline">· {restaurant.openTime}</span>
+                )}
+              </div>
+
+              <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 sm:gap-4 mt-3 xs:mt-4 text-xs md:text-sm font-bold text-md-on-surface-variant">
                 <span className="flex items-center gap-2 text-amber-600 bg-amber-50 border border-amber-100 px-3 py-1.5 rounded-radius-md shadow-sm">
                   <span className="font-black text-amber-500 text-sm md:text-base leading-none">{restaurant.rating}</span>
                   <StarRow value={restaurant.rating} size={13} />

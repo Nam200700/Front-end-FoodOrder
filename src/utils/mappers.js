@@ -110,6 +110,5 @@ export const mapRestaurant = (r) => {
     // Nổi bật theo cờ thật của BE, hoặc suy từ rating cao thực tế — KHÔNG bịa theo id chẵn/lẻ.
     featured: r.featured ?? (Number(r.rating ?? r.averageRating ?? 0) >= 4.8),
     description: r.description,
-    isOpen: r.isOpen
   };
 };

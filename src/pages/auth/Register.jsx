@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../stores/authStore';
 import { Mail, Lock, User, Phone, ChevronRight, ChevronLeft, Store, Bike, FileText, MapPin, Lightbulb, Users, Check, ShieldCheck, ChefHat, Soup, UtensilsCrossed, TrendingUp, Wallet, Route, Hand, Pizza, IceCream, Sparkles, Clock, Gift, AtSign, Loader2, LogIn, Pencil, ClipboardCheck } from 'lucide-react';
 import { validatePhone, validatePassword, validateName, validateEmail, validateIdCard, validateLicensePlate, formatLicensePlate } from '../../utils/validation';
+import { ROLE_SCENE } from '../../components/auth/RoleScenes';
 import Button from '../../components/common/Button';
 import Input from '../../components/common/Input';
 import Card from '../../components/common/Card';
@@ -264,6 +265,7 @@ export default function Register() {
     }
   };
 
+  // Mỗi vai trò có minh hoạ SVG động riêng (xem RoleScenes) — tra theo id.
   const roles = [
     { id: 'CUSTOMER', label: 'Khách Hàng', desc: 'Đặt đồ ăn giao tận nơi', icon: User, hex: '#FF6B35' },
     { id: 'OWNER', label: 'Quán Ăn', desc: 'Bán đồ ăn trên hệ thống', icon: Store, hex: '#1A73E8' },
@@ -402,39 +404,62 @@ export default function Register() {
             </div>
           )}
 
-          {/* Thẻ giữa mặc định: NỀN TẢNG 3 TRONG 1 — giữ hero luôn đầy ở các bước không phải bước-3-đối-tác */}
+          {/* Thẻ giữa mặc định: NỀN TẢNG 3 TRONG 1 → SƠ ĐỒ HỆ SINH THÁI chảy (khác hẳn lưới "chọn vai trò"):
+              3 nút nối bằng 1 tuyến, có đơn hàng chạy Khách → Quán → Tài xế; mỗi nút 1 chuyển động riêng. */}
           {!(step === 3 && (role === 'OWNER' || role === 'SHIPPER')) && (
-            <div className="relative z-10 rounded-2xl bg-white/12 backdrop-blur-md border border-white/20 p-4 shadow-lg animate-rise-in">
-              <p className="text-[11px] font-extrabold uppercase tracking-wider text-white/85 flex items-center gap-1.5 mb-3">
+            <div className="relative z-10 rounded-2xl bg-white/12 backdrop-blur-md border border-white/20 p-4 shadow-lg animate-rise-in overflow-hidden">
+              <p className="text-[11px] font-extrabold uppercase tracking-wider text-white/85 flex items-center gap-1.5 mb-4">
                 <Users size={13} className="text-amber-200" /> Nền tảng 3 trong 1
               </p>
-              <div className="flex items-stretch gap-2">
+
+              <div className="relative flex items-start justify-between px-1">
+                {/* Tuyến nối ngang + vệt sáng chảy */}
+                <span className="absolute left-8 right-8 top-6 h-0.5 rounded-full bg-white/20 overflow-hidden pointer-events-none">
+                  <span className="absolute inset-y-0 w-10 bg-gradient-to-r from-transparent via-white/80 to-transparent animate-flow" />
+                </span>
+                {/* Đơn hàng chạy dọc tuyến: Khách đặt → Quán nấu → Tài xế giao */}
+                <span
+                  className="absolute top-6 w-2.5 h-2.5 rounded-full bg-amber-300 animate-parcel-travel pointer-events-none"
+                  style={{ left: '4%', boxShadow: '0 0 10px 2px rgba(252,211,77,0.85)' }}
+                />
+
                 {[
-                  { Icon: User, t: 'Khách hàng' },
-                  { Icon: Store, t: 'Quán ăn' },
-                  { Icon: Bike, t: 'Tài xế' },
+                  { t: 'Khách hàng', hex: '#FF6B35', me: 'CUSTOMER' },
+                  { t: 'Quán ăn', hex: '#1A73E8', me: 'OWNER' },
+                  { t: 'Tài xế', hex: '#34A853', me: 'SHIPPER' },
                 ].map((it, i) => {
-                  const ItIcon = it.Icon;
-                  const isMe = (role === 'OWNER' && it.t === 'Quán ăn') || (role === 'SHIPPER' && it.t === 'Tài xế') || (role === 'CUSTOMER' && it.t === 'Khách hàng');
+                  const Scene = ROLE_SCENE[it.me];
+                  const isMe = role === it.me;
                   return (
                     <div
                       key={i}
-                      style={{ animationDelay: `${i * 90}ms`, transform: isMe ? 'scale(1.05)' : undefined }}
-                      className={`group relative flex-1 flex flex-col items-center gap-2 py-3 rounded-xl border transition-all duration-300 animate-rise-in hover:-translate-y-0.5 ${
-                        isMe ? 'bg-white/25 border-white/50 shadow-lg' : 'bg-white/5 border-white/10 hover:bg-white/10'
-                      }`}
+                      className="relative z-[1] flex flex-1 flex-col items-center gap-2 animate-rise-in"
+                      style={{ animationDelay: `${i * 110}ms` }}
                     >
-                      {/* Chấm "đang chọn" nhấp nháy */}
-                      {isMe && <span className="absolute -top-1.5 -right-1.5 w-3 h-3 rounded-full bg-amber-300 border-2 border-white/70 animate-pulse" />}
-                      {/* Chip icon — ô đang chọn: nền trắng + icon màu role, nhún nhẹ */}
-                      <span className={`w-9 h-9 rounded-full flex items-center justify-center transition-transform duration-300 group-hover:scale-110 ${isMe ? 'bg-white shadow-md' : 'bg-white/15'}`}>
-                        <ItIcon size={16} className={isMe ? 'animate-jelly' : 'text-white'} style={isMe ? { color: accent } : undefined} />
+                      <span
+                        className={`relative w-12 h-12 rounded-full flex items-center justify-center border-2 transition-all duration-300 ${isMe ? 'scale-110' : ''}`}
+                        style={{
+                          backgroundColor: isMe ? '#fff' : 'rgba(255,255,255,0.12)',
+                          borderColor: isMe ? it.hex : 'rgba(255,255,255,0.3)',
+                          boxShadow: isMe ? `0 8px 20px ${it.hex}66` : undefined,
+                        }}
+                      >
+                        {/* Quầng thở quanh nút đang chọn */}
+                        {isMe && <span className="absolute inset-0 rounded-full animate-node-glow pointer-events-none" />}
+                        {/* Mini-cảnh động theo role — luôn "diễn" nhẹ để sơ đồ sống động */}
+                        <Scene size={26} play style={{ color: isMe ? it.hex : '#fff' }} />
+                        <span className="sr-only">{it.t}</span>
                       </span>
-                      <span className={`text-[10px] font-bold ${isMe ? 'text-white' : 'text-white/80'}`}>{it.t}</span>
+                      <span className={`text-[10px] font-bold ${isMe ? 'text-white' : 'text-white/75'}`}>{it.t}</span>
                     </div>
                   );
                 })}
               </div>
+
+              {/* Câu chốt: "3 trong 1" là MỘT dòng chảy khép kín, không phải 3 ô rời */}
+              <p className="mt-3.5 text-center text-[10.5px] leading-snug text-white/70 font-medium">
+                Một tài khoản — đặt món, mở quán hay giao hàng, đổi vai bất cứ lúc nào.
+              </p>
             </div>
           )}
 
@@ -687,14 +712,23 @@ export default function Register() {
                           </span>
                         )}
 
-                        {/* Chip icon — tô màu role khi chọn, phóng nhẹ khi hover */}
+                        {/* Chip icon — tô màu role khi chọn, phóng nhẹ khi hover.
+                            Icon mang CHUYỂN ĐỘNG RIÊNG của vai trò (khách nhún chào · quán mở cửa · tài xế lái xe),
+                            chỉ chạy khi thẻ đang chọn để bước-1 không rối; kèm 2 vòng sóng màu-role bung ra. */}
                         <span
-                          className="w-12 h-12 rounded-2xl flex items-center justify-center mb-2.5 shrink-0 transition-all duration-300 group-hover:scale-110"
+                          className="relative w-12 h-12 rounded-2xl flex items-center justify-center mb-2.5 shrink-0 transition-all duration-300 group-hover:scale-110"
                           style={isActive
                             ? { backgroundColor: hex, color: '#fff', boxShadow: `0 6px 16px ${hex}55` }
                             : { backgroundColor: '#f1f5f9', color: '#94a3b8' }}
                         >
-                          <Icon size={22} className={`stroke-[2px] ${isActive ? 'animate-bob' : ''}`} />
+                          {isActive && (
+                            <>
+                              <span className="absolute inset-0 rounded-2xl border-2 animate-ring-wave pointer-events-none" style={{ borderColor: hex }} />
+                              <span className="absolute inset-0 rounded-2xl border-2 animate-ring-wave pointer-events-none" style={{ borderColor: hex, animationDelay: '1.1s' }} />
+                            </>
+                          )}
+                          {/* Minh hoạ nhiều bộ phận, chuyển động từng khung hình — chỉ "diễn" khi đang chọn */}
+                          {(() => { const Scene = ROLE_SCENE[r.id]; return <Scene size={28} play={isActive} className="relative" />; })()}
                         </span>
 
                         <span className="text-xs sm:text-sm font-extrabold block leading-tight" style={{ color: isActive ? hex : '#334155' }}>{r.label}</span>

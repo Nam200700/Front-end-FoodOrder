@@ -5,7 +5,7 @@ import { useWebSocketContext } from '../../contexts/WebSocketContext';
 import {
   ShoppingBag, RefreshCw, Ban, AlertCircle, MessageSquare, Star, FileText, MapPin, CreditCard, Eye,
   User, Phone, Bike, Wallet, StickyNote, CalendarClock, UtensilsCrossed, Package, BadgeCheck, Clock, Check,
-  Store, CheckCircle2, ChevronRight, Receipt, Ticket, ChevronLeft 
+  Store, CheckCircle2, ChevronRight, Receipt, Ticket, ChevronLeft, Search, X
 } from 'lucide-react';
 import { formatCurrency } from '../../utils/format';
 import { getFoodImageUrl, DEFAULT_FOOD_IMAGE } from '../../utils/avatarHelper';
@@ -177,13 +177,14 @@ export default function OrderHistory() {
         paymentMethod: order.paymentMethod || 'Tiền mặt',
         deliveryAddress: order.deliveryAddress || 'Chưa cập nhật địa chỉ',
         createdAt: formattedDate,
-        reviewed: order.reviewed || false, 
+        reviewed: order.reviewed || false,
         rating: order.restaurantRating || 5,
         note: order.note,
         name: order.customerName,
         phone: order.customerPhone,
         voucherCode: order.voucherCode,
-        discountAmount: order.discountAmount
+        discountAmount: order.discountAmount,
+        cancelReason: order.cancelReason
       };
     });
   };
@@ -384,8 +385,8 @@ export default function OrderHistory() {
           ].map((st, i) => {
             const SIcon = st.icon;
             return (
-              <div key={i} className="bg-white rounded-2xl border border-slate-100 shadow-sm p-3 md:p-4 flex items-center gap-3 animate-rise-in" style={{ animationDelay: `${i * 70}ms` }}>
-                <span className={`w-9 h-9 md:w-10 md:h-10 rounded-xl flex items-center justify-center shrink-0 ${st.bg}`}><SIcon size={18} /></span>
+              <div key={i} className="group bg-white rounded-2xl border border-slate-100 shadow-sm p-3 md:p-4 flex items-center gap-3 animate-rise-in transition-all hover:-translate-y-0.5 hover:shadow-md" style={{ animationDelay: `${i * 70}ms` }}>
+                <span className={`w-9 h-9 md:w-10 md:h-10 rounded-xl flex items-center justify-center shrink-0 transition-transform group-hover:scale-110 ${st.bg}`}><SIcon size={18} /></span>
                 <div className="min-w-0">
                   <p className="text-[10px] md:text-[11px] font-bold text-slate-400 uppercase tracking-wide">{st.label}</p>
                   <p className={`font-black leading-tight truncate ${st.wide ? 'text-sm md:text-lg' : 'text-lg md:text-xl'} ${st.cls}`}>{st.value}</p>
@@ -411,24 +412,23 @@ export default function OrderHistory() {
           {/* Ô tìm kiếm góc phải */}
           <div className="relative min-w-[240px] md:w-72 shrink-0">
             <span className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-slate-400">
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
-              </svg>
+              <Search size={16} />
             </span>
             <input
               type="text"
               value={keywordInput}
               onChange={(e) => setKeywordInput(e.target.value)}
               placeholder="Tìm mã đơn, tên quán, món ăn..."
-              className="w-full pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-xs md:text-sm focus:outline-none focus:border-orange-500 text-slate-800 placeholder-slate-400 shadow-sm transition-all"
+              className="w-full pl-9 pr-9 py-2 bg-white border border-slate-200 rounded-xl text-xs md:text-sm focus:outline-none focus:border-orange-500 text-slate-800 placeholder-slate-400 shadow-sm transition-all"
             />
             {keywordInput && (
               <button
                 type="button"
                 onClick={() => setKeywordInput('')}
-                className="absolute inset-y-0 right-0 flex items-center pr-3 text-slate-400 hover:text-slate-600 text-xs font-bold"
+                title="Xoá tìm kiếm"
+                className="absolute inset-y-0 right-0 flex items-center pr-3 text-slate-400 hover:text-slate-600 transition-colors cursor-pointer"
               >
-                ✕
+                <X size={15} />
               </button>
             )}
           </div>
@@ -446,14 +446,16 @@ export default function OrderHistory() {
             </div>
           ) : list.length === 0 ? (
             <div className="flex justify-center items-center py-12">
-              <EmptyState 
-                title="Không tìm thấy đơn hàng" 
+              <EmptyState
+                title="Không tìm thấy đơn hàng"
                 message={
-                  activeTab === 'ALL' 
-                    ? 'Lịch sử mua hàng của bạn sẽ hiển thị tại đây khi bạn đặt đơn đầu tiên.' 
+                  activeTab === 'ALL'
+                    ? 'Lịch sử mua hàng của bạn sẽ hiển thị tại đây khi bạn đặt đơn đầu tiên.'
                     : `Bạn chưa có đơn hàng nào ở trạng thái "${ORDER_STATUS_TABS.find(t => t.id === activeTab)?.label}".`
                 }
                 icon={ShoppingBag}
+                actionText={activeTab === 'ALL' ? 'Khám phá món ngon' : undefined}
+                onAction={activeTab === 'ALL' ? () => navigate('/explore') : undefined}
               />
             </div>
           ) : (
@@ -484,13 +486,22 @@ export default function OrderHistory() {
 
                       {(() => {
                         const SIcon = STATUS_ICON[order.status] || Clock;
+                        const moving = order.status === 'DELIVERING';
                         return (
                           <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full font-bold text-[10px] sm:text-[11px] shrink-0 ${getStatusStyles(order.status)}`}>
-                            <SIcon size={12} /> {getStatusLabel(order.status)}
+                            <SIcon size={12} className={moving ? 'animate-bob' : ''} style={moving ? { transformBox: 'fill-box', transformOrigin: 'center' } : undefined} /> {getStatusLabel(order.status)}
                           </span>
                         );
                       })()}
                     </div>
+
+                    {/* Đơn đã huỷ: nêu rõ lý do để khách hiểu (đỡ phải hỏi hỗ trợ) */}
+                    {order.status === 'CANCELLED' && order.cancelReason && (
+                      <div className="flex items-start gap-2 text-[11px] text-rose-600 bg-rose-50/60 border border-rose-100 rounded-lg px-3 py-2 -mt-1">
+                        <Ban size={13} className="shrink-0 mt-0.5" />
+                        <span><span className="font-bold">Lý do huỷ:</span> {order.cancelReason}</span>
+                      </div>
+                    )}
 
                     {/* Thanh tiến trình cho đơn đang xử lý */}
                     {isActiveStatus(order.status) && (
@@ -505,10 +516,33 @@ export default function OrderHistory() {
                       </div>
                     )}
 
+                    {/* Nhắc đánh giá: đơn đã giao thành công nhưng khách chưa đánh giá */}
+                    {order.status === 'COMPLETED' && !order.reviewed && (
+                      <button
+                        onClick={(e) => { e.stopPropagation(); navigate(`/reviews/${order.id}`); }}
+                        className="group/rate w-full flex items-center gap-3 bg-gradient-to-r from-amber-50 to-orange-50/40 border border-amber-100 rounded-xl px-3 py-2.5 text-left hover:border-amber-300 hover:shadow-sm transition-all cursor-pointer"
+                      >
+                        <span className="relative w-8 h-8 rounded-lg bg-amber-100 text-amber-500 flex items-center justify-center shrink-0">
+                          <span className="absolute inset-0 rounded-lg bg-amber-300/60 animate-halo" style={{ transformBox: 'fill-box', transformOrigin: 'center' }} />
+                          <Star size={16} className="relative fill-amber-400 text-amber-400 animate-bob" style={{ transformBox: 'fill-box', transformOrigin: 'center' }} />
+                        </span>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-[11px] sm:text-xs font-extrabold text-slate-700">Món ăn thế nào? Đánh giá ngay!</p>
+                          <div className="flex items-center gap-0.5 mt-1">
+                            {[0, 1, 2, 3, 4].map((i) => (
+                              <Star key={i} size={13} className="text-amber-300 group-hover/rate:fill-amber-400 group-hover/rate:text-amber-400 transition-colors" style={{ transitionDelay: `${i * 45}ms` }} />
+                            ))}
+                            <span className="text-[10px] text-slate-400 font-semibold ml-1.5 hidden sm:inline">Chia sẻ trải nghiệm giúp quán tốt hơn</span>
+                          </div>
+                        </div>
+                        <ChevronRight size={15} className="text-amber-400 shrink-0 group-hover/rate:translate-x-0.5 transition-transform" />
+                      </button>
+                    )}
+
                     {/* Danh sách món ăn */}
                     <div className="w-full">
-                      <div 
-                        className="w-full overflow-x-auto scrollbar-none touch-pan-x" 
+                      <div
+                        className="w-full overflow-x-auto scrollbar-none touch-pan-x"
                         onClick={(e) => e.stopPropagation()}
                       >
                         <div className="flex flex-row gap-3 sm:gap-4 w-max max-w-full pb-1">

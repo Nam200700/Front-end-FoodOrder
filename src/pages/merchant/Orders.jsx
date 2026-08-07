@@ -4,7 +4,7 @@ import {
   User, Phone, MapPin, Bike, Wallet, StickyNote, CalendarClock, UtensilsCrossed, Package, BadgeCheck,
   Bell, Volume2, VolumeX, RefreshCw, Wifi, WifiOff, Sparkles, ChevronLeft, ChevronRight 
 } from 'lucide-react';
-import { formatCurrency } from '../../utils/format';
+import { formatCurrency, formatDateTime } from '../../utils/format';
 import apiClient from '../../services/api';
 import { useWebSocketContext } from '../../contexts/WebSocketContext';
 import { SkeletonOrderCard } from '../../components/common/SkeletonCard';
@@ -213,13 +213,6 @@ export default function MerchantOrders() {
     fetchRestaurant();
   }, []);
 
-  // Hàm định dạng ngày tháng hiển thị
-  const formatOrderDate = (dateString) => {
-    if (!dateString) return '';
-    const dateObj = new Date(dateString);
-    return `${String(dateObj.getDate()).padStart(2, '0')}-${String(dateObj.getMonth() + 1).padStart(2, '0')}-${dateObj.getFullYear()} ${String(dateObj.getHours()).padStart(2, '0')}:${String(dateObj.getMinutes()).padStart(2, '0')}`;
-  };
-
   // Lấy danh sách đơn hàng của quán.
   const fetchOrders = useCallback(async (background = false) => {
     if (!restaurantId) return;
@@ -252,7 +245,7 @@ export default function MerchantOrders() {
             image: getFoodImageUrl(i.foodImageUrl)
           })),
           total: Number(ord.totalAmount),
-          createdAt: formatOrderDate(ord.createdAt),
+          createdAt: formatDateTime(ord.createdAt),
           createdAtMs: ord.createdAt ? new Date(ord.createdAt).getTime() : null, 
           phone: ord.customerPhone,
           status: ord.orderStatus,
@@ -885,7 +878,7 @@ export default function MerchantOrders() {
               {/* Hàng đầu: thời gian đặt + pill trạng thái nổi bật */}
               <div className="flex items-center justify-between flex-wrap gap-2">
                 <span className="inline-flex items-center gap-1.5 text-xs text-slate-400 font-medium">
-                  <CalendarClock size={14} /> Đặt lúc {formatOrderDate(d.createdAt)}
+                  <CalendarClock size={14} /> Đặt lúc {formatDateTime(d.createdAt)}
                 </span>
                 <div className="flex items-center gap-2">
                   {status === 'PENDING' && d.createdAt && (

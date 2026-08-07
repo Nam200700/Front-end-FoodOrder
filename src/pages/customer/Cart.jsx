@@ -166,7 +166,7 @@ export default function Cart() {
 
       // 1. Kiểm tra khoảng cách
       if (distance > 10) {
-        toast.error(`Quán "${cart.restaurantName}" cách bạn ${distance.toFixed(1)} km (vượt quá 10km). Vui lòng bỏ chọn hoặc đổi địa chỉ!`);
+        toast.error(`Quán "${cart.restaurantName}" cách bạn ${distance.toFixed(1)} km (vượt quá 10km). Hệ thống chỉ hỗ trợ đặt quán trong phạm vi 10 km!`);
         return;
       }
 

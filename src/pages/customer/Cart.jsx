@@ -18,9 +18,9 @@ import Modal from '../../components/common/Modal';
 import Card from '../../components/common/Card'; 
 import { useModalState } from '../../hooks/useModalState';
 import MapModal2 from '../../components/common/Map';
-import { formatDateTime } from '../../utils/format';
+import { formatDateTime} from '../../utils/format';
 
-// Nhận diện loại voucher: icon + màu riêng cho FREESHIP / PERCENT / FIXED (đồng bộ toàn app)
+// Nhận diện loại voucher: icon + màu riêng cho FREESHIP / PERCENT / FIXED 
 const VOUCHER_TYPE_META = {
   FREESHIP: { icon: Truck, label: 'Miễn phí ship', chip: 'bg-teal-100 text-teal-700', strip: 'bg-teal-400', value: 'text-teal-700' },
   PERCENT: { icon: BadgePercent, label: 'Giảm theo %', chip: 'bg-orange-100 text-[#ff6b35]', strip: 'bg-[#ff6b35]', value: 'text-[#ff6b35]' },
@@ -106,20 +106,28 @@ export default function Cart() {
     }
   }, [deliveryLat, deliveryLng, JSON.stringify(restaurantIds)]);
 
-  // Tự động chọn và cuộn màn hình đến quán ăn được điều hướng từ RestaurantDetail
+  // Dùng useRef để đánh dấu đã xử lý điều hướng, chống chạy lặp lại 2 lần do StrictMode/Re-render
+  const hasHandledTargetRef = React.useRef(false);
+
   useEffect(() => {
-    if (targetRestaurantId && carts.length > 0) {
+    if (targetRestaurantId && carts.length > 0 && !hasHandledTargetRef.current) {
       const numericId = Number(targetRestaurantId);
-      const hasCart = carts.some(cart => Number(cart.restaurantId) === numericId);
+      const targetCart = carts.find(cart => Number(cart.restaurantId) === numericId);
       
-      if (hasCart && !selectedRestaurantIds.includes(numericId)) {
-        setSelectedRestaurantIds(prev => {
-          const numericPrev = prev.map(id => Number(id));
-          if (!numericPrev.includes(numericId)) {
-            return [...prev, numericId];
-          }
-          return prev;
-        });
+      if (targetCart) {
+        hasHandledTargetRef.current = true; // Khóa lại ngay lập tức tránh chạy lần 2
+
+        if (targetCart.isOpen === false) {
+          toast.error(`Quán "${targetCart.restaurantName}" hiện đã đóng cửa (Giờ mở cửa ${targetCart.opensAt} - ${targetCart.closesAt}). Vui lòng quay lại sau!`);
+        } else {
+          setSelectedRestaurantIds(prev => {
+            const numericPrev = prev.map(id => Number(id));
+            if (!numericPrev.includes(numericId)) {
+              return [...prev, numericId];
+            }
+            return prev;
+          });
+        }
         
         setTimeout(() => {
           const element = document.getElementById(`restaurant-card-${numericId}`);
@@ -127,6 +135,8 @@ export default function Cart() {
             element.scrollIntoView({ behavior: 'smooth', block: 'center' });
           }
         }, 300); 
+        
+        // Xóa state điều hướng để lần sau refresh không bị lặp lại
         navigate(location.pathname, { replace: true, state: {} });
       }
     }
@@ -147,6 +157,23 @@ export default function Cart() {
     if (currentSelectedCarts.length === 0) {
       toast.warning('Vui lòng chọn ít nhất một giỏ hàng để đặt!');
       return;
+    }
+
+    // --- Validate khoảng cách > 10km & Giờ hoạt động cho từng quán được chọn ---
+    for (const cart of currentSelectedCarts) {
+      const shipInfo = shippingInfos[cart.restaurantId];
+      const distance = shipInfo?.distanceKm || 0;
+
+      // 1. Kiểm tra khoảng cách
+      if (distance > 10) {
+        toast.error(`Quán "${cart.restaurantName}" cách bạn ${distance.toFixed(1)} km (vượt quá 10km). Hệ thống chỉ hỗ trợ đặt quán trong phạm vi 10 km!`);
+        return;
+      }
+
+      if (cart.open === false) {
+        toast.error(`Quán "${cart.restaurantName}" hiện đã đóng cửa (Giờ mở cửa ${cart.opensAt} - ${cart.closesAt}). Vui lòng quay lại sau!`);
+        return;
+      }
     }
 
     // Xây dựng map voucher cho từng quán được chọn { [restaurantId]: userVoucherId }
@@ -205,12 +232,26 @@ export default function Cart() {
     }
   };
 
-  // Chuyển đổi trạng thái chọn/bỏ chọn một quán
-  const handleToggleSelectRestaurant = (restaurantId) => {
-    const numericId = Number(restaurantId);
-    setSelectedRestaurantIds(prev =>
-      prev.includes(numericId) ? prev.filter(id => id !== numericId) : [...prev, numericId]
-    );
+  const handleToggleSelectRestaurant = (cart, distance) => {
+    const restaurantId = Number(cart.restaurantId);
+
+    if (selectedRestaurantIds.includes(restaurantId)) {
+      setSelectedRestaurantIds(prev => prev.filter(id => id !== restaurantId));
+      return;
+    }
+
+    const currentDistance = Number(distance) || 0;
+    if (currentDistance > 10) {
+      toast.error(`Quán "${cart.restaurantName}" cách bạn ${currentDistance.toFixed(1)} km. Hệ thống chỉ hỗ trợ đặt quán trong phạm vi 10 km!`);
+      return;
+    }
+
+    if (cart && cart.isOpen === false) {
+      toast.error(`Quán "${cart.restaurantName}" hiện đã đóng cửa (Giờ mở cửa ${cart.opensAt} - ${cart.closesAt}). Vui lòng quay lại sau!`);
+      return; 
+    }
+
+    setSelectedRestaurantIds(prev => [...prev, restaurantId]);
   };
 
   const isAllSelected = carts.length > 0 && selectedRestaurantIds.length === carts.length;
@@ -263,6 +304,7 @@ export default function Cart() {
     }
   };
 
+  //chọn địa chỉ
   const handleSelectAddressItem = async (item) => {
     setSelectedAddressId(item.addressId);
     setAddress(item.address);
@@ -317,6 +359,7 @@ export default function Cart() {
     mapModal2.open();
   };
 
+  //cập nhật/thêm mới địa chỉ
   const handleMapConfirmAndSave = async (latVal, lngVal, addressNameVal) => {
     try {
       const payload = {
@@ -403,6 +446,7 @@ export default function Cart() {
     });
   };
 
+  //nhận voucher
   const handleClaimPublicVoucher = async (voucherId) => {
     try {
       await apiClient.post(`/vouchers/${voucherId}/add`);
@@ -422,6 +466,7 @@ export default function Cart() {
     return selectedCarts.reduce((s, c) => s + c.items.reduce((a, i) => a + i.quantity, 0), 0);
   }, [selectedCarts]);
 
+  //Tổng tiền hàng chưa tính phí ship/giảm giá
   const selectedItemsSubtotal = useMemo(() => {
     return selectedCarts.reduce((sum, cart) => sum + cart.subtotal, 0);
   }, [selectedCarts]);
@@ -548,14 +593,8 @@ export default function Cart() {
           <button onClick={() => navigate(-1)} className="p-1.5 rounded-full hover:bg-slate-200 text-slate-600 transition-colors cursor-pointer shrink-0">
             <ArrowLeft size={18} />
           </button>
-          <span className="w-9 h-9 rounded-xl bg-gradient-to-tr from-[#FF6B35] to-[#FF8B5E] text-white flex items-center justify-center shadow-sm shrink-0">
-            <ShoppingBag size={18} />
-          </span>
           <div className="min-w-0">
             <h1 className="text-xl md:text-2xl font-bold text-gray-900 leading-tight">Giỏ Hàng Của Tôi</h1>
-            <p className="text-[11px] font-semibold text-slate-400 leading-none mt-0.5">
-              {carts.length} quán · {carts.reduce((s, c) => s + c.items.reduce((a, i) => a + i.quantity, 0), 0)} món trong giỏ
-            </p>
           </div>
         </div>
 
@@ -578,7 +617,7 @@ export default function Cart() {
           {carts.map(cart => {
             const shipInfo = shippingInfos[cart.restaurantId] || { shippingFee: 0, distanceKm: 0, durationMinutes: 0 };
             const shippingFee = shipInfo.shippingFee;
-            const distance = shipInfo.distanceKm;
+            const distance = shipInfo.distanceKm || 0;
             const duration = shipInfo.durationMinutes;
             
             const cartItemCount = cart.items.reduce((a, i) => a + i.quantity, 0);
@@ -588,6 +627,10 @@ export default function Cart() {
             const restaurantVoucher = selectedVouchers[cart.restaurantId];
             const cartDiscount = calculateCartDiscount(cart);
             const cartTotal = (cart.subtotal + shippingFee) - cartDiscount;
+
+            const isOpen = cart.isOpen;
+
+            const isTooFar = distance > 10;
 
             return (
               <Card 
@@ -600,7 +643,7 @@ export default function Cart() {
                 <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100 bg-gradient-to-r from-slate-50 to-white">
                   <div className="flex items-center gap-3 min-w-0">
                     <button 
-                      onClick={() => handleToggleSelectRestaurant(cart.restaurantId)}
+                      onClick={() => handleToggleSelectRestaurant(cart, distance)}
                       className="text-md-primary hover:scale-105 transition-transform cursor-pointer"
                     >
                       {isChecked ? (
@@ -620,6 +663,15 @@ export default function Cart() {
                       <span className="font-extrabold text-sm text-slate-800 truncate" title={cart.restaurantName}>
                         Quán {cart.restaurantName}
                       </span>
+                      {isOpen ? (
+                        <span className="text-[11px] font-bold px-2 py-0.5 bg-emerald-50 text-emerald-600 rounded-full shrink-0">
+                          Đang mở cửa
+                        </span>
+                      ) : (
+                        <span className="text-[11px] font-bold px-2 py-0.5 bg-rose-50 text-rose-600 rounded-full shrink-0">
+                          Đã đóng cửa
+                        </span>
+                      )}
                     </div>
                   </div>
                   
@@ -633,6 +685,17 @@ export default function Cart() {
                     Xóa giỏ hàng
                   </Button>
                 </div>
+
+                {isTooFar && (
+                  <div className="mx-4 my-3 p-3 bg-red-50 border border-red-200 rounded-xl text-red-700 text-xs flex items-start gap-2.5 font-medium shadow-sm">
+                    <XCircle size={18} className="shrink-0 text-red-500 mt-0.5" />
+                    <div className="space-y-1">
+                        <p className="leading-snug">
+                          <span className="font-extrabold text-red-800">Không thể đặt hàng:</span> Quán cách bạn <span className="font-bold text-red-900">{distance.toFixed(1)} km</span> (vượt quá bán kính tối đa <span className="font-bold">10 km</span>).
+                        </p>
+                    </div>
+                  </div>
+                )}
 
                 {/* Danh sách món ăn */}
                 <div className="divide-y divide-slate-100">
@@ -768,7 +831,7 @@ export default function Cart() {
                 <div className="px-4 py-2.5 bg-orange-50/40 border-t border-slate-100 flex items-center justify-between gap-3">
                   <div className="flex items-center gap-2 text-xs shrink-0">
                     <BadgePercent size={15} className="text-[#ff6b35]" />
-                    <span className="font-bold text-slate-700">Ưu đãi:</span>
+                    <span className="font-bold text-slate-700">Giảm giá voucher:</span>
                   </div>
 
                   {restaurantVoucher ? (
@@ -826,12 +889,12 @@ export default function Cart() {
                       </div>
                       {cartDiscount > 0 && (
                         <div className="flex justify-between items-center text-emerald-600">
-                          <span className="text-xs font-bold flex items-center gap-1.5"><BadgePercent size={13} /> Giảm giá voucher:</span>
+                          <span className="text-xs font-bold flex items-center gap-1.5"><BadgePercent size={13} /> Giảm giá từ voucher:</span>
                           <span className="font-bold text-xs">- {formatCurrency(cartDiscount)}</span>
                         </div>
                       )}
                       <div className="flex justify-between items-center pt-1.5 border-t border-slate-200/60 mt-1">
-                        <span className="text-xs font-extrabold text-slate-700 flex items-center gap-1.5"><Store size={13} className="text-[#ff6b35]" /> Tổng cộng quán:</span>
+                        <span className="text-xs font-extrabold text-slate-700 flex items-center gap-1.5"><Store size={13} className="text-[#ff6b35]" /> Tổng thanh toán:</span>
                         <span className="font-extrabold text-sm text-[#ff6b35]">
                           {isCalculatingShipping || isUpdatingLocation ? 'Đang tính...' : formatCurrency(cartTotal > 0 ? cartTotal : 0)}
                         </span>
@@ -846,97 +909,6 @@ export default function Cart() {
 
         {/* CỘT PHẢI: THÔNG TIN GIAO HÀNG & TỔNG QUAN ĐƠN HÀNG */}
         <aside className="w-full lg:w-80 shrink-0 lg:sticky lg:top-5 space-y-4">
-
-          {/* TỔNG QUAN ĐƠN HÀNG */}
-          <Card variant="flat" className="p-4 !border-slate-200 !rounded-2xl flex flex-col space-y-3">
-            <h3 className="text-xs font-extrabold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
-              <Receipt size={15} className="text-[#ff6b35]" /> Tổng quan đơn hàng
-            </h3>
-
-            <div className="flex items-center justify-between text-xs text-slate-600">
-              <span className="flex items-center gap-1.5"><Store size={13} className="text-slate-400" /> Số quán đã chọn:</span>
-              <span className="font-extrabold text-slate-800">{selectedRestaurantIds.length} / {carts.length}</span>
-            </div>
-
-            <div className="flex items-center justify-between text-xs text-slate-600">
-              <span className="flex items-center gap-1.5"><ShoppingBag size={13} className="text-slate-400" /> Tổng số món:</span>
-              <span className="font-extrabold text-slate-800">{totalItems} món</span>
-            </div>
-
-            {/* Hiển thị Tạm tính tiền hàng */}
-            <div className="flex items-center justify-between text-xs text-slate-600">
-              <span className="flex items-center gap-1.5"><Receipt size={13} className="text-slate-400" /> Tiền hàng:</span>
-              <span className="font-bold text-slate-800">{formatCurrency(selectedItemsSubtotal)}</span>
-            </div>
-
-            {/* Hiển thị Phí vận chuyển */}
-            <div className="flex items-center justify-between text-xs text-slate-600">
-              <span className="flex items-center gap-1.5"><Bike size={13} className="text-slate-400" /> Phí vận chuyển:</span>
-              <span className="font-bold text-slate-800">
-                {isCalculatingShipping ? 'Đang tính...' : formatCurrency(totalShippingFee)}
-              </span>
-            </div>
-
-            {/* Tổng giảm giá từ tất cả voucher đã chọn */}
-            {totalDiscountAmount > 0 && (
-              <div className="flex items-center justify-between text-xs text-emerald-600 font-bold bg-emerald-50/70 -mx-1 px-2 py-1.5 rounded-lg">
-                <span className="flex items-center gap-1.5"><BadgePercent size={13} /> Tiết kiệm từ voucher:</span>
-                <span>- {formatCurrency(totalDiscountAmount)}</span>
-              </div>
-            )}
-
-            {/* Phương thức thanh toán — hiện hỗ trợ COD */}
-            <div className="pt-2 border-t border-slate-100">
-              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5 mb-1.5">
-                <Wallet size={13} /> Thanh toán
-              </span>
-              <div className="flex items-center gap-2.5 p-2.5 rounded-xl border border-[#ff6b35]/40 bg-orange-50/50">
-                <span className="w-8 h-8 rounded-lg bg-[#ff6b35]/10 text-[#ff6b35] flex items-center justify-center shrink-0"><Wallet size={16} /></span>
-                <div className="min-w-0 flex-1">
-                  <p className="text-xs font-extrabold text-slate-800 leading-tight">Tiền mặt khi nhận hàng</p>
-                  <p className="text-[10px] text-slate-500 font-semibold">Thanh toán COD cho tài xế</p>
-                </div>
-                <span className="w-4 h-4 rounded-full bg-[#ff6b35] flex items-center justify-center shrink-0"><span className="w-1.5 h-1.5 rounded-full bg-white" /></span>
-              </div>
-            </div>
-
-            <div className="pt-2 border-t border-slate-100 mb-1">
-              <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5 mb-1.5">
-                <StickyNote size={13} /> Ghi chú đơn hàng
-              </label>
-              <textarea
-                rows={2}
-                value={orderNotes}
-                onChange={(e) => setOrderNotes(e.target.value)}
-                placeholder="Thêm ghi chú cho đơn hàng"
-                className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl bg-white text-slate-700 font-semibold focus:outline-none focus:border-[#ff6b35] focus:ring-1 focus:ring-orange-100 transition-all duration-200 resize-none"
-              />
-            </div>
-
-            {/* Tổng thanh toán cuối cùng */}
-            <div className="flex items-center justify-between text-sm text-slate-600 pt-2 border-t border-slate-100 mt-1">
-              <span className="font-bold text-slate-700">Tổng thanh toán:</span>
-              <span className="font-black text-[#ff6b35] text-lg">
-                {isCalculatingShipping || isUpdatingLocation ? 'Đang tính...' : formatCurrency(finalTotalAmount)}
-              </span>
-            </div>
-
-            <Button
-              onClick={handleBulkPlaceOrder}
-              disabled={selectedRestaurantIds.length === 0 || submittingCartId === 'BULK_ORDER' || isUpdatingLocation || isCalculatingShipping}
-              loading={submittingCartId === 'BULK_ORDER'}
-              icon={ShoppingBag}
-              className="w-full !mt-0 !bg-orange-600 hover:!bg-orange-700 text-white font-bold py-3 rounded-xl flex items-center justify-center gap-2"
-            >
-              {selectedRestaurantIds.length === 0 ? 'Chọn quán để đặt' : `Đặt Hàng${selectedRestaurantIds.length > 1 ? ` · ${selectedRestaurantIds.length} quán` : ''}`}
-            </Button>
-
-            {/* Trấn an / hỗ trợ khách */}
-            <p className="text-[10px] text-slate-400 font-medium flex items-center justify-center gap-1.5 leading-tight text-center">
-              <ShieldCheck size={13} className="text-emerald-500 shrink-0" />
-              Miễn phí huỷ trước khi quán xác nhận · Theo dõi đơn realtime
-            </p>
-          </Card>
           
           {/* THÔNG TIN GIAO HÀNG */}
           <Card variant="flat" className="p-5 !border-slate-200/80 !rounded-2xl space-y-4">
@@ -1006,6 +978,76 @@ export default function Cart() {
                 </Button>
               </div>
             </div>
+          </Card>
+
+          {/* TỔNG QUAN ĐƠN HÀNG */}
+          <Card variant="flat" className="p-4 !border-slate-200 !rounded-2xl flex flex-col space-y-3">
+            <h3 className="text-xs font-extrabold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+              <Receipt size={15} className="text-[#ff6b35]" /> Tổng quan đơn hàng
+            </h3>
+
+            <div className="flex items-center justify-between text-xs text-slate-600">
+              <span className="flex items-center gap-1.5"><Store size={13} className="text-slate-400" /> Số quán đã chọn:</span>
+              <span className="font-extrabold text-slate-800">{selectedRestaurantIds.length} / {carts.length}</span>
+            </div>
+
+            <div className="flex items-center justify-between text-xs text-slate-600">
+              <span className="flex items-center gap-1.5"><ShoppingBag size={13} className="text-slate-400" /> Tổng số món:</span>
+              <span className="font-extrabold text-slate-800">{totalItems} món</span>
+            </div>
+
+            {/* Hiển thị Tạm tính tiền hàng */}
+            <div className="flex items-center justify-between text-xs text-slate-600">
+              <span className="flex items-center gap-1.5"><Receipt size={13} className="text-slate-400" /> Tiền hàng:</span>
+              <span className="font-bold text-slate-800">{formatCurrency(selectedItemsSubtotal)}</span>
+            </div>
+
+            {/* Hiển thị Phí vận chuyển */}
+            <div className="flex items-center justify-between text-xs text-slate-600">
+              <span className="flex items-center gap-1.5"><Bike size={13} className="text-slate-400" /> Phí vận chuyển:</span>
+              <span className="font-bold text-slate-800">
+                {isCalculatingShipping ? 'Đang tính...' : formatCurrency(totalShippingFee)}
+              </span>
+            </div>
+
+            {/* Tổng giảm giá từ tất cả voucher đã chọn */}
+            {totalDiscountAmount > 0 && (
+              <div className="flex items-center justify-between text-xs text-emerald-600 font-bold bg-emerald-50/70 -mx-1 px-2 py-1.5 rounded-lg">
+                <span className="flex items-center gap-1.5"><BadgePercent size={13} /> Giảm giá từ voucher:</span>
+                <span>- {formatCurrency(totalDiscountAmount)}</span>
+              </div>
+            )}
+
+            <div className="pt-2 border-t border-slate-100 mb-1">
+              <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5 mb-1.5">
+                <StickyNote size={13} /> Ghi chú đơn hàng
+              </label>
+              <textarea
+                rows={2}
+                value={orderNotes}
+                onChange={(e) => setOrderNotes(e.target.value)}
+                placeholder="Thêm ghi chú cho đơn hàng"
+                className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl bg-white text-slate-700 font-semibold focus:outline-none focus:border-[#ff6b35] focus:ring-1 focus:ring-orange-100 transition-all duration-200 resize-none"
+              />
+            </div>
+
+            {/* Tổng thanh toán cuối cùng */}
+            <div className="flex items-center justify-between text-sm text-slate-600 pt-2 border-t border-slate-100 mt-1">
+              <span className="font-bold text-slate-700">Tổng thanh toán:</span>
+              <span className="font-black text-[#ff6b35] text-lg">
+                {isCalculatingShipping || isUpdatingLocation ? 'Đang tính...' : formatCurrency(finalTotalAmount)}
+              </span>
+            </div>
+
+            <Button
+              onClick={handleBulkPlaceOrder}
+              disabled={selectedRestaurantIds.length === 0 || submittingCartId === 'BULK_ORDER' || isUpdatingLocation || isCalculatingShipping}
+              loading={submittingCartId === 'BULK_ORDER'}
+              icon={ShoppingBag}
+              className="w-full !mt-0 !bg-orange-600 hover:!bg-orange-700 text-white font-bold py-3 rounded-xl flex items-center justify-center gap-2"
+            >
+              {selectedRestaurantIds.length === 0 ? 'Chọn quán để đặt' : `Đặt Hàng${selectedRestaurantIds.length > 1 ? ` · ${selectedRestaurantIds.length} quán` : ''}`}
+            </Button>
           </Card>
         </aside>
       </div>
@@ -1210,11 +1252,8 @@ export default function Cart() {
                               : 'border-slate-200/80 hover:border-orange-300 hover:shadow-md bg-white'
                           }`}
                         >
-                          {/* Dải màu bên trái + 2 khấc răng cưa kiểu vé (ticket) */}
                           <div className={`absolute left-0 top-0 bottom-0 w-1.5 ${isSelectedForThisRes ? 'bg-[#ff6b35]' : meta.strip} transition-colors`} />
                           <span className="absolute -left-1 top-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-slate-100 border border-slate-200" />
-
-                          {/* Chip icon loại voucher */}
                           <span className={`shrink-0 w-9 h-9 rounded-xl flex items-center justify-center ${meta.chip} transition-transform group-hover:scale-110`}>
                             <MetaIcon size={17} />
                           </span>
@@ -1308,7 +1347,7 @@ export default function Cart() {
                                 {pub.discountType === 'FREESHIP' && 'Miễn phí vận chuyển'}
                               </span>
                               <span className={`inline-flex items-center gap-1 text-[11px] ${exp.soon ? 'text-rose-500 font-bold' : 'text-slate-500'}`}>
-                                <Clock size={12} className="shrink-0" /> HSD {formatDateTime(pub.endDate)}
+                                <Clock size={12} className="shrink-0" /> Hạn {formatDateTime(pub.endDate)}
                                 {exp.soon && <span className="text-[9px] font-black px-1.5 py-0.5 rounded-full bg-rose-50 text-rose-600 shrink-0">Sắp hết</span>}
                               </span>
                             </div>

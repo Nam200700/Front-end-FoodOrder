@@ -314,7 +314,7 @@ export default function OrderHistory() {
     }));
     
     replaceCart(newItems, order.restaurantId, order.restaurantName);
-    navigate('/cart');
+    navigate('/cart', { state: { targetRestaurantId: order.restaurantId } });
   };
 
   const getStatusLabel = (status) => {

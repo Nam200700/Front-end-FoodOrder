@@ -125,6 +125,18 @@ export default function OrderTracking() {
     };
   }, [id]);
 
+  useEffect(() => {
+    const onVisible = () => {
+      if (!document.hidden) {
+        fetchOrderDetails(false); 
+      }
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      document.removeEventListener('visibilitychange', onVisible);
+    };
+  }, [id]);
+
   // 2. Tải thông tin toạ độ Quán ăn từ Backend
   useEffect(() => {
     if (!order?.restaurantId) return;

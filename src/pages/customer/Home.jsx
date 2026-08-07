@@ -791,6 +791,93 @@ export default function Home() {
                 </div>
               )}
 
+              {orderAgainRestaurants.length > 0 && (
+                <div>
+                  <h2 className="text-sm sm:text-base md:text-lg font-extrabold text-slate-800 mb-3 flex items-center gap-2">
+                    <RotateCcw className="text-[#FF6B35]" size={18} /> Đặt Lại Quán Cũ
+                  </h2>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
+                    {orderAgainRestaurants.slice(0, visibleOrderAgainCount).map((res) => (
+                      <Card
+                        key={`again-${res.id}`}
+                        variant="elevated"
+                        hoverEffect
+                        onClick={() => navigate(`/restaurants/${res.id}`)}
+                        className="!rounded-2xl relative border border-slate-200/80 bg-white overflow-hidden group shadow-sm hover:shadow-md transition-all flex flex-col justify-between"
+                      >
+                        <button
+                          onClick={(e) => toggleFavorite(res.id, e)}
+                          title={favorites.includes(res.id) ? 'Bỏ yêu thích' : 'Thêm vào yêu thích'}
+                          className="group/fav absolute right-3 top-3 bg-white/90 backdrop-blur-md p-2 rounded-full text-slate-400 hover:text-rose-500 transition-all shadow-sm z-10 cursor-pointer active:scale-90"
+                        >
+                          {burstFavId === res.id && (
+                            <span className="absolute inset-0 rounded-full bg-rose-400/50 animate-heart-burst pointer-events-none" />
+                          )}
+                          <Heart
+                            size={16}
+                            className={`relative transition-transform ${
+                              favorites.includes(res.id)
+                                ? 'fill-rose-500 text-rose-500 ' + (burstFavId === res.id ? 'animate-heart-pop' : 'animate-heart-beat')
+                                : 'group-hover/fav:scale-110'
+                            }`}
+                          />
+                        </button>
+
+                        <div>
+                          <div className="relative aspect-[16/10] w-full overflow-hidden bg-slate-100">
+                            <img
+                              src={res.image}
+                              alt={res.name}
+                              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                            />
+                            <span className="absolute bottom-2.5 left-2.5 text-[10px] bg-black/75 backdrop-blur-sm text-white font-bold px-2 py-0.5 rounded flex items-center gap-1">
+                              <Star size={11} className="fill-amber-400 text-amber-400" />
+                              {res.reviewsCount > 0 ? `${res.rating} (${res.reviewsCount})` : 'Mới'}
+                            </span>
+                            <span className={`absolute top-2.5 left-2.5 text-[10px] font-bold px-2 py-0.5 rounded shadow-sm text-white ${res.isOpen !== false ? 'bg-emerald-600' : 'bg-rose-600'}`}>
+                              {res.isOpen !== false ? 'Đang mở cửa' : 'Đã đóng cửa'}
+                            </span>
+                          </div>
+
+                          <div className="p-3.5 sm:p-4">
+                            <h3 className="font-bold text-xs sm:text-sm text-slate-800 truncate group-hover:text-[#FF6B35] transition-colors">{res.name}</h3>
+                            <div className="flex items-center justify-between text-xs text-slate-500 mt-2 font-medium">
+                              <span className="flex items-center gap-1">
+                                <Clock size={13} />
+                                {res.time}
+                              </span>
+                              <span>{res.distance}</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="px-3.5 pb-3.5 sm:px-4 sm:pb-4">
+                          <div className="pt-2.5 border-t border-slate-100 flex items-center justify-between">
+                            <span className="text-[10px] sm:text-[11px] font-bold text-slate-600 bg-slate-100 px-2 py-0.5 rounded">
+                              {res.shipping}
+                            </span>
+                            <span className="text-[10px] sm:text-[11px] text-[#FF6B35] font-bold bg-orange-50 px-2 py-0.5 rounded">
+                              Đã bán {res.orderCount || 0}
+                            </span>
+                          </div>
+                        </div>
+                      </Card>
+                    ))}
+                  </div>
+
+                  {orderAgainRestaurants.length > visibleOrderAgainCount && (
+                    <div className="flex justify-center mt-6 sm:mt-8">
+                      <button
+                        onClick={() => setVisibleOrderAgainCount(prev => prev + 6)}
+                        className="px-5 py-2.5 bg-white border border-[#FF6B35] text-[#FF6B35] hover:bg-orange-50 font-bold text-xs sm:text-sm rounded-xl shadow-sm transition-all hover:scale-[1.01] active:scale-[0.99] cursor-pointer flex items-center gap-2"
+                      >
+                        Xem thêm quán cũ
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+
               {recommendedRestaurants.length > 0 && (
                 <div>
                   <div className="flex items-center justify-between mb-3.5">
@@ -878,93 +965,6 @@ export default function Home() {
                         className="px-5 py-2.5 bg-white border border-[#FF6B35] text-[#FF6B35] hover:bg-orange-50 font-bold text-xs sm:text-sm rounded-xl shadow-sm transition-all hover:scale-[1.01] active:scale-[0.99] cursor-pointer flex items-center gap-2"
                       >
                         Xem thêm gợi ý dành cho bạn
-                      </button>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {orderAgainRestaurants.length > 0 && (
-                <div>
-                  <h2 className="text-sm sm:text-base md:text-lg font-extrabold text-slate-800 mb-3 flex items-center gap-2">
-                    <RotateCcw className="text-[#FF6B35]" size={18} /> Đặt Lại Quán Cũ
-                  </h2>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
-                    {orderAgainRestaurants.slice(0, visibleOrderAgainCount).map((res) => (
-                      <Card
-                        key={`again-${res.id}`}
-                        variant="elevated"
-                        hoverEffect
-                        onClick={() => navigate(`/restaurants/${res.id}`)}
-                        className="!rounded-2xl relative border border-slate-200/80 bg-white overflow-hidden group shadow-sm hover:shadow-md transition-all flex flex-col justify-between"
-                      >
-                        <button
-                          onClick={(e) => toggleFavorite(res.id, e)}
-                          title={favorites.includes(res.id) ? 'Bỏ yêu thích' : 'Thêm vào yêu thích'}
-                          className="group/fav absolute right-3 top-3 bg-white/90 backdrop-blur-md p-2 rounded-full text-slate-400 hover:text-rose-500 transition-all shadow-sm z-10 cursor-pointer active:scale-90"
-                        >
-                          {burstFavId === res.id && (
-                            <span className="absolute inset-0 rounded-full bg-rose-400/50 animate-heart-burst pointer-events-none" />
-                          )}
-                          <Heart
-                            size={16}
-                            className={`relative transition-transform ${
-                              favorites.includes(res.id)
-                                ? 'fill-rose-500 text-rose-500 ' + (burstFavId === res.id ? 'animate-heart-pop' : 'animate-heart-beat')
-                                : 'group-hover/fav:scale-110'
-                            }`}
-                          />
-                        </button>
-
-                        <div>
-                          <div className="relative aspect-[16/10] w-full overflow-hidden bg-slate-100">
-                            <img
-                              src={res.image}
-                              alt={res.name}
-                              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                            />
-                            <span className="absolute bottom-2.5 left-2.5 text-[10px] bg-black/75 backdrop-blur-sm text-white font-bold px-2 py-0.5 rounded flex items-center gap-1">
-                              <Star size={11} className="fill-amber-400 text-amber-400" />
-                              {res.reviewsCount > 0 ? `${res.rating} (${res.reviewsCount})` : 'Mới'}
-                            </span>
-                            <span className={`absolute top-2.5 left-2.5 text-[10px] font-bold px-2 py-0.5 rounded shadow-sm text-white ${res.isOpen !== false ? 'bg-emerald-600' : 'bg-rose-600'}`}>
-                              {res.isOpen !== false ? 'Đang mở cửa' : 'Đã đóng cửa'}
-                            </span>
-                          </div>
-
-                          <div className="p-3.5 sm:p-4">
-                            <h3 className="font-bold text-xs sm:text-sm text-slate-800 truncate group-hover:text-[#FF6B35] transition-colors">{res.name}</h3>
-                            <div className="flex items-center justify-between text-xs text-slate-500 mt-2 font-medium">
-                              <span className="flex items-center gap-1">
-                                <Clock size={13} />
-                                {res.time}
-                              </span>
-                              <span>{res.distance}</span>
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="px-3.5 pb-3.5 sm:px-4 sm:pb-4">
-                          <div className="pt-2.5 border-t border-slate-100 flex items-center justify-between">
-                            <span className="text-[10px] sm:text-[11px] font-bold text-slate-600 bg-slate-100 px-2 py-0.5 rounded">
-                              {res.shipping}
-                            </span>
-                            <span className="text-[10px] sm:text-[11px] text-[#FF6B35] font-bold bg-orange-50 px-2 py-0.5 rounded">
-                              Đã bán {res.orderCount || 0}
-                            </span>
-                          </div>
-                        </div>
-                      </Card>
-                    ))}
-                  </div>
-
-                  {orderAgainRestaurants.length > visibleOrderAgainCount && (
-                    <div className="flex justify-center mt-6 sm:mt-8">
-                      <button
-                        onClick={() => setVisibleOrderAgainCount(prev => prev + 6)}
-                        className="px-5 py-2.5 bg-white border border-[#FF6B35] text-[#FF6B35] hover:bg-orange-50 font-bold text-xs sm:text-sm rounded-xl shadow-sm transition-all hover:scale-[1.01] active:scale-[0.99] cursor-pointer flex items-center gap-2"
-                      >
-                        Xem thêm quán cũ
                       </button>
                     </div>
                   )}

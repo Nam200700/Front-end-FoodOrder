@@ -144,6 +144,8 @@
   --animate-fr-bob: frBob 0.66s step-end infinite;       /* thân nhún theo nhịp đạp */
   --animate-fr-serve: frServe 0.8s step-end infinite;    /* chảo lật / bưng món */
   --animate-rock: rock 2.4s ease-in-out infinite;        /* tô đổ lắc lư ở màn báo lỗi */
+  --animate-patrol: patrol 6s ease-in-out infinite;      /* shipper đi tuần tìm địa chỉ (404) */
+  --animate-dash: dashmove 0.9s linear infinite;         /* nét đứt con đường chạy */
 }
 
 /* ─── Custom Classes & Utilities ────────────────────── */

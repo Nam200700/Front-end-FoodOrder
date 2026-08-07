@@ -184,7 +184,7 @@ export default function RoleSwitcher() {
 
       {/* Expanded Panel */}
       {expanded && (
-        <div className="w-[290px] max-h-[80vh] overflow-y-auto scrollbar-thin backdrop-blur-xl bg-white/90 border border-slate-200/60 rounded-3xl p-5 shadow-[0_20px_50px_rgba(0,0,0,0.12)] flex flex-col gap-4 animate-scale-up origin-bottom-right">
+        <div className="w-[290px] max-h-[80vh] backdrop-blur-xl bg-white/90 border border-slate-200/60 rounded-3xl p-5 shadow-[0_20px_50px_rgba(0,0,0,0.12)] flex flex-col gap-4 animate-scale-up origin-bottom-right">
 
           {/* Header */}
           <div className="flex items-center justify-between pb-3 border-b border-slate-100">
@@ -255,7 +255,7 @@ export default function RoleSwitcher() {
 
           {/* Quick Navigation Links */}
           {quickLinks.length > 0 && (
-            <div className="bg-slate-50/60 border border-slate-100 rounded-2xl p-3.5 space-y-2.5 max-h-[320px] overflow-y-auto scrollbar-thin">
+            <div className="bg-slate-50/60 border border-slate-100 rounded-2xl p-3.5 space-y-2.5 flex-1 min-h-0 overflow-y-auto scrollbar-thin">
               <div className="flex items-center justify-between">
                 <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block">
                   Liên kết đi nhanh

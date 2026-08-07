@@ -7,7 +7,7 @@ import {
   ShoppingBag, CheckSquare, Square,
   User, Truck, Edit2, Plus, Tag,
   Minus, Wallet, BadgePercent, Bike, ShieldCheck, Receipt, Clock, ChevronRight, StickyNote, Check, Sparkles,
-  Search, Heart, Package, Ticket, Gift, AlertCircle
+  Search, Heart, Package, Ticket, Gift, AlertCircle, Trash2, AlertTriangle
 } from 'lucide-react';
 import { formatCurrency } from '../../utils/format';
 import Button from '../../components/common/Button';
@@ -1092,26 +1092,41 @@ export default function Cart() {
         title="Xác Nhận Xóa Giỏ Hàng"
         size="sm"
       >
-        <div className="text-center space-y-4">          
+        <div className="text-center space-y-4">
+          {/* Icon thùng rác — quầng đỏ lan toả + thùng rung nhẹ (cảnh báo hành động xoá) */}
+          <div className="flex justify-center pt-1">
+            <div className="relative w-16 h-16">
+              <span className="absolute inset-0 rounded-full bg-red-200/60 animate-halo" style={{ transformBox: 'fill-box', transformOrigin: 'center' }} />
+              <div className="relative w-16 h-16 rounded-full bg-gradient-to-br from-red-50 to-rose-100 border border-red-100 flex items-center justify-center text-red-500 shadow-sm">
+                <Trash2 size={28} className="animate-wiggle" style={{ transformBox: 'fill-box', transformOrigin: 'center' }} />
+              </div>
+            </div>
+          </div>
+
           <p className="text-xs text-slate-500 leading-relaxed px-2">
-            Bạn chắc chắn muốn xóa toàn bộ sản phẩm thuộc giỏ hàng của <span className="font-extrabold text-slate-700">Quán {deleteCartModal.data?.restaurantName}</span>? Hành động này không thể hoàn tác.
+            Bạn chắc chắn muốn xóa toàn bộ sản phẩm thuộc giỏ hàng của <span className="font-extrabold text-slate-700">Quán {deleteCartModal.data?.restaurantName}</span>?
           </p>
+
+          {/* Nhắc "không thể hoàn tác" — dải cảnh báo hổ phách cho rõ mức độ */}
+          <div className="inline-flex items-center gap-1.5 text-[11px] font-bold text-amber-700 bg-amber-50 border border-amber-200 px-3 py-1.5 rounded-full">
+            <AlertTriangle size={13} className="shrink-0" /> Hành động này không thể hoàn tác
+          </div>
 
           <div className="flex gap-3 pt-2 justify-center">
             <Button
               type="button"
               variant="outline"
               onClick={deleteCartModal.close}
-              className="w-full !rounded-xl !text-xs !font-bold !py-2.5 cursor-pointer"
+              className="group/cancel w-full !rounded-xl !text-xs !font-bold !py-2.5 cursor-pointer inline-flex items-center justify-center gap-1.5"
             >
-              Hủy bỏ
+              <X size={15} className="transition-transform group-hover/cancel:rotate-90" /> Hủy bỏ
             </Button>
             <Button
               type="button"
               onClick={handleDeleteCart}
-              className="w-full !rounded-xl !text-xs !font-bold !py-2.5 !bg-red-600 text-white hover:!bg-red-700 cursor-pointer"
+              className="group/del w-full !rounded-xl !text-xs !font-bold !py-2.5 !bg-red-600 text-white hover:!bg-red-700 cursor-pointer inline-flex items-center justify-center gap-1.5 shadow-sm shadow-red-600/30"
             >
-              Xác nhận xóa
+              <Trash2 size={15} className="transition-transform group-hover/del:-rotate-12 group-hover/del:scale-110" /> Xác nhận xóa
             </Button>
           </div>
         </div>

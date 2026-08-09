@@ -144,6 +144,7 @@
   --animate-fr-bob: frBob 0.66s step-end infinite;       /* thân nhún theo nhịp đạp */
   --animate-fr-serve: frServe 0.8s step-end infinite;    /* chảo lật / bưng món */
   --animate-fr-scan: frScan 1.9s steps(5) infinite;      /* Admin — đường quét radar trên khiên */
+  --animate-scanline: scanline 2.2s ease-in-out infinite;/* vạch quét dọc trên khung QR đăng nhập */
   /* "Hoạt hình 2D" cho tô mì lo lắng (màn báo lỗi) — step-end → khung hình rõ, giật như vẽ tay */
   --animate-bowl-jitter: bowlJitter 1.3s step-end infinite;  /* thân tô run rẩy bồn chồn */
   --animate-blink-2d: blink2d 3.2s step-end infinite;        /* chớp mắt (kép) */

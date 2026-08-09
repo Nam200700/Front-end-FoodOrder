@@ -86,12 +86,12 @@ export default function QrLoginPanel({ onBack }) {
           const { token, user } = ex.data?.data || {};
           setAuth({ token, user });
           setStatus('DONE');
-          setTimeout(() => redirectByRole(navigate), 800);
+          setTimeout(() => redirectByRole(navigate), 350);
         }
       } catch {
         // lỗi poll tạm thời → bỏ qua, lần sau thử lại
       }
-    }, 2000);
+    }, 900);
 
     return clearTimers;
   }, [session, navigate, setAuth]);

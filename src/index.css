@@ -144,6 +144,7 @@
   --animate-fr-bob: frBob 0.66s step-end infinite;       /* thân nhún theo nhịp đạp */
   --animate-fr-serve: frServe 0.8s step-end infinite;    /* chảo lật / bưng món */
   --animate-fr-scan: frScan 1.9s steps(5) infinite;      /* Admin — đường quét radar trên khiên */
+  --animate-scanline: scanline 2.2s ease-in-out infinite;/* vạch quét dọc trên khung QR đăng nhập */
   /* "Hoạt hình 2D" cho tô mì lo lắng (màn báo lỗi) — step-end → khung hình rõ, giật như vẽ tay */
   --animate-bowl-jitter: bowlJitter 1.3s step-end infinite;  /* thân tô run rẩy bồn chồn */
   --animate-blink-2d: blink2d 3.2s step-end infinite;        /* chớp mắt (kép) */
@@ -571,6 +572,12 @@
   80% { opacity: 1; }
   100% { transform: translateY(5px); opacity: 0; }
 }
+/* Vạch quét dọc trên khung QR (đăng nhập QR) */
+@keyframes scanline {
+  0% { transform: translateY(0); opacity: 0.25; }
+  50% { transform: translateY(150px); opacity: 0.9; }
+  100% { transform: translateY(0); opacity: 0.25; }
+}
 /* Thân tô run rẩy bồn chồn — nhiều khung lệch vị trí + xoay (origin đáy) */
 @keyframes bowlJitter {
   0%   { transform: translate(0, 0) rotate(0deg); }
@@ -641,6 +648,7 @@
   .animate-parcel-travel,
   .animate-node-glow, .animate-fr-steam, .animate-fr-wave, .animate-fr-blink,
   .animate-fr-awning, .animate-fr-pedal, .animate-fr-bob, .animate-fr-serve, .animate-fr-scan,
+  .animate-scanline,
   .animate-bowl-jitter, .animate-blink-2d, .animate-dart-eyes, .animate-mouth-quiver,
   .animate-sweat-2d, .animate-patrol, .animate-dash { animation: none !important; }
 }

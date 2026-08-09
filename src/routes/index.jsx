@@ -1,59 +1,57 @@
-import React from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
+import React, { lazy, Suspense } from 'react';
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../stores/authStore';
+import Spinner from '../components/common/Spinner';
 
-// Layouts
+// Layouts (eager — khung bao, cần ngay khi vào từng khu vực)
 import CustomerLayout from '../components/layout/CustomerLayout';
 import MerchantLayout from '../components/layout/MerchantLayout';
 import ShipperLayout from '../components/layout/ShipperLayout';
 import AdminLayout from '../components/layout/AdminLayout';
 
-// Auth Pages
+// Auth Pages (eager — màn hình đầu tiên, nhẹ)
 import Login from '../pages/auth/Login';
 import Register from '../pages/auth/Register';
 import Otp from '../pages/auth/Otp';
 import PartnerApproval from '../pages/auth/PartnerApproval';
 import NotFound from '../pages/NotFound';
 
-// Customer Pages
-import Home from '../pages/customer/Home';
-import Explore from '../pages/customer/Explore';
-import RestaurantDetail from '../pages/customer/RestaurantDetail';
-import Cart from '../pages/customer/Cart';
-import OrderTracking from '../pages/customer/OrderTracking';
-import OrderHistory from '../pages/customer/OrderHistory';
-import Reviews from '../pages/customer/Reviews';
-import Favorites from '../pages/customer/Favorites';
-import Chat from '../pages/customer/Chat';
-import Notifications from '../pages/customer/Notifications';
-import Profile from '../pages/customer/Profile';
-import AIChatbot from '../pages/customer/AIChatbot';
+// Page nặng — LAZY-LOAD: mỗi trang tách chunk riêng; recharts/leaflet/maplibre
+// chỉ tải khi mở đúng trang cần → bundle đầu tiên nhẹ hơn nhiều.
+const Home = lazy(() => import('../pages/customer/Home'));
+const Explore = lazy(() => import('../pages/customer/Explore'));
+const RestaurantDetail = lazy(() => import('../pages/customer/RestaurantDetail'));
+const Cart = lazy(() => import('../pages/customer/Cart'));
+const OrderTracking = lazy(() => import('../pages/customer/OrderTracking'));
+const OrderHistory = lazy(() => import('../pages/customer/OrderHistory'));
+const Reviews = lazy(() => import('../pages/customer/Reviews'));
+const Favorites = lazy(() => import('../pages/customer/Favorites'));
+const Chat = lazy(() => import('../pages/customer/Chat'));
+const Notifications = lazy(() => import('../pages/customer/Notifications'));
+const Profile = lazy(() => import('../pages/customer/Profile'));
+const AIChatbot = lazy(() => import('../pages/customer/AIChatbot'));
 
-// Merchant Pages
-import MerchantDashboard from '../pages/merchant/Dashboard';
-import MerchantOrders from '../pages/merchant/Orders';
-import MerchantMenu from '../pages/merchant/Menu';
-import MerchantStats from '../pages/merchant/Stats';
-import MerchantReviews from '../pages/merchant/Reviews';
-import MerchantSettings from '../pages/merchant/Settings';
+const MerchantDashboard = lazy(() => import('../pages/merchant/Dashboard'));
+const MerchantOrders = lazy(() => import('../pages/merchant/Orders'));
+const MerchantMenu = lazy(() => import('../pages/merchant/Menu'));
+const MerchantStats = lazy(() => import('../pages/merchant/Stats'));
+const MerchantReviews = lazy(() => import('../pages/merchant/Reviews'));
+const MerchantSettings = lazy(() => import('../pages/merchant/Settings'));
 
-// Shipper Pages
-import ShipperPickup from '../pages/shipper/Pickup';
-import ShipperHistory from '../pages/shipper/ShipperHistory';
-import ShipperEarnings from '../pages/shipper/ShipperEarnings';
-import ShipperProfile from '../pages/shipper/ShipperProfile';
+const ShipperPickup = lazy(() => import('../pages/shipper/Pickup'));
+const ShipperHistory = lazy(() => import('../pages/shipper/ShipperHistory'));
+const ShipperEarnings = lazy(() => import('../pages/shipper/ShipperEarnings'));
+const ShipperReviews = lazy(() => import('../pages/shipper/ShipperReviews'));
+const ShipperProfile = lazy(() => import('../pages/shipper/ShipperProfile'));
 
-// Admin Pages
-import AdminDashboard from '../pages/admin/Dashboard';
-import AdminRestaurants from '../pages/admin/Restaurants';
-import AdminShippers from '../pages/admin/Shippers';
-import AdminUsers from '../pages/admin/Users';
-import AdminOrders from '../pages/admin/Orders';
-import AdminReports from '../pages/admin/Reports';
-import AdminStats from '../pages/admin/Stats';
-
-// Protected Route Component
-import { useLocation } from 'react-router-dom';
+const AdminDashboard = lazy(() => import('../pages/admin/Dashboard'));
+const AdminRestaurants = lazy(() => import('../pages/admin/Restaurants'));
+const AdminShippers = lazy(() => import('../pages/admin/Shippers'));
+const AdminUsers = lazy(() => import('../pages/admin/Users'));
+const AdminOrders = lazy(() => import('../pages/admin/Orders'));
+const AdminReports = lazy(() => import('../pages/admin/Reports'));
+const AdminStats = lazy(() => import('../pages/admin/Stats'));
+const AdminVouchers = lazy(() => import('../pages/admin/Voucher'));
 
 function ProtectedRoute({ children, allowedRoles }) {
   const { isLoggedIn, role, user, hasHydrated, authReady } = useAuthStore();
@@ -110,8 +108,10 @@ function ProtectedRoute({ children, allowedRoles }) {
 
 export default function AppRoutes() {
   return (
+    // Suspense: hiện Spinner thoáng qua trong lúc nạp chunk trang lần đầu (lazy-load)
+    <Suspense fallback={<Spinner fullScreen />}>
     <Routes>
-      
+
       {/* ─── AUTHENTICATION ROUTES ────────────────────────────────────────────── */}
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
@@ -207,6 +207,7 @@ export default function AppRoutes() {
         <Route index element={<ShipperPickup />} />
         <Route path="history" element={<ShipperHistory />} />
         <Route path="earnings" element={<ShipperEarnings />} />
+        <Route path="reviews" element={<ShipperReviews />} />
         <Route path="profile" element={<ShipperProfile />} />
         <Route path="chat" element={<Chat />} />
         <Route path="chat/:convId" element={<Chat />} />
@@ -225,11 +226,13 @@ export default function AppRoutes() {
         <Route path="orders" element={<AdminOrders />} />
         <Route path="reports" element={<AdminReports />} />
         <Route path="stats" element={<AdminStats />} />
+        <Route path="vouchers" element={<AdminVouchers />} />
       </Route>
 
       {/* Fallback NotFound */}
       <Route path="*" element={<NotFound />} />
 
     </Routes>
+    </Suspense>
   );
 }

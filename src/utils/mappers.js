@@ -1,4 +1,4 @@
-import { getAvatarUrl } from './avatarHelper';
+import { getAvatarUrl, getRestaurantBannerUrl } from './avatarHelper';
 
 /**
  * Map dữ liệu thô từ API của Order về định dạng chuẩn dùng trên UI của Customer, Merchant và Shipper.
@@ -30,9 +30,9 @@ export const mapOrder = (ord) => {
   return {
     id: ord.orderId?.toString() || ord.id?.toString(),
     restaurantId: ord.restaurantId?.toString() || ord.restaurant?.restaurantId?.toString(),
-    restaurantName: ord.restaurantName || ord.restaurant?.restaurantName || 'Quán Ăn AntiGravity',
+    restaurantName: ord.restaurantName || ord.restaurant?.restaurantName || 'Nhà hàng',
     restaurantAddress: ord.restaurantAddress,
-    restaurantImage: ord.imageUrl || ord.restaurantImageUrl || ord.restaurant?.imageUrl || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=150&q=80',
+    restaurantImage: getRestaurantBannerUrl(ord.imageUrl || ord.restaurantImageUrl || ord.restaurant?.imageUrl),
     customerId: ord.customerId?.toString(),
     customerName: ord.customerName || ord.customer?.name || 'Khách hàng',
     customerPhone: ord.customerPhone || ord.customer?.phone || '',
@@ -44,7 +44,7 @@ export const mapOrder = (ord) => {
       note: i.note || '',
     })),
     itemsCount: (ord.items || ord.orderItems || []).reduce((sum, item) => sum + item.quantity, 0),
-    subtotalAmount: Number(ord.subtotalAmount),
+    subtotalAmount: Number(ord.subtotalAmount) || 0,
     total: Number(ord.totalAmount || ord.total || 0),
     shippingFee: Number(ord.shippingFee || ord.deliveryFee || 0),
     address: ord.deliveryAddress || ord.address || '',
@@ -60,21 +60,23 @@ export const mapOrder = (ord) => {
     readyAt: formatTime(ord.readyAt),
     pickedUpAt: formatTime(ord.pickedUpAt),
     reviewed: ord.reviewed || false,
-    rating: ord.restaurantRating || 5,
+    rating: ord.restaurantRating ?? 0,
     note: ord.note || '',
     cancelReason: ord.cancelReason || '',
+    voucherCode: ord.voucherCode,
+    discountAmount: ord.discountAmount,
     shipper: ord.shipperId ? {
       id: ord.shipperId,
       name: ord.shipperName || 'Tài xế',
       // Avatar thật của tài xế nếu có; rỗng thì dùng ảnh mặc định SVG (giống fallback của customer),
       // không hardcode ảnh người lạ nữa.
       avatar: getAvatarUrl(ord.shipperAvatar),
-      rating: 4.9,
+      rating: ord.shipperAvgRating ?? null,
       bike: ord.shipperVehicleType === 'MOTORBIKE' ? 'Xe máy (Motorbike)' :
             ord.shipperVehicleType === 'BICYCLE' ? 'Xe đạp (Bicycle)' :
             ord.shipperVehicleType === 'CAR' ? 'Ô tô (Car)' : 'Phương tiện giao hàng',
       plate: ord.shipperLicensePlate || 'Chưa cập nhật biển số',
-      phone: ord.shipperPhone || '0987654321',
+      phone: ord.shipperPhone || '',
     } : null
   };
 };
@@ -90,11 +92,12 @@ export const mapRestaurant = (r) => {
   return {
     id: r.restaurantId?.toString() || r.id?.toString(),
     name: r.restaurantName || r.name || '',
-    image: r.imageUrl || r.restaurantImageUrl || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=600&q=80',
+    image: getRestaurantBannerUrl(r.imageUrl || r.restaurantImageUrl),
     address: r.address || r.restaurantAddress || '',
     latitude: r.latitude || r.restaurantLatitude,
     longitude: r.longitude || r.restaurantLongitude,
-    rating: Number(r.rating || r.averageRating || 5.0),
+    // Rating THẬT: 0 khi chưa có đánh giá (không bịa 5 sao). UI hiển thị "Mới" khi reviewsCount = 0.
+    rating: Number(r.rating ?? r.averageRating ?? 0),
     reviewsCount: r.reviewsCount || r.reviewCount || 0,
     orderCount: r.orderCount || 0,
     tags: [r.cuisineType || 'Ẩm thực'],
@@ -103,8 +106,9 @@ export const mapRestaurant = (r) => {
     shipping: 'Miễn phí >99k',
     shippingFee: Number(r.deliveryFee || 15000),
     minOrderAmount: Number(r.minOrderAmount || 0),
-    avgPrice: 45000,
-    featured: r.rating >= 4.8 || (r.restaurantId ? r.restaurantId % 2 === 0 : false),
+    avgPrice: r.avgPrice ?? null,
+    // Nổi bật theo cờ thật của BE, hoặc suy từ rating cao thực tế — KHÔNG bịa theo id chẵn/lẻ.
+    featured: r.featured ?? (Number(r.rating ?? r.averageRating ?? 0) >= 4.8),
     description: r.description,
   };
 };

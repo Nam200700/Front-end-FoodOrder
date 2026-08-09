@@ -19,13 +19,15 @@ import {
   Settings,
   Menu,
   X,
-  Shield
+  Shield,
+  Ticket 
 } from 'lucide-react';
 
 import { useAvatarUpload } from '../../hooks/useAvatarUpload';
 import { useLayoutNav } from '../../hooks/useLayoutNav';
 import NavMenuList from './NavMenuList';
 import MobileDrawer from './MobileDrawer';
+import MobileTabBar from './MobileTabBar';
 
 export default function AdminLayout() {
   const navigate = useNavigate();
@@ -44,19 +46,13 @@ export default function AdminLayout() {
   useEffect(() => {
     closeMobileDrawer();
   }, [location.pathname, closeMobileDrawer]);
-  const [theme, setTheme] = useState(localStorage.getItem('admin-theme') || 'light');
+
+  // Admin dùng cố định giao diện sáng — đã bỏ chế độ chuyển sáng/tối (không cần thiết).
+  const theme = 'light';
 
   const [pendingResCount, setPendingResCount] = useState(0);
   const [pendingShipperCount, setPendingShipperCount] = useState(0);
   const [reportCount, setReportCount] = useState(0);
-
-  useEffect(() => {
-    localStorage.setItem('admin-theme', theme);
-  }, [theme]);
-
-  const toggleTheme = () => {
-    setTheme(prev => prev === 'dark' ? 'light' : 'dark');
-  };
 
   useEffect(() => {
     const fetchCounts = async () => {
@@ -86,6 +82,7 @@ export default function AdminLayout() {
     { path: '/admin/shippers', name: 'Quản lý shipper', icon: Bike, badge: pendingShipperCount },
     { path: '/admin/users', name: 'Tài khoản', icon: Users },
     { path: '/admin/orders', name: 'Tất cả đơn', icon: Package },
+    { path: '/admin/vouchers', name: 'Voucher', icon: Ticket  },
     { path: '/admin/reports', name: 'Báo cáo vi phạm', icon: AlertTriangle, badge: reportCount },
     { path: '/admin/stats', name: 'Thống kê hệ thống', icon: LineChart },
   ];
@@ -178,35 +175,6 @@ export default function AdminLayout() {
           />
         </div>
 
-        {/* Theme Switcher Action */}
-        <div className="p-3 border-t border-slate-850">
-          <button
-            onClick={toggleTheme}
-            className={`flex items-center gap-4 w-full px-4 py-3 rounded-radius-xl transition-all cursor-pointer ${
-              theme === 'light' 
-                ? 'text-amber-600 hover:bg-slate-100' 
-                : 'text-amber-400 hover:bg-slate-900'
-            } ${sidebarCollapsed ? 'justify-center' : 'justify-start'}`}
-            title="Chuyển đổi giao diện"
-          >
-            {theme === 'light' ? (
-              <>
-                <svg className="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707m0-12.728l.707.707m12.728 12.728l.707-.707M12 8a4 4 0 100 8 4 4 0 000-8z" />
-                </svg>
-                {!sidebarCollapsed && <span className="text-sm font-semibold">Chế độ sáng</span>}
-              </>
-            ) : (
-              <>
-                <svg className="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
-                </svg>
-                {!sidebarCollapsed && <span className="text-sm font-semibold">Chế độ tối</span>}
-              </>
-            )}
-          </button>
-        </div>
-
         {/* Logout Action */}
         <div className="p-3 border-t border-slate-850">
           <button
@@ -234,26 +202,7 @@ export default function AdminLayout() {
         </div>
         
         <div className="flex items-center gap-2">
-          {/* Theme switcher on header */}
-          <button 
-            onClick={toggleTheme} 
-            className={`p-2 rounded-full transition-all cursor-pointer ${
-              theme === 'light' ? 'text-amber-600 hover:bg-slate-100' : 'text-amber-400 hover:bg-slate-900'
-            }`}
-            title="Chuyển đổi giao diện"
-          >
-            {theme === 'light' ? (
-              <svg className="w-[18px] h-[18px]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707m0-12.728l.707.707m12.728 12.728l.707-.707M12 8a4 4 0 100 8 4 4 0 000-8z" />
-              </svg>
-            ) : (
-              <svg className="w-[18px] h-[18px]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
-              </svg>
-            )}
-          </button>
-          
-          <button 
+          <button
             onClick={openMobileDrawer}
             className={`p-1.5 rounded-full transition-colors ${
               theme === 'light' ? 'hover:bg-slate-100 text-slate-600' : 'hover:bg-slate-900 text-slate-400'
@@ -265,6 +214,19 @@ export default function AdminLayout() {
       </nav>
 
 
+
+      {/* ─── MOBILE BOTTOM NAV (giúp thấy rõ điều hướng, "Tổng quan" nổi giữa) ───── */}
+      <MobileTabBar
+        accent="#9333EA"
+        rootPath="/admin"
+        items={[
+          { ...menuItems[1], name: 'Quán' },                    // Quản lý quán
+          { ...menuItems[2], name: 'Shipper' },                 // Quản lý shipper
+          { ...menuItems[0], name: 'Tổng quan', primary: true },// Dashboard — nút nổi trung tâm
+          { ...menuItems[6], name: 'Báo cáo' },                 // Báo cáo vi phạm
+          { name: 'Thêm', icon: Menu, action: openMobileDrawer },
+        ]}
+      />
 
       {/* ─── MOBILE ADMIN DRAWER ────────────────────────────────────────────── */}
       <MobileDrawer
@@ -343,7 +305,7 @@ export default function AdminLayout() {
       </MobileDrawer>
 
       {/* ─── MAIN ADMIN PORT ───────────────────────────────────────────────────── */}
-      <main className={`flex-1 flex flex-col min-w-0 pt-16 md:pt-0 h-screen overflow-y-auto relative transition-colors duration-250 ${
+      <main className={`flex-1 flex flex-col min-w-0 pt-16 md:pt-0 pb-16 md:pb-0 h-screen overflow-y-auto relative transition-colors duration-250 ${
         theme === 'light' ? 'bg-slate-50' : 'bg-slate-900'
       }`}>
         <Outlet />

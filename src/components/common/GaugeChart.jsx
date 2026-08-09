@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 
 // ──────────────────────────────────────────────────────────────────────────
 // GaugeChart
@@ -67,6 +67,15 @@ export default function GaugeChart({ data, label, value, colors = [], size = 140
     cursor += span;
   });
 
+  // Animation vẽ cung: chạy lại mỗi khi dữ liệu/chế độ đổi (ẩn/hiện hạng mục, đổi số đơn↔tiền).
+  const sig = items.map((it) => it.value).join(',');
+  const [drawn, setDrawn] = useState(false);
+  useEffect(() => {
+    setDrawn(false);
+    const t = setTimeout(() => setDrawn(true), 40);
+    return () => clearTimeout(t);
+  }, [sig]);
+
   return (
     <div
       onClick={onClick}
@@ -84,7 +93,7 @@ export default function GaugeChart({ data, label, value, colors = [], size = 140
           strokeWidth={STROKE}
           strokeLinecap="round"
         />
-        {/* Các đoạn cung màu theo từng hạng mục */}
+        {/* Các đoạn cung màu theo từng hạng mục — vẽ dần (draw-in) lệch nhịp */}
         {segments.map((seg, i) => (
           <path
             key={i}
@@ -93,12 +102,26 @@ export default function GaugeChart({ data, label, value, colors = [], size = 140
             stroke={seg.color}
             strokeWidth={STROKE}
             strokeLinecap="round"
+            pathLength={100}
+            style={{
+              strokeDasharray: 100,
+              strokeDashoffset: drawn ? 0 : 100,
+              // easeInOutSine: trải đều chuyển động suốt thời lượng (không dồn về đầu) → vẽ chậm, mượt
+              transition: `stroke-dashoffset 2s cubic-bezier(0.37,0,0.63,1) ${i * 0.32}s`,
+            }}
           />
         ))}
       </svg>
 
       {/* Số tổng + nhãn ở chính giữa (tái dùng class donut-* để khớp theme sáng/tối) */}
-      <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none font-google-sans p-2">
+      <div
+        className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none font-google-sans p-2"
+        style={{
+          opacity: drawn ? 1 : 0,
+          transform: drawn ? 'scale(1)' : 'scale(0.82)',
+          transition: 'opacity 0.9s ease-out 0.6s, transform 1s cubic-bezier(0.16,1,0.3,1) 0.6s',
+        }}
+      >
         <span className="donut-label text-[9px] font-extrabold uppercase tracking-wider leading-tight mb-1 text-center max-w-[85px] break-words">
           {label}
         </span>

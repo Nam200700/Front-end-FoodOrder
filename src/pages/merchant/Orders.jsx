@@ -1,9 +1,10 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   ClipboardList, ShoppingBag, Check, X, Ban, Eye, Clock, AlertCircle,
-  User, Phone, MapPin, Bike, Wallet, StickyNote, CalendarClock, UtensilsCrossed, Package, BadgeCheck
+  User, Phone, MapPin, Bike, Wallet, StickyNote, CalendarClock, UtensilsCrossed, Package, BadgeCheck,
+  Bell, Volume2, VolumeX, RefreshCw, Wifi, WifiOff, Sparkles, ChevronLeft, ChevronRight 
 } from 'lucide-react';
-import { formatCurrency } from '../../utils/format';
+import { formatCurrency, formatDateTime } from '../../utils/format';
 import apiClient from '../../services/api';
 import { useWebSocketContext } from '../../contexts/WebSocketContext';
 import { SkeletonOrderCard } from '../../components/common/SkeletonCard';
@@ -43,6 +44,45 @@ const STATUS_PILL = {
   CANCELLED: { bg: 'bg-rose-100', text: 'text-rose-700', icon: Ban },
 };
 
+const PENDING_AUTO_CANCEL_MS = 5 * 60 * 1000;
+
+// Đồng hồ đếm ngược tự huỷ cho đơn chờ xác nhận — nhắc owner xác nhận trước khi hệ thống huỷ.
+function AutoCancelCountdown({ createdAtMs }) {
+  const [remaining, setRemaining] = useState(() =>
+    Math.max(0, (createdAtMs || 0) + PENDING_AUTO_CANCEL_MS - Date.now())
+  );
+  useEffect(() => {
+    if (!createdAtMs) return;
+    const tick = () => setRemaining(Math.max(0, createdAtMs + PENDING_AUTO_CANCEL_MS - Date.now()));
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, [createdAtMs]);
+
+  if (!createdAtMs) return null;
+  const totalSec = Math.ceil(remaining / 1000);
+  const mm = Math.floor(totalSec / 60);
+  const ss = totalSec % 60;
+  const expired = remaining <= 0;
+  const urgent = remaining <= 30000; // ≤30s → đỏ, nhấp nháy
+
+  return (
+    <span
+      className={`inline-flex items-center gap-1 text-[10px] sm:text-[11px] font-bold px-2 py-0.5 sm:py-1 rounded-full border shrink-0 ${
+        expired
+          ? 'bg-slate-100 text-slate-500 border-slate-200'
+          : urgent
+          ? 'bg-rose-50 text-rose-600 border-rose-200 animate-pulse'
+          : 'bg-amber-50 text-amber-700 border-amber-200'
+      }`}
+      title="Đơn tự động huỷ nếu quán không xác nhận kịp"
+    >
+      <Clock size={12} className="shrink-0" />
+      {expired ? 'Đang tự huỷ…' : `Tự huỷ sau ${mm}:${String(ss).padStart(2, '0')}`}
+    </span>
+  );
+}
+
 const ORDER_STATUS_TABS = [
   { id: 'ALL', label: 'Tất cả' },
   { id: 'PENDING', label: 'Chờ xác nhận' },
@@ -58,15 +98,19 @@ export default function MerchantOrders() {
   const [orders, setOrders] = useState([]);
   const [restaurantId, setRestaurantId] = useState(null);
   const [loading, setLoading] = useState(true);
-  // Đếm số đơn theo từng trạng thái để hiện badge trên tab (dễ quản lý, không cần bấm vào từng tab)
+  // Đã tải dữ liệu lần đầu chưa — dùng để chỉ chạy animation "bay lên" cho lần tải đầu,
+  const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
+  // Đếm số đơn theo từng trạng thái để hiện badge trên tab 
   const [statusCounts, setStatusCounts] = useState({});
-  // Đơn đang xử lý thao tác (nhận/chuẩn bị/sẵn sàng) → disable + spinner, tránh double-click
+
   const [actionLoadingId, setActionLoadingId] = useState(null);
 
-  // STATE PHÂN TRANG
-  const [currentPage, setCurrentPage] = useState(1);
+  // STATE PHÂN TRANG & TÌM KIẾM
+  const [page, setPage] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
-  const pageSize = 5;
+  const pageSize = 10;
+  const [keywordInput, setKeywordInput] = useState('');
+  const [debouncedKeyword, setDebouncedKeyword] = useState('');
 
   // State lý do từ chối đơn hàng 
   const [cancelReasonInput, setCancelReasonInput] = useState('');
@@ -79,11 +123,74 @@ export default function MerchantOrders() {
   // STATE HỦY ĐƠN HÀNG MODAL
   const cancelModal = useModalState();
 
-  const { subscribe } = useWebSocketContext();
+  const { subscribe, connected } = useWebSocketContext();
 
-  // Reset về trang 1 khi đổi tab
+  // ─── HỖ TRỢ KHÔNG BỎ SÓT ĐƠN: báo động đơn mới + auto-refresh ───
+  const [soundOn, setSoundOn] = useState(() => localStorage.getItem('merchant-order-sound') !== 'off');
+  const [newOrderIds, setNewOrderIds] = useState(new Set()); 
+  const [lastUpdated, setLastUpdated] = useState(null);
+  const prevPendingIdsRef = useRef(null); 
+  const audioCtxRef = useRef(null);
+
+  useEffect(() => { localStorage.setItem('merchant-order-sound', soundOn ? 'on' : 'off'); }, [soundOn]);
+
+  // Xin quyền hiện thông báo trình duyệt (để owner thấy đơn mới cả khi đang ở tab khác)
   useEffect(() => {
-    setCurrentPage(1);
+    if ('Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission().catch(() => {});
+    }
+  }, []);
+
+  // Tiếng "ting" báo đơn mới (Web Audio — không cần file âm thanh)
+  const playBeep = useCallback(() => {
+    if (!soundOn) return;
+    try {
+      const Ctx = window.AudioContext || window.webkitAudioContext;
+      if (!Ctx) return;
+      const ctx = audioCtxRef.current || (audioCtxRef.current = new Ctx());
+      if (ctx.state === 'suspended') ctx.resume();
+      const now = ctx.currentTime;
+      [880, 1175].forEach((freq, i) => { // 2 nốt cho dễ nhận biết
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.value = freq;
+        const t = now + i * 0.18;
+        gain.gain.setValueAtTime(0.0001, t);
+        gain.gain.exponentialRampToValueAtTime(0.35, t + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.16);
+        osc.connect(gain); gain.connect(ctx.destination);
+        osc.start(t); osc.stop(t + 0.18);
+      });
+    } catch { /* bỏ qua nếu trình duyệt chặn */ }
+  }, [soundOn]);
+
+  // Báo động 1 đơn mới: chuông + toast + thông báo trình duyệt (khi ở tab khác)
+  const alertNewOrder = useCallback((o) => {
+    playBeep();
+    toast.info(`Đơn mới #${o.orderId}${o.customerName ? ` từ ${o.customerName}` : ''} · ${formatCurrency(Number(o.totalAmount || 0))}`, { autoClose: 6000 });
+    if ('Notification' in window && Notification.permission === 'granted' && document.hidden) {
+      try {
+        const n = new Notification('🔔 Đơn hàng mới', {
+          body: `Đơn #${o.orderId}${o.customerName ? ` · ${o.customerName}` : ''} · ${formatCurrency(Number(o.totalAmount || 0))}`,
+          tag: `order-${o.orderId}`,
+        });
+        n.onclick = () => { window.focus(); n.close(); };
+      } catch { /* ignore */ }
+    }
+  }, [playBeep]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedKeyword(keywordInput);
+      setPage(0); 
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [keywordInput]);
+
+  // Reset về trang 0 khi đổi tab
+  useEffect(() => {
+    setPage(0);
   }, [activeTab]);
 
   // Lấy thông tin nhà hàng 
@@ -106,24 +213,18 @@ export default function MerchantOrders() {
     fetchRestaurant();
   }, []);
 
-  // Hàm định dạng ngày tháng hiển thị
-  const formatOrderDate = (dateString) => {
-    if (!dateString) return '';
-    const dateObj = new Date(dateString);
-    return `${String(dateObj.getDate()).padStart(2, '0')}-${String(dateObj.getMonth() + 1).padStart(2, '0')}-${dateObj.getFullYear()} ${String(dateObj.getHours()).padStart(2, '0')}:${String(dateObj.getMinutes()).padStart(2, '0')}`;
-  };
-
-  // Lấy danh sách đơn hàng của quán
-  const fetchOrders = useCallback(async () => {
+  // Lấy danh sách đơn hàng của quán.
+  const fetchOrders = useCallback(async (background = false) => {
     if (!restaurantId) return;
     try {
-      setLoading(true);
+      if (!background) setLoading(true);
       const response = await apiClient.get('/merchant/orders', 
         { 
           params: {
             restaurantId: restaurantId,
             status: activeTab === 'ALL' ? undefined : activeTab,
-            page: currentPage - 1,
+            keyword: debouncedKeyword.trim() || undefined,
+            page: page,
             size: pageSize
           }
         }        
@@ -141,32 +242,35 @@ export default function MerchantOrders() {
             quantity: i.quantity,
             price: Number(i.priceAtOrder || 0),
             note: i.note,
-            // Ảnh món: dùng ảnh thật, thiếu thì fallback ảnh mặc định nội bộ (bỏ ảnh Unsplash hardcode)
             image: getFoodImageUrl(i.foodImageUrl)
           })),
           total: Number(ord.totalAmount),
-          createdAt: formatOrderDate(ord.createdAt),
+          createdAt: formatDateTime(ord.createdAt),
+          createdAtMs: ord.createdAt ? new Date(ord.createdAt).getTime() : null, 
           phone: ord.customerPhone,
           status: ord.orderStatus,
           shipper: ord.shipperName ? `${ord.shipperName} (${ord.shipperPhone || ''})` : null
         };
       });
       setOrders(mapped);
+      setHasLoadedOnce(true);
     } catch (err) {
       console.error('Lỗi khi lấy danh sách đơn hàng:', err);
-      toast.error(err.response?.data?.message || 'Lỗi tải danh sách đơn hàng');
-      setOrders([]);
+      if (!background) {
+        toast.error(err.response?.data?.message || 'Lỗi tải danh sách đơn hàng');
+        setOrders([]);
+      }
     } finally {
-      setLoading(false);
+      if (!background) setLoading(false);
     }
-  }, [restaurantId, activeTab, currentPage]);
+  }, [restaurantId, activeTab, page, debouncedKeyword]);
 
   useEffect(() => {
     fetchOrders();
   }, [fetchOrders]);
 
-  // Đếm số đơn theo trạng thái (lấy toàn bộ đơn của quán, không phân trang) để hiện badge trên tab
-  const fetchStatusCounts = useCallback(async () => {
+  // Đếm số đơn theo trạng thái + PHÁT HIỆN ĐƠN MỚI (so baseline id đơn chờ).
+  const watchPending = useCallback(async (alert) => {
     if (!restaurantId) return;
     try {
       const res = await apiClient.get('/merchant/orders', { params: { restaurantId, size: 1000 } });
@@ -174,35 +278,59 @@ export default function MerchantOrders() {
       const counts = { ALL: all.length };
       all.forEach((o) => { counts[o.orderStatus] = (counts[o.orderStatus] || 0) + 1; });
       setStatusCounts(counts);
+      setLastUpdated(new Date());
+
+      const pending = all.filter((o) => o.orderStatus === 'PENDING');
+      const pendingIds = pending.map((o) => o.orderId);
+      const prev = prevPendingIdsRef.current;
+      if (alert && prev !== null) {
+        const fresh = pending.filter((o) => !prev.includes(o.orderId));
+        if (fresh.length) {
+          fresh.forEach(alertNewOrder);
+          setNewOrderIds((s) => {
+            const n = new Set(s);
+            fresh.forEach((o) => n.add(o.orderId.toString()));
+            return n;
+          });
+          // Nhãn "MỚI" tự tắt sau 2 phút nếu owner chưa thao tác
+          fresh.forEach((o) => setTimeout(() => {
+            setNewOrderIds((s) => { const n = new Set(s); n.delete(o.orderId.toString()); return n; });
+          }, 120000));
+          fetchOrders(true); // làm mới ngầm danh sách đang xem để đơn mới hiện ngay, không hiện skeleton
+        }
+      }
+      prevPendingIdsRef.current = pendingIds;
     } catch (err) {
-      console.error('Lỗi đếm số đơn theo trạng thái:', err);
+      console.error('Lỗi theo dõi đơn mới:', err);
     }
-  }, [restaurantId]);
+  }, [restaurantId, fetchOrders, alertNewOrder]);
 
-  // Refresh badge mỗi khi danh sách đơn thay đổi (sau xác nhận/từ chối/WS) để số luôn khớp thực tế
-  useEffect(() => {
-    fetchStatusCounts();
-  }, [orders, fetchStatusCounts]);
+  // Đồng bộ số đếm mỗi khi danh sách đổi (không kêu chuông cho thao tác cục bộ)
+  useEffect(() => { watchPending(false); }, [orders, watchPending]);
 
-  // Lắng nghe thông báo Đơn hàng mới qua WebSocket 
   useEffect(() => {
     if (!restaurantId) return;
+    const intervalMs = connected ? 30000 : 10000;
+    const id = setInterval(() => {
+      if (!document.hidden) { watchPending(true); fetchOrders(true); }
+    }, intervalMs);
+    return () => clearInterval(id);
+  }, [restaurantId, watchPending, fetchOrders, connected]);
 
+  // Kiểm tra ngay khi owner quay lại tab —
+  useEffect(() => {
+    const onVisible = () => { if (!document.hidden) { watchPending(true); fetchOrders(true); } };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
+  }, [watchPending, fetchOrders]);
+
+  // Realtime tức thì qua WebSocket (khi hoạt động) 
+  useEffect(() => {
+    if (!restaurantId) return;
     const destination = `/user/queue/notify`;
-    console.log('[Merchant Orders WebSocket]: Subscribing to ' + destination);
-
-    const sub = subscribe(destination, (event) => {
-      console.log('[Merchant Orders WebSocket]: Received event', event);
-      fetchOrders();
-    });
-
-    return () => {
-      if (sub) {
-        console.log('[Merchant Orders WebSocket]: Unsubscribing from ' + destination);
-        sub.unsubscribe();
-      }
-    };
-  }, [restaurantId, fetchOrders, subscribe]);
+    const sub = subscribe(destination, () => { watchPending(true); fetchOrders(true); });
+    return () => { if (sub) sub.unsubscribe(); };
+  }, [restaurantId, fetchOrders, subscribe, watchPending]);
 
   // Xác nhận đơn hàng
   const handleConfirm = async (e, orderId) => {
@@ -211,6 +339,7 @@ export default function MerchantOrders() {
     try {
       await apiClient.patch(`/merchant/orders/${orderId}/confirm`);
       toast.success(`Đã xác nhận thành công đơn hàng #${orderId}`);
+      setNewOrderIds((s) => { const n = new Set(s); n.delete(orderId.toString()); return n; });
       if (detailModal.data && detailModal.data.orderId.toString() === orderId.toString()) {
         detailModal.close();
       }
@@ -286,6 +415,7 @@ export default function MerchantOrders() {
         rejectReason: cancelReasonInput.trim()
       });
       toast.success(`Đã từ chối thành công đơn hàng #${orderIdToCancel}`);
+      setNewOrderIds((s) => { const n = new Set(s); n.delete(orderIdToCancel.toString()); return n; });
       cancelModal.close();
       if (detailModal.data && detailModal.data.orderId.toString() === orderIdToCancel.toString()) {
         detailModal.close();
@@ -365,16 +495,106 @@ export default function MerchantOrders() {
       )}
 
       <div className="max-w-[1400px] mx-auto px-4 md:px-6">
-        <h1 className="text-xl md:text-2xl font-bold mb-4 md:mb-6 text-gray-900">Quản Lý Đơn Hàng</h1>
-        
-        <div className="mb-6 border-b border-slate-200 pb-3 overflow-x-auto scrollbar-none w-full">
-          <FilterTabs
-            tabs={ORDER_STATUS_TABS}
-            activeTab={activeTab}
-            onTabChange={setActiveTab}
-            counts={statusCounts}
-            className="flex flex-row !flex-nowrap whitespace-nowrap [&_div]:flex [&_div]:flex-row [&_div]:flex-nowrap [&_button]:shrink-0 [&_button.bg-md-primary]:!bg-blue-600 [&_button.bg-md-primary]:!text-white [&_button.bg-md-primary]:!shadow-blue-100"
-          />
+        {/* Header: tiêu đề + trạng thái realtime + chuông + làm mới */}
+        <div className="flex flex-wrap items-center justify-between gap-3 mb-4 md:mb-5">
+          <h1 className="text-xl md:text-2xl font-bold text-gray-900 flex items-center gap-2.5">
+            <span className="p-2 rounded-xl bg-blue-600/10 text-blue-600"><ClipboardList size={20} /></span>
+            Quản Lý Đơn Hàng
+          </h1>
+          <div className="flex items-center gap-2">
+            {/* Trạng thái realtime */}
+            <span
+              className={`inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1.5 rounded-full border ${
+                connected ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-slate-100 text-slate-500 border-slate-200'
+              }`}
+              title={connected ? 'Đang nhận đơn theo thời gian thực' : 'Mất kết nối realtime — vẫn tự làm mới ngầm mỗi 10 giây'}
+            >
+              {connected ? <Wifi size={13} /> : <WifiOff size={13} />}
+              <span className="relative flex h-2 w-2">
+                {connected && <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />}
+                <span className={`relative inline-flex rounded-full h-2 w-2 ${connected ? 'bg-emerald-500' : 'bg-slate-400'}`} />
+              </span>
+              {connected ? 'Trực tuyến' : 'Ngoại tuyến'}
+            </span>
+            {/* Bật/tắt chuông báo đơn mới */}
+            <button
+              onClick={() => setSoundOn((v) => !v)}
+              className={`inline-flex items-center justify-center w-9 h-9 rounded-full border transition-all cursor-pointer ${
+                soundOn ? 'bg-blue-600 text-white border-blue-600 shadow-sm shadow-blue-200' : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50'
+              }`}
+              title={soundOn ? 'Đang bật chuông báo đơn mới — bấm để tắt' : 'Đang tắt chuông — bấm để bật'}
+            >
+              {soundOn ? <Volume2 size={16} /> : <VolumeX size={16} />}
+            </button>
+            {/* Làm mới thủ công — thao tác chủ động của owner nên vẫn cho hiện loading để có phản hồi rõ ràng */}
+            <button
+              onClick={() => { fetchOrders(); watchPending(true); }}
+              disabled={loading}
+              className="inline-flex items-center gap-1.5 text-xs font-bold px-3 h-9 rounded-full border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 hover:border-blue-300 hover:text-blue-600 transition-all cursor-pointer disabled:opacity-50"
+              title="Làm mới danh sách đơn"
+            >
+              <RefreshCw size={14} className={loading ? 'animate-spin' : ''} /> Làm mới
+            </button>
+          </div>
+        </div>
+
+        {(statusCounts.PENDING || 0) > 0 && (
+          <div className="mb-5 flex items-center gap-3 rounded-2xl border border-amber-200 bg-gradient-to-r from-amber-50 to-white p-3.5 md:p-4 shadow-sm animate-rise-in">
+            <span className="relative shrink-0 w-11 h-11 rounded-xl bg-amber-100 text-amber-600 flex items-center justify-center">
+              <Bell size={20} className="animate-bob" />
+              <span className="absolute -top-1 -right-1 flex h-4 w-4">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
+                <span className="relative inline-flex rounded-full h-4 w-4 bg-amber-500 text-white text-[9px] font-black items-center justify-center flex">{statusCounts.PENDING}</span>
+              </span>
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-extrabold text-slate-800">Bạn có {statusCounts.PENDING} đơn đang chờ xác nhận</p>
+              <p className="text-[11px] text-slate-500 font-medium">Xác nhận sớm để khách không phải chờ lâu — giữ trải nghiệm tốt.</p>
+            </div>
+            {activeTab !== 'PENDING' && (
+              <Button variant="primary" size="sm" onClick={() => setActiveTab('PENDING')} className="!bg-amber-500 hover:!bg-amber-600 shrink-0 rounded-lg text-xs !py-2">
+                Xem ngay
+              </Button>
+            )}
+          </div>
+        )}
+
+        {/* THANH TAB TRẠNG THÁI VÀ Ô TÌM KIẾM BÊN */}
+        <div className="mb-6 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4 border-b border-slate-200 pb-3">
+          <div className="overflow-x-auto scrollbar-none w-full md:w-auto">
+            <FilterTabs
+              tabs={ORDER_STATUS_TABS}
+              activeTab={activeTab}
+              onTabChange={setActiveTab}
+              counts={statusCounts}
+              className="flex flex-row !flex-nowrap whitespace-nowrap [&_div]:flex [&_div]:flex-row [&_div]:flex-nowrap [&_button]:shrink-0 [&_button.bg-md-primary]:!bg-blue-600 [&_button.bg-md-primary]:!text-white [&_button.bg-md-primary]:!shadow-blue-100"
+            />
+          </div>
+
+          {/* Ô tìm kiếm góc phải */}
+          <div className="relative min-w-[240px] md:w-72 shrink-0">
+            <span className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-slate-400">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+              </svg>
+            </span>
+            <input
+              type="text"
+              value={keywordInput}
+              onChange={(e) => setKeywordInput(e.target.value)}
+              placeholder="Tìm theo mã đơn, tên khách hàng"
+              className="w-full pl-9 pr-8 py-2 bg-white border border-slate-200 rounded-xl text-xs md:text-sm focus:outline-none focus:border-blue-500 text-slate-800 placeholder-slate-400 shadow-sm transition-all"
+            />
+            {keywordInput && (
+              <button
+                type="button"
+                onClick={() => setKeywordInput('')}
+                className="absolute inset-y-0 right-0 flex items-center pr-3 text-slate-400 hover:text-slate-600 text-xs font-bold cursor-pointer"
+              >
+                ✕
+              </button>
+            )}
+          </div>
         </div>
 
         <div className="min-h-[600px] w-full">
@@ -397,19 +617,30 @@ export default function MerchantOrders() {
             </div>
           ) : (
             <div className="space-y-4">
-              {orders.map((order, idx) => (
+              {orders.map((order, idx) => {
+                const isNew = newOrderIds.has(order.id);
+                const shouldAnimate = !hasLoadedOnce || isNew;
+                return (
                 <div
                   key={order.id}
                   onClick={() => handleViewDetails(order.id)}
-                  style={{ animationDelay: `${idx * 60}ms` }}
-                  className={`animate-rise-in bg-white rounded-xl border border-slate-100 border-l-4 ${STATUS_ACCENT[order.status] || 'border-l-slate-200'} shadow-sm p-4 md:p-5 flex flex-col gap-4 cursor-pointer group transition-all duration-200 hover:shadow-md hover:-translate-y-0.5 hover:border-slate-200`}
+                  style={shouldAnimate ? { animationDelay: `${idx * 60}ms` } : undefined}
+                  className={`${shouldAnimate ? 'animate-rise-in' : ''} bg-white rounded-xl border border-l-4 ${STATUS_ACCENT[order.status] || 'border-l-slate-200'} shadow-sm p-4 md:p-5 flex flex-col gap-4 cursor-pointer group transition-all duration-200 hover:shadow-md hover:-translate-y-0.5 ${
+                    isNew ? 'border-amber-300 ring-2 ring-amber-300/60 shadow-amber-100' : 'border-slate-100 hover:border-slate-200'
+                  }`}
                 >
                   <div className="flex flex-row justify-between items-center gap-2 border-b border-slate-100 pb-3 flex-wrap sm:flex-nowrap">
-                    <div className="text-[11px] sm:text-sm font-bold text-slate-800 uppercase tracking-wide whitespace-nowrap shrink-0">
-                      MÃ ĐƠN <span className="text-slate-900 font-extrabold">#{order.id}</span>
+                    <div className="text-[11px] sm:text-sm font-bold text-slate-800 uppercase tracking-wide whitespace-nowrap shrink-0 flex items-center gap-2">
+                      <span>MÃ ĐƠN <span className="text-slate-900 font-extrabold">#{order.id}</span></span>
+                      {isNew && (
+                        <span className="inline-flex items-center gap-1 text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-amber-500 text-white shadow-sm animate-pulse">
+                          <Sparkles size={10} /> Mới
+                        </span>
+                      )}
                     </div>
-                    
-                    <div className="flex items-center gap-2 sm:gap-4 text-[10px] sm:text-xs text-slate-500 font-medium whitespace-nowrap">
+
+                    <div className="flex items-center gap-2 sm:gap-3 text-[10px] sm:text-xs text-slate-500 font-medium whitespace-nowrap">
+                      {order.status === 'PENDING' && <AutoCancelCountdown createdAtMs={order.createdAtMs} />}
                       <span className="flex items-center gap-1 shrink-0">
                         <Clock size={13} />
                         {order.createdAt}
@@ -530,52 +761,26 @@ export default function MerchantOrders() {
                     </div>
                   </div>
                 </div>
-              ))}
+                );
+              })}
 
-              {/* PAGINATION */}
+              {/* KHUNG PHÂN TRANG */}
               {totalPages > 1 && (
-                <div className="flex justify-center items-center gap-1.5 mt-5 mb-5 pt-2 pb-2 border-t border-slate-100 selection:bg-transparent">
+                <div className="flex items-center justify-end gap-3 pt-6 border-t border-slate-200/60 mt-6">
                   <button
-                    type="button"
-                    disabled={currentPage === 1}
-                    onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                    className="w-8 h-8 flex items-center justify-center rounded-lg border border-slate-200 text-slate-500 bg-white shadow-sm transition-all duration-200 hover:bg-slate-50 hover:text-slate-800 active:scale-95 disabled:opacity-40 disabled:hover:bg-white disabled:hover:text-slate-500 disabled:active:scale-100 disabled:cursor-not-allowed cursor-pointer"
-                    title="Trang trước"
+                    onClick={() => setPage(Math.max(page - 1, 0))}
+                    disabled={page === 0}
+                    className="flex items-center justify-center w-8 h-8 rounded-lg bg-white border border-slate-200 text-slate-600 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-50 transition-all cursor-pointer shadow-sm"
                   >
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-4 h-4">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
-                    </svg>
+                    <ChevronLeft size={16} /> 
                   </button>
-
-                  {[...Array(totalPages)].map((_, index) => {
-                    const pageNumber = index + 1;
-                    const isActive = currentPage === pageNumber;
-                    return (
-                      <button
-                        key={pageNumber}
-                        type="button"
-                        onClick={() => setCurrentPage(pageNumber)}
-                        className={`w-8 h-8 rounded-lg text-xs font-semibold border transition-all duration-200 cursor-pointer flex items-center justify-center active:scale-95 ${
-                          isActive
-                            ? 'bg-blue-600 text-white border-blue-600 shadow-md shadow-blue-100'
-                            : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50 hover:border-slate-300 hover:text-slate-800'
-                        }`}
-                      >
-                        {pageNumber}
-                      </button>
-                    );
-                  })}
-
+                  <span className="text-xs font-bold text-slate-500 mr-1">Trang {page + 1} / {totalPages}</span>
                   <button
-                    type="button"
-                    disabled={currentPage === totalPages}
-                    onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-                    className="w-8 h-8 flex items-center justify-center rounded-lg border border-slate-200 text-slate-500 bg-white shadow-sm transition-all duration-200 hover:bg-slate-50 hover:text-slate-800 active:scale-95 disabled:opacity-40 disabled:hover:bg-white disabled:hover:text-slate-500 disabled:active:scale-100 disabled:cursor-not-allowed cursor-pointer"
-                    title="Trang sau"
+                    onClick={() => setPage(Math.min(page + 1, totalPages - 1))}
+                    disabled={page >= totalPages - 1}
+                    className="flex items-center justify-center w-8 h-8 rounded-lg bg-white border border-slate-200 text-slate-600 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-50 transition-all cursor-pointer shadow-sm"
                   >
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-4 h-4">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
-                    </svg>
+                    <ChevronRight size={16} />
                   </button>
                 </div>
               )}
@@ -673,11 +878,16 @@ export default function MerchantOrders() {
               {/* Hàng đầu: thời gian đặt + pill trạng thái nổi bật */}
               <div className="flex items-center justify-between flex-wrap gap-2">
                 <span className="inline-flex items-center gap-1.5 text-xs text-slate-400 font-medium">
-                  <CalendarClock size={14} /> Đặt lúc {formatOrderDate(d.createdAt)}
+                  <CalendarClock size={14} /> Đặt lúc {formatDateTime(d.createdAt)}
                 </span>
-                <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-extrabold ${pill.bg} ${pill.text}`}>
-                  <PillIcon size={13} /> {getStatus(status)}
-                </span>
+                <div className="flex items-center gap-2">
+                  {status === 'PENDING' && d.createdAt && (
+                    <AutoCancelCountdown createdAtMs={new Date(d.createdAt).getTime()} />
+                  )}
+                  <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-extrabold ${pill.bg} ${pill.text}`}>
+                    <PillIcon size={13} /> {getStatus(status)}
+                  </span>
+                </div>
               </div>
 
               {/* 2 thẻ thông tin: khách hàng & giao hàng (có icon, thoáng hơn) */}
@@ -702,13 +912,13 @@ export default function MerchantOrders() {
                 </div>
               </div>
 
-              {/* Địa chỉ giao hàng — dòng riêng có icon */}
+              {/* Địa chỉ giao hàng*/}
               <div className="flex items-start gap-2.5 rounded-2xl border border-slate-100 bg-white p-3.5 text-sm text-slate-600">
                 <MapPin size={16} className="text-rose-500 shrink-0 mt-0.5" />
                 <span className="break-words"><span className="font-semibold text-slate-700">Địa chỉ giao:</span> {d.deliveryAddress}</span>
               </div>
 
-              {/* Danh sách món ăn — thoáng hơn, ảnh to hơn, số lượng dạng badge */}
+              {/* Danh sách món ăn*/}
               <div>
                 <h4 className="flex items-center gap-2 text-[11px] font-extrabold text-slate-500 uppercase tracking-wider mb-2">
                   <UtensilsCrossed size={14} className="text-amber-500" /> Danh sách món ăn ({(d.items || []).length})
@@ -784,7 +994,6 @@ export default function MerchantOrders() {
                 </div>
               </div>
 
-              {/* Khối điều hướng các Button (có loading/disabled theo đơn) */}
               <div className="flex justify-end gap-2 pt-1">
                 <Button variant="outline" size="sm" onClick={detailModal.close} className="rounded-lg text-xs !py-2 hover:border-blue-600 hover:text-blue-600">
                   Đóng

@@ -1,67 +1,132 @@
 import React from 'react';
-import { ResponsiveContainer, ComposedChart, Area, Bar, CartesianGrid, XAxis, YAxis, Tooltip, Legend } from 'recharts';
+import { ResponsiveContainer, ComposedChart, Area, Bar, CartesianGrid, XAxis, YAxis, Tooltip, Legend, Brush } from 'recharts';
 
-export default function RevenueAreaChart({ 
-  data, 
-  dataKey = 'revenue', 
-  color = '#6366f1', 
-  height = 200, 
+export default function RevenueAreaChart({
+  data,
+  dataKey = 'revenue',
+  color = '#6366f1',
+  height = 200,
   xKey = 'date',
   areas = [], // Mảng cấu hình các đường vẽ: [{ key, name, color }]
   showLegend = false,
   yTickFormatter,
-  chartType = 'area' // 'area' hoặc 'bar'
+  chartType = 'area', // 'area' hoặc 'bar'
+  brush = false,      // hiện thanh kéo trượt (scroll) để kéo dữ liệu qua lại
+  brushWindow = 21,   // số điểm hiển thị mặc định khi có brush (mới nhất)
+  valueFormatter,     // format giá trị trong tooltip; mặc định làm tròn số nguyên (không để lộ số lẻ)
+  connectNulls = false, // nối qua điểm null (dùng cho đường forecast có đoạn null ở quá khứ)
+  animate = true       // animation vẽ đường/cột khi render
 }) {
+  // Mặc định: làm tròn về số nguyên + phân tách nghìn (khử số lẻ .22 & rác dấu phẩy động khi gom bucket).
+  const fmtValue = valueFormatter || ((v) => {
+    const n = Number(v);
+    return Number.isFinite(n) ? Math.round(n).toLocaleString('vi-VN') : v;
+  });
   // Nếu có areas, dùng areas. Ngược lại dùng dataKey/color mặc định
   const activeAreas = areas.length > 0 ? areas : [{ key: dataKey, name: 'Doanh thu', color: color }];
+
+  // DÀY (nhiều ngày) → tắt chấm marker ở từng điểm để đường mượt, đỡ "răng cưa" & rối mắt;
+  // THƯA (≤ 31 điểm) mới hiện chấm cho dễ đọc giá trị từng ngày.
+  const pointCount = data?.length || 0;
+  const dense = pointCount > 31;
+  // Có brush: mặc định hiện cửa sổ brushWindow điểm gần nhất, kéo trượt để xem phần còn lại.
+  const showBrush = brush && pointCount > brushWindow;
+  const brushStart = showBrush ? pointCount - brushWindow : 0;
+  // Nhiều đường chồng nhau → fill nhạt hơn để không bị đục màu; ít đường thì đậm cho nổi khối.
+  const fillTop = activeAreas.length > 1 ? 0.16 : 0.22;
+  // Khi có 2 đường sát nhau (vd gross vs net 90%) mà không cấu hình fill riêng:
+  // chỉ tô vùng cho đường ĐẦU (bao ngoài), các đường sau để line trơn → hết đục màu, tách bạch rõ.
+  const someFillConfigured = activeAreas.some(a => a.noFill != null || a.dashed);
+  const shouldFill = (area, idx) => {
+    if (area.dashed) return false;          // đường forecast: luôn line trơn
+    if (area.noFill != null) return !area.noFill;
+    if (someFillConfigured) return true;
+    return activeAreas.length > 1 ? idx === 0 : true;
+  };
 
   return (
     <div style={{ width: '100%', height }}>
       <ResponsiveContainer width="100%" height="100%">
-        <ComposedChart data={data} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
+        <ComposedChart data={data} margin={{ top: 10, right: 12, left: -25, bottom: showBrush ? 4 : 0 }}>
           <defs>
             {activeAreas.map((area, idx) => {
               const gradientId = `gradient-area-${idx}`;
               return (
                 <linearGradient key={idx} id={gradientId} x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor={area.color || color} stopOpacity={0.15} />
+                  <stop offset="5%" stopColor={area.color || color} stopOpacity={fillTop} />
                   <stop offset="95%" stopColor={area.color || color} stopOpacity={0} />
                 </linearGradient>
               );
             })}
           </defs>
           <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" opacity={0.5} />
-          <XAxis dataKey={xKey} tick={{ fontSize: 9, fill: '#94a3b8', fontWeight: 600 }} tickLine={false} axisLine={false} />
-          <YAxis tick={{ fontSize: 9, fill: '#94a3b8', fontWeight: 600 }} tickLine={false} axisLine={false} tickFormatter={yTickFormatter} />
-          <Tooltip 
-            contentStyle={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '0.75rem', fontSize: '11px', fontFamily: 'sans-serif' }}
+          <XAxis
+            dataKey={xKey}
+            tick={{ fontSize: 9, fill: '#94a3b8', fontWeight: 600 }}
+            tickLine={false}
+            axisLine={false}
+            minTickGap={dense ? 28 : 8}
+            interval="preserveStartEnd"
           />
-          {showLegend && <Legend wrapperStyle={{ fontSize: '10px', marginTop: '5px' }} />}
+          <YAxis tick={{ fontSize: 9, fill: '#94a3b8', fontWeight: 600 }} tickLine={false} axisLine={false} tickFormatter={yTickFormatter} width={56} />
+          <Tooltip
+            contentStyle={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '0.75rem', fontSize: '11px', fontFamily: 'sans-serif', boxShadow: '0 8px 24px rgba(15,23,42,0.12)' }}
+            cursor={{ stroke: '#cbd5e1', strokeWidth: 1, strokeDasharray: '4 4' }}
+            formatter={(value, name) => [fmtValue(value), name]}
+          />
+          {showLegend && <Legend wrapperStyle={{ fontSize: '11px', fontWeight: 700, paddingTop: '6px' }} iconType="circle" iconSize={9} />}
           {activeAreas.map((area, idx) => {
             const gradientId = `gradient-area-${idx}`;
+            const c = area.color || color;
+            const filled = shouldFill(area, idx);
             return chartType === 'bar' ? (
-              <Bar 
+              <Bar
                 key={idx}
                 name={area.name}
-                dataKey={area.key} 
-                fill={area.color || color} 
+                dataKey={area.key}
+                fill={c}
                 radius={[4, 4, 0, 0]}
-                barSize={18}
+                barSize={dense ? undefined : 18}
+                maxBarSize={18}
+                isAnimationActive={animate}
+                animationDuration={800}
+                animationEasing="ease-out"
+                animationBegin={idx * 120}
               />
             ) : (
-              <Area 
+              <Area
                 key={idx}
-                type="monotone" 
+                type="monotone"
                 name={area.name}
-                dataKey={area.key} 
-                stroke={area.color || color} 
-                fill={`url(#${gradientId})`} 
-                strokeWidth={2.5} 
-                dot={{ r: 3, strokeWidth: 1, fill: '#fff' }}
-                activeDot={{ r: 5, strokeWidth: 0 }}
+                dataKey={area.key}
+                stroke={c}
+                strokeDasharray={area.dashed ? '6 5' : undefined}
+                fill={filled ? `url(#${gradientId})` : 'transparent'}
+                strokeWidth={dense ? 2 : 2.5}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                connectNulls={connectNulls}
+                dot={dense ? false : { r: 2.5, strokeWidth: 1.5, fill: '#fff', stroke: c }}
+                activeDot={{ r: 5, strokeWidth: 2, fill: '#fff', stroke: c }}
+                isAnimationActive={animate}
+                animationDuration={1300}
+                animationEasing="ease-out"
+                animationBegin={idx * 220}
               />
             );
           })}
+          {showBrush && (
+            <Brush
+              dataKey={xKey}
+              height={22}
+              travellerWidth={9}
+              startIndex={brushStart}
+              endIndex={pointCount - 1}
+              stroke={activeAreas[0]?.color || color}
+              fill="rgba(148,163,184,0.10)"
+              tickFormatter={() => ''}
+            />
+          )}
         </ComposedChart>
       </ResponsiveContainer>
     </div>

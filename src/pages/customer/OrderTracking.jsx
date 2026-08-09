@@ -2,13 +2,14 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useOrderStore } from '../../stores/orderStore';
 import { useChatStore } from '../../stores/chatStore';
-import { ArrowLeft, Phone, MessageSquare, ChevronDown, ChevronUp, CheckCircle, Clock, Ban, AlertCircle, Map, AlertTriangle, Store, Bike, MapPin } from 'lucide-react';
+import { ArrowLeft, Phone, MessageSquare, ChevronDown, ChevronUp, CheckCircle, Clock, Ban, AlertCircle, Map, AlertTriangle, Store, Bike, MapPin, ChefHat, Package, PartyPopper, ReceiptText, Check, Navigation, Star, Utensils, Wallet, Truck, Banknote, Tag } from 'lucide-react';
 import { formatCurrency } from '../../utils/format';
 import Button from '../../components/common/Button';
 import Card from '../../components/common/Card';
 import Spinner from '../../components/common/Spinner';
 import Modal from '../../components/common/Modal';
 import { useAuthStore } from '../../stores/authStore';
+import { addVietnamBaseMap } from '../../utils/mapSovereignty';
 import { useWebSocketContext } from '../../contexts/WebSocketContext';
 import apiClient from '../../services/api';
 import { toast } from 'react-toastify';
@@ -18,6 +19,18 @@ import { DEFAULT_AVATAR } from '../../utils/avatarHelper';
 import { useModalState } from '../../hooks/useModalState';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
+
+// Giao diện theo TỪNG GIAI ĐOẠN đơn hàng (banner sống động): icon động, lời nhắn, gradient màu
+const STAGE_UI = {
+  PENDING:          { icon: ReceiptText, title: 'Đã đặt hàng thành công', desc: 'Đang chờ quán xác nhận đơn của bạn...', grad: 'from-amber-400 to-orange-500' },
+  CONFIRMED:        { icon: Store,       title: 'Quán đã xác nhận đơn',    desc: 'Quán chuẩn bị bắt tay vào làm món cho bạn.', grad: 'from-orange-400 to-orange-600' },
+  PREPARING:        { icon: ChefHat,     title: 'Đang chuẩn bị món',       desc: 'Đầu bếp đang trổ tài — món ngon sắp xong!', grad: 'from-orange-500 to-rose-500' },
+  READY_FOR_PICKUP: { icon: Package,     title: 'Món đã sẵn sàng',         desc: 'Đang chờ tài xế tới lấy hàng của bạn.', grad: 'from-amber-500 to-orange-600' },
+  DELIVERING:       { icon: Bike,        title: 'Tài xế đang giao tới bạn', desc: 'Món đang trên đường — sắp tới nơi rồi!', grad: 'from-orange-500 to-red-500' },
+  COMPLETED:        { icon: PartyPopper, title: 'Giao hàng thành công!',   desc: 'Chúc bạn ngon miệng. Đừng quên đánh giá nhé!', grad: 'from-emerald-500 to-green-600' },
+  CANCELLED:        { icon: Ban,         title: 'Đơn hàng đã bị hủy',      desc: 'Đơn hàng của bạn đã được hủy.', grad: 'from-slate-500 to-slate-700' },
+};
+const getStageUI = (status) => (status === 'PICKED_UP' ? STAGE_UI.DELIVERING : (STAGE_UI[status] || STAGE_UI.PENDING));
 
 // Thiết lập default icon cho Leaflet để tránh mất ảnh marker
 delete L.Icon.Default.prototype._getIconUrl;
@@ -112,6 +125,18 @@ export default function OrderTracking() {
     };
   }, [id]);
 
+  useEffect(() => {
+    const onVisible = () => {
+      if (!document.hidden) {
+        fetchOrderDetails(false); 
+      }
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      document.removeEventListener('visibilitychange', onVisible);
+    };
+  }, [id]);
+
   // 2. Tải thông tin toạ độ Quán ăn từ Backend
   useEffect(() => {
     if (!order?.restaurantId) return;
@@ -177,12 +202,13 @@ export default function OrderTracking() {
     if (!mapRef.current) {
       const map = L.map(mapContainerRef.current, {
         zoomControl: true,
-        scrollWheelZoom: false 
+        scrollWheelZoom: false,
+        attributionControl: false 
       }).setView([(rLat + cLat) / 2, (rLng + cLng) / 2], 14);
       mapRef.current = map;
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '&copy; OpenStreetMap contributors'
-      }).addTo(map);
+      // Nền bản đồ chuẩn chủ quyền VN (Goong nếu có key, không thì CARTO + nhãn đỏ)
+      addVietnamBaseMap(map);
+
       // Icon Quán Ăn
       const resIcon = L.divIcon({
         html: `<div class="flex items-center justify-center w-8 h-8 rounded-full bg-orange-500 text-white shadow-md border-2 border-white"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"/><path d="M7 2v20"/><path d="M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"/></svg></div>`,
@@ -300,12 +326,12 @@ export default function OrderTracking() {
   const displayOrder = order;
 
   const steps = [
-    { key: 'PENDING', label: STATUS_META.PENDING?.label || 'Đặt hàng thành công' },
-    { key: 'CONFIRMED', label: STATUS_META.CONFIRMED?.label || 'Quán đã xác nhận' },
-    { key: 'PREPARING', label: STATUS_META.PREPARING?.label || 'Đang chuẩn bị món' },
-    { key: 'READY_FOR_PICKUP', label: STATUS_META.READY_FOR_PICKUP?.label || 'Chờ shipper lấy hàng' },
-    { key: 'DELIVERING', label: STATUS_META.DELIVERING?.label || 'Đang giao tới bạn' },
-    { key: 'COMPLETED', label: STATUS_META.COMPLETED?.label || 'Giao hàng thành công' },
+    { key: 'PENDING', label: STATUS_META.PENDING?.label || 'Đặt hàng thành công', icon: ReceiptText },
+    { key: 'CONFIRMED', label: STATUS_META.CONFIRMED?.label || 'Quán đã xác nhận', icon: Store },
+    { key: 'PREPARING', label: STATUS_META.PREPARING?.label || 'Đang chuẩn bị món', icon: ChefHat },
+    { key: 'READY_FOR_PICKUP', label: STATUS_META.READY_FOR_PICKUP?.label || 'Chờ shipper lấy hàng', icon: Package },
+    { key: 'DELIVERING', label: STATUS_META.DELIVERING?.label || 'Đang giao tới bạn', icon: Bike },
+    { key: 'COMPLETED', label: STATUS_META.COMPLETED?.label || 'Giao hàng thành công', icon: PartyPopper },
   ];
 
   const getStepIndex = (status) => {
@@ -400,6 +426,89 @@ export default function OrderTracking() {
         </div>
       </div>
 
+      {/* ─── BANNER TRẠNG THÁI SỐNG ĐỘNG (theo giai đoạn hiện tại) ─── */}
+      {(() => {
+        const stage = getStageUI(displayOrder.status);
+        const StageIcon = stage.icon;
+        const pct = isCancelled ? 0 : displayOrder.status === 'COMPLETED' ? 100 : Math.round(((activeIndex + 1) / steps.length) * 100);
+        const isDelivering = displayOrder.status === 'DELIVERING' || displayOrder.status === 'PICKED_UP';
+        const isDone = displayOrder.status === 'COMPLETED';
+        const RiderIcon = isDone ? PartyPopper : StageIcon;
+        const etaChip = displayOrder.status === 'COMPLETED' && displayOrder.timestamps?.COMPLETED
+          ? `Đã giao lúc ${displayOrder.timestamps.COMPLETED}`
+          : isDelivering && durationMinutes > 0
+            ? `Dự kiến ~${Math.ceil(durationMinutes)} phút nữa`
+            : `Bước ${Math.min(activeIndex + 1, steps.length)}/${steps.length}`;
+        return (
+          <div className={`relative overflow-hidden rounded-3xl p-6 md:p-7 text-white shadow-md bg-gradient-to-br ${stage.grad}`}>
+            <div className="pointer-events-none absolute -top-12 -right-8 w-48 h-48 rounded-full bg-white/15 blur-2xl" />
+            <div className="pointer-events-none absolute -bottom-16 left-8 w-48 h-48 rounded-full bg-black/5 blur-2xl" />
+            <div className="relative flex items-center gap-5">
+              <div className="w-16 h-16 rounded-2xl bg-white/20 border border-white/25 flex items-center justify-center shrink-0 animate-float">
+                <StageIcon size={32} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-wider text-white/80 flex-wrap">
+                  <span>Đơn #{displayOrder.id}</span>
+                  <span className="inline-flex items-center gap-1 bg-white/20 rounded-full px-2 py-0.5">
+                    {displayOrder.status === 'COMPLETED' ? <CheckCircle size={11} /> : <Clock size={11} />} {etaChip}
+                  </span>
+                </div>
+                <h2 className="text-xl md:text-2xl font-black leading-tight mt-1.5">{stage.title}</h2>
+                <p className="text-xs md:text-sm text-white/90 font-semibold mt-1 leading-relaxed">{stage.desc}</p>
+                {!isCancelled && (
+                  <div className="mt-4 md:mt-5">
+                    <div className="flex justify-between items-center text-[10px] font-extrabold text-white/90 mb-2">
+                      <span className="inline-flex items-center gap-1.5">
+                        <Navigation size={11} className="animate-wiggle" /> Tiến độ đơn hàng
+                      </span>
+                      <span className="tabular-nums text-xs font-black">{pct}%</span>
+                    </div>
+
+                    {/* Đường ray tiến độ: nền tối, fill trắng có vệt sáng chảy, cột mốc, và ICON chặng chạy dọc theo */}
+                    <div className="relative h-2.5 rounded-full bg-black/20 shadow-inner">
+                      {/* Fill + vệt sáng chảy (shimmer) */}
+                      <div
+                        className="absolute inset-y-0 left-0 rounded-full bg-white shadow-[0_0_12px_rgba(255,255,255,0.65)] overflow-hidden transition-all duration-700 ease-out"
+                        style={{ width: `${pct}%` }}
+                      >
+                        <span className="absolute inset-y-0 -left-1/3 w-1/3 bg-gradient-to-r from-transparent via-white/40 to-transparent animate-flow" />
+                      </div>
+
+                      {/* Cột mốc từng chặng — sáng lên khi tiến độ vượt qua */}
+                      <div className="absolute inset-0 flex items-center justify-between px-1">
+                        {steps.map((_, i) => {
+                          const reached = pct >= Math.round((i / (steps.length - 1)) * 100) - 1;
+                          return (
+                            <span
+                              key={i}
+                              className={`w-1.5 h-1.5 rounded-full transition-all duration-500 ${
+                                reached ? 'bg-orange-500 scale-110 shadow-[0_0_6px_rgba(255,107,53,0.9)]' : 'bg-white/45'
+                              }`}
+                            />
+                          );
+                        })}
+                      </div>
+
+                      {/* ICON chặng "chạy" theo mép tiến độ, nhấp nhô như đang di chuyển */}
+                      <div
+                        className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 transition-all duration-700 ease-out"
+                        style={{ left: `${pct}%` }}
+                      >
+                        <span className="absolute inset-0 -m-1 rounded-full bg-white/40 animate-ping" />
+                        <span className="relative flex items-center justify-center w-7 h-7 rounded-full bg-white text-orange-600 shadow-lg ring-2 ring-white/70 animate-bob">
+                          <RiderIcon size={14} strokeWidth={2.6} />
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
       {/* 2 cột: trạng thái + bản đồ | tài xế + hóa đơn*/}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start w-full">
         {/* ── CỘT TRÁI: trạng thái + bản đồ ── */}
@@ -417,9 +526,16 @@ export default function OrderTracking() {
           </div>
         ) : (
           <div className="space-y-8">
-            <h3 className="text-xs font-extrabold text-md-on-surface-variant uppercase tracking-wider mb-3">
-              Trạng thái đơn hàng
-            </h3>
+            <div className="flex items-center justify-between gap-3 mb-3">
+              <h3 className="text-xs font-extrabold text-md-on-surface-variant uppercase tracking-wider">
+                Trạng thái đơn hàng
+              </h3>
+              {displayOrder.status === 'COMPLETED' && (
+                <span className="inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider text-emerald-700 bg-emerald-50 border border-emerald-100 px-2.5 py-1 rounded-full animate-rise-in">
+                  <PartyPopper size={12} className="animate-wiggle" /> Hoàn tất
+                </span>
+              )}
+            </div>
 
             {/* Vertical Stepper */}
             <div className="relative pl-8 space-y-8 before:absolute before:left-3 before:top-3 before:bottom-3 before:w-0.75 before:bg-slate-100">
@@ -427,6 +543,7 @@ export default function OrderTracking() {
                 const isCompleted = idx < activeIndex || (displayOrder.status === 'COMPLETED' && idx === activeIndex);
                 const isActive = idx === activeIndex && displayOrder.status !== 'COMPLETED';
                 const timestamp = displayOrder.timestamps?.[step.key];
+                const StepIcon = step.icon;
 
                 let pointStyle = 'bg-slate-200 text-slate-400';
 
@@ -446,11 +563,11 @@ export default function OrderTracking() {
                       />
                     )}
 
-                    {/* Step Circle Pin */}
-                    <div className={`absolute -left-[28.5px] w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold transition-all duration-300 ${pointStyle} ${
+                    {/* Step Circle Pin — icon riêng theo từng chặng */}
+                    <div className={`absolute -left-[28.5px] w-6 h-6 rounded-full flex items-center justify-center transition-all duration-300 ${pointStyle} ${
                       isActive ? 'animate-ripple' : ''
                     }`}>
-                      {isCompleted && '✓'}
+                      {isCompleted ? <Check size={13} strokeWidth={3} /> : <StepIcon size={12} strokeWidth={2.4} />}
                     </div>
 
                     {/* Content */}
@@ -466,16 +583,19 @@ export default function OrderTracking() {
                           {step.label}
                         </span>
                         {timestamp && (
-                          <span className="text-xs text-md-outline font-extrabold">
-                            {timestamp}
+                          <span className={`text-[11px] font-extrabold inline-flex items-center gap-1 px-2 py-0.5 rounded-full shrink-0 ${
+                            isCompleted ? 'bg-emerald-50 text-emerald-600' : isActive ? 'bg-orange-50 text-orange-600' : 'bg-slate-100 text-slate-500'
+                          }`}>
+                            <Clock size={10} strokeWidth={2.6} /> {timestamp}
                           </span>
                         )}
                       </div>
-                      {/* {isActive && step.key !== 'COMPLETED' && (
-                        <span className="text-[10px] md:text-xs text-md-primary font-bold inline-flex items-center gap-1.5 mt-2 bg-md-primary-container/20 px-2.5 py-1 rounded animate-pulse">
-                          Đang xử lý...
+                      {isActive && (
+                        <span className="text-[10px] md:text-xs text-md-primary font-extrabold inline-flex items-center gap-1.5 mt-2 bg-md-primary-container/25 px-2.5 py-1 rounded-full">
+                          <span className="w-1.5 h-1.5 rounded-full bg-md-primary animate-ping inline-block" />
+                          Đang diễn ra
                         </span>
-                      )} */}
+                      )}
                     </div>
                   </div>
                 );
@@ -484,10 +604,11 @@ export default function OrderTracking() {
 
             {/* Stepper Success CTA */}
             {displayOrder.status === 'COMPLETED' && (
-              <Button 
+              <Button
                 variant="secondary"
                 onClick={() => navigate(`/reviews/${displayOrder.id}`)}
                 size="lg"
+                icon={Star}
                 className="w-full text-sm uppercase tracking-wider bg-md-tertiary hover:bg-opacity-95 cursor-pointer shadow-sm"
               >
                 Đánh giá đơn hàng ngay
@@ -545,108 +666,153 @@ export default function OrderTracking() {
         <div className="space-y-6 w-full">
 
       {/* Shipper Info Box */}
-      {displayOrder.shipper && (
-        <Card variant="flat" className="p-6.5 flex gap-5 items-center bg-white border border-md-outline-variant/20 shadow-sm animate-slide-up">
-          <img
-            src={displayOrder.shipper.avatar}
-            alt="Shipper"
-            onError={(e) => { e.currentTarget.src = DEFAULT_AVATAR; }}
-            className="w-16 h-16 rounded-radius-full object-cover border-2 border-md-outline-variant shadow-sm shrink-0"
-          />
+      {displayOrder.shipper && (() => {
+        const shipperDelivering = displayOrder.status === 'DELIVERING' || displayOrder.status === 'PICKED_UP';
+        const shipperDone = displayOrder.status === 'COMPLETED';
+        const shipperLabel = shipperDone ? 'Đã Giao Thành Công' : shipperDelivering ? 'Tài Xế Đang Giao' : 'Tài Xế Phụ Trách';
+        return (
+        <Card variant="flat" className="p-5 md:p-6 flex gap-4 md:gap-5 items-center bg-gradient-to-br from-emerald-50/70 to-white border border-emerald-100 shadow-sm animate-slide-up">
+          {/* Avatar + badge xe + chấm trạng thái */}
+          <div className="relative shrink-0">
+            <img
+              src={displayOrder.shipper.avatar}
+              alt="Shipper"
+              onError={(e) => { e.currentTarget.src = DEFAULT_AVATAR; }}
+              className="w-16 h-16 rounded-radius-full object-cover border-2 border-emerald-300 shadow-sm ring-2 ring-emerald-100"
+            />
+            <span className={`absolute -bottom-1 -right-1 w-7 h-7 rounded-full bg-md-tertiary text-white flex items-center justify-center border-2 border-white shadow-sm ${shipperDelivering ? 'animate-vroom' : ''}`}>
+              {shipperDone ? <Check size={14} strokeWidth={3} /> : <Bike size={14} />}
+            </span>
+            {shipperDelivering && (
+              <span className="absolute top-0 right-0 w-3.5 h-3.5 rounded-full bg-emerald-500 border-2 border-white">
+                <span className="absolute inset-0 rounded-full bg-emerald-400 animate-ping" />
+              </span>
+            )}
+          </div>
+
           <div className="flex-1 min-w-0">
-            <span className="text-[10px] md:text-xs text-[#2E7D32] bg-[#E8F5E9] font-extrabold px-3 py-1 rounded-full uppercase tracking-wider shadow-sm">
-              Tài Xế Đang Giao
+            <span className="inline-flex items-center gap-1.5 text-[10px] md:text-xs text-[#2E7D32] bg-[#E8F5E9] font-extrabold px-3 py-1 rounded-full uppercase tracking-wider shadow-sm">
+              {shipperDone
+                ? <CheckCircle size={12} />
+                : <span className={`w-1.5 h-1.5 rounded-full bg-md-tertiary ${shipperDelivering ? 'animate-pulse' : ''}`} />}
+              {shipperLabel}
             </span>
             <h3 className="font-extrabold text-base md:text-lg text-md-on-surface mt-2.5 leading-none">
               {displayOrder.shipper.name}
             </h3>
-            <p className="text-xs md:text-sm text-md-on-surface-variant mt-2 font-medium">
-              {displayOrder.shipper.bike} • <span className="font-extrabold text-md-on-surface">{displayOrder.shipper.plate}</span>
+            <p className="flex items-center gap-1.5 text-xs md:text-sm text-md-on-surface-variant mt-2 font-medium">
+              <Bike size={14} className="text-md-tertiary shrink-0" />
+              {displayOrder.shipper.bike} • <span className="font-extrabold text-md-on-surface tracking-wide">{displayOrder.shipper.plate}</span>
             </p>
           </div>
-          
-          <div className="flex gap-3">
-            <button 
+
+          <div className="flex gap-2.5 shrink-0">
+            <button
               onClick={handleChatWithShipper}
-              className="p-3.5 rounded-radius-full bg-slate-100 hover:bg-md-primary/10 hover:text-md-primary text-md-on-surface-variant transition-all shadow-sm hover:scale-105 active:scale-95 cursor-pointer"
+              className="p-3.5 rounded-radius-full bg-orange-50 text-md-primary hover:bg-md-primary hover:text-white transition-all shadow-sm hover:scale-105 active:scale-95 cursor-pointer"
               title="Nhắn tin cho tài xế"
             >
               <MessageSquare size={18} />
             </button>
-            <a 
+            <a
               href={`tel:${displayOrder.shipper.phone}`}
-              className="p-3.5 rounded-radius-full bg-slate-100 hover:bg-md-secondary/10 hover:text-md-secondary text-md-on-surface-variant transition-all shadow-sm hover:scale-105 active:scale-95 cursor-pointer flex items-center justify-center"
+              className="p-3.5 rounded-radius-full bg-emerald-50 text-md-tertiary hover:bg-md-tertiary hover:text-white transition-all shadow-sm hover:scale-105 active:scale-95 cursor-pointer flex items-center justify-center"
               title="Gọi điện cho tài xế"
             >
               <Phone size={18} />
             </a>
           </div>
         </Card>
-      )}
+        );
+      })()}
 
       {/* Collapsible Order Bill Detail */}
       <Card variant="flat" className="overflow-hidden bg-white border border-md-outline-variant/20 shadow-sm">
         <button
           onClick={() => setOrderCollapsed(!orderCollapsed)}
-          className="w-full flex items-center justify-between p-5 font-extrabold text-xs md:text-sm uppercase tracking-wider text-md-on-surface hover:bg-slate-50 transition-colors cursor-pointer"
+          className="w-full flex items-center justify-between p-5 text-md-on-surface hover:bg-orange-50/40 transition-colors cursor-pointer"
         >
-          <span>Chi tiết hóa đơn đơn hàng</span>
-          {orderCollapsed ? <ChevronDown size={18} /> : <ChevronUp size={18} />}
+          <span className="flex items-center gap-2.5 font-extrabold text-xs md:text-sm uppercase tracking-wider">
+            <span className="w-8 h-8 rounded-xl bg-gradient-to-br from-orange-400 to-orange-600 text-white flex items-center justify-center shadow-sm">
+              <ReceiptText size={16} />
+            </span>
+            Chi tiết hóa đơn đơn hàng
+          </span>
+          <span className={`text-md-primary transition-transform duration-300 ${orderCollapsed ? '' : 'rotate-180'}`}>
+            <ChevronDown size={18} />
+          </span>
         </button>
 
         {!orderCollapsed && (
-          <div className="p-6 border-t border-slate-100 space-y-5 animate-fade-in">
-            {/* Foods */}
-            <div className="space-y-4">
+          <div className="p-5 md:p-6 border-t border-orange-100/70 space-y-5 animate-fade-in">
+            {/* Foods — mỗi món 1 thẻ có icon + huy hiệu số lượng */}
+            <div className="space-y-2.5">
+              <span className="flex items-center gap-1.5 text-[10px] md:text-xs font-extrabold text-orange-600 uppercase tracking-wider">
+                <Utensils size={13} /> Món đã đặt ({displayOrder.items.length})
+              </span>
               {displayOrder.items.map((item, idx) => (
-                <div key={idx} className="flex justify-between items-start text-sm font-semibold">
-                  <div className="min-w-0 pr-4">
-                    <span className="font-bold text-md-on-surface-variant">{item.name}</span>
-                    <span className="block text-[11px] text-slate-500 font-medium mt-0.5">
-                      {formatCurrency(item.price)} x{item.quantity}
+                <div
+                  key={idx}
+                  className="flex justify-between items-start gap-3 text-sm rounded-xl border border-orange-100/70 bg-orange-50/30 hover:bg-orange-50/70 hover:border-orange-200 transition-colors p-3 animate-rise-in"
+                  style={{ animationDelay: `${idx * 60}ms` }}
+                >
+                  <div className="flex items-start gap-3 min-w-0">
+                    <span className="shrink-0 mt-0.5 w-6 h-6 rounded-lg bg-white border border-orange-200 text-orange-600 font-black text-xs flex items-center justify-center shadow-sm">
+                      {item.quantity}
                     </span>
-                    {item.note && (
-                      <span className="block text-xs text-md-outline italic mt-1 font-medium">
-                        Ghi chú: "{item.note}"
+                    <div className="min-w-0">
+                      <span className="font-bold text-md-on-surface block leading-snug">{item.name}</span>
+                      <span className="block text-[11px] text-slate-500 font-semibold mt-0.5">
+                        {formatCurrency(item.price)} × {item.quantity}
                       </span>
-                    )}
+                      {item.note && (
+                        <span className="flex items-start gap-1 text-xs text-amber-700 italic mt-1 font-medium">
+                          <MessageSquare size={12} className="shrink-0 mt-0.5" /> "{item.note}"
+                        </span>
+                      )}
+                    </div>
                   </div>
-                  <span className="font-extrabold text-md-on-surface">{formatCurrency(item.price * item.quantity)}</span>
+                  <span className="font-extrabold text-md-on-surface shrink-0">{formatCurrency(item.price * item.quantity)}</span>
                 </div>
               ))}
             </div>
 
             {/* Address */}
-            <div className="pt-4 border-t border-slate-100">
-              <span className="text-[10px] md:text-xs font-extrabold text-md-outline uppercase tracking-wider">
-                Địa chỉ nhận hàng
+            <div className="flex items-start gap-3 pt-4 border-t border-slate-100">
+              <span className="shrink-0 w-8 h-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
+                <MapPin size={16} />
               </span>
-              <p className="text-sm text-md-on-surface-variant mt-1.5 font-medium leading-relaxed">
-                {displayOrder.address}
-              </p>
+              <div className="min-w-0">
+                <span className="text-[10px] md:text-xs font-extrabold text-blue-600 uppercase tracking-wider">
+                  Địa chỉ nhận hàng
+                </span>
+                <p className="text-sm text-md-on-surface mt-0.5 font-semibold leading-relaxed">
+                  {displayOrder.address}
+                </p>
+              </div>
             </div>
 
-            {/* Payment Summary */}
-            <div className="pt-4 border-t border-slate-100 space-y-2.5 text-sm font-medium">
-              {/* <div className="flex justify-between text-md-on-surface-variant">
-                <span>khoảng cách và thời gian dự kiến:</span>
-                <span className="font-bold">{distanceKm.toFixed(1)} km - {Math.ceil(durationMinutes)} phút</span>
-              </div> */}
-              <div className="flex justify-between text-md-on-surface-variant">
-                <span>Tạm tính:</span>
-                <span className="font-bold">{formatCurrency(displayOrder.subtotalAmount)}</span>
+            {/* Payment Summary — mỗi dòng có icon màu */}
+            <div className="pt-4 border-t border-slate-100 space-y-3 text-sm font-medium">
+              <div className="flex justify-between items-center text-md-on-surface-variant">
+                <span className="flex items-center gap-2"><Tag size={15} className="text-orange-500" /> Tạm tính</span>
+                <span className="font-bold text-md-on-surface">{formatCurrency(displayOrder.subtotalAmount)}</span>
               </div>
-              <div className="flex justify-between text-md-on-surface-variant">
-                <span>Phí giao hàng:</span>
-                <span className="font-bold">{formatCurrency(displayOrder.shippingFee)}</span>
+              <div className="flex justify-between items-center text-md-on-surface-variant">
+                <span className="flex items-center gap-2"><Truck size={15} className="text-blue-500" /> Phí giao hàng</span>
+                <span className="font-bold text-md-on-surface">{formatCurrency(displayOrder.shippingFee)}</span>
               </div>
-              <div className="flex justify-between text-md-on-surface-variant">
-                <span>Phương thức:</span>
-                <span className="font-bold">{displayOrder.paymentMethod}</span>
-              </div>
-              <div className="flex justify-between text-base font-extrabold pt-3.5 border-t border-slate-100 flex-wrap">
-                <span>Tổng thanh toán:</span>
-                <span className="text-md-primary">{formatCurrency(displayOrder.total)}</span>
+              {displayOrder.voucherCode && (
+                <div className="flex justify-between items-center text-md-on-surface-variant">
+                  <span className="flex items-center gap-2"><Banknote size={15} className="text-emerald-500" /> Voucher ({displayOrder.voucherCode})</span>
+                  <span className="font-bold text-md-on-surface">-{formatCurrency(displayOrder.discountAmount)}</span>
+                </div>
+              )}
+              <div className="flex justify-between items-center pt-3.5 mt-1 rounded-xl bg-gradient-to-r from-orange-50 to-amber-50 border border-orange-100 px-3.5 py-3 flex-wrap gap-2">
+                <span className="flex items-center gap-2 text-base font-extrabold text-md-on-surface">
+                  <Wallet size={18} className="text-orange-500" /> Tổng thanh toán
+                </span>
+                <span className="text-lg font-black text-md-primary">{formatCurrency(displayOrder.total)}</span>
               </div>
             </div>
           </div>

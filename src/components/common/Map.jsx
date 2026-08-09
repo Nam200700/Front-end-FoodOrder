@@ -4,6 +4,7 @@ import 'leaflet/dist/leaflet.css';
 import { MapPin, X, Navigation, Check, Search, Home, Briefcase, Bookmark } from 'lucide-react';
 import Button from './Button';
 import axios from 'axios';
+import { addVietnamBaseMap, vnSovereigntyAddress } from '../../utils/mapSovereignty';
 
 // Giải quyết lỗi thiếu icon Marker của Leaflet
 delete L.Icon.Default.prototype._getIconUrl;
@@ -74,6 +75,14 @@ export default function MapModal2({
 
   //Reverse Geocoding (chuyển đổi ngược từ tọa độ vĩ độ/kinh độ thành tên địa chỉ
   const fetchAddress = async (lat, lng) => {
+    // Toạ độ thuộc Hoàng Sa/Trường Sa → ghi đè địa chỉ chủ quyền VN (không lấy tên "Trung Quốc").
+    const vn = vnSovereigntyAddress(lat, lng);
+    if (vn) {
+      setAddressName(vn);
+      setSearchText(vn);
+      setLoadingAddress(false);
+      return;
+    }
     setLoadingAddress(true);
     try {
       const response = await axios.get(
@@ -110,10 +119,8 @@ export default function MapModal2({
       }).setView([initialLat, initialLng], 15);
       mapRef.current = map;
 
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '&copy; OpenStreetMap contributors',
-        maxZoom: 19,
-      }).addTo(map);
+      // Nền bản đồ chuẩn chủ quyền VN (Goong nếu có key, không thì CARTO + nhãn đỏ)
+      addVietnamBaseMap(map);
 
       const marker = L.marker([initialLat, initialLng], {
         draggable: true,
@@ -163,7 +170,8 @@ export default function MapModal2({
       if (response.data && response.data.length > 0) {
         const lat = parseFloat(response.data[0].lat);
         const lng = parseFloat(response.data[0].lon);
-        const displayName = response.data[0].display_name;
+        // Nếu kết quả tìm rơi vào Hoàng Sa/Trường Sa → hiển thị tên chủ quyền VN thay vì tên gốc.
+        const displayName = vnSovereigntyAddress(lat, lng) || response.data[0].display_name;
 
         setSelectedCoords({ lat, lng });
         setAddressName(displayName);

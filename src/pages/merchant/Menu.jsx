@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Plus, ToggleLeft, ToggleRight, Edit, Trash2, Check, X, ClipboardList, UtensilsCrossed, AlertTriangle, Tags, Tag, FolderPlus, Pencil } from 'lucide-react';
+import { Plus, ToggleLeft, ToggleRight, Edit, Trash2, Check, X, ClipboardList, UtensilsCrossed, AlertTriangle, Tags, Tag, FolderPlus, Pencil, ImagePlus, FileText, Wallet, FolderOpen, Rocket, Store, CheckCircle2, Lock, ArrowRight, Sparkles } from 'lucide-react';
 import { formatCurrency } from '../../utils/format';
 import apiClient from '../../services/api';
 import Spinner from '../../components/common/Spinner';
@@ -408,6 +408,52 @@ export default function MerchantMenu() {
   // Tên danh mục đang chọn (cho thanh thao tác Sửa/Xóa rõ ràng)
   const activeCatName = categories.find(c => Number(c.id) === Number(activeCategory))?.name || '';
 
+  // ── Sức khoẻ thực đơn (dùng để làm nổi bật việc quan trọng cần xử lý) ──
+  const availableCount = menuItems.filter(i => i.active).length;
+  const unavailableCount = menuItems.filter(i => !i.active).length;
+  const uncategorizedCount = menuItems.filter(item =>
+    !item.catId || !categories.some(c => Number(c.id) === Number(item.catId))
+  ).length;
+
+  // ── HƯỚNG DẪN KHỞI TẠO cho chủ quán MỚI: 3 bước, tự đánh dấu theo trạng thái THẬT ──
+  const isShopOpen = !!resData?.status;
+  const setupSteps = [
+    {
+      key: 'category',
+      title: 'Tạo danh mục món',
+      desc: 'Nhóm món theo loại: Cơm, Món nướng, Đồ uống…',
+      icon: FolderPlus,
+      done: categories.length > 0,
+      cta: 'Thêm danh mục',
+      onCta: handleAddCategoryClick,
+    },
+    {
+      key: 'food',
+      title: 'Thêm món đầu tiên',
+      desc: 'Đưa món lên thực đơn kèm ảnh, giá & mô tả.',
+      icon: UtensilsCrossed,
+      done: menuItems.length > 0,
+      cta: 'Thêm món',
+      onCta: handleOpenAddModal,
+      locked: categories.length === 0,
+      lockHint: 'Cần tạo danh mục trước',
+    },
+    {
+      key: 'sell',
+      title: 'Sẵn sàng nhận đơn',
+      desc: 'Mở cửa quán & có món đang bán để khách đặt ngay.',
+      icon: Store,
+      done: isShopOpen && availableCount > 0,
+      cta: 'Cài đặt quán',
+      onCta: () => navigate('/merchant/settings'),
+      locked: menuItems.length === 0,
+      lockHint: 'Cần có món trong thực đơn',
+    },
+  ];
+  const doneStepCount = setupSteps.filter(s => s.done).length;
+  const firstTodoIndex = setupSteps.findIndex(s => !s.done && !s.locked);
+  const showOnboarding = doneStepCount < setupSteps.length;
+
   const displayedItems = menuItems.filter(item => {
     const matchCat = activeCategory === 'UNCATEGORIZED'
       ? (!item.catId || !categories.some(c => Number(c.id) === Number(item.catId)))
@@ -451,27 +497,159 @@ export default function MerchantMenu() {
         </button>
       </div>
 
+      {/* ─── HƯỚNG DẪN KHỞI TẠO — chỉ hiện khi chủ quán MỚI chưa hoàn tất thiết lập ── */}
+      {showOnboarding && (
+        <div className="mb-6 relative overflow-hidden rounded-radius-xl border border-md-secondary/20 bg-gradient-to-br from-md-secondary/[0.07] via-white to-white p-5 sm:p-6 shadow-sm animate-rise-in">
+          <span className="pointer-events-none absolute -top-12 -right-12 w-44 h-44 bg-md-secondary/[0.06] rounded-full blur-2xl" />
+
+          {/* Tiêu đề + tiến độ */}
+          <div className="relative flex items-start gap-3 mb-4">
+            <span className="p-2.5 rounded-radius-lg bg-gradient-to-br from-md-secondary to-blue-700 text-white shrink-0 shadow-sm">
+              <Rocket size={20} />
+            </span>
+            <div className="flex-1 min-w-0">
+              <h2 className="text-base sm:text-lg font-extrabold text-slate-800 flex items-center gap-1.5">
+                Chào mừng đến với MealDash <Sparkles size={16} className="text-amber-400" />
+              </h2>
+              <p className="text-xs text-slate-500 font-medium mt-1 leading-snug">
+                Hoàn tất <b className="text-md-secondary">3 bước</b> dưới đây để quán của bạn sẵn sàng đón khách. Chúng tôi sẽ đồng hành cùng bạn từng bước.
+              </p>
+            </div>
+            <div className="text-right shrink-0">
+              <span className="text-2xl font-black text-md-secondary leading-none">{doneStepCount}<span className="text-slate-300">/{setupSteps.length}</span></span>
+              <span className="text-[10px] text-slate-400 font-bold uppercase block mt-0.5 tracking-wider">Hoàn tất</span>
+            </div>
+          </div>
+
+          {/* Thanh tiến độ */}
+          <div className="relative h-2 rounded-full bg-slate-100 overflow-hidden mb-5">
+            <div
+              className="h-full bg-gradient-to-r from-md-secondary to-blue-400 rounded-full transition-all duration-500 ease-out"
+              style={{ width: `${(doneStepCount / setupSteps.length) * 100}%` }}
+            />
+          </div>
+
+          {/* 3 bước */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            {setupSteps.map((step, i) => {
+              const SIcon = step.icon;
+              const isCurrent = i === firstTodoIndex;
+              return (
+                <div
+                  key={step.key}
+                  className={`relative rounded-radius-lg border p-4 flex flex-col transition-all ${
+                    step.done
+                      ? 'border-emerald-200 bg-emerald-50/40'
+                      : isCurrent
+                        ? 'border-md-secondary/40 bg-white shadow-sm ring-2 ring-md-secondary/10'
+                        : 'border-slate-200 bg-white'
+                  }`}
+                >
+                  {isCurrent && !step.done && (
+                    <span className="absolute -top-2 right-3 text-[9px] font-extrabold text-white bg-md-secondary px-2 py-0.5 rounded-full uppercase tracking-wider shadow-sm">
+                      Bước tiếp theo
+                    </span>
+                  )}
+                  <div className="flex items-center gap-2.5 mb-2">
+                    <span className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 text-sm font-black ${
+                      step.done
+                        ? 'bg-emerald-500 text-white'
+                        : step.locked
+                          ? 'bg-slate-100 text-slate-400'
+                          : 'bg-gradient-to-br from-md-secondary to-blue-700 text-white shadow-sm'
+                    }`}>
+                      {step.done ? <CheckCircle2 size={18} /> : step.locked ? <Lock size={14} /> : i + 1}
+                    </span>
+                    <h4 className={`text-sm font-extrabold leading-tight ${step.done ? 'text-emerald-700' : 'text-slate-800'}`}>{step.title}</h4>
+                  </div>
+                  <p className="text-[11px] text-slate-500 font-medium leading-snug flex-1">{step.desc}</p>
+
+                  {step.done ? (
+                    <span className="mt-3 inline-flex items-center gap-1 text-[11px] font-bold text-emerald-600">
+                      <Check size={13} /> Đã hoàn tất
+                    </span>
+                  ) : step.locked ? (
+                    <span className="mt-3 inline-flex items-center gap-1 text-[11px] font-semibold text-slate-400">
+                      <Lock size={11} /> {step.lockHint}
+                    </span>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={step.onCta}
+                      className={`mt-3 inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-radius-lg text-xs font-bold transition-all active:scale-95 cursor-pointer ${
+                        isCurrent
+                          ? 'bg-md-secondary text-white shadow-sm hover:bg-blue-700'
+                          : 'bg-md-secondary/10 text-md-secondary hover:bg-md-secondary/20'
+                      }`}
+                    >
+                      <SIcon size={14} /> {step.cta} <ArrowRight size={13} />
+                    </button>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {/* ─── HÀNG KPI TÓM TẮT THỰC ĐƠN (đếm THẬT từ menuItems toàn quán) ──────────── */}
-      <div className="grid grid-cols-3 gap-3 sm:gap-4 mb-6">
+      <div className="grid grid-cols-3 gap-3 sm:gap-4 mb-5">
         {[
-          { label: 'Tổng số món', value: menuItems.length, icon: UtensilsCrossed, color: 'bg-md-secondary/10 text-md-secondary' },
-          { label: 'Đang bán', value: menuItems.filter(i => i.active).length, icon: ToggleRight, color: 'bg-emerald-100 text-emerald-600' },
-          { label: 'Tạm hết', value: menuItems.filter(i => !i.active).length, icon: ToggleLeft, color: 'bg-rose-100 text-rose-600' },
+          { label: 'Tổng số món', value: menuItems.length, icon: UtensilsCrossed, tint: 'from-blue-50', ring: 'ring-blue-100/70', chip: 'bg-blue-100 text-blue-600', num: 'text-slate-800' },
+          { label: 'Đang bán', value: availableCount, icon: ToggleRight, tint: 'from-emerald-50', ring: 'ring-emerald-100/70', chip: 'bg-emerald-100 text-emerald-600', num: 'text-emerald-600' },
+          { label: 'Tạm hết', value: unavailableCount, icon: ToggleLeft, tint: 'from-rose-50', ring: 'ring-rose-100/70', chip: 'bg-rose-100 text-rose-600', num: unavailableCount > 0 ? 'text-rose-600' : 'text-slate-800' },
         ].map((kpi, idx) => {
           const KIcon = kpi.icon;
           return (
-            <div key={idx} className="bg-white rounded-radius-xl p-3.5 border border-slate-200/60 shadow-sm flex items-center gap-3">
-              <span className={`p-2 rounded-radius-md shrink-0 ${kpi.color}`}>
+            <div key={idx} className={`relative overflow-hidden bg-gradient-to-br ${kpi.tint} to-white rounded-radius-xl p-3.5 border border-slate-200/60 shadow-sm ring-1 ${kpi.ring} flex items-center gap-3`}>
+              <span className={`p-2 rounded-radius-md shrink-0 ${kpi.chip}`}>
                 <KIcon size={18} />
               </span>
               <div className="min-w-0">
-                <span className="text-lg font-black text-slate-800 block leading-none">{kpi.value}</span>
-                <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block mt-0.5 truncate">{kpi.label}</span>
+                <span className={`text-xl font-black block leading-none ${kpi.num}`}>{kpi.value}</span>
+                <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block mt-1 truncate">{kpi.label}</span>
               </div>
             </div>
           );
         })}
       </div>
+
+      {/* ─── CẢNH BÁO SỨC KHOẺ THỰC ĐƠN — làm nổi bật việc quan trọng cần xử lý ────── */}
+      {(unavailableCount > 0 || uncategorizedCount > 0) && (
+        <div className="mb-6 rounded-radius-xl border border-amber-200 bg-gradient-to-r from-amber-50 to-white p-4 flex items-start gap-3 shadow-sm animate-rise-in">
+          <span className="p-2 rounded-radius-lg bg-amber-100 text-amber-600 shrink-0 animate-pulse">
+            <AlertTriangle size={18} />
+          </span>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-extrabold text-amber-800 flex items-center gap-1.5">
+              Cần chú ý để không lỡ đơn của khách
+            </p>
+            <ul className="mt-1.5 space-y-1">
+              {unavailableCount > 0 && (
+                <li className="text-xs text-amber-700/90 font-medium flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-rose-500 shrink-0" />
+                  <span><b className="text-rose-600">{unavailableCount} món</b> đang <b>tạm hết</b> — khách <b>không nhìn thấy</b> trên app.</span>
+                </li>
+              )}
+              {uncategorizedCount > 0 && (
+                <li className="text-xs text-amber-700/90 font-medium flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" />
+                  <span><b className="text-amber-700">{uncategorizedCount} món</b> <b>chưa phân loại</b> — nên gán danh mục để khách dễ tìm.</span>
+                </li>
+              )}
+            </ul>
+          </div>
+          {unavailableCount > 0 && (
+            <button
+              type="button"
+              onClick={() => setStatusFilter('UNAVAILABLE')}
+              className="shrink-0 self-center inline-flex items-center gap-1.5 px-3.5 py-2 rounded-radius-lg bg-amber-500 text-white text-xs font-bold shadow-sm hover:bg-amber-600 active:scale-95 transition-all cursor-pointer"
+            >
+              <AlertTriangle size={14} /> Xem món tạm hết
+            </button>
+          )}
+        </div>
+      )}
 
       {/* ─── DANH MỤC THỰC PHẨM ─── */}
       <div className="mb-6 bg-white p-4 sm:p-5 rounded-radius-xl border border-slate-200/60 shadow-sm">
@@ -590,8 +768,21 @@ export default function MerchantMenu() {
       {loading && menuItems.length === 0 ? (
         <Spinner />
       ) : categories.length === 0 ? (
-        <div className="text-center py-12 bg-white rounded-radius-xl border border-slate-200/60 shadow-sm text-slate-400 text-xs font-bold">
-          Chủ quán chưa tạo danh mục nào. Hãy nhấn nút "+ Thêm danh mục" phía trên để bắt đầu!
+        <div className="text-center py-12 px-6 bg-white rounded-radius-xl border border-slate-200/60 shadow-sm flex flex-col items-center animate-rise-in">
+          <span className="w-16 h-16 rounded-full bg-md-secondary/10 text-md-secondary flex items-center justify-center mb-4">
+            <FolderPlus size={30} />
+          </span>
+          <h3 className="text-sm font-extrabold text-slate-700">Bắt đầu bằng danh mục đầu tiên</h3>
+          <p className="text-xs text-slate-400 font-medium mt-1.5 max-w-sm leading-relaxed">
+            Danh mục giúp nhóm món theo loại (Cơm, Món nướng, Đồ uống…) để khách dễ chọn. Tạo 1 danh mục rồi thêm món vào nhé!
+          </p>
+          <button
+            type="button"
+            onClick={handleAddCategoryClick}
+            className="mt-5 inline-flex items-center gap-1.5 px-5 py-2.5 rounded-radius-full bg-md-secondary text-white text-xs font-bold shadow-sm hover:bg-blue-700 active:scale-95 transition-all cursor-pointer"
+          >
+            <FolderPlus size={15} /> Tạo danh mục ngay
+          </button>
         </div>
       ) : displayedItems.length === 0 ? (
         <div className="text-center py-12 bg-white rounded-radius-xl border border-slate-200/60 shadow-sm text-slate-400 text-xs font-bold">
@@ -700,6 +891,7 @@ export default function MerchantMenu() {
                 type="button"
                 variant="outline"
                 size="sm"
+                icon={ImagePlus}
                 onClick={() => fileInputAddRef.current?.click()}
                 loading={uploadingAddImage}
               >
@@ -719,7 +911,7 @@ export default function MerchantMenu() {
           {/* Form Fields */}
           <div className="space-y-4">
             <div>
-              <label className="block text-slate-400 font-bold uppercase tracking-wider mb-1.5 text-[10px]">Tên món ăn *</label>
+              <label className="flex items-center gap-1.5 text-slate-400 font-bold uppercase tracking-wider mb-1.5 text-[10px]"><UtensilsCrossed size={12} className="text-md-secondary" /> Tên món ăn *</label>
               <input
                 type="text"
                 value={newFoodName}
@@ -732,7 +924,7 @@ export default function MerchantMenu() {
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-slate-400 font-bold uppercase tracking-wider mb-1.5 text-[10px]">Giá bán (VNĐ) *</label>
+                <label className="flex items-center gap-1.5 text-slate-400 font-bold uppercase tracking-wider mb-1.5 text-[10px]"><Wallet size={12} className="text-emerald-500" /> Giá bán (VNĐ) *</label>
                 <input
                   type="number"
                   value={newFoodPrice}
@@ -744,7 +936,7 @@ export default function MerchantMenu() {
               </div>
 
               <div>
-                <label className="block text-slate-400 font-bold uppercase tracking-wider mb-1.5 text-[10px]">Danh mục</label>
+                <label className="flex items-center gap-1.5 text-slate-400 font-bold uppercase tracking-wider mb-1.5 text-[10px]"><FolderOpen size={12} className="text-amber-500" /> Danh mục</label>
                 <select
                   value={newFoodCat}
                   onChange={(e) => { setNewFoodCat(Number(e.target.value)); if (catErr) setCatErr(''); }}
@@ -757,7 +949,7 @@ export default function MerchantMenu() {
             </div>
 
             <div>
-              <label className="block text-slate-400 font-bold uppercase tracking-wider mb-1.5 text-[10px]">Mô tả món ăn</label>
+              <label className="flex items-center gap-1.5 text-slate-400 font-bold uppercase tracking-wider mb-1.5 text-[10px]"><FileText size={12} className="text-blue-500" /> Mô tả món ăn</label>
               <textarea
                 rows={2.5}
                 value={newFoodDesc}
@@ -796,6 +988,7 @@ export default function MerchantMenu() {
                 type="button"
                 variant="outline"
                 size="sm"
+                icon={ImagePlus}
                 onClick={() => fileInputEditRef.current?.click()}
                 loading={uploadingEditImage}
               >
@@ -814,7 +1007,7 @@ export default function MerchantMenu() {
 
           <div className="space-y-4">
             <div>
-              <label className="block text-slate-400 font-bold uppercase tracking-wider mb-1.5 text-[10px]">Tên món ăn *</label>
+              <label className="flex items-center gap-1.5 text-slate-400 font-bold uppercase tracking-wider mb-1.5 text-[10px]"><UtensilsCrossed size={12} className="text-md-secondary" /> Tên món ăn *</label>
               <input
                 type="text"
                 value={editFoodName}
@@ -826,7 +1019,7 @@ export default function MerchantMenu() {
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-slate-400 font-bold uppercase tracking-wider mb-1.5 text-[10px]">Giá bán (VNĐ) *</label>
+                <label className="flex items-center gap-1.5 text-slate-400 font-bold uppercase tracking-wider mb-1.5 text-[10px]"><Wallet size={12} className="text-emerald-500" /> Giá bán (VNĐ) *</label>
                 <input
                   type="number"
                   value={editFoodPrice}
@@ -837,7 +1030,7 @@ export default function MerchantMenu() {
               </div>
 
               <div>
-                <label className="block text-slate-400 font-bold uppercase tracking-wider mb-1.5 text-[10px]">Danh mục</label>
+                <label className="flex items-center gap-1.5 text-slate-400 font-bold uppercase tracking-wider mb-1.5 text-[10px]"><FolderOpen size={12} className="text-amber-500" /> Danh mục</label>
                 <select
                   value={editFoodCat || ''}
                   onChange={(e) => setEditFoodCat(e.target.value ? Number(e.target.value) : null)}
@@ -852,7 +1045,7 @@ export default function MerchantMenu() {
             </div>
 
             <div>
-              <label className="block text-slate-400 font-bold uppercase tracking-wider mb-1.5 text-[10px]">Mô tả món ăn</label>
+              <label className="flex items-center gap-1.5 text-slate-400 font-bold uppercase tracking-wider mb-1.5 text-[10px]"><FileText size={12} className="text-blue-500" /> Mô tả món ăn</label>
               <textarea
                 rows={2.5}
                 placeholder="Sườn nướng thơm ngon mật ong..."
@@ -896,7 +1089,7 @@ export default function MerchantMenu() {
       >
         <div className="space-y-4 font-google-sans">
           <div>
-            <label className="block text-xs font-semibold text-slate-500 mb-1.5 uppercase">Tên danh mục mới *</label>
+            <label className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 mb-1.5 uppercase"><FolderPlus size={13} className="text-md-secondary" /> Tên danh mục mới *</label>
             <input
               type="text"
               value={newCatName}
@@ -936,7 +1129,7 @@ export default function MerchantMenu() {
       >
         <div className="space-y-4 font-google-sans">
           <div>
-            <label className="block text-xs font-semibold text-slate-500 mb-1.5 uppercase">Tên danh mục *</label>
+            <label className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 mb-1.5 uppercase"><Pencil size={13} className="text-blue-500" /> Tên danh mục *</label>
             <input
               type="text"
               value={editCatName}

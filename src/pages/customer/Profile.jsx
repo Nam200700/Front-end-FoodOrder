@@ -1,8 +1,11 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../stores/authStore';
-import { User, Phone, Mail, MapPin, LogOut, Camera, Map, Utensils, Sparkles, ShoppingBag, Heart, Bell, MessageCircle, ChevronRight, ShieldCheck, Edit2, Plus } from 'lucide-react';
+import { User, Phone, Mail, MapPin, LogOut, Camera, Map, Utensils, Sparkles, ShoppingBag, Heart, Bell, MessageCircle, ChevronRight, ShieldCheck, Edit2, Plus, Save, Lock } from 'lucide-react';
 import MapModal from '../../components/common/MapModal';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
+import { addVietnamBaseMap } from '../../utils/mapSovereignty';
 import apiClient from '../../services/api';
 import { getAvatarUrl } from '../../utils/avatarHelper';
 import { toast } from 'react-toastify';
@@ -32,6 +35,9 @@ export default function Profile() {
   const [isMapOpen, setIsMapOpen] = useState(false);
   const [updating, setUpdating] = useState(false);
   const fileInputRef = useRef(null);
+  // Bản đồ vị trí read-only ở phần "Vị Trí" — dùng nền chủ quyền Goong/CARTO (đồng nhất mọi map)
+  const locMapRef = useRef(null);
+  const locMapInstance = useRef(null);
   const { uploading: uploadingAvatar, handleAvatarChange: uploadAvatar } = useAvatarUpload();
 
   // Các Modal quản lý địa chỉ
@@ -53,10 +59,39 @@ export default function Profile() {
     lng: user?.lng || 106.660172 
   });
 
-  // Lấy danh sách địa chỉ 
-  useEffect(() => { 
+  // Lấy danh sách địa chỉ
+  useEffect(() => {
     fetchUserAddresses();
   }, []);
+
+  // Bản đồ vị trí (read-only) — nền chủ quyền Goong/CARTO + nhãn Hoàng Sa/Trường Sa, khỏi iframe OSM
+  useEffect(() => {
+    if (!locMapRef.current) return;
+    const la = Number(lat), ln = Number(lng);
+    if (!Number.isFinite(la) || !Number.isFinite(ln)) return;
+
+    // Dọn map cũ trước khi vẽ lại (khi toạ độ đổi)
+    if (locMapInstance.current) {
+      locMapInstance.current.remove();
+      locMapInstance.current = null;
+    }
+
+    const map = L.map(locMapRef.current, { scrollWheelZoom: true, attributionControl: false  }).setView([la, ln], 15);
+    locMapInstance.current = map;
+    addVietnamBaseMap(map); // Goong nếu có key, không thì CARTO + nhãn chủ quyền
+
+    // Chấm cam customer thay marker (dùng circleMarker để khỏi cần asset icon → tránh marker vỡ)
+    L.circleMarker([la, ln], {
+      radius: 9, color: '#fff', weight: 3, fillColor: '#FF6B35', fillOpacity: 1,
+    }).addTo(map);
+
+    return () => {
+      if (locMapInstance.current) {
+        locMapInstance.current.remove();
+        locMapInstance.current = null;
+      }
+    };
+  }, [lat, lng]);
 
   const fetchUserAddresses = async () => {
     try {
@@ -241,18 +276,24 @@ export default function Profile() {
     <div className="flex-1 p-4 md:p-8 max-w-4xl mx-auto w-full font-google-sans pb-24 space-y-6">
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
       {/* ─── CỘT TRÁI: thẻ thành viên + thẻ truy cập nhanh ───────────────────────── */}
-      <div className="space-y-6">
+      <div className="flex flex-col gap-6">
 
       {/* ─── THẺ THÀNH VIÊN ẨM THỰC (membership card, accent cam) ─────────────────── */}
       <div className="relative overflow-hidden rounded-radius-xl p-6 shadow-shadow-2 bg-gradient-to-br from-md-primary to-[#FF8C42] text-white animate-fade-in">
-        <Utensils className="absolute -right-4 -bottom-4 text-white/10" size={120} strokeWidth={1.2} />
+        <Utensils className="absolute -right-4 -bottom-4 text-white/10 animate-float-slow" size={120} strokeWidth={1.2} />
+        {/* Vệt sáng quét ngang (frame-by-frame) + lấp lánh trang trí */}
+        <div className="absolute inset-y-0 -left-1/3 w-1/4 bg-gradient-to-r from-transparent via-white/15 to-transparent animate-shine pointer-events-none" />
+        <Sparkles className="absolute right-6 top-5 text-white/30 animate-twinkle" size={14} style={{ animationDelay: '600ms' }} />
+        <Sparkles className="absolute right-28 bottom-7 text-white/20 animate-twinkle" size={11} style={{ animationDelay: '1100ms' }} />
 
         <div className="relative flex items-center gap-5">
           <div className="relative shrink-0">
+            {/* Vòng nhịp quanh avatar */}
+            <span className="absolute -inset-1 rounded-radius-full ring-2 ring-white/40 animate-halo pointer-events-none" />
             <img
               src={getAvatarUrl(user.avatar)}
               alt="Avatar"
-              className="w-20 h-20 rounded-radius-full border-4 border-white/30 object-cover shadow-sm"
+              className="relative w-20 h-20 rounded-radius-full border-4 border-white/30 object-cover shadow-sm"
             />
             <button
               type="button"
@@ -271,7 +312,7 @@ export default function Profile() {
 
           <div className="min-w-0">
             <span className="inline-flex items-center gap-1 text-[10px] font-bold bg-white/20 px-2.5 py-0.5 rounded-full uppercase tracking-wider">
-              <Sparkles size={11} /> Thành viên Foodie
+              <Sparkles size={11} className="animate-twinkle" /> Thành viên Foodie
             </span>
             <h2 className="font-extrabold text-xl mt-2 truncate">{user.name}</h2>
             <p className="text-xs text-white/85 font-semibold mt-0.5 truncate">{user.email}</p>
@@ -292,31 +333,32 @@ export default function Profile() {
         </div>
       </div>
 
-      <Card className="p-5 border border-md-outline-variant/20 shadow-sm">
+      <Card className="p-5 border border-md-outline-variant/20 shadow-sm flex-1">
         <h3 className="text-sm font-extrabold text-md-on-surface flex items-center gap-2 pb-3 mb-2 border-b border-md-outline-variant/20">
-          <Sparkles size={16} className="text-md-primary" /> Truy cập nhanh
+          <Sparkles size={16} className="text-md-primary animate-twinkle" /> Truy cập nhanh
         </h3>
-        <div className="space-y-1">
+        <div className="space-y-1.5">
           {[
-            { icon: ShoppingBag, label: 'Đơn hàng của tôi', desc: 'Theo dõi & lịch sử đơn', to: '/orders' },
-            { icon: Heart, label: 'Quán yêu thích', desc: 'Bộ sưu tập ẩm thực', to: '/favorites' },
-            { icon: Bell, label: 'Thông báo', desc: 'Cập nhật & ưu đãi', to: '/notifications' },
-            { icon: MessageCircle, label: 'Tin nhắn', desc: 'Trò chuyện với quán', to: '/chat' },
-          ].map(({ icon: ItemIcon, label, desc, to }) => (
+            { icon: ShoppingBag, label: 'Đơn hàng của tôi', desc: 'Theo dõi & lịch sử đơn', to: '/orders', chip: 'bg-blue-100 text-blue-600', fill: 'group-hover:bg-blue-500', hover: 'hover:bg-blue-50/70', arrow: 'group-hover:text-blue-500' },
+            { icon: Heart, label: 'Quán yêu thích', desc: 'Bộ sưu tập ẩm thực', to: '/favorites', chip: 'bg-rose-100 text-rose-600', fill: 'group-hover:bg-rose-500', hover: 'hover:bg-rose-50/70', arrow: 'group-hover:text-rose-500' },
+            { icon: Bell, label: 'Thông báo', desc: 'Cập nhật & ưu đãi', to: '/notifications', chip: 'bg-amber-100 text-amber-600', fill: 'group-hover:bg-amber-500', hover: 'hover:bg-amber-50/70', arrow: 'group-hover:text-amber-500' },
+            { icon: MessageCircle, label: 'Tin nhắn', desc: 'Trò chuyện với quán', to: '/chat', chip: 'bg-violet-100 text-violet-600', fill: 'group-hover:bg-violet-500', hover: 'hover:bg-violet-50/70', arrow: 'group-hover:text-violet-500' },
+          ].map(({ icon: ItemIcon, label, desc, to, chip, fill, hover, arrow }, idx) => (
             <button
               key={to}
               type="button"
               onClick={() => navigate(to)}
-              className="w-full flex items-center gap-3 p-2.5 rounded-radius-lg hover:bg-md-primary/5 transition-colors text-left cursor-pointer group"
+              style={{ animationDelay: `${idx * 70}ms` }}
+              className={`animate-rise-in w-full flex items-center gap-3 p-2.5 rounded-radius-lg border border-transparent hover:border-slate-100 ${hover} transition-all duration-200 text-left cursor-pointer group active:scale-[0.98]`}
             >
-              <span className="p-2 bg-md-primary/10 text-md-primary rounded-radius-md shrink-0">
+              <span className={`p-2 rounded-radius-md shrink-0 transition-all duration-300 ${chip} ${fill} group-hover:text-white group-hover:scale-110 group-hover:-rotate-6 group-hover:shadow-sm`}>
                 <ItemIcon size={16} />
               </span>
               <span className="flex-1 min-w-0">
                 <span className="block text-xs font-extrabold text-md-on-surface truncate">{label}</span>
                 <span className="block text-[11px] text-md-on-surface-variant font-medium truncate">{desc}</span>
               </span>
-              <ChevronRight size={16} className="text-md-outline group-hover:text-md-primary group-hover:translate-x-0.5 transition-all shrink-0" />
+              <ChevronRight size={16} className={`text-md-outline ${arrow} group-hover:translate-x-1 transition-all shrink-0`} />
             </button>
           ))}
         </div>
@@ -326,56 +368,59 @@ export default function Profile() {
 
       {/* ─── CỘT PHẢI: form hồ sơ ──────────────────────────── */}
       <Card className="p-5 border border-md-outline-variant/20 shadow-sm space-y-5.5 animate-slide-up h-full flex flex-col">
-        <div className="flex items-center gap-2 pb-1 border-b border-md-outline-variant/20">
-          <User size={16} className="text-md-primary" />
+        <div className="flex items-center gap-2.5 pb-3 border-b border-md-outline-variant/20">
+          <span className="w-8 h-8 rounded-xl bg-gradient-to-br from-md-primary to-[#FF8C42] text-white flex items-center justify-center shadow-sm animate-float">
+            <User size={16} />
+          </span>
           <h3 className="text-sm font-extrabold text-md-on-surface">Hồ Sơ Của Bạn</h3>
         </div>
-        <div>
+        <div className="animate-rise-in" style={{ animationDelay: '40ms' }}>
           <label className="block text-[10px] font-bold text-md-on-surface-variant uppercase tracking-wider mb-2">
             Họ và tên
           </label>
-          <div className="relative">
-            <User className="absolute left-3.5 top-1/2 -translate-y-1/2 text-md-outline" size={16} />
+          <div className="relative group">
+            <User className="absolute left-3.5 top-1/2 -translate-y-1/2 text-indigo-500 group-focus-within:scale-110 transition-all duration-200" size={16} />
             <input
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 border border-md-outline-variant focus:border-md-primary rounded-radius-lg text-xs focus:outline-none focus:bg-white transition-all font-semibold"
+              className="w-full pl-10 pr-4 py-2.5 border border-md-outline-variant focus:border-md-primary rounded-radius-lg text-xs focus:outline-none focus:bg-white focus:ring-2 focus:ring-md-primary/15 transition-all font-semibold"
             />
           </div>
         </div>
 
-        <div>
+        <div className="animate-rise-in" style={{ animationDelay: '100ms' }}>
           <label className="block text-[10px] font-bold text-md-on-surface-variant uppercase tracking-wider mb-2">
             Địa chỉ Email
           </label>
-          <div className="relative">
-            <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 text-md-outline" size={16} />
+          <div className="relative group">
+            <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 text-blue-500 group-focus-within:scale-110 transition-all duration-200" size={16} />
             <input
-              type="text"            
+              type="text"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 border border-md-outline-variant focus:border-md-primary rounded-radius-lg text-xs focus:outline-none focus:bg-white transition-all font-semibold"         />
+              className="w-full pl-10 pr-4 py-2.5 border border-md-outline-variant focus:border-md-primary rounded-radius-lg text-xs focus:outline-none focus:bg-white focus:ring-2 focus:ring-md-primary/15 transition-all font-semibold" />
           </div>
         </div>
 
-        <div>
-          <label className="block text-[10px] font-bold text-md-on-surface-variant uppercase tracking-wider mb-2">
+        <div className="animate-rise-in" style={{ animationDelay: '160ms' }}>
+          <label className="flex items-center gap-1.5 text-[10px] font-bold text-md-on-surface-variant uppercase tracking-wider mb-2">
             Số điện thoại
+            <span className="inline-flex items-center gap-0.5 text-[9px] text-slate-400 normal-case font-semibold"><Lock size={9} /> Không đổi</span>
           </label>
-          <div className="relative">
-            <Phone className="absolute left-3.5 top-1/2 -translate-y-1/2 text-md-outline" size={16} />
+          <div className="relative group">
+            <Phone className="absolute left-3.5 top-1/2 -translate-y-1/2 text-emerald-500" size={16} />
             <input
               type="tel"
               readOnly
               value={phone}
               onChange={(e) => { setPhone(e.target.value);}}
-              className="w-full pl-10 pr-4 py-2.5 border border-md-outline-variant rounded-radius-lg text-xs focus:outline-none focus:bg-white transition-all font-semibold"
+              className="w-full pl-10 pr-4 py-2.5 border border-md-outline-variant rounded-radius-lg text-xs focus:outline-none bg-slate-50/60 text-slate-500 transition-all font-semibold cursor-not-allowed"
             />
           </div>
         </div>
 
-        <div className="space-y-1.5 pt-1">
+        <div className="space-y-1.5 pt-1 animate-rise-in" style={{ animationDelay: '220ms' }}>
           <div className="flex items-center justify-between mb-2">
             <label className="block text-[10px] font-bold text-md-on-surface-variant uppercase tracking-wider">
               Địa chỉ giao hàng
@@ -403,9 +448,9 @@ export default function Profile() {
             </button>
           </div>
 
-          <div className="relative flex items-start">
-            <MapPin className="absolute left-3.5 top-3 text-md-outline pointer-events-none" size={16} />
-            <div className="w-full pl-10 pr-4 py-2.5 border border-md-outline-variant rounded-radius-lg text-xs font-semibold text-slate-700 min-h-[46px] flex items-center">
+          <div className="relative flex items-start group">
+            <MapPin className="absolute left-3.5 top-3 text-md-primary pointer-events-none group-hover:scale-110 group-hover:-translate-y-0.5 transition-transform duration-200" size={16} />
+            <div className="w-full pl-10 pr-4 py-2.5 border border-md-outline-variant group-hover:border-md-primary/40 rounded-radius-lg text-xs font-semibold text-slate-700 min-h-[46px] flex items-center transition-colors">
               {isUpdatingLocation ? (
                 <span className="flex items-center gap-2 text-slate-400">
                   <Spinner size="sm" /> Đang cập nhật...
@@ -422,7 +467,8 @@ export default function Profile() {
           onClick={handleSave}
           disabled={updating}
           loading={updating}
-          className="w-full mt-auto bg-md-primary text-white font-bold py-3.5 px-4 rounded-radius-full shadow-shadow-2 hover:shadow-shadow-3 hover:translate-y-[-1.5px] active:translate-y-[0px] transition-all flex items-center justify-center gap-2 text-xs uppercase tracking-wider cursor-pointer"
+          icon={updating ? undefined : Save}
+          className="group w-full mt-auto bg-md-primary text-white font-bold py-3.5 px-4 rounded-radius-full shadow-shadow-2 hover:shadow-shadow-3 hover:translate-y-[-1.5px] active:translate-y-[0px] transition-all flex items-center justify-center gap-2 text-xs uppercase tracking-wider cursor-pointer [&_svg]:group-hover:rotate-[-8deg] [&_svg]:transition-transform"
         >
           Cập nhật thông tin
         </Button>
@@ -436,12 +482,7 @@ export default function Profile() {
           </h3>
         </div>
         <div className="rounded-radius-lg overflow-hidden border border-md-outline-variant/30">
-          <iframe
-            title="Bản đồ vị trí giao hàng"
-            className="w-full h-56 md:h-72 block"
-            loading="lazy"
-            src={`https://www.openstreetmap.org/export/embed.html?bbox=${Number(lng) - 0.008}%2C${Number(lat) - 0.006}%2C${Number(lng) + 0.008}%2C${Number(lat) + 0.006}&layer=mapnik&marker=${lat}%2C${lng}`}
-          />
+          <div ref={locMapRef} className="w-full h-56 md:h-72 block z-0" />
         </div>
         <p className="text-xs text-md-on-surface-variant font-semibold mt-3 flex items-start gap-1.5 leading-relaxed">
           <MapPin size={14} className="mt-0.5 shrink-0 text-md-primary" />

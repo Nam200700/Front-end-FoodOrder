@@ -28,6 +28,7 @@ import { useAvatarUpload } from '../../hooks/useAvatarUpload';
 import { useLayoutNav } from '../../hooks/useLayoutNav';
 import NavMenuList from './NavMenuList';
 import MobileDrawer from './MobileDrawer';
+import MobileTabBar from './MobileTabBar';
 
 export default function MerchantLayout() {
   const navigate = useNavigate();
@@ -243,6 +244,19 @@ export default function MerchantLayout() {
         </button>
       </nav>
 
+      {/* ─── MOBILE BOTTOM NAV (giúp thấy rõ điều hướng, "Đơn hàng" nổi giữa) ────── */}
+      <MobileTabBar
+        accent="#1A73E8"
+        rootPath="/merchant"
+        items={[
+          { ...menuItems[0], name: 'Tổng quan' },   // Dashboard
+          { ...menuItems[2], name: 'Thực đơn' },    // Quản lý menu
+          { ...menuItems[1], primary: true },       // Đơn hàng — nút nổi trung tâm
+          menuItems[4],                             // Đánh giá
+          { name: 'Thêm', icon: Menu, action: openMobileDrawer },
+        ]}
+      />
+
       {/* ─── MOBILE MERCHANT DRAWER ────────────────────────────────────────────── */}
       <MobileDrawer
         isOpen={isMobileDrawerOpen}
@@ -312,7 +326,7 @@ export default function MerchantLayout() {
       </MobileDrawer>
 
       {/* ─── MAIN MERCHANT VIEWPORT ──────────────────────────────────────────────── */}
-      <main className="flex-1 flex flex-col min-w-0 pt-16 md:pt-0 h-screen overflow-y-auto relative bg-slate-50">
+      <main className="flex-1 flex flex-col min-w-0 pt-16 md:pt-0 pb-16 md:pb-0 h-screen overflow-y-auto relative bg-slate-50">
         <Outlet />
       </main>
 

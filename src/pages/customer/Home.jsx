@@ -106,7 +106,25 @@ export default function Home() {
   useEffect(() => {
     let ignore = false;
 
-    //lấy danh sách quán ăn
+    // Chỉ khi TÌM KIẾM/CHỌN DANH MỤC mới cần gọi API riêng (list có lọc + phân trang).
+    // Khi KHÔNG lọc, dùng luôn "pool" (đã tải 1 lần bên dưới) làm nguồn cho danh sách
+    // "Khám phá" → bỏ được 1 lần gọi /restaurants trùng lặp khi vào trang chủ.
+    const usingApiFilter = debouncedSearch.trim() !== '' || activeCategory !== 'all';
+
+    if (!usingApiFilter) {
+      if (poolLoading) {
+        setLoading(true);
+      } else {
+        setRestaurants(suggestionPool);
+        // page khớp với số lượng đã có sẵn để "Xem thêm" (nếu có) gọi tiếp đúng trang API.
+        setPage(Math.max(0, Math.ceil(suggestionPool.length / PAGE_SIZE) - 1));
+        setHasMore(suggestionPool.length >= 30);
+        setLoading(false);
+      }
+      return () => { ignore = true; };
+    }
+
+    //lấy danh sách quán ăn (có lọc theo keyword/danh mục)
     const fetchRestaurants = async () => {
       try {
         setLoading(true);
@@ -135,7 +153,7 @@ export default function Home() {
 
     fetchRestaurants();
     return () => { ignore = true; };
-  }, [debouncedSearch, activeCategory]);
+  }, [debouncedSearch, activeCategory, suggestionPool, poolLoading]);
 
   // Lấy 1 lần (khi mount) một tập dữ liệu quán ăn rộng hơn, KHÔNG theo filter, làm nguồn cho
   // các section gợi ý bên dưới (Nổi bật / Dành riêng cho bạn / Đặt lại quán cũ).

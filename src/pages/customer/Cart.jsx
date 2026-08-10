@@ -66,6 +66,7 @@ export default function Cart() {
   const confirmOrderModal = useModalState(); // Modal đặt hàng
   const deleteCartModal = useModalState({ restaurantId: null, restaurantName: '' }); // Modal xóa giỏ hàng
   const orderSummaryModal = useModalState(); // Modal xem/sửa nhanh thông tin đơn hàng trên mobile
+  const mobileDeliveryInfoModal = useModalState(); // Modal sửa "Thông tin giao hàng" (người nhận/địa chỉ) trên mobile
 
   // id truyền từ RestaurantDetail.jsx
   const targetRestaurantId = location.state?.targetRestaurantId;
@@ -668,6 +669,27 @@ export default function Cart() {
         </button>
       </div>
 
+      {/* ================= THANH THÔNG TIN GIAO HÀNG RÚT GỌN (CHỈ HIỂN THỊ TRÊN MOBILE) ================= */}
+      <button
+        type="button"
+        onClick={mobileDeliveryInfoModal.open}
+        className="lg:hidden w-full flex items-center gap-3 p-3.5 mb-4 rounded-2xl border border-slate-200 bg-white shadow-sm active:scale-[0.99] transition-transform cursor-pointer text-left"
+      >
+        <span className="w-9 h-9 rounded-xl bg-orange-50 text-[#ff6b35] flex items-center justify-center shrink-0">
+          <Truck size={18} />
+        </span>
+        <div className="flex-1 min-w-0">
+          <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">THÔNG TIN GIAO HÀNG</p>
+          <p className="text-xs font-semibold text-slate-700 truncate">
+            {fullname ? `${fullname} - ` : ''} {phone ? `${phone}` : ''}
+          </p>
+          <p className="text-xs font-semibold text-slate-700 truncate">
+            {address || 'Chưa chọn địa chỉ giao hàng'}
+          </p>
+        </div>
+        <Edit2 size={15} className="text-slate-400 shrink-0" />
+      </button>
+
       <div className="flex flex-col lg:flex-row gap-5 items-start">
         {/* CỘT TRÁI: DANH SÁCH GIỎ HÀNG THEO TỪNG QUÁN */}
         <div className="flex-1 space-y-4 w-full">
@@ -942,11 +964,7 @@ export default function Cart() {
                   <div className="flex items-center justify-between text-sm text-slate-600">
                     <div className="space-y-1 w-full">
                       <div className="flex justify-between items-center">
-                        <span className="text-xs text-slate-500 flex items-center gap-1.5"><ShoppingBag size={13} className="text-slate-400" /> Số lượng món:</span>
-                        <span className="font-bold text-xs text-slate-700">{cartItemCount} món</span>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-xs text-slate-500 flex items-center gap-1.5"><Receipt size={13} className="text-slate-400" /> Tạm tính:</span>
+                        <span className="text-xs text-slate-500 flex items-center gap-1.5"><Receipt size={13} className="text-slate-400" /> Tạm tính ({cartItemCount} món):</span>
                         <span className="font-bold text-xs text-slate-700">{formatCurrency(cart.subtotal)}</span>
                       </div>
                       <div className="flex justify-between items-center">
@@ -983,8 +1001,8 @@ export default function Cart() {
           })}
         </div>
 
-        {/* CỘT PHẢI: THÔNG TIN GIAO HÀNG & TỔNG QUAN ĐƠN HÀNG (Desktop giữ nguyên) */}
-        <aside className="w-full lg:w-80 shrink-0 lg:sticky lg:top-5 space-y-4">
+        {/* CỘT PHẢI: THÔNG TIN GIAO HÀNG & TỔNG QUAN ĐƠN HÀNG — hiển thị trên desktop. */}
+        <aside className="hidden lg:block w-full lg:w-80 shrink-0 lg:sticky lg:top-5 space-y-4">
           
           {/* THÔNG TIN GIAO HÀNG */}
           <Card variant="flat" className="p-5 !border-slate-200/80 !rounded-2xl space-y-4">
@@ -1055,9 +1073,7 @@ export default function Cart() {
             </div>
           </Card>
 
-          {/* TỔNG QUAN ĐƠN HÀNG — chỉ hiển thị trên desktop (lg trở lên). 
-              Trên mobile, các thông tin này đã được chuyển vào Modal "Xác Nhận Đặt Hàng" 
-              để tránh lặp thông tin và giảm độ dài trang cần lướt. */}
+          {/* TỔNG QUAN ĐƠN HÀNG — chỉ hiển thị trên desktop (lg trở lên). */}
           <Card variant="flat" className="hidden lg:flex p-4 !border-slate-200 !rounded-2xl flex-col space-y-3">
             <h3 className="text-xs font-extrabold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
               <Receipt size={15} className="text-[#ff6b35]" /> Tổng quan đơn hàng
@@ -1089,15 +1105,11 @@ export default function Cart() {
       </div>
 
       {/* ================= THANH ĐẶT HÀNG CỐ ĐỊNH (CHỈ HIỂN THỊ TRÊN MOBILE) ================= */}
-      {/* Giúp người dùng đặt hàng mà không cần lướt xuống cuối trang. Ẩn hoàn toàn trên desktop (lg:hidden).
-          Đặt phía trên thanh menu điều hướng dưới cùng (bottom navigation) để không bị che mất, bằng cách
-          cộng thêm chiều cao ước tính của bottom nav (--bottom-nav-height, mặc định 64px) vào khoảng cách "bottom". */}
       <div
-        className="lg:hidden fixed inset-x-0 z-40 bg-white border-t border-slate-200 shadow-[0_-6px_20px_rgba(15,23,42,0.08)] px-4 pt-2.5 pb-[calc(env(safe-area-inset-bottom)+0.625rem)]"
-        style={{ bottom: 'var(--bottom-nav-height, 64px)' }}
+        className="lg:hidden fixed inset-x-0 z-40 px-3"
+        style={{ bottom: 'calc(var(--bottom-nav-height, 72px) + 10px)' }}
       >
-        <div className="flex items-center justify-between gap-3">
-          {/* Bấm vào phần tóm tắt để mở nhanh modal xem/sửa thông tin đơn hàng (ghi chú, chi tiết...) mà không cần lướt xuống cuối trang */}
+        <div className="flex items-center justify-between gap-3 bg-white border border-slate-200 rounded-2xl shadow-[0_6px_24px_rgba(15,23,42,0.15)] px-4 py-3">
           <button
             type="button"
             onClick={() => orderSummaryModal.open()}
@@ -1213,7 +1225,7 @@ export default function Cart() {
             </div>
           )}
 
-          {/* Tóm tắt đơn hàng (đặc biệt quan trọng trên mobile vì Card tổng quan đã được ẩn) */}
+          {/* Tóm tắt đơn hàng  */}
           <div className="border border-slate-100 rounded-xl p-3 space-y-2 bg-slate-50/50">
             <div className="flex items-center justify-between text-xs text-slate-600">
               <span className="flex items-center gap-1.5"><ShoppingBag size={13} className="text-slate-400" /> Tổng số món:</span>
@@ -1277,7 +1289,7 @@ export default function Cart() {
         </div>
       </Modal>
 
-      {/* Modal Clear Cart */}
+      {/* modal xác nhận xóa giỏ hàng */}
       <Modal 
         isOpen={deleteCartModal.isOpen} 
         onClose={deleteCartModal.close}

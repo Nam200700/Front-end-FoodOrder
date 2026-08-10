@@ -9,7 +9,7 @@ import ErrorState from '../../components/common/ErrorState';
 import Modal from '../../components/common/Modal';
 import FilterTabs from '../../components/common/FilterTabs';
 import { useModalState } from '../../hooks/useModalState';
-import { formatDateTime } from '../../utils/format';
+import { formatDateTime, formatCurrency } from '../../utils/format';
 
 export default function Voucher() {
   const [keyword, setKeyword] = useState('');
@@ -22,14 +22,13 @@ export default function Voucher() {
   // Hook quản lý modal Xác nhận khóa
   const lockModal = useModalState();
 
-  // State form data đầy đủ trường minOrderAmount & maxDiscountAmount
+  // State form data 
   const [formData, setFormData] = useState({
     code: '',
     name: '',
     discountType: 'PERCENT',
     discountValue: '',
     minOrderAmount: '',
-    maxDiscountAmount: '',
     startDate: '',
     endDate: '',
     status: 'ACTIVE',
@@ -85,7 +84,6 @@ export default function Voucher() {
       discountType: 'PERCENT',
       discountValue: '',
       minOrderAmount: '',
-      maxDiscountAmount: '',
       startDate: '',
       endDate: '',
       status: 'ACTIVE',
@@ -107,7 +105,6 @@ export default function Voucher() {
       discountType: voucher.discountType || 'PERCENT',
       discountValue: voucher.discountValue || '',
       minOrderAmount: voucher.minOrderAmount != null ? voucher.minOrderAmount : '',
-      maxDiscountAmount: voucher.maxDiscountAmount != null ? voucher.maxDiscountAmount : '',
       startDate: formatLocalDateTime(voucher.startDate),
       endDate: formatLocalDateTime(voucher.endDate),
       status: voucher.status || 'ACTIVE',
@@ -143,28 +140,7 @@ export default function Voucher() {
       return false;
     }
 
-    // 1. VALIDATE MỨC GIẢM TỐI ĐA (maxDiscountAmount)
-    if (formData.discountType === 'PERCENT') {
-      if (formData.maxDiscountAmount === '' || formData.maxDiscountAmount === null) {
-        toast.error('Voucher giảm % bắt buộc phải nhập Mức giảm tối đa (VNĐ) để bảo vệ ngân sách!');
-        return false;
-      }
-      const maxVal = Number(formData.maxDiscountAmount);
-      if (isNaN(maxVal) || maxVal <= 0) {
-        toast.error('Mức giảm tối đa phải lớn hơn 0!');
-        return false;
-      }
-    } else {
-      if (formData.maxDiscountAmount !== '') {
-        const maxVal = Number(formData.maxDiscountAmount);
-        if (isNaN(maxVal) || maxVal < 0) {
-          toast.error('Mức giảm tối đa không được nhỏ hơn 0!');
-          return false;
-        }
-      }
-    }
-
-    // 2. VALIDATE ĐƠN TỐI THIỂU (minOrderAmount)
+    // VALIDATE ĐƠN TỐI THIỂU (minOrderAmount)
     if (formData.discountType === 'FIXED' && formData.issueType === 'EVENT') {
       if (formData.minOrderAmount === '' || formData.minOrderAmount === null) {
         toast.error('Voucher giảm cố định theo Sự kiện bắt buộc phải nhập Đơn tối thiểu!');
@@ -217,7 +193,6 @@ export default function Voucher() {
         ...formData,
         discountValue: Number(formData.discountValue),
         minOrderAmount: formData.minOrderAmount !== '' ? Number(formData.minOrderAmount) : null,
-        maxDiscountAmount: formData.maxDiscountAmount !== '' ? Number(formData.maxDiscountAmount) : null,
         startDate: formData.startDate ? `${formData.startDate}:00` : null,
         endDate: formData.endDate ? `${formData.endDate}:00` : null,
       };
@@ -276,7 +251,7 @@ export default function Voucher() {
       <div className="flex justify-between items-center">
         <h1 className="text-lg font-bold text-slate-900 flex items-center gap-2">
           <Ticket className="text-purple-600" size={22} />
-          Quản Lý Voucher Giảm Giá
+          Quản Lý Voucher 
         </h1>
         <Button 
           onClick={handleOpenCreate}
@@ -373,7 +348,7 @@ export default function Voucher() {
                   <th className="py-3.5 px-4 w-24">Đã dùng</th>
                   <th className="py-3.5 px-4 w-40">Thời gian hiệu lực</th>
                   <th className="py-3.5 px-4 w-37">Trạng thái</th>
-                  <th className="py-3.5 px-4 w-24 text-center">Hành động</th>
+                  <th className="py-3.5 px-4 w-28 text-center">Hành động</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 font-semibold">
@@ -394,11 +369,11 @@ export default function Voucher() {
                       {v.discountType === 'PERCENT' ? 'Phần trăm (%)' : v.discountType === 'FIXED' ? 'Cố định (VNĐ)' : 'Miễn phí ship'}
                     </td>
                     <td className="py-3.5 px-4 w-28 font-extrabold text-emerald-600 truncate">
-                      {v.discountType === 'PERCENT' ? `${v.discountValue}%` : v.discountType === 'FIXED' ? `${Number(v.discountValue).toLocaleString()} đ` : 'Freeship'}
+                      {v.discountType === 'PERCENT' ? `${v.discountValue}%` : v.discountType === 'FIXED' ? `${formatCurrency(v.discountValue)}` : 'Freeship'}
                     </td>
                     <td className="py-3.5 px-4 w-32 text-slate-700 font-bold truncate">
                       {v.minOrderAmount != null && Number(v.minOrderAmount) > 0 
-                        ? `${Number(v.minOrderAmount).toLocaleString()} đ` 
+                        ? `${formatCurrency(v.minOrderAmount)}` 
                         : 'Không yêu cầu'}
                     </td>
                     <td className="py-3.5 px-4 w-24 text-slate-600 truncate">
@@ -597,27 +572,6 @@ export default function Voucher() {
                 value={formData.minOrderAmount}
                 onChange={(e) => setFormData({ ...formData, minOrderAmount: e.target.value })}
                 placeholder={formData.discountType === 'FIXED' && formData.issueType === 'EVENT' ? 'VD: 50000 (Bắt buộc >= Tiền giảm)' : 'VD: 50000 (Để trống nếu 0đ)'}
-                className={`w-full px-3 py-2 text-xs border rounded-xl focus:outline-none ${
-                  isEditMode ? 'bg-slate-100 border-slate-200 text-slate-500 cursor-not-allowed font-semibold' : 'bg-slate-50 border-slate-200 focus:border-purple-500 text-slate-800 font-semibold'
-                }`}
-              />
-            </div>
-
-            {/* Mức Giảm Tối Đa (Bắt buộc khi giảm %) */}
-            <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1 flex items-center justify-between">
-                <span>
-                  Giảm Tối Đa (VNĐ) {formData.discountType === 'PERCENT' ? <b className="text-rose-500">(*)</b> : '(Tùy chọn)'}
-                </span>
-                {isEditMode && <Lock size={12} className="text-slate-400" />}
-              </label>
-              <input
-                type="number"
-                step="any"
-                disabled={isEditMode}
-                value={formData.maxDiscountAmount}
-                onChange={(e) => setFormData({ ...formData, maxDiscountAmount: e.target.value })}
-                placeholder={formData.discountType === 'PERCENT' ? 'VD: 30000 (Bắt buộc khi giảm %)' : 'VD: 30000 (Để trống nếu không giới hạn)'}
                 className={`w-full px-3 py-2 text-xs border rounded-xl focus:outline-none ${
                   isEditMode ? 'bg-slate-100 border-slate-200 text-slate-500 cursor-not-allowed font-semibold' : 'bg-slate-50 border-slate-200 focus:border-purple-500 text-slate-800 font-semibold'
                 }`}

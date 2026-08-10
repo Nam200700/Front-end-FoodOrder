@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../stores/authStore';
-import { Lock, Phone, ChevronRight, User, Store, Bike, Shield, KeyRound, Mail, MessageSquare, AlertTriangle, CheckCircle2, Check, Eye, EyeOff, ChefHat, Star, ShieldCheck, Pizza, Soup, IceCream, Croissant, Sandwich, CupSoda, Sparkles, Users, UserPlus, Loader2, LogIn } from 'lucide-react';
+import { Lock, Phone, ChevronRight, User, Store, Bike, Shield, KeyRound, Mail, MessageSquare, AlertTriangle, CheckCircle2, Check, Eye, EyeOff, ChefHat, Star, ShieldCheck, Pizza, Soup, IceCream, Croissant, Sandwich, CupSoda, Sparkles, Users, UserPlus, Loader2, LogIn, QrCode } from 'lucide-react';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import apiClient from '../../services/api';
 import { validatePassword, validatePhone } from '../../utils/validation';
+import QrLoginPanel from './QrLoginPanel';
 
 // Món ăn trang trí bay lơ lửng ở panel hero (phong cách quán ăn) — vị trí, độ trễ & kiểu trôi lệch nhau
 const FOOD_DECOR = [
@@ -294,15 +295,17 @@ export default function Login() {
             </div>
 
             <span className="text-[10px] bg-orange-50 text-[#FF6B35] font-extrabold px-3 py-1 rounded-full uppercase tracking-[0.2em] border border-orange-100">
-              {mode === 'login' ? 'Đăng nhập' : 'Khôi phục mật khẩu'}
+              {mode === 'login' ? 'Đăng nhập' : mode === 'qr' ? 'Đăng nhập QR' : 'Khôi phục mật khẩu'}
             </span>
 
             <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-800 mt-3.5 tracking-tight text-center lg:text-left">
-              {mode === 'login' ? 'Chào mừng trở lại!' : 'Khôi phục mật khẩu'}
+              {mode === 'login' ? 'Chào mừng trở lại!' : mode === 'qr' ? 'Quét mã để đăng nhập' : 'Khôi phục mật khẩu'}
             </h2>
             <p className="text-xs sm:text-sm text-slate-400 mt-2 text-center lg:text-left font-semibold max-w-xs leading-relaxed">
               {mode === 'login' ? (
                 <>Đặt đồ ăn online siêu tốc với triết lý <span className="text-[#FF6B35] font-extrabold">Meal</span><span className="text-[#1A73E8] font-extrabold">Dash</span></>
+              ) : mode === 'qr' ? (
+                'Dùng điện thoại đã đăng nhập MealDash để quét mã, không cần gõ mật khẩu'
               ) : (
                 'Nhập số điện thoại hoặc email đã đăng ký để nhận mã OTP xác thực (hiệu lực trong 5 phút)'
               )}
@@ -450,8 +453,28 @@ export default function Login() {
                   <ChevronRight size={18} className="stroke-[2.5px]" />
                 </div>
               </button>
- 
+
+              {/* Chia & chuyển sang đăng nhập bằng QR */}
+              <div className="flex items-center gap-3 animate-rise-in" style={{ animationDelay: '320ms' }}>
+                <span className="flex-1 h-px bg-slate-200" />
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">hoặc</span>
+                <span className="flex-1 h-px bg-slate-200" />
+              </div>
+              <button
+                type="button"
+                onClick={() => { setMode('qr'); setErrorMsg(''); }}
+                style={{ animationDelay: '360ms' }}
+                className="w-full flex items-center justify-center gap-2 py-3 rounded-full border border-slate-200 bg-white text-slate-700 text-xs font-extrabold hover:border-[#FF6B35] hover:text-[#FF6B35] hover:bg-orange-50/40 transition-all cursor-pointer animate-rise-in"
+              >
+                <QrCode size={16} /> Đăng nhập bằng mã QR
+              </button>
+
             </form>
+          ) : mode === 'qr' ? (
+
+            // ─── VIEW MODE: QR LOGIN ─────────────────────────────────────────────────
+            <QrLoginPanel onBack={() => { setMode('login'); setErrorMsg(''); }} />
+
           ) : (
             
             // ─── VIEW MODE: FORGOT PASSWORD ──────────────────────────────────────────

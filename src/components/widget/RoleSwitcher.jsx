@@ -20,7 +20,7 @@ export default function RoleSwitcher() {
   });
 
   // Ẩn hoàn toàn widget ở trang đăng nhập, đăng ký, duyệt hồ sơ hoặc khi chưa đăng nhập
-  const authPaths = ['/login', '/register', '/partner/approval'];
+  const authPaths = ['/login', '/register', '/partner/approval', '/qr/approve'];
   const isAuthPage = authPaths.some(path => location.pathname.startsWith(path));
 
   if (!isLoggedIn || isAuthPage) {

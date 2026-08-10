@@ -14,6 +14,7 @@ import Login from '../pages/auth/Login';
 import Register from '../pages/auth/Register';
 import Otp from '../pages/auth/Otp';
 import PartnerApproval from '../pages/auth/PartnerApproval';
+import QrApprove from '../pages/auth/QrApprove';
 import NotFound from '../pages/NotFound';
 
 // Page nặng — LAZY-LOAD: mỗi trang tách chunk riêng; recharts/leaflet/maplibre
@@ -114,6 +115,8 @@ export default function AppRoutes() {
 
       {/* ─── AUTHENTICATION ROUTES ────────────────────────────────────────────── */}
       <Route path="/login" element={<Login />} />
+      {/* Xác nhận đăng nhập QR (mở trên điện thoại đã đăng nhập) — tự kiểm auth bên trong */}
+      <Route path="/qr/approve" element={<QrApprove />} />
       <Route path="/register" element={<Register />} />
       <Route path="/register/otp" element={<Otp />} />
 

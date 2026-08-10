@@ -1139,6 +1139,75 @@ export default function Cart() {
         </div>
       </div>
 
+      {/* Modal "Thông Tin Giao Hàng" — chỉ dùng trên mobile, mở từ thanh rút gọn ở đầu trang.*/}
+      <Modal
+        isOpen={mobileDeliveryInfoModal.isOpen}
+        onClose={mobileDeliveryInfoModal.close}
+        title="Thông Tin Giao Hàng"
+        size="sm"
+      >
+        <div className="space-y-3.5">
+          <div className="space-y-1">
+            <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+              <User size={12} className="text-indigo-500" /> Người nhận
+            </label>
+            <input
+              type="text"
+              value={fullname}
+              onChange={(e) => setFullname(e.target.value)}
+              placeholder="Nhập tên người nhận"
+              className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl bg-white text-slate-700 font-semibold focus:outline-none focus:border-[#ff6b35] focus:ring-1 focus:ring-orange-100 transition-all duration-200"
+            />
+          </div>
+
+          <div className="space-y-1 mb-1">
+            <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+              <Phone size={12} className="text-emerald-500" /> Số điện thoại
+            </label>
+            <input
+              type="tel"
+              value={phone}
+              readOnly
+              className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl bg-slate-50 text-slate-600 font-semibold focus:outline-none cursor-not-allowed transition-all duration-200"
+            />
+          </div>
+
+          <div className="space-y-1.5 pt-1">
+            <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+              <MapPin size={12} className="text-rose-500" /> Địa chỉ nhận hàng
+            </label>
+            <div className="p-3 border border-slate-100 rounded-xl bg-slate-50/30 min-h-[56px] flex flex-col justify-center relative">
+              {isUpdatingLocation && (
+                <div className="absolute inset-0 bg-white/70 flex items-center justify-center rounded-xl">
+                  <Spinner size="sm" />
+                </div>
+              )}
+              <p className="text-xs text-slate-700 font-medium leading-relaxed">
+                {address || 'Chưa chọn địa chỉ giao hàng'}
+              </p>
+            </div>
+
+            <Button
+              type="button"
+              icon={address ? Edit2 : Plus}
+              onClick={() => {
+                mobileDeliveryInfoModal.close();
+                if (!address) {
+                  setEditingAddressId(null);
+                  setAddressLabel('Nhà riêng');
+                  mapModal2.open();
+                } else {
+                  addressListModal.open();
+                }
+              }}
+              className="w-full !mt-0 !bg-orange-600 hover:!bg-orange-700 text-white font-bold py-3 rounded-xl flex items-center justify-center gap-2"
+            >
+              {address ? 'Thay Đổi Địa Chỉ' : 'Thêm Mới Địa Chỉ'}
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
       {/* Modal Xem/Sửa nhanh thông tin đơn hàng — chỉ dùng trên mobile, mở từ thanh đặt hàng cố định */}
       <Modal
         isOpen={orderSummaryModal.isOpen}

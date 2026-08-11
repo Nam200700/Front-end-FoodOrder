@@ -697,7 +697,7 @@ export default function Home() {
                         Đang tải thêm...
                       </>
                     ) : (
-                      `Xem thêm quán ăn khác (${Math.min(visibleExploreCount, nearByRestaurants.length)}/${nearByRestaurants.length})`
+                      `Xem thêm quán ăn khác`
                     )}
                   </button>
                 </div>

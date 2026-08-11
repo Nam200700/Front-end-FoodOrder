@@ -1,13 +1,13 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCartStore } from '../../stores/cartStore';
 import { useAuthStore } from '../../stores/authStore';
 import {
   Search, MapPin, ShoppingBag, Star, Clock, Heart, Award,
   RotateCcw, Sparkles, ChevronDown, SlidersHorizontal, Check, RefreshCw, X, Utensils,
-  TrendingUp,
+  LogIn,
 } from 'lucide-react';
-import { formatCurrency, removeVietnameseTones } from '../../utils/format';
+import { formatCurrency } from '../../utils/format';
 import Card from '../../components/common/Card';
 import apiClient from '../../services/api';
 import { calculateHaversineDistance } from '../../utils/haversine';
@@ -29,7 +29,17 @@ const CATEGORIES = [
   { id: 'bun', name: 'Bún' },
 ];
 
+
+const FILTER_THRESHOLDS = {
+  distance: 10,     // km — chỉ hiện quán trong bán kính 10km
+  rating: 4.0,       // sao — chỉ hiện quán có đánh giá từ 4.0 trở lên (và phải có review)
+  orders: 10,         // đơn — "bán chạy" phải có từ 10 đơn hoàn tất trở lên
+  ship: 20000,         // đồng — "phí ship rẻ" phải từ 20.000đ trở xuống
+};
+
 const PAGE_SIZE = 6;
+const ORDER_AGAIN_SIZE = 6;
+const RECOMMENDED_SIZE = 6;
 const DEFAULT_LAT = 10.762622;
 const DEFAULT_LNG = 106.660172;
 
@@ -86,16 +96,22 @@ export default function Home() {
 
   const [favorites, setFavorites] = useState([]);
   const [burstFavId, setBurstFavId] = useState(null);
-  const [pastOrders, setPastOrders] = useState([]);
   const [sortByFilter, setSortByFilter] = useState('distance');
   const [isMapOpen, setIsMapOpen] = useState(false);
 
   const [visibleFeaturedCount, setVisibleFeaturedCount] = useState(6);
-  const [visibleRecomCount, setVisibleRecomCount] = useState(6);
-  const [visibleOrderAgainCount, setVisibleOrderAgainCount] = useState(6);
+
+  const [visibleExploreCount, setVisibleExploreCount] = useState(PAGE_SIZE);
 
   const [onlyOpen, setOnlyOpen] = useState(false);
   const [onlyFavorites, setOnlyFavorites] = useState(false);
+
+  // ═══ ĐẶT LẠI QUÁN CŨ — gọi thẳng /restaurants/order-again ═══
+  const [orderAgainList, setOrderAgainList] = useState([]);
+  const [orderAgainLoading, setOrderAgainLoading] = useState(true);
+  const [orderAgainPage, setOrderAgainPage] = useState(0);
+  const [orderAgainHasMore, setOrderAgainHasMore] = useState(false);
+  const [orderAgainLoadingMore, setOrderAgainLoadingMore] = useState(false);
 
   // Debounce ô tìm kiếm
   useEffect(() => {
@@ -104,11 +120,12 @@ export default function Home() {
   }, [searchQuery]);
 
   useEffect(() => {
+    setVisibleExploreCount(PAGE_SIZE);
+  }, [debouncedSearch, activeCategory, sortByFilter, onlyOpen, onlyFavorites]);
+
+  useEffect(() => {
     let ignore = false;
 
-    // Chỉ khi TÌM KIẾM/CHỌN DANH MỤC mới cần gọi API riêng (list có lọc + phân trang).
-    // Khi KHÔNG lọc, dùng luôn "pool" (đã tải 1 lần bên dưới) làm nguồn cho danh sách
-    // "Khám phá" → bỏ được 1 lần gọi /restaurants trùng lặp khi vào trang chủ.
     const usingApiFilter = debouncedSearch.trim() !== '' || activeCategory !== 'all';
 
     if (!usingApiFilter) {
@@ -116,7 +133,6 @@ export default function Home() {
         setLoading(true);
       } else {
         setRestaurants(suggestionPool);
-        // page khớp với số lượng đã có sẵn để "Xem thêm" (nếu có) gọi tiếp đúng trang API.
         setPage(Math.max(0, Math.ceil(suggestionPool.length / PAGE_SIZE) - 1));
         setHasMore(suggestionPool.length >= 30);
         setLoading(false);
@@ -124,7 +140,7 @@ export default function Home() {
       return () => { ignore = true; };
     }
 
-    //lấy danh sách quán ăn (có lọc theo keyword/danh mục)
+    // Lấy danh sách quán ăn (có lọc theo keyword/danh mục).
     const fetchRestaurants = async () => {
       try {
         setLoading(true);
@@ -156,7 +172,7 @@ export default function Home() {
   }, [debouncedSearch, activeCategory, suggestionPool, poolLoading]);
 
   // Lấy 1 lần (khi mount) một tập dữ liệu quán ăn rộng hơn, KHÔNG theo filter, làm nguồn cho
-  // các section gợi ý bên dưới (Nổi bật / Dành riêng cho bạn / Đặt lại quán cũ).
+  // section "Nổi bật" và cho "Khám phá" khi không lọc gì.
   useEffect(() => {
     let ignore = false;
 
@@ -180,8 +196,8 @@ export default function Home() {
     return () => { ignore = true; };
   }, []);
 
+  // Lấy danh sách quán yêu thích
   useEffect(() => {
-    //lấy danh sách quán yêu thích
     const fetchFavorites = async () => {
       if (!user) {
         setFavorites([]);
@@ -197,26 +213,65 @@ export default function Home() {
       }
     };
     fetchFavorites();
-
-    //lấy danh sách orders
-    const fetchPastOrders = async () => {
-      if (!user) {
-        setPastOrders([]);
-        return;
-      }
-      try {
-        const response = await apiClient.get('/orders');
-        const orders = response.data?.data?.content || [];
-        setPastOrders(orders);
-      } catch (err) {
-        console.warn('Lỗi khi tải lịch sử đơn hàng ở trang chủ:', err);
-        setPastOrders([]);
-      }
-    };
-    fetchPastOrders();
   }, [user?.userId]);
 
-  // Tải thêm quán ăn cho "Khám Phá Quán Ăn" khi bấm nút Xem thêm (giữ nguyên keyword/category hiện tại)
+  // ═══ ĐẶT LẠI QUÁN CŨ: 
+  useEffect(() => {
+    if (!user) {
+      setOrderAgainList([]);
+      setOrderAgainLoading(false);
+      setOrderAgainHasMore(false);
+      return;
+    }
+
+    let ignore = false;
+    (async () => {
+      try {
+        setOrderAgainLoading(true);
+        const response = await apiClient.get(`/restaurants/order-again?page=0&size=${ORDER_AGAIN_SIZE}`);
+        if (ignore) return;
+        const content = response.data?.data?.content || [];
+        setOrderAgainList(content.map(mapRestaurant).filter(Boolean));
+        setOrderAgainHasMore(content.length >= ORDER_AGAIN_SIZE);
+        setOrderAgainPage(0);
+      } catch (err) {
+        if (ignore) return;
+        console.warn('Lỗi khi tải Đặt lại quán cũ:', err);
+        setOrderAgainList([]);
+      } finally {
+        if (!ignore) setOrderAgainLoading(false);
+      }
+    })();
+
+    return () => { ignore = true; };
+  }, [user?.userId]);
+
+  const loadMoreOrderAgain = async () => {
+    if (orderAgainLoadingMore || !orderAgainHasMore) return;
+    try {
+      setOrderAgainLoadingMore(true);
+      const nextPage = orderAgainPage + 1;
+      const response = await apiClient.get(`/restaurants/order-again?page=${nextPage}&size=${ORDER_AGAIN_SIZE}`);
+      const content = response.data?.data?.content || [];
+      setOrderAgainHasMore(content.length >= ORDER_AGAIN_SIZE);
+
+      if (content.length > 0) {
+        const mapped = content.map(mapRestaurant).filter(Boolean);
+        setOrderAgainList(prev => {
+          const existingIds = new Set(prev.map(r => r.id));
+          const uniqueNew = mapped.filter(r => !existingIds.has(r.id));
+          return [...prev, ...uniqueNew];
+        });
+        setOrderAgainPage(nextPage);
+      }
+    } catch (err) {
+      console.warn('Lỗi khi tải thêm quán cũ:', err);
+    } finally {
+      setOrderAgainLoadingMore(false);
+    }
+  };
+
+  // Tải thêm quán ăn từ API cho "Khám Phá Quán Ăn" (giữ nguyên keyword/category hiện tại)
   const loadMoreRestaurants = async () => {
     if (loadingMore || !hasMore) return;
     try {
@@ -246,6 +301,17 @@ export default function Home() {
     } finally {
       setLoadingMore(false);
     }
+  };
+
+  // "Xem thêm quán ăn khác": trước tiên mở rộng thêm 6 quán từ dữ liệu ĐÃ TẢI (pool/restaurants);
+  // chỉ khi số cần hiện vượt quá số đã tải và còn hasMore mới gọi thêm API. Nhờ đó mục Khám phá
+  // luôn tăng đúng 6 quán mỗi lần bấm, thay vì hiện hết toàn bộ pool ngay từ đầu.
+  const handleExploreShowMore = async () => {
+    const nextVisible = visibleExploreCount + PAGE_SIZE;
+    if (nextVisible > nearByRestaurantsRef.current.length && hasMore) {
+      await loadMoreRestaurants();
+    }
+    setVisibleExploreCount(nextVisible);
   };
 
   const toggleFavorite = async (resId, e) => {
@@ -278,10 +344,12 @@ export default function Home() {
     [suggestionPool, customerLat, customerLng]
   );
 
-  // Chỉ còn áp dụng 2 quick-filter còn thực sự hoạt động: đang mở cửa & đã lưu yêu thích.
-  // Lưu ý: sửa lỗi cũ — "Đang mở cửa" trước đây so sánh nhầm với res.status (cờ khoá tài khoản
-  // quán do admin quản lý) thay vì res.isOpen (trạng thái mở cửa theo giờ, cũng là giá trị đang
-  // hiển thị trên badge của card) khiến bộ lọc và badge hiển thị không khớp nhau.
+  // Khoảng cách cho "Đặt lại quán cũ" / "Dành riêng cho bạn" (dữ liệu lấy thẳng từ BE)
+  const orderAgainWithDistance = useMemo(
+    () => attachDistance(orderAgainList, customerLat, customerLng),
+    [orderAgainList, customerLat, customerLng]
+  );
+
   const filteredRestaurants = useMemo(() => {
     return restaurantsWithDistance.filter((res) => {
       if (onlyOpen && res.isOpen === false) return false;
@@ -291,7 +359,22 @@ export default function Home() {
   }, [restaurantsWithDistance, onlyOpen, onlyFavorites, favorites]);
 
   const nearByRestaurants = useMemo(() => {
-    return [...filteredRestaurants].sort((a, b) => {
+    const thresholdFiltered = filteredRestaurants.filter((res) => {
+      switch (sortByFilter) {
+        case 'distance':
+          return res.distanceNum <= FILTER_THRESHOLDS.distance;
+        case 'rating':
+          return res.reviewsCount > 0 && res.rating >= FILTER_THRESHOLDS.rating;
+        case 'orders':
+          return (res.orderCount || 0) >= FILTER_THRESHOLDS.orders;
+        case 'ship':
+          return res.shippingFee <= FILTER_THRESHOLDS.ship;
+        default:
+          return true;
+      }
+    });
+
+    return [...thresholdFiltered].sort((a, b) => {
       if (sortByFilter === 'rating') return b.rating - a.rating;
       if (sortByFilter === 'ship') return a.shippingFee - b.shippingFee;
       if (sortByFilter === 'orders') return (b.orderCount || 0) - (a.orderCount || 0);
@@ -299,7 +382,15 @@ export default function Home() {
     });
   }, [filteredRestaurants, sortByFilter]);
 
-  // QUÁN NỔI BẬT:
+  const nearByRestaurantsRef = React.useRef(nearByRestaurants);
+  nearByRestaurantsRef.current = nearByRestaurants;
+
+  const visibleNearByRestaurants = useMemo(
+    () => nearByRestaurants.slice(0, visibleExploreCount),
+    [nearByRestaurants, visibleExploreCount]
+  );
+
+  // QUÁN NỔI BẬT: top rating/review trong pool — hợp lý vì đây là gợi ý chung, không cá nhân hoá.
   const featuredRestaurants = useMemo(() => {
     const sorted = [...poolWithDistance].sort((a, b) => {
       if (b.rating !== a.rating) return b.rating - a.rating;
@@ -315,100 +406,6 @@ export default function Home() {
     });
     return unique;
   }, [poolWithDistance]);
-
-  // ĐẶT LẠI QUÁN CŨ: 
-  const orderAgainRestaurants = useMemo(() => {
-    if (pastOrders.length === 0) return [];
-    const orderedResIds = [...new Set(pastOrders.map(ord => {
-      const id = ord.restaurantId || ord.restaurant?.restaurantId;
-      return id ? id.toString() : null;
-    }).filter(Boolean))];
-
-    return poolWithDistance.filter(res => orderedResIds.includes(res.id));
-  }, [pastOrders, poolWithDistance]);
-
-  // DÀNH RIÊNG CHO BẠN: 
-  const { recommendedRestaurants, favCuisineName } = useMemo(() => {
-    const allOrderedFoods = [];
-    pastOrders.forEach(ord => {
-      const itemsList = ord.items || ord.orderItems || [];
-      itemsList.forEach(item => {
-        const name = item.foodName || item.name;
-        if (name) allOrderedFoods.push(name);
-      });
-    });
-
-    const keywords = [
-      { key: 'com', label: 'Cơm Tấm' },
-      { key: 'bun', label: 'Bún Riêu/Bún Bò' },
-      { key: 'mi', label: 'Mì Quảng/Mì Ý' },
-      { key: 'pizza', label: 'Pizza' },
-      { key: 'sushi', label: 'Sushi' },
-      { key: 'salad', label: 'Salad' },
-      { key: 'ga', label: 'Gà Rán' },
-      { key: 'suon', label: 'Cơm Sườn' },
-      { key: 'tra', label: 'Trà Sữa' },
-      { key: 'sua', label: 'Trà Sữa' },
-    ];
-
-    const counts = {};
-    keywords.forEach(kw => { counts[kw.key] = 0; });
-
-    allOrderedFoods.forEach(food => {
-      const normFood = removeVietnameseTones(food);
-      keywords.forEach(kw => {
-        if (normFood.includes(kw.key)) counts[kw.key]++;
-      });
-    });
-
-    let maxKey = 'com';
-    let maxCount = 0;
-    Object.keys(counts).forEach(key => {
-      if (counts[key] > maxCount) {
-        maxCount = counts[key];
-        maxKey = key;
-      }
-    });
-
-    const favKw = keywords.find(k => k.key === maxKey);
-    const favName = favKw ? favKw.label : 'Cơm Tấm';
-    const favNorm = removeVietnameseTones(favName);
-
-    let recommended = [];
-    if (maxCount > 0) {
-      recommended = poolWithDistance.filter(res => {
-        const nameNorm = removeVietnameseTones(res.name || '');
-        const tagsNorm = (res.tags || []).map(t => removeVietnameseTones(t));
-
-        return nameNorm.includes(maxKey) || tagsNorm.some(t => t.includes(maxKey)) ||
-               nameNorm.includes(favNorm) || tagsNorm.some(t => t.includes(favNorm)) ||
-               (maxKey === 'com' && (nameNorm.includes('rice') || tagsNorm.some(t => t.includes('com') || t.includes('rice')))) ||
-               (maxKey === 'ga' && (nameNorm.includes('chicken') || tagsNorm.some(t => t.includes('ga') || t.includes('chicken')))) ||
-               (maxKey === 'bun' && (nameNorm.includes('pho') || tagsNorm.some(t => t.includes('bun') || t.includes('pho') || t.includes('soup'))));
-      });
-    }
-
-    if (recommended.length === 0) {
-      recommended = [...poolWithDistance].sort((a, b) => {
-        if (b.rating !== a.rating) return b.rating - a.rating;
-        return b.reviewsCount - a.reviewsCount;
-      });
-    }
-
-    const uniqueRecom = [];
-    const seen = new Set();
-    recommended.forEach(res => {
-      if (!seen.has(res.id)) {
-        seen.add(res.id);
-        uniqueRecom.push(res);
-      }
-    });
-
-    return {
-      recommendedRestaurants: uniqueRecom,
-      favCuisineName: maxCount > 0 ? favName : 'Được đánh giá cao',
-    };
-  }, [pastOrders, poolWithDistance]);
 
   const handleConfirmLocation = async (lat, lng, addressName) => {
     try {
@@ -464,7 +461,7 @@ export default function Home() {
         </div>
       </div>
 
-      {/* ═══ SEARCH BAR & CATEGORY FILTERS (search & category đều gọi API) ═══ */}
+      {/* ═══ SEARCH BAR & CATEGORY FILTERS (search & category đều gọi API, search khớp cả tên quán lẫn tên món) ═══ */}
       <div className="space-y-3.5 mb-8">
         <div className="relative">
           <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={18} />
@@ -472,7 +469,7 @@ export default function Home() {
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Tìm theo tên quán"
+            placeholder="Tìm theo tên quán hoặc tên món ăn"
             className="w-full pl-10 pr-10 py-3 bg-white border border-slate-200 focus:border-[#FF6B35] rounded-xl text-xs sm:text-sm outline-none shadow-sm transition-all text-slate-800 placeholder:text-slate-400 font-medium"
           />
           {searchQuery && (
@@ -594,11 +591,15 @@ export default function Home() {
                   <SkeletonRestaurantCard />
                   <SkeletonRestaurantCard />
                 </div>
-              ) : filteredRestaurants.length === 0 ? (
+              ) : nearByRestaurants.length === 0 ? (
                 <div className="text-center py-12 bg-white rounded-2xl border border-dashed border-slate-200">
                   <ShoppingBag size={44} className="mx-auto text-slate-300 mb-2" />
                   <p className="text-sm font-bold text-slate-700">Không tìm thấy quán ăn phù hợp</p>
-                  <p className="text-xs text-slate-500 mt-1">Vui lòng chọn danh mục khác hoặc xóa điều kiện lọc</p>
+                  <p className="text-xs text-slate-500 mt-1">
+                    {filteredRestaurants.length > 0
+                      ? 'Không có quán nào đạt ngưỡng của bộ lọc hiện tại. Vui lòng thử tab sắp xếp khác.'
+                      : 'Vui lòng chọn danh mục khác hoặc xóa điều kiện lọc'}
+                  </p>
                   {isFilterActive && (
                     <button
                       onClick={resetFilters}
@@ -610,7 +611,7 @@ export default function Home() {
                 </div>
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
-                  {nearByRestaurants.map((res) => (
+                  {visibleNearByRestaurants.map((res) => (
                     <Card
                       key={`explore-${res.id}`}
                       variant="elevated"
@@ -683,10 +684,10 @@ export default function Home() {
                 </div>
               )}
 
-              {hasMore && !loading && filteredRestaurants.length > 0 && (
+              {!loading && nearByRestaurants.length > 0 && (visibleExploreCount < nearByRestaurants.length || hasMore) && (
                 <div className="flex justify-center mt-6 sm:mt-8">
                   <button
-                    onClick={loadMoreRestaurants}
+                    onClick={handleExploreShowMore}
                     disabled={loadingMore}
                     className="px-5 py-2.5 bg-white border border-[#FF6B35] text-[#FF6B35] hover:bg-orange-50 disabled:border-slate-300 disabled:text-slate-400 font-bold text-xs sm:text-sm rounded-xl shadow-sm transition-all hover:scale-[1.01] active:scale-[0.99] cursor-pointer flex items-center gap-2"
                   >
@@ -696,7 +697,7 @@ export default function Home() {
                         Đang tải thêm...
                       </>
                     ) : (
-                      'Xem thêm quán ăn khác'
+                      `Xem thêm quán ăn khác`
                     )}
                   </button>
                 </div>
@@ -809,182 +810,124 @@ export default function Home() {
                 </div>
               )}
 
-              {orderAgainRestaurants.length > 0 && (
+              {!user && (
+                <div className="bg-white rounded-2xl border border-dashed border-orange-200 p-6 sm:p-8 text-center">
+                  <Sparkles className="mx-auto text-[#FF6B35] mb-2" size={28} />
+                  <p className="text-sm font-bold text-slate-700">Đăng nhập để xem gợi ý dành riêng cho bạn</p>
+                  <p className="text-xs text-slate-500 mt-1">Lưu quán yêu thích và đặt lại các quán đã từng đặt chỉ trong 1 chạm.</p>
+                  <button
+                    onClick={() => navigate('/login')}
+                    className="mt-3 inline-flex items-center gap-2 px-4 py-2 bg-[#FF6B35] text-white rounded-lg text-xs font-bold shadow-sm hover:bg-orange-600 transition-all cursor-pointer"
+                  >
+                    <LogIn size={14} />
+                    Đăng nhập ngay
+                  </button>
+                </div>
+              )}
+
+              {/* ════════ ĐẶT LẠI QUÁN CŨ (gọi thẳng /restaurants/order-again) ════════ */}
+              {user && (orderAgainLoading || orderAgainWithDistance.length > 0) && (
                 <div>
                   <h2 className="text-sm sm:text-base md:text-lg font-extrabold text-slate-800 mb-3 flex items-center gap-2">
                     <RotateCcw className="text-[#FF6B35]" size={18} /> Đặt Lại Quán Cũ
                   </h2>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
-                    {orderAgainRestaurants.slice(0, visibleOrderAgainCount).map((res) => (
-                      <Card
-                        key={`again-${res.id}`}
-                        variant="elevated"
-                        hoverEffect
-                        onClick={() => navigate(`/restaurants/${res.id}`)}
-                        className="!rounded-2xl relative border border-slate-200/80 bg-white overflow-hidden group shadow-sm hover:shadow-md transition-all flex flex-col justify-between"
-                      >
-                        <button
-                          onClick={(e) => toggleFavorite(res.id, e)}
-                          title={favorites.includes(res.id) ? 'Bỏ yêu thích' : 'Thêm vào yêu thích'}
-                          className="group/fav absolute right-3 top-3 bg-white/90 backdrop-blur-md p-2 rounded-full text-slate-400 hover:text-rose-500 transition-all shadow-sm z-10 cursor-pointer active:scale-90"
-                        >
-                          {burstFavId === res.id && (
-                            <span className="absolute inset-0 rounded-full bg-rose-400/50 animate-heart-burst pointer-events-none" />
-                          )}
-                          <Heart
-                            size={16}
-                            className={`relative transition-transform ${
-                              favorites.includes(res.id)
-                                ? 'fill-rose-500 text-rose-500 ' + (burstFavId === res.id ? 'animate-heart-pop' : 'animate-heart-beat')
-                                : 'group-hover/fav:scale-110'
-                            }`}
-                          />
-                        </button>
 
-                        <div>
-                          <div className="relative aspect-[16/10] w-full overflow-hidden bg-slate-100">
-                            <img
-                              src={res.image}
-                              alt={res.name}
-                              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                            />
-                            <span className="absolute bottom-2.5 left-2.5 text-[10px] bg-black/75 backdrop-blur-sm text-white font-bold px-2 py-0.5 rounded flex items-center gap-1">
-                              <Star size={11} className="fill-amber-400 text-amber-400" />
-                              {res.reviewsCount > 0 ? `${res.rating} (${res.reviewsCount})` : 'Mới'}
-                            </span>
-                            <span className={`absolute top-2.5 left-2.5 text-[10px] font-bold px-2 py-0.5 rounded shadow-sm text-white ${res.isOpen !== false ? 'bg-emerald-600' : 'bg-rose-600'}`}>
-                              {res.isOpen !== false ? 'Đang mở cửa' : 'Đã đóng cửa'}
-                            </span>
-                          </div>
-
-                          <div className="p-3.5 sm:p-4">
-                            <h3 className="font-bold text-xs sm:text-sm text-slate-800 truncate group-hover:text-[#FF6B35] transition-colors">{res.name}</h3>
-                            <div className="flex items-center justify-between text-xs text-slate-500 mt-2 font-medium">
-                              <span className="flex items-center gap-1">
-                                <Clock size={13} />
-                                {res.time}
-                              </span>
-                              <span>{res.distance}</span>
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="px-3.5 pb-3.5 sm:px-4 sm:pb-4">
-                          <div className="pt-2.5 border-t border-slate-100 flex items-center justify-between">
-                            <span className="text-[10px] sm:text-[11px] font-bold text-slate-600 bg-slate-100 px-2 py-0.5 rounded">
-                              {res.shipping}
-                            </span>
-                            <span className="text-[10px] sm:text-[11px] text-[#FF6B35] font-bold bg-orange-50 px-2 py-0.5 rounded">
-                              Đã bán {res.orderCount || 0}
-                            </span>
-                          </div>
-                        </div>
-                      </Card>
-                    ))}
-                  </div>
-
-                  {orderAgainRestaurants.length > visibleOrderAgainCount && (
-                    <div className="flex justify-center mt-6 sm:mt-8">
-                      <button
-                        onClick={() => setVisibleOrderAgainCount(prev => prev + 6)}
-                        className="px-5 py-2.5 bg-white border border-[#FF6B35] text-[#FF6B35] hover:bg-orange-50 font-bold text-xs sm:text-sm rounded-xl shadow-sm transition-all hover:scale-[1.01] active:scale-[0.99] cursor-pointer flex items-center gap-2"
-                      >
-                        Xem thêm quán cũ
-                      </button>
+                  {orderAgainLoading ? (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
+                      <SkeletonRestaurantCard />
+                      <SkeletonRestaurantCard />
+                      <SkeletonRestaurantCard />
                     </div>
-                  )}
-                </div>
-              )}
+                  ) : (
+                    <>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
+                        {orderAgainWithDistance.map((res) => (
+                          <Card
+                            key={`again-${res.id}`}
+                            variant="elevated"
+                            hoverEffect
+                            onClick={() => navigate(`/restaurants/${res.id}`)}
+                            className="!rounded-2xl relative border border-slate-200/80 bg-white overflow-hidden group shadow-sm hover:shadow-md transition-all flex flex-col justify-between"
+                          >
+                            <button
+                              onClick={(e) => toggleFavorite(res.id, e)}
+                              title={favorites.includes(res.id) ? 'Bỏ yêu thích' : 'Thêm vào yêu thích'}
+                              className="group/fav absolute right-3 top-3 bg-white/90 backdrop-blur-md p-2 rounded-full text-slate-400 hover:text-rose-500 transition-all shadow-sm z-10 cursor-pointer active:scale-90"
+                            >
+                              {burstFavId === res.id && (
+                                <span className="absolute inset-0 rounded-full bg-rose-400/50 animate-heart-burst pointer-events-none" />
+                              )}
+                              <Heart
+                                size={16}
+                                className={`relative transition-transform ${
+                                  favorites.includes(res.id)
+                                    ? 'fill-rose-500 text-rose-500 ' + (burstFavId === res.id ? 'animate-heart-pop' : 'animate-heart-beat')
+                                    : 'group-hover/fav:scale-110'
+                                }`}
+                              />
+                            </button>
 
-              {recommendedRestaurants.length > 0 && (
-                <div>
-                  <div className="flex items-center justify-between mb-3.5">
-                    <h2 className="text-base sm:text-lg md:text-xl font-extrabold text-slate-800 flex items-center gap-2">
-                      <Sparkles className="text-[#FF6B35]" size={20} /> Dành Riêng Cho Bạn
-                      <span className="inline-flex items-center gap-1 text-[10px] font-bold text-[#FF6B35] bg-orange-50 border border-orange-200 px-2.5 py-1 rounded-full uppercase tracking-wider">
-                        {favCuisineName === 'Được đánh giá cao' ? 'Gợi ý hot' : `Thích: ${favCuisineName}`}
-                      </span>
-                    </h2>
-                  </div>
+                            <div>
+                              <div className="relative aspect-[16/10] w-full overflow-hidden bg-slate-100">
+                                <img
+                                  src={res.image}
+                                  alt={res.name}
+                                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                                />
+                                <span className="absolute bottom-2.5 left-2.5 text-[10px] bg-black/75 backdrop-blur-sm text-white font-bold px-2 py-0.5 rounded flex items-center gap-1">
+                                  <Star size={11} className="fill-amber-400 text-amber-400" />
+                                  {res.reviewsCount > 0 ? `${res.rating} (${res.reviewsCount})` : 'Mới'}
+                                </span>
+                                <span className={`absolute top-2.5 left-2.5 text-[10px] font-bold px-2 py-0.5 rounded shadow-sm text-white ${res.isOpen !== false ? 'bg-emerald-600' : 'bg-rose-600'}`}>
+                                  {res.isOpen !== false ? 'Đang mở cửa' : 'Đã đóng cửa'}
+                                </span>
+                              </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
-                    {recommendedRestaurants.slice(0, visibleRecomCount).map((res) => (
-                      <Card
-                        key={`recom-${res.id}`}
-                        variant="elevated"
-                        hoverEffect
-                        onClick={() => navigate(`/restaurants/${res.id}`)}
-                        className="!rounded-2xl relative border border-slate-200/80 bg-white overflow-hidden group shadow-sm hover:shadow-md transition-all flex flex-col justify-between"
-                      >
-                        <button
-                          onClick={(e) => toggleFavorite(res.id, e)}
-                          title={favorites.includes(res.id) ? 'Bỏ yêu thích' : 'Thêm vào yêu thích'}
-                          className="group/fav absolute right-3 top-3 bg-white/90 backdrop-blur-md p-2 rounded-full text-slate-400 hover:text-rose-500 transition-all shadow-sm z-10 cursor-pointer active:scale-90"
-                        >
-                          {burstFavId === res.id && (
-                            <span className="absolute inset-0 rounded-full bg-rose-400/50 animate-heart-burst pointer-events-none" />
-                          )}
-                          <Heart
-                            size={16}
-                            className={`relative transition-transform ${
-                              favorites.includes(res.id)
-                                ? 'fill-rose-500 text-rose-500 ' + (burstFavId === res.id ? 'animate-heart-pop' : 'animate-heart-beat')
-                                : 'group-hover/fav:scale-110'
-                            }`}
-                          />
-                        </button>
-
-                        <div>
-                          <div className="relative aspect-[16/10] w-full overflow-hidden bg-slate-100">
-                            <img
-                              src={res.image}
-                              alt={res.name}
-                              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                            />
-                            <span className="absolute bottom-2.5 left-2.5 text-[10px] bg-black/75 backdrop-blur-sm text-white font-bold px-2 py-0.5 rounded flex items-center gap-1">
-                              <Star size={11} className="fill-amber-400 text-amber-400" />
-                              {res.reviewsCount > 0 ? `${res.rating} (${res.reviewsCount})` : 'Mới'}
-                            </span>
-                            <span className={`absolute top-2.5 left-2.5 text-[10px] font-bold px-2 py-0.5 rounded shadow-sm text-white ${res.isOpen !== false ? 'bg-emerald-600' : 'bg-rose-600'}`}>
-                              {res.isOpen !== false ? 'Đang mở cửa' : 'Đã đóng cửa'}
-                            </span>
-                          </div>
-
-                          <div className="p-3.5 sm:p-4">
-                            <h3 className="font-bold text-xs sm:text-sm text-slate-800 truncate group-hover:text-[#FF6B35] transition-colors">{res.name}</h3>
-                            <div className="flex items-center justify-between text-xs text-slate-500 mt-2 font-medium">
-                              <span className="flex items-center gap-1">
-                                <Clock size={13} />
-                                {res.time}
-                              </span>
-                              <span>{res.distance}</span>
+                              <div className="p-3.5 sm:p-4">
+                                <h3 className="font-bold text-xs sm:text-sm text-slate-800 truncate group-hover:text-[#FF6B35] transition-colors">{res.name}</h3>
+                                <div className="flex items-center justify-between text-xs text-slate-500 mt-2 font-medium">
+                                  <span className="flex items-center gap-1">
+                                    <Clock size={13} />
+                                    {res.time}
+                                  </span>
+                                  <span>{res.distance}</span>
+                                </div>
+                              </div>
                             </div>
-                          </div>
-                        </div>
 
-                        <div className="px-3.5 pb-3.5 sm:px-4 sm:pb-4">
-                          <div className="pt-2.5 border-t border-slate-100 flex items-center justify-between">
-                            <span className="text-[10px] sm:text-[11px] font-bold text-slate-600 bg-slate-100 px-2 py-0.5 rounded">
-                              {res.shipping}
-                            </span>
-                            <span className="text-[10px] sm:text-[11px] text-[#FF6B35] font-bold bg-orange-50 px-2 py-0.5 rounded">
-                              Đã bán {res.orderCount || 0}
-                            </span>
-                          </div>
-                        </div>
-                      </Card>
-                    ))}
-                  </div>
+                            <div className="px-3.5 pb-3.5 sm:px-4 sm:pb-4">
+                              <div className="pt-2.5 border-t border-slate-100 flex items-center justify-between">
+                                <span className="text-[10px] sm:text-[11px] font-bold text-slate-600 bg-slate-100 px-2 py-0.5 rounded">
+                                  {res.shipping}
+                                </span>
+                                <span className="text-[10px] sm:text-[11px] text-[#FF6B35] font-bold bg-orange-50 px-2 py-0.5 rounded">
+                                  Đã bán {res.orderCount || 0}
+                                </span>
+                              </div>
+                            </div>
+                          </Card>
+                        ))}
+                      </div>
 
-                  {recommendedRestaurants.length > visibleRecomCount && (
-                    <div className="flex justify-center mt-6 sm:mt-8">
-                      <button
-                        onClick={() => setVisibleRecomCount(prev => prev + 6)}
-                        className="px-5 py-2.5 bg-white border border-[#FF6B35] text-[#FF6B35] hover:bg-orange-50 font-bold text-xs sm:text-sm rounded-xl shadow-sm transition-all hover:scale-[1.01] active:scale-[0.99] cursor-pointer flex items-center gap-2"
-                      >
-                        Xem thêm gợi ý dành cho bạn
-                      </button>
-                    </div>
+                      {orderAgainHasMore && (
+                        <div className="flex justify-center mt-6 sm:mt-8">
+                          <button
+                            onClick={loadMoreOrderAgain}
+                            disabled={orderAgainLoadingMore}
+                            className="px-5 py-2.5 bg-white border border-[#FF6B35] text-[#FF6B35] hover:bg-orange-50 disabled:border-slate-300 disabled:text-slate-400 font-bold text-xs sm:text-sm rounded-xl shadow-sm transition-all hover:scale-[1.01] active:scale-[0.99] cursor-pointer flex items-center gap-2"
+                          >
+                            {orderAgainLoadingMore ? (
+                              <>
+                                <span className="w-4 h-4 border-2 border-[#FF6B35] border-t-transparent rounded-full animate-spin"></span>
+                                Đang tải thêm...
+                              </>
+                            ) : (
+                              'Xem thêm quán cũ'
+                            )}
+                          </button>
+                        </div>
+                      )}
+                    </>
                   )}
                 </div>
               )}

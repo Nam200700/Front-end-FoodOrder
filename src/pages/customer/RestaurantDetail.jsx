@@ -567,30 +567,58 @@ function GroupOrderPanel({ groupOrder, isHost, myMember, onMarkReady, onLock, on
         <span className="text-base font-extrabold text-emerald-600">{formatCurrency(groupOrder.subtotalAmount || 0)}</span>
       </div>
 
-      <div className="mt-4 space-y-2">
+      <div className="mt-4 space-y-2.5">
         {isOpen && myMember?.status !== 'READY' && (
-          <Button onClick={onMarkReady} disabled={busy} variant="outline" className="w-full" icon={CheckCheck}>
-            Tôi đã chọn xong
+          <Button 
+            onClick={onMarkReady} 
+            disabled={busy} 
+            variant="outline" 
+            className="w-full !border-emerald-500/40 !text-emerald-700 hover:!bg-emerald-50 font-extrabold shadow-sm transition-all duration-200" 
+            icon={CheckCheck}
+          >
+            Hoàn tất chọn món
           </Button>
         )}
         {isHost && isOpen && (
-          <Button onClick={onLock} disabled={busy} variant="outline" className="w-full" icon={Lock}>
-            Khóa phiên (ngừng nhận món)
+          <Button 
+            onClick={onLock} 
+            disabled={busy} 
+            variant="outline" 
+            className="w-full !border-amber-500/40 !text-amber-700 hover:!bg-amber-50 font-extrabold shadow-sm transition-all duration-200" 
+            icon={Lock}
+          >
+            Khóa phiên (Ngừng nhận món)
           </Button>
         )}
         {canCheckout && (
-          <Button onClick={onCheckout} disabled={busy} className="w-full">
-            Chốt đơn cho cả nhóm
+          <Button 
+            onClick={onCheckout} 
+            disabled={busy} 
+            className="w-full !bg-gradient-to-r !from-emerald-600 !to-teal-600 hover:!from-emerald-700 hover:!to-teal-700 text-white font-extrabold shadow-md hover:shadow-lg transition-all duration-200"
+          >
+            Đặt đơn
           </Button>
         )}
         {!isHost && isOpen && (
-          <Button onClick={onLeave} disabled={busy} variant="outline" className="w-full text-red-500 border-red-200 hover:bg-red-50" icon={LogOut}>
-            Rời phiên
+          <Button 
+            onClick={onLeave} 
+            disabled={busy} 
+            variant="outline" 
+            className="w-full !text-rose-600 !border-rose-200 hover:!bg-rose-50 font-bold transition-all duration-200" 
+            icon={LogOut}
+          >
+            Rời khỏi nhóm
           </Button>
         )}
         {isHost && groupOrder.status !== 'ORDERED' && groupOrder.status !== 'CANCELLED' && (
-          <Button onClick={onCancel} disabled={busy} variant="text" className="w-full text-red-500" icon={Ban}>
-            Hủy phiên
+          <Button 
+            onClick={onCancel} 
+            disabled={busy} 
+            variant="text" 
+            className="w-full !text-rose-500 hover:!bg-rose-50/60 font-semibold transition-all duration-200" 
+            icon={Ban}
+          >
+            Hủy phiên đặt nhóm
           </Button>
         )}
       </div>
@@ -1361,7 +1389,7 @@ export default function RestaurantDetail() {
                               {/* thêm món vào giỏ hàng — hoặc vào phiên nhóm nếu isGroupMode */}
                               <div className="shrink-0">
                                 {qty > 0 ? (
-                                  <div className={`flex items-center text-white rounded-radius-full py-1 px-2.5 xs:py-1.5 xs:px-3.5 gap-2 xs:gap-3.5 shadow-shadow-2 ${isGroupMode ? 'bg-emerald-600' : 'bg-md-primary'}`}>
+                                  <div className="flex items-center text-white rounded-radius-full py-1 px-2.5 xs:py-1.5 xs:px-3.5 gap-2 xs:gap-3.5 shadow-shadow-2 bg-md-primary">
                                     <button 
                                       onClick={() => handleQtyButtonChange(item, qty - 1)}
                                       disabled={groupBusy}
@@ -1384,11 +1412,7 @@ export default function RestaurantDetail() {
                                     size="sm"
                                     onClick={() => handleAddToCart(item)}
                                     disabled={groupBusy || (isGroupMode && groupOrder.status !== 'OPEN')}
-                                    className={`w-8 h-8 xs:w-10 xs:h-10 !p-0 rounded-radius-full border transition-all duration-200 shrink-0 ${
-                                      isGroupMode
-                                        ? 'border-emerald-400/40 text-emerald-600 hover:bg-emerald-600 hover:text-white'
-                                        : 'border-md-primary/30 text-md-primary hover:bg-md-primary hover:text-white'
-                                    }`}
+                                    className="w-8 h-8 xs:w-10 xs:h-10 !p-0 rounded-radius-full border transition-all duration-200 shrink-0 border-md-primary/30 text-md-primary hover:bg-md-primary hover:text-white"
                                   >
                                     <Plus size={18} className="stroke-[2.5px] xs:size-[20px]" />
                                   </Button>
@@ -1666,7 +1690,7 @@ export default function RestaurantDetail() {
               className="w-full p-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-emerald-400 resize-none"
             />
           </div>
-          <Button onClick={handleCreateGroupOrder} disabled={creatingGroup} className="w-full !bg-emerald-600 hover:!bg-emerald-700">
+          <Button onClick={handleCreateGroupOrder} disabled={creatingGroup} className="w-full !bg-primary-600 hover:!bg-primary-700">
             {creatingGroup ? 'Đang tạo...' : 'Tạo phiên & lấy mã mời'}
           </Button>
         </div>
@@ -1703,7 +1727,7 @@ export default function RestaurantDetail() {
 
             <div className="flex gap-2">
               <Button onClick={shareInvite} variant="outline" className="flex-1" icon={Send}>Chia sẻ</Button>
-              <Button onClick={() => inviteModal.close()} className="flex-1 !bg-emerald-600 hover:!bg-emerald-700">Xong</Button>
+              <Button onClick={() => inviteModal.close()} className="flex-1 !bg-primary-600 hover:!bg-primary-700">Xong</Button>
             </div>
 
             <p className="text-[11px] text-slate-400">

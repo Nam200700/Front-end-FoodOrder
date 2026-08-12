@@ -1003,6 +1003,21 @@ export default function RestaurantDetail() {
     }
   };
 
+  // Hàm gọi API xóa món ăn khỏi phiên đặt nhóm
+  const handleRemoveGroupItem = async (itemId) => {
+    if (!groupOrder?.groupOrderId) return;
+    try {
+      setGroupBusy(true);
+      const res = await apiClient.delete(`/api/v1/group-orders/${groupOrder.groupOrderId}/items/${itemId}`);
+      setGroupOrder(res.data?.data || null);
+      toast.success('Đã xóa món ăn khỏi phiên.');
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Không thể xóa món ăn.');
+    } finally {
+      setGroupBusy(false);
+    }
+  };
+
   //copy link mời
   const copyInviteLink = () => {
     if (!groupOrder?.inviteUrl) return;

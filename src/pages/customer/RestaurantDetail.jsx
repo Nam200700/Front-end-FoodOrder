@@ -510,7 +510,8 @@ const GROUP_STATUS_META = {
  * Hiển thị danh sách thành viên + món từng người, cho phép host khóa/chốt đơn,
  * thành viên đánh dấu sẵn sàng hoặc rời phiên.
  */
-function GroupOrderPanel({ groupOrder, isHost, myMember, onMarkReady, onLock, onCheckout, onLeave, onCancel, onShowInvite, busy }) {
+function GroupOrderPanel({ groupOrder, isHost, myMember, onMarkReady, onLock, onCheckout, onLeave, onCancel, onShowInvite, busy, handleRemoveGroupItem }) {
+  const { user } = useAuthStore();
   if (!groupOrder) return null;
   const isOpen = groupOrder.status === 'OPEN';
   const canCheckout = isHost && (groupOrder.status === 'OPEN' || groupOrder.status === 'LOCKED');
@@ -535,31 +536,50 @@ function GroupOrderPanel({ groupOrder, isHost, myMember, onMarkReady, onLock, on
       </div>
 
       <div className="space-y-2.5 max-h-64 overflow-y-auto no-scrollbar pr-1">
-        {groupOrder.members?.map((m) => (
-          <div key={m.memberId} className="rounded-lg border border-slate-100 bg-slate-50/60 p-2.5">
-            <div className="flex items-center justify-between gap-2">
-              <span className="text-xs font-bold text-slate-700 flex items-center gap-1.5 truncate min-w-0">
-                <span className="truncate">{m.fullName}</span>
-                {m.isHost && <span className="text-[9px] shrink-0 bg-orange-100 text-orange-600 px-1.5 py-0.5 rounded-full font-black">HOST</span>}
-              </span>
-              <span className={`text-[9px] font-black px-1.5 py-0.5 rounded-full shrink-0 ${m.status === 'READY' ? 'bg-emerald-100 text-emerald-700' : m.status === 'LEFT' ? 'bg-slate-200 text-slate-400' : 'bg-slate-200 text-slate-500'}`}>
-                {m.status === 'READY' ? 'Sẵn sàng' : m.status === 'LEFT' ? 'Đã rời' : 'Đang chọn'}
-              </span>
+        {groupOrder.members?.map((m) => {
+          // Kiểm tra xem thành viên này có phải là user hiện tại đang đăng nhập không
+          const isCurrentUser = m.userId === user?.id;
+
+          return (
+            <div key={m.memberId} className="rounded-lg border border-slate-100 bg-slate-50/60 p-2.5">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-xs font-bold text-slate-700 flex items-center gap-1.5 truncate min-w-0">
+                  <span className="truncate">{m.fullName}</span>
+                  {m.isHost && <span className="text-[9px] shrink-0 bg-orange-100 text-orange-600 px-1.5 py-0.5 rounded-full font-black">HOST</span>}
+                </span>
+                <span className={`text-[9px] font-black px-1.5 py-0.5 rounded-full shrink-0 ${m.status === 'READY' ? 'bg-emerald-100 text-emerald-700' : m.status === 'LEFT' ? 'bg-slate-200 text-slate-400' : 'bg-slate-200 text-slate-500'}`}>
+                  {m.status === 'READY' ? 'Sẵn sàng' : m.status === 'LEFT' ? 'Đã rời' : 'Đang chọn'}
+                </span>
+              </div>
+              {m.items?.length > 0 ? (
+                <ul className="mt-1.5 space-y-1">
+                  {m.items.map((it) => (
+                    <li key={it.groupOrderItemId} className="text-[11px] text-slate-500 flex items-center justify-between gap-2 group/item">
+                      <span className="truncate flex-1">{it.foodName} × {it.quantity}</span>
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <span className="font-semibold text-slate-600">{formatCurrency(it.lineTotal)}</span>
+                        {/* Chỉ hiện nút X khi là món của chính user hiện tại và phiên đang ở trạng thái OPEN */}
+                        {isCurrentUser && groupOrder.status === 'OPEN' && (
+                          <button
+                            type="button"
+                            disabled={busy}
+                            onClick={() => handleRemoveGroupItem(it.groupOrderItemId)} // <-- Truyền đúng itemId vào đây
+                            className="p-0.5 rounded text-slate-400 hover:text-red-600 hover:bg-red-50 transition-all disabled:opacity-50"
+                            title="Xóa món này"
+                          >
+                            <X size={13} />
+                          </button>
+                        )}
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-[11px] text-slate-400 italic mt-1">Chưa chọn món</p>
+              )}
             </div>
-            {m.items?.length > 0 ? (
-              <ul className="mt-1.5 space-y-0.5">
-                {m.items.map((it) => (
-                  <li key={it.groupOrderItemId} className="text-[11px] text-slate-500 flex justify-between gap-2">
-                    <span className="truncate">{it.foodName} × {it.quantity}</span>
-                    <span className="font-semibold text-slate-600 shrink-0">{formatCurrency(it.lineTotal)}</span>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className="text-[11px] text-slate-400 italic mt-1">Chưa chọn món</p>
-            )}
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       <div className="flex items-center justify-between border-t border-slate-100 pt-3 mt-4">
@@ -1008,7 +1028,7 @@ export default function RestaurantDetail() {
     if (!groupOrder?.groupOrderId) return;
     try {
       setGroupBusy(true);
-      const res = await apiClient.delete(`/api/v1/group-orders/${groupOrder.groupOrderId}/items/${itemId}`);
+      const res = await apiClient.delete(`/group-orders/${groupOrder.groupOrderId}/items/${itemId}`);
       setGroupOrder(res.data?.data || null);
       toast.success('Đã xóa món ăn khỏi phiên.');
     } catch (err) {
@@ -1516,6 +1536,7 @@ export default function RestaurantDetail() {
                 onLeave={handleLeaveGroup}
                 onCancel={handleCancelGroup}
                 onShowInvite={() => inviteModal.open()}
+                handleRemoveGroupItem={handleRemoveGroupItem}
               />
             ) : (
               <Card variant="elevated" className="p-5">

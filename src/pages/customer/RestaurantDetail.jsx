@@ -777,17 +777,46 @@ export default function RestaurantDetail() {
   // ═══════════════════════ ĐẶT ĐƠN NHÓM ═══════════════════════
 
   // Vào trang qua link mời (?group=CODE) → tự động tham gia phiên
+  // useEffect(() => {
+  //   const code = searchParams.get('group');
+  //   if (!code || groupOrder) return;
+  //   (async () => {
+  //     try {
+  //       setGroupBusy(true);
+  //       const res = await apiClient.post(`/group-orders/invite/${code}/join`);
+  //       setGroupOrder(res.data?.data || null);
+  //       toast.success('Đã tham gia phiên đặt nhóm!');
+  //     } catch (err) {
+  //       toast.error(err.response?.data?.message || 'Không thể tham gia phiên đặt nhóm (có thể đã hết hạn).');
+  //       const next = new URLSearchParams(searchParams);
+  //       next.delete('group');
+  //       setSearchParams(next, { replace: true });
+  //     } finally {
+  //       setGroupBusy(false);
+  //     }
+  //   })();
+  //   // eslint-disable-next-line react-hooks/exhaustive-deps
+  // }, [searchParams]);
+
+  // 1. Khai báo Modal state ở component (ví dụ: RestaurantDetail.jsx)
+  const confirmInviteModal = useModalState(null); // Lưu thông tin preview phiên đặt nhóm
+
+  // 2. Thay thế useEffect xử lý link mời hiện tại bằng đoạn sau để fetch preview và mở modal
   useEffect(() => {
     const code = searchParams.get('group');
     if (!code || groupOrder) return;
+
     (async () => {
       try {
         setGroupBusy(true);
-        const res = await apiClient.post(`/group-orders/invite/${code}/join`);
-        setGroupOrder(res.data?.data || null);
-        toast.success('Đã tham gia phiên đặt nhóm!');
+        // Gọi api lấy thông tin preview phiên đặt nhóm trước khi tham gia
+        const res = await apiClient.get(`/group-orders/invite/${code}`);
+        const previewData = res.data?.data;
+        
+        // Mở modal xác nhận với dữ liệu preview nhận được
+        confirmInviteModal.open({ code, preview: previewData });
       } catch (err) {
-        toast.error(err.response?.data?.message || 'Không thể tham gia phiên đặt nhóm (có thể đã hết hạn).');
+        toast.error(err.response?.data?.message || 'Không tìm thấy phiên đặt nhóm hoặc đã hết hạn.');
         const next = new URLSearchParams(searchParams);
         next.delete('group');
         setSearchParams(next, { replace: true });
@@ -797,6 +826,36 @@ export default function RestaurantDetail() {
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
+
+  // 3. Hàm xử lý khi người dùng ấn nút "Tham gia ngay" trên modal
+  const handleConfirmJoin = async () => {
+    const code = confirmInviteModal.data?.code;
+    if (!code) return;
+
+    try {
+      setGroupBusy(true);
+      const res = await apiClient.post(`/group-orders/invite/${code}/join`);
+      setGroupOrder(res.data?.data || null);
+      toast.success('Đã tham gia phiên đặt nhóm thành công!');
+      confirmInviteModal.close();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Không thể tham gia phiên đặt nhóm.');
+    } finally {
+      setGroupBusy(false);
+      // Xóa param group trên URL sau khi xử lý xong
+      const next = new URLSearchParams(searchParams);
+      next.delete('group');
+      setSearchParams(next, { replace: true });
+    }
+  };
+
+  // 4. Hàm xử lý khi người dùng bấm hủy/đóng modal
+  const handleCancelJoin = () => {
+    confirmInviteModal.close();
+    const next = new URLSearchParams(searchParams);
+    next.delete('group');
+    setSearchParams(next, { replace: true });
+  };
 
   const refreshGroupOrder = async (groupOrderId = groupOrder?.groupOrderId) => {
     if (!groupOrderId) return;
@@ -1809,6 +1868,64 @@ export default function RestaurantDetail() {
               className="!px-5 !py-2 !text-xs !font-bold !bg-orange-500 !text-white !rounded-lg hover:!bg-orange-600 disabled:!bg-slate-300 mb-0"
             >
               {submittingReport ? 'Đang gửi...' : 'Gửi báo cáo'}
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* ─── MODAL XÁC NHẬN THAM GIA PHIÊN NHÓM ───────────────────────────────── */}
+      <Modal
+        isOpen={confirmInviteModal.isOpen}
+        onClose={handleCancelJoin}
+        title="Lời mời tham gia đặt nhóm"
+        size="sm"
+        className="[&_h2]:!text-slate-900 [&_h2]:!text-base [&_h2]:md:!text-lg [&_h2]:!font-bold [&_button]:disabled:opacity-50"
+      >
+        <div className="space-y-4 text-slate-700 !-mt-3">
+          {/* Thông báo mô tả */}
+          <p className="text-xs sm:text-sm text-md-on-surface-variant font-medium">
+            Bạn nhận được lời mời tham gia phiên đặt đồ ăn nhóm.
+          </p>
+
+          {/* Chi tiết thông tin phiên nhóm */}
+          {confirmInviteModal.data?.preview && (
+            <div className="p-3.5 sm:p-4 rounded-radius-md bg-orange-50/50 border border-orange-100 space-y-2.5 text-xs sm:text-sm">
+              <div className="flex justify-between items-center">
+                <span className="text-md-on-surface-variant font-semibold shrink-0">Chủ phiên:</span>
+                <span className="font-extrabold text-md-on-surface text-right truncate pl-2">
+                  {confirmInviteModal.data.preview.hostName || 'Thành viên'}
+                </span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-md-on-surface-variant font-semibold shrink-0">Quán:</span>
+                <span className="font-extrabold text-md-primary text-right truncate pl-2">
+                  {confirmInviteModal.data.preview.restaurantName}
+                </span>
+              </div>
+              <div className="flex flex-col sm:flex-row sm:justify-between gap-1 sm:gap-2 pt-1 border-t border-orange-100/60">
+                <span className="text-md-on-surface-variant font-semibold shrink-0">Địa chỉ giao hàng:</span>
+                <span className="font-medium text-md-on-surface text-left sm:text-right break-words leading-snug">
+                  {confirmInviteModal.data.preview.deliveryAddress}
+                </span>
+              </div>
+            </div>
+          )}
+
+          <div className="flex items-center gap-3 pt-2 border-t border-slate-100">
+            <Button
+              variant="outline"
+              onClick={handleCancelJoin}
+              disabled={groupBusy}
+              className="flex-1 font-bold !py-2 !text-xs"
+            >
+              Bỏ qua
+            </Button>
+            <Button
+              onClick={handleConfirmJoin}
+              disabled={groupBusy}
+              className="flex-1 !px-5 !py-2 !text-xs !font-bold !bg-primary-600 hover:!bg-primary-700 !text-white shadow-md mb-0"
+            >
+              Tham gia ngay
             </Button>
           </div>
         </div>

@@ -5,7 +5,7 @@ import { useAuthStore } from '../../stores/authStore';
 import {
   Search, MapPin, ShoppingBag, Star, Clock, Heart, Award,
   RotateCcw, Sparkles, ChevronDown, SlidersHorizontal, Check, RefreshCw, X, Utensils,
-  LogIn,
+  LogIn, ArrowRight,
 } from 'lucide-react';
 import { formatCurrency } from '../../utils/format';
 import Card from '../../components/common/Card';
@@ -504,8 +504,8 @@ export default function Home() {
         </div>
       </div>
 
-      <div className="flex gap-6 lg:gap-8 items-start">
-        <div className="flex-1 min-w-0 space-y-8 md:space-y-10">
+      <div className="w-full">
+        <div className="min-w-0 space-y-8 md:space-y-10">
 
           {/* ════════ SECTION 1: KHÁM PHÁ QUÁN ĂN ════════ */}
           <div id="explore-restaurants-section" className="space-y-4">
@@ -583,7 +583,7 @@ export default function Home() {
 
             <div className="mt-2">
               {loading ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-5">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-5">
                   <SkeletonRestaurantCard />
                   <SkeletonRestaurantCard />
                   <SkeletonRestaurantCard />
@@ -610,7 +610,7 @@ export default function Home() {
                   )}
                 </div>
               ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-5">
                   {visibleNearByRestaurants.map((res) => (
                     <Card
                       key={`explore-${res.id}`}
@@ -727,7 +727,7 @@ export default function Home() {
                       </h2>
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-5">
                       {featuredRestaurants.slice(0, visibleFeaturedCount).map((res) => (
                         <Card
                           key={`feat-${res.id}`}
@@ -833,14 +833,14 @@ export default function Home() {
                   </h2>
 
                   {orderAgainLoading ? (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-5">
                       <SkeletonRestaurantCard />
                       <SkeletonRestaurantCard />
                       <SkeletonRestaurantCard />
                     </div>
                   ) : (
                     <>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-5">
                         {orderAgainWithDistance.map((res) => (
                           <Card
                             key={`again-${res.id}`}
@@ -935,48 +935,6 @@ export default function Home() {
           )}
 
         </div>
-
-        {/* ═══ ASIDE PANEL (DESKTOP LG+) ═══ */}
-        <aside className="hidden lg:block w-72 xl:w-80 shrink-0 sticky top-6 space-y-4">
-          <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-sm">
-            <h3 className="text-xs font-black text-slate-800 uppercase tracking-wider flex items-center gap-2 mb-3 pb-2 border-b border-slate-100">
-              <ShoppingBag size={16} className="text-[#FF6B35]" /> Giỏ hàng của bạn
-            </h3>
-            {cartItemsCount === 0 ? (
-              <div className="py-6 text-center">
-                <ShoppingBag size={36} className="mx-auto text-slate-300 mb-2" />
-                <p className="text-xs text-slate-500 font-medium">Chưa có món nào trong giỏ.</p>
-              </div>
-            ) : (
-              <>
-                <div className="space-y-3 max-h-64 overflow-y-auto no-scrollbar">
-                  {carts.map((cart) => {
-                    const itemCount = (cart.items || []).reduce((s, it) => s + it.quantity, 0);
-                    return (
-                      <div key={cart.restaurantId} className="flex items-center justify-between gap-2 p-2 bg-slate-50 rounded-xl">
-                        <div className="min-w-0">
-                          <p className="text-xs font-bold text-slate-800 truncate">{cart.restaurantName}</p>
-                          <p className="text-[11px] text-slate-500 font-semibold">{itemCount} món</p>
-                        </div>
-                        <span className="text-xs font-black text-[#FF6B35] shrink-0">{formatCurrency(cart.subtotal || 0)}</span>
-                      </div>
-                    );
-                  })}
-                </div>
-                <div className="flex items-center justify-between border-t border-slate-100 pt-3 mt-3">
-                  <span className="text-xs font-bold text-slate-500">Tổng ({cartItemsCount} món)</span>
-                  <span className="text-base font-black text-[#FF6B35]">{formatCurrency(cartTotal)}</span>
-                </div>
-                <button
-                  onClick={() => navigate('/cart')}
-                  className="w-full mt-3 bg-[#FF6B35] text-white font-extrabold py-2.5 rounded-xl text-xs uppercase tracking-wider shadow-sm hover:bg-orange-600 active:scale-98 transition-all cursor-pointer"
-                >
-                  Tới giỏ hàng
-                </button>
-              </>
-            )}
-          </div>
-        </aside>
       </div>
 
       {cartItemsCount > 0 && (
@@ -994,6 +952,30 @@ export default function Home() {
             <span className="text-xs text-white/90">Xem giỏ hàng</span>
           </div>
           <span className="font-extrabold text-sm sm:text-base">{formatCurrency(cartTotal)}</span>
+        </button>
+      )}
+
+      {/* ═══ GIỎ HÀNG NỔI (DESKTOP LG+) — thay cột phải cũ, lưới quán dùng trọn chiều ngang ═══ */}
+      {cartItemsCount > 0 && (
+        <button
+          onClick={() => navigate('/cart')}
+          className="hidden lg:flex fixed bottom-6 right-6 z-40 items-center gap-4 bg-white border border-slate-200 rounded-2xl shadow-xl pl-4 pr-3 py-3 hover:shadow-2xl hover:-translate-y-0.5 transition-all cursor-pointer group"
+        >
+          <div className="relative shrink-0">
+            <span className="w-10 h-10 rounded-xl bg-orange-100 text-[#FF6B35] flex items-center justify-center">
+              <ShoppingBag size={20} />
+            </span>
+            <span className="absolute -top-1.5 -right-1.5 bg-red-600 text-white text-[10px] font-extrabold h-5 min-w-5 px-1 rounded-full flex items-center justify-center border-2 border-white">
+              {cartItemsCount}
+            </span>
+          </div>
+          <div className="text-left">
+            <p className="text-[11px] text-slate-500 font-bold uppercase tracking-wide leading-none mb-1.5">Giỏ hàng · {cartItemsCount} món</p>
+            <p className="text-base font-black text-[#FF6B35] leading-none">{formatCurrency(cartTotal)}</p>
+          </div>
+          <span className="ml-1 inline-flex items-center gap-1 bg-[#FF6B35] text-white font-extrabold text-xs px-4 py-2.5 rounded-xl group-hover:bg-orange-600 transition-colors">
+            Tới giỏ <ArrowRight size={14} />
+          </span>
         </button>
       )}
 

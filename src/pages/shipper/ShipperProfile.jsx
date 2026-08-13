@@ -65,6 +65,8 @@ export default function ShipperProfile() {
         setActiveDelivery(realUser.activeDelivery || 0);
         setTotalDelivery(realUser.totalDelivery || 0);
         setAvgRating(realUser.avgRating || 5.0);
+        setReputationScore(realUser.reputationScore ?? 100);
+        setCancelCount(realUser.cancelCount || 0);
         setInitial({
           name: realUser.fullName || '',
           email: realUser.email || '',

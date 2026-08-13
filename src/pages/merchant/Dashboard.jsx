@@ -12,10 +12,23 @@ import PeriodCompareStrip from '../../components/common/PeriodCompareStrip';
 import ForecastCard from '../../components/common/ForecastCard';
 import { formatCurrency } from '../../utils/format';
 import apiClient from '../../services/api';
-import Spinner from '../../components/common/Spinner';
 import { toast } from 'react-toastify';
 import ConfirmDialog from '../../components/common/ConfirmDialog';
 import { useFetchData } from '../../hooks/useFetchData';
+import InsightHeadline from '../../components/common/InsightHeadline';
+import { SkeletonStatCard, SkeletonChartCard } from '../../components/common/SkeletonCard';
+
+// Tiêu đề nhóm dẫn dắt mạch đọc của dashboard (Tổng quan → Xu hướng → Khách hàng & Thực đơn).
+function SectionTitle({ icon: Icon, children, hint }) {
+  return (
+    <div className="flex items-baseline gap-2 pt-1">
+      <h2 className="text-sm font-extrabold text-slate-700 flex items-center gap-1.5">
+        {Icon && <Icon size={16} className="text-md-secondary" />} {children}
+      </h2>
+      {hint && <span className="text-[11px] text-slate-400 font-medium">· {hint}</span>}
+    </div>
+  );
+}
 
 export default function MerchantDashboard() {
   const navigate = useNavigate();
@@ -167,7 +180,22 @@ export default function MerchantDashboard() {
     }
   };
 
-  if (loading && !restaurant && !noRestaurant) return <Spinner fullScreen />;
+  if (loading && !restaurant && !noRestaurant) {
+    return (
+      <div className="flex-1 p-4 md:p-8 max-w-7xl mx-auto w-full font-google-sans space-y-6">
+        <div className="h-7 w-64 bg-slate-200 rounded animate-pulse" />
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <SkeletonStatCard /><SkeletonStatCard /><SkeletonStatCard /><SkeletonStatCard />
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <SkeletonChartCard className="lg:col-span-2" /><SkeletonChartCard />
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <SkeletonChartCard /><SkeletonChartCard /><SkeletonChartCard />
+        </div>
+      </div>
+    );
+  }
 
   if (noRestaurant) {
     return (

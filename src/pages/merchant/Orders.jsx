@@ -273,14 +273,13 @@ export default function MerchantOrders() {
   const watchPending = useCallback(async (alert) => {
     if (!restaurantId) return;
     try {
-      const res = await apiClient.get('/merchant/orders', { params: { restaurantId, size: 1000 } });
-      const all = res.data?.data?.content || [];
-      const counts = { ALL: all.length };
-      all.forEach((o) => { counts[o.orderStatus] = (counts[o.orderStatus] || 0) + 1; });
-      setStatusCounts(counts);
+      // Endpoint nhẹ: đếm tab bằng GROUP BY + danh sách đơn chờ rút gọn (thay vì tải cả nghìn đơn).
+      const res = await apiClient.get('/merchant/orders/monitor', { params: { restaurantId } });
+      const data = res.data?.data || {};
+      setStatusCounts(data.counts || {});
       setLastUpdated(new Date());
 
-      const pending = all.filter((o) => o.orderStatus === 'PENDING');
+      const pending = data.pending || []; // [{ orderId, customerName, totalAmount }]
       const pendingIds = pending.map((o) => o.orderId);
       const prev = prevPendingIdsRef.current;
       if (alert && prev !== null) {

@@ -181,6 +181,23 @@ export default function ShipperEarnings() {
         <p className="text-sm text-slate-500 mt-1 font-medium">Theo dõi thu nhập phí ship thực tế của bạn</p>
       </div>
 
+      {/* Câu insight dẫn dắt — nói ngay điều quan trọng nhất bằng lời */}
+      <InsightHeadline
+        icon={Wallet}
+        accent="#34A853"
+        eyebrow="Tháng này"
+        trend={(earningsStats.thisMonthEarnings > 0 || earningsStats.lastMonthEarnings > 0) ? { pct: earningsStats.monthDelta } : undefined}
+      >
+        {earningsStats.thisMonthEarnings > 0 ? (
+          <>Tháng này bạn đã kiếm <b className="text-slate-900">{formatCurrency(earningsStats.thisMonthEarnings)}</b> từ {earningsStats.thisMonthCount} đơn
+          {earningsStats.todayEarnings > 0 && <> · hôm nay thêm <b className="text-md-tertiary">{formatCurrency(earningsStats.todayEarnings)}</b></>}.</>
+        ) : (
+          <>Chưa có thu nhập tháng này — nhận và giao xong đơn để bắt đầu tích luỹ nhé.</>
+        )}
+      </InsightHeadline>
+
+      <SectionTitle icon={Wallet} hint="tổng thu nhập, mục tiêu & nhịp độ">Tổng quan</SectionTitle>
+
       {/* ─── HÀNG TRÊN: Tổng thu nhập (2/3) + Mục tiêu tháng (1/3) trên desktop ─── */}
       <div className="grid lg:grid-cols-3 gap-4 items-stretch">
         {/* HERO: tổng thu nhập đã nhận */}

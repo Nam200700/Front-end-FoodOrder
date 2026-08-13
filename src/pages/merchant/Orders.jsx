@@ -744,29 +744,53 @@ export default function MerchantOrders() {
                       )}
 
                       {order.status === 'CONFIRMED' && (
-                        <Button
-                          variant="primary"
-                          size="sm"
-                          loading={actionLoadingId === order.id}
-                          disabled={actionLoadingId === order.id}
-                          onClick={(e) => handlePreparing(e, order.id)}
-                          className="w-full sm:w-auto !py-2.5 rounded-lg text-xs !bg-blue-600"
-                        >
-                          Chuẩn bị món
-                        </Button>
+                        <>
+                          <Button
+                            variant="danger"
+                            size="sm"
+                            icon={Ban}
+                            disabled={actionLoadingId === order.id}
+                            onClick={(e) => handleOpenCancelModal(e, order.id, 'cancel')}
+                            className="w-full sm:w-auto !py-2.5 rounded-lg text-xs"
+                          >
+                            Hủy đơn
+                          </Button>
+                          <Button
+                            variant="primary"
+                            size="sm"
+                            loading={actionLoadingId === order.id}
+                            disabled={actionLoadingId === order.id}
+                            onClick={(e) => handlePreparing(e, order.id)}
+                            className="w-full sm:w-auto !py-2.5 rounded-lg text-xs !bg-blue-600"
+                          >
+                            Chuẩn bị món
+                          </Button>
+                        </>
                       )}
 
                       {order.status === 'PREPARING' && (
-                        <Button
-                          variant="secondary"
-                          size="sm"
-                          loading={actionLoadingId === order.id}
-                          disabled={actionLoadingId === order.id}
-                          onClick={(e) => handleReady(e, order.id)}
-                          className="w-full sm:w-auto !py-2.5 rounded-lg text-xs !bg-[#34A853] hover:!bg-[#2E8B49]"
-                        >
-                          Sẵn sàng giao
-                        </Button>
+                        <>
+                          <Button
+                            variant="danger"
+                            size="sm"
+                            icon={Ban}
+                            disabled={actionLoadingId === order.id}
+                            onClick={(e) => handleOpenCancelModal(e, order.id, 'cancel')}
+                            className="w-full sm:w-auto !py-2.5 rounded-lg text-xs"
+                          >
+                            Hủy đơn
+                          </Button>
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            loading={actionLoadingId === order.id}
+                            disabled={actionLoadingId === order.id}
+                            onClick={(e) => handleReady(e, order.id)}
+                            className="w-full sm:w-auto !py-2.5 rounded-lg text-xs !bg-[#34A853] hover:!bg-[#2E8B49]"
+                          >
+                            Sẵn sàng giao
+                          </Button>
+                        </>
                       )}
                     </div>
                   </div>

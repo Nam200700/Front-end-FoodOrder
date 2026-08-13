@@ -700,6 +700,8 @@ export default function RestaurantDetail() {
 
   const confirmInviteModal = useModalState(null); 
 
+  const activeGroupCheckedRef = useRef(false);
+
 
   useEffect(() => {
     const fetchDetails = async () => {
@@ -854,7 +856,6 @@ export default function RestaurantDetail() {
     setSearchParams(next, { replace: true });
   };
 
-  const activeGroupCheckedRef = useRef(false);
 
   // Khôi phục phiên đặt nhóm đang hoạt động của quán này khi mở lại trang
   useEffect(() => {
@@ -1007,23 +1008,6 @@ export default function RestaurantDetail() {
     next.delete('group');
     setSearchParams(next, { replace: true });
   };
-
-  //đặt đơn nhóm
-  // const handleCheckoutGroup = async () => {
-  //   setGroupBusy(true);
-  //   try {
-  //     const res = await apiClient.post(`/group-orders/${groupOrder.groupOrderId}/checkout`, { paymentMethod: 'COD' });
-  //     toast.success('Đặt đơn nhóm thành công!');
-  //     setGroupOrder(null);
-  //     clearGroupParam();
-  //     const orderId = res.data?.data?.orderId;
-  //     if (orderId) navigate(`/orders/${orderId}`);
-  //   } catch (err) {
-  //     toast.error(err.response?.data?.message || 'Không thể chốt đơn nhóm');
-  //   } finally {
-  //     setGroupBusy(false);
-  //   }
-  // };
 
   const handleLeaveGroup = async () => {
     setGroupBusy(true);

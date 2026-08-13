@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Cell, LabelList } from 'recharts';
-import { DollarSign, TrendingUp, Star, CheckCircle2, Wallet, BarChart3, Calendar, Sun, Info, CalendarDays, Clock, CalendarCheck, CalendarRange, ArrowUpRight, ArrowDownRight, Coins, Target, Trophy } from 'lucide-react';
+import { DollarSign, TrendingUp, Star, CheckCircle2, Wallet, BarChart3, Calendar, Sun, Info, CalendarDays, Clock, CalendarCheck, CalendarRange, ArrowUpRight, ArrowDownRight, Coins, Target, Trophy, Lightbulb } from 'lucide-react';
 import { formatCurrency } from '../../utils/format';
 import { useFetchData } from '../../hooks/useFetchData';
 import ErrorState from '../../components/common/ErrorState';
@@ -93,9 +93,11 @@ export default function ShipperEarnings() {
           <DollarSign className="text-md-tertiary" size={24} />
           Thống kê thu nhập
         </h1>
-        <div className="space-y-4 animate-pulse">
-          <SkeletonOrderCard />
-          <SkeletonOrderCard />
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+          <SkeletonStatCard /><SkeletonStatCard /><SkeletonStatCard />
+        </div>
+        <div className="grid lg:grid-cols-2 gap-4">
+          <SkeletonChartCard /><SkeletonChartCard />
         </div>
       </div>
     );

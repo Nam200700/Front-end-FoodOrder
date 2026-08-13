@@ -9,7 +9,7 @@ import {
   MessageSquare, AlertTriangle, Bike, AlertCircle, X, ZoomIn, ChevronLeft, ChevronRight,
   Utensils, Info, Truck, Wallet, Timer, Sparkles, TrendingUp, ThumbsUp, Award, ArrowDownUp,
   Camera, ChevronDown, Frown, Meh, Smile, Laugh, MessageSquareText, Store,
-  Users, Copy, QrCode, Link2, Lock, Send, LogOut, Ban, CheckCheck,
+  Users, Copy, QrCode, Link2, Lock, Send, LogOut, Ban, CheckCheck, Pencil, StickyNote,
 } from 'lucide-react';
 import { formatCurrency } from '../../utils/format';
 import { getFoodImageUrl, DEFAULT_FOOD_IMAGE } from '../../utils/avatarHelper';
@@ -509,8 +509,9 @@ const GROUP_STATUS_META = {
  * PANEL ĐẶT ĐƠN NHÓM — thay thế giỏ hàng cá nhân khi đang trong 1 phiên nhóm.
  * Hiển thị danh sách thành viên + món từng người, cho phép host khóa/chốt đơn,
  * thành viên đánh dấu sẵn sàng hoặc rời phiên.
+ * Món của CHÍNH MÌNH có thêm icon ghi chú (Pencil) và icon xoá (X).
  */
-function GroupOrderPanel({ groupOrder, isHost, myMember, onMarkReady, onLock, onCheckout, onLeave, onCancel, onShowInvite, busy, handleRemoveGroupItem }) {
+function GroupOrderPanel({ groupOrder, isHost, myMember, onMarkReady, onLock, onCheckout, onLeave, onCancel, onShowInvite, busy, handleRemoveGroupItem, onEditNote }) {
   const { user } = useAuthStore();
   if (!groupOrder) return null;
   const isOpen = groupOrder.status === 'OPEN';
@@ -554,21 +555,40 @@ function GroupOrderPanel({ groupOrder, isHost, myMember, onMarkReady, onLock, on
               {m.items?.length > 0 ? (
                 <ul className="mt-1.5 space-y-1">
                   {m.items.map((it) => (
-                    <li key={it.groupOrderItemId} className="text-[11px] text-slate-500 flex items-center justify-between gap-2 group/item">
-                      <span className="truncate flex-1">{it.foodName} × {it.quantity}</span>
+                    <li key={it.groupOrderItemId} className="text-[11px] text-slate-500 flex items-start justify-between gap-2 group/item">
+                      <div className="flex-1 min-w-0">
+                        <span className="truncate block">{it.foodName} × {it.quantity}</span>
+                        {it.note && (
+                          <span className="flex items-start gap-1 text-[10px] text-slate-400 italic mt-0.5">
+                            <StickyNote size={10} className="shrink-0 mt-0.5" />
+                            <span className="truncate">{it.note}</span>
+                          </span>
+                        )}
+                      </div>
                       <div className="flex items-center gap-1.5 shrink-0">
                         <span className="font-semibold text-slate-600">{formatCurrency(it.lineTotal)}</span>
-                        {/* Chỉ hiện nút X khi là món của chính user hiện tại và phiên đang ở trạng thái OPEN */}
+                        {/* Chỉ hiện nút ghi chú / xoá khi là món của chính user hiện tại và phiên đang ở trạng thái OPEN */}
                         {isCurrentUser && groupOrder.status === 'OPEN' && (
-                          <button
-                            type="button"
-                            disabled={busy}
-                            onClick={() => handleRemoveGroupItem(it.groupOrderItemId)} // <-- Truyền đúng itemId vào đây
-                            className="p-0.5 rounded text-slate-400 hover:text-red-600 hover:bg-red-50 transition-all disabled:opacity-50"
-                            title="Xóa món này"
-                          >
-                            <X size={13} />
-                          </button>
+                          <>
+                            <button
+                              type="button"
+                              disabled={busy}
+                              onClick={() => onEditNote(it)}
+                              className="p-0.5 rounded text-slate-400 hover:text-md-primary hover:bg-md-primary/10 transition-all disabled:opacity-50"
+                              title="Ghi chú cho món này"
+                            >
+                              <Pencil size={12} />
+                            </button>
+                            <button
+                              type="button"
+                              disabled={busy}
+                              onClick={() => handleRemoveGroupItem(it.groupOrderItemId)}
+                              className="p-0.5 rounded text-slate-400 hover:text-red-600 hover:bg-red-50 transition-all disabled:opacity-50"
+                              title="Xóa món này"
+                            >
+                              <X size={13} />
+                            </button>
+                          </>
                         )}
                       </div>
                     </li>
@@ -679,6 +699,11 @@ export default function RestaurantDetail() {
   const [groupNote, setGroupNote] = useState('');
   const [creatingGroup, setCreatingGroup] = useState(false);
 
+  // Modal ghi chú cho từng món trong phiên nhóm
+  const noteModal = useModalState(null);
+  const [noteDraft, setNoteDraft] = useState('');
+  const [savingNote, setSavingNote] = useState(false);
+
   const isGroupMode = !!groupOrder && groupOrder.status !== 'ORDERED' && groupOrder.status !== 'CANCELLED';
   const myMember = groupOrder?.members?.find((m) => m.userId === user?.id);
   const isHost = !!myMember?.isHost;
@@ -699,8 +724,6 @@ export default function RestaurantDetail() {
   const durationText = cachedShipping ? `${minDuration}-${maxDuration} phút` : '--';
 
   const confirmInviteModal = useModalState(null); 
-
-  const activeGroupCheckedRef = useRef(false);
 
 
   useEffect(() => {
@@ -856,6 +879,7 @@ export default function RestaurantDetail() {
     setSearchParams(next, { replace: true });
   };
 
+  const activeGroupCheckedRef = useRef(false);
 
   // Khôi phục phiên đặt nhóm đang hoạt động của quán này khi mở lại trang
   useEffect(() => {
@@ -974,6 +998,35 @@ export default function RestaurantDetail() {
       toast.error(err.response?.data?.message || 'Không thể cập nhật món trong phiên nhóm');
     } finally {
       setGroupBusy(false);
+    }
+  };
+
+  // ─── Ghi chú cho từng món trong phiên nhóm ─────────────────────────────
+  // Mở modal ghi chú: groupItem cần có groupOrderItemId, foodName, quantity, note
+  const openNoteEditor = (groupItem) => {
+    if (!groupItem) return;
+    setNoteDraft(groupItem.note || '');
+    noteModal.open(groupItem);
+  };
+
+  // Lưu ghi chú — gọi API PUT cập nhật item trong phiên nhóm (note sẽ được BE
+  // gộp vào OrderItem.note khi chốt đơn, xem GroupOrderService#buildItemNote).
+  const saveItemNote = async () => {
+    const target = noteModal.data;
+    if (!target || !groupOrder) return;
+    setSavingNote(true);
+    try {
+      const res = await apiClient.put(`/group-orders/${groupOrder.groupOrderId}/items/${target.groupOrderItemId}`, {
+        quantity: target.quantity,
+        note: noteDraft.trim() || null,
+      });
+      setGroupOrder(res.data?.data || null);
+      toast.success('Đã cập nhật ghi chú cho món ăn.');
+      noteModal.close();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Không thể cập nhật ghi chú.');
+    } finally {
+      setSavingNote(false);
     }
   };
 
@@ -1114,6 +1167,12 @@ export default function RestaurantDetail() {
     }
     const found = cartItems.find((i) => Number(i.foodId) === Number(foodId));
     return found ? found.quantity : 0;
+  };
+
+  // Lấy dòng món (groupOrderItem) hiện tại của mình theo foodId — dùng để mở modal ghi chú từ thực đơn
+  const getMyGroupItem = (foodId) => {
+    if (!isGroupMode) return null;
+    return (myMember?.items || []).find((i) => Number(i.foodId) === Number(foodId)) || null;
   };
 
   // Scroll to menu category section
@@ -1461,6 +1520,7 @@ export default function RestaurantDetail() {
                   <div className="space-y-4 sm:space-y-5">
                     {sec.items.map((item, itemIdx) => {
                       const qty = getItemQty(item.id);
+                      const myGroupItem = getMyGroupItem(item.id);
                       return (
                         <Card
                           key={item.id}
@@ -1528,6 +1588,22 @@ export default function RestaurantDetail() {
                                 )}
                               </div>
                             </div>
+
+                            {/* Ghi chú cho món — chỉ hiện khi đang trong phiên nhóm và món đã được chọn (qty > 0) */}
+                            {isGroupMode && qty > 0 && myGroupItem && groupOrder.status === 'OPEN' && (
+                              <button
+                                type="button"
+                                onClick={() => openNoteEditor(myGroupItem)}
+                                className="mt-2 inline-flex items-center gap-1 text-[11px] font-semibold text-md-primary/80 hover:text-md-primary transition-colors self-start"
+                              >
+                                <Pencil size={11} />
+                                {myGroupItem.note ? (
+                                  <span className="truncate max-w-[220px]">Ghi chú: {myGroupItem.note}</span>
+                                ) : (
+                                  <span>Thêm ghi chú cho món này</span>
+                                )}
+                              </button>
+                            )}
                           </div>
                         </Card>
                       );
@@ -1552,6 +1628,7 @@ export default function RestaurantDetail() {
                 onCancel={handleCancelGroup}
                 onShowInvite={() => inviteModal.open()}
                 handleRemoveGroupItem={handleRemoveGroupItem}
+                onEditNote={openNoteEditor}
               />
             ) : (
               <Card variant="elevated" className="p-5">
@@ -1774,7 +1851,7 @@ export default function RestaurantDetail() {
       <Modal
         isOpen={createGroupModal.isOpen}
         onClose={() => createGroupModal.close()}
-        title="Tạo phiên đặt đơn nhóm"
+        title="Tạo Phiên Đặt Đơn Nhóm"
         size="sm"
         className="[&_h2]:!text-slate-900 [&_h2]:!text-base [&_h2]:md:!text-lg [&_h2]:!font-bold"
       >
@@ -1801,7 +1878,7 @@ export default function RestaurantDetail() {
             />
           </div>
           <Button onClick={handleCreateGroupOrder} disabled={creatingGroup} className="w-full !bg-primary-600 hover:!bg-primary-700">
-            {creatingGroup ? 'Đang tạo...' : 'Tạo phiên & lấy mã mời'}
+            {creatingGroup ? 'Đang tạo...' : 'Tạo Phiên & Lấy Mã Mời'}
           </Button>
         </div>
       </Modal>
@@ -1810,7 +1887,7 @@ export default function RestaurantDetail() {
       <Modal
         isOpen={inviteModal.isOpen}
         onClose={() => inviteModal.close()}
-        title="Mời bạn bè tham gia"
+        title="Mời Bạn Bè Tham Gia"
         size="sm"
         className="[&_h2]:!text-slate-900 [&_h2]:!text-base [&_h2]:md:!text-lg [&_h2]:!font-bold"
       >
@@ -1845,6 +1922,31 @@ export default function RestaurantDetail() {
             </p>
           </div>
         )}
+      </Modal>
+
+      {/* ─── MODAL GHI CHÚ CHO TỪNG MÓN TRONG PHIÊN NHÓM ───────────────────────── */}
+      <Modal
+        isOpen={noteModal.isOpen}
+        onClose={() => noteModal.close()}
+        title="Ghi Chú Món Ăn"
+        size="sm"
+        className="[&_h2]:!text-slate-900 [&_h2]:!text-base [&_h2]:md:!text-lg [&_h2]:!font-bold"
+      >
+        <div className="space-y-4 -mt-3">
+          <textarea
+            value={noteDraft}
+            onChange={(e) => setNoteDraft(e.target.value)}
+            rows={3}
+            maxLength={200}
+            placeholder="Nhập ghi chú cho món này..."
+            className="w-full p-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-md-primary resize-none"
+          />
+          <div className="flex gap-2">
+            <Button onClick={saveItemNote} disabled={savingNote} className="flex-1 !bg-primary-600 hover:!bg-primary-700">
+              {savingNote ? 'Đang lưu...' : 'Lưu Ghi Chú'}
+            </Button>
+          </div>
+        </div>
       </Modal>
 
       {/* ─── MODAL BÁO CÁO VI PHẠM ────────────────────────────────────────────── */}
@@ -1986,7 +2088,7 @@ export default function RestaurantDetail() {
       <Modal
         isOpen={confirmCheckoutModal.isOpen}
         onClose={() => confirmCheckoutModal.close()}
-        title="Vẫn còn thành viên chưa xong"
+        title="Còn Thành Viên Chưa Chọn Món Xong"
         size="sm"
         className="[&_h2]:!text-slate-900 [&_h2]:!text-base [&_h2]:md:!text-lg [&_h2]:!font-bold"
       >
@@ -2000,7 +2102,7 @@ export default function RestaurantDetail() {
               {confirmCheckoutModal.data.unreadyMembers.map((m) => (
                 <li key={m.memberId} className="flex items-center justify-between text-xs font-semibold bg-amber-50 border border-amber-100 rounded-lg px-3 py-2">
                   <span className="text-slate-700 truncate">{m.fullName}</span>
-                  <span className="text-amber-600 shrink-0">{m.items?.length ? `${m.items.length} món` : 'Chưa chọn món'}</span>
+                  <span className="text-amber-600 shrink-0">{m.items?.length ? `${m.items.length} món` : 'Chưa chọn món xong'}</span>
                 </li>
               ))}
             </ul>
@@ -2013,14 +2115,14 @@ export default function RestaurantDetail() {
               disabled={groupBusy}
               className="flex-1 font-bold !py-2 !text-xs"
             >
-              Chờ thêm
+              Chờ Thêm
             </Button>
             <Button
               onClick={() => doCheckoutGroup(true)}
               disabled={groupBusy}
               className="flex-1 !py-2 !text-xs !font-bold !bg-primary-600 hover:!bg-primary-700 !text-white shadow-md mb-0"
             >
-              Vẫn chốt đơn
+              Xác Nhận Đặt Hàng
             </Button>
           </div>
         </div>

@@ -300,65 +300,71 @@ export default function Profile() {
   if (!user) return null;
 
   return (
-    <div className="flex-1 p-4 md:p-8 max-w-4xl mx-auto w-full font-google-sans pb-24 space-y-6">
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
-      {/* ─── CỘT TRÁI: thẻ thành viên + thẻ truy cập nhanh ───────────────────────── */}
-      <div className="flex flex-col gap-6">
+    <div className="flex-1 p-4 md:p-8 max-w-5xl mx-auto w-full font-google-sans pb-24 space-y-6">
 
-      {/* ─── THẺ THÀNH VIÊN ẨM THỰC (membership card, accent cam) ─────────────────── */}
-      <div className="relative overflow-hidden rounded-radius-xl p-6 shadow-shadow-2 bg-gradient-to-br from-md-primary to-[#FF8C42] text-white animate-fade-in">
+      {/* ─── THẺ THÀNH VIÊN ẨM THỰC (membership hero, full-width) ─────────────────── */}
+      <div className="relative overflow-hidden rounded-radius-xl p-6 md:p-7 shadow-shadow-2 bg-gradient-to-br from-md-primary to-[#FF8C42] text-white animate-fade-in">
         <Utensils className="absolute -right-4 -bottom-4 text-white/10 animate-float-slow" size={120} strokeWidth={1.2} />
         {/* Vệt sáng quét ngang (frame-by-frame) + lấp lánh trang trí */}
         <div className="absolute inset-y-0 -left-1/3 w-1/4 bg-gradient-to-r from-transparent via-white/15 to-transparent animate-shine pointer-events-none" />
         <Sparkles className="absolute right-6 top-5 text-white/30 animate-twinkle" size={14} style={{ animationDelay: '600ms' }} />
         <Sparkles className="absolute right-28 bottom-7 text-white/20 animate-twinkle" size={11} style={{ animationDelay: '1100ms' }} />
 
-        <div className="relative flex items-center gap-5">
-          <div className="relative shrink-0">
-            {/* Vòng nhịp quanh avatar */}
-            <span className="absolute -inset-1 rounded-radius-full ring-2 ring-white/40 animate-halo pointer-events-none" />
-            <img
-              src={getAvatarUrl(user.avatar)}
-              alt="Avatar"
-              className="relative w-20 h-20 rounded-radius-full border-4 border-white/30 object-cover shadow-sm"
-            />
-            <button
-              type="button"
-              onClick={handleAvatarClick}
-              disabled={uploadingAvatar}
-              className="absolute bottom-0 right-0 p-1.5 bg-white text-md-primary rounded-radius-full shadow-shadow-2 hover:scale-105 active:scale-95 transition-all cursor-pointer flex items-center justify-center"
-              title="Đổi ảnh đại diện"
-            >
-              {uploadingAvatar ? (
-                <span className="w-3 h-3 border-2 border-md-primary border-t-transparent rounded-full animate-spin"></span>
-              ) : (
-                <Camera size={13} />
-              )}
-            </button>
+        <div className="relative flex flex-col md:flex-row md:items-center gap-5 md:gap-8">
+          {/* Trái: avatar + tên + email */}
+          <div className="flex items-center gap-5 md:flex-1 min-w-0">
+            <div className="relative shrink-0">
+              {/* Vòng nhịp quanh avatar */}
+              <span className="absolute -inset-1 rounded-radius-full ring-2 ring-white/40 animate-halo pointer-events-none" />
+              <img
+                src={getAvatarUrl(user.avatar)}
+                alt="Avatar"
+                className="relative w-20 h-20 rounded-radius-full border-4 border-white/30 object-cover shadow-sm"
+              />
+              <button
+                type="button"
+                onClick={handleAvatarClick}
+                disabled={uploadingAvatar}
+                className="absolute bottom-0 right-0 p-1.5 bg-white text-md-primary rounded-radius-full shadow-shadow-2 hover:scale-105 active:scale-95 transition-all cursor-pointer flex items-center justify-center"
+                title="Đổi ảnh đại diện"
+              >
+                {uploadingAvatar ? (
+                  <span className="w-3 h-3 border-2 border-md-primary border-t-transparent rounded-full animate-spin"></span>
+                ) : (
+                  <Camera size={13} />
+                )}
+              </button>
+            </div>
+
+            <div className="min-w-0">
+              <span className="inline-flex items-center gap-1 text-[10px] font-bold bg-white/20 px-2.5 py-0.5 rounded-full uppercase tracking-wider">
+                <Sparkles size={11} className="animate-twinkle" /> Thành viên Foodie
+              </span>
+              <h2 className="font-extrabold text-xl md:text-2xl mt-2 truncate">{user.name}</h2>
+              <p className="text-xs text-white/85 font-semibold mt-0.5 truncate">{user.email}</p>
+            </div>
           </div>
 
-          <div className="min-w-0">
-            <span className="inline-flex items-center gap-1 text-[10px] font-bold bg-white/20 px-2.5 py-0.5 rounded-full uppercase tracking-wider">
-              <Sparkles size={11} className="animate-twinkle" /> Thành viên Foodie
+          {/* Phải: mã thành viên + trạng thái xác thực — trải hết chiều ngang trên desktop */}
+          <div className="shrink-0 flex items-center justify-between gap-4 md:flex-col md:items-end md:justify-center pt-4 md:pt-0 border-t md:border-t-0 md:border-l border-white/25 md:pl-8">
+            <div className="md:text-right">
+              <p className="text-[9px] font-bold text-white/70 uppercase tracking-[0.15em]">Mã thành viên</p>
+              <p className="text-base font-extrabold tracking-widest mt-1 font-mono">
+                FD-{String(user.userId || user.id || '').padStart(6, '0').slice(-6)}
+              </p>
+            </div>
+            <span className="inline-flex items-center gap-1 text-[10px] font-bold bg-white/15 px-2.5 py-1 rounded-full shrink-0">
+              <ShieldCheck size={12} /> Đã xác thực
             </span>
-            <h2 className="font-extrabold text-xl mt-2 truncate">{user.name}</h2>
-            <p className="text-xs text-white/85 font-semibold mt-0.5 truncate">{user.email}</p>
           </div>
-        </div>
-
-        <div className="relative mt-6 pt-4 border-t border-white/25 flex items-end justify-between gap-3">
-          <div className="min-w-0">
-            <p className="text-[9px] font-bold text-white/70 uppercase tracking-[0.15em]">Mã thành viên</p>
-            <p className="text-base font-extrabold tracking-widest mt-1 font-mono">
-              FD-{String(user.userId || user.id || '').padStart(6, '0').slice(-6)}
-            </p>
-          </div>
-          <span className="inline-flex items-center gap-1 text-[10px] font-bold bg-white/15 px-2.5 py-1 rounded-full shrink-0">
-            <ShieldCheck size={12} /> Đã xác thực
-          </span>
-
         </div>
       </div>
+
+      {/* ─── LƯỚI 2 CỘT CÂN BẰNG: form (trái) · uy tín + truy cập nhanh (phải) ─── */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+
+      {/* ─── CỘT PHỤ (desktop bên phải): uy tín + truy cập nhanh ─── */}
+      <div className="flex flex-col gap-6 lg:order-2">
 
       <Card className="p-5 border border-md-outline-variant/20 shadow-sm">
         <h3 className="text-sm font-extrabold text-md-on-surface flex items-center gap-2 pb-3 mb-3 border-b border-md-outline-variant/20">
@@ -466,8 +472,8 @@ export default function Profile() {
 
       </div>
 
-      {/* ─── CỘT PHẢI: form hồ sơ ──────────────────────────── */}
-      <Card className="p-5 border border-md-outline-variant/20 shadow-sm space-y-5.5 animate-slide-up">
+      {/* ─── CỘT CHÍNH (desktop bên trái): form hồ sơ ──────────────────────────── */}
+      <Card className="p-5 border border-md-outline-variant/20 shadow-sm space-y-5.5 animate-slide-up lg:order-1">
         <div className="flex items-center gap-2.5 pb-3 border-b border-md-outline-variant/20">
           <span className="w-8 h-8 rounded-xl bg-gradient-to-br from-md-primary to-[#FF8C42] text-white flex items-center justify-center shadow-sm animate-float">
             <User size={16} />

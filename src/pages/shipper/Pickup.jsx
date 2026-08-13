@@ -667,7 +667,41 @@ export default function ShipperPickup() {
             >
               {activeJob.step === 'ACCEPTED' ? 'Xác nhận đã lấy hàng' : 'Xác nhận giao thành công'}
             </Button>
+
+            <button
+              onClick={() => setAbandonOpen(true)}
+              className="w-full mt-2 py-2 text-xs font-bold text-rose-500 hover:text-rose-600 transition-colors cursor-pointer inline-flex items-center justify-center gap-1.5"
+            >
+              <X size={13} /> Bỏ đơn này
+            </button>
           </div>
+
+          {abandonOpen && (
+            <div className="fixed inset-0 z-[9999] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setAbandonOpen(false)}>
+              <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-5 animate-scale-up" onClick={(e) => e.stopPropagation()}>
+                <div className="flex items-center gap-2.5 mb-3">
+                  <span className="w-10 h-10 rounded-xl bg-rose-50 text-rose-500 flex items-center justify-center shrink-0"><AlertTriangle size={20} /></span>
+                  <div>
+                    <h3 className="text-sm font-extrabold text-slate-800">Bỏ đơn hàng này?</h3>
+                    <p className="text-[11px] text-rose-500 font-bold">Sẽ bị trừ điểm uy tín</p>
+                  </div>
+                </div>
+                <p className="text-xs text-slate-600 mb-3 leading-relaxed">Đơn sẽ được trả lại cho tài xế khác và khách hàng được đền voucher. Vui lòng cho biết lý do:</p>
+                <textarea
+                  value={abandonReason}
+                  onChange={(e) => setAbandonReason(e.target.value)}
+                  rows={3}
+                  maxLength={300}
+                  placeholder="VD: xe hỏng, sự cố cá nhân, quá tải..."
+                  className="w-full text-xs border border-slate-200 rounded-xl p-2.5 outline-none focus:border-rose-400 resize-none"
+                />
+                <div className="flex gap-2 mt-4">
+                  <button onClick={() => setAbandonOpen(false)} className="flex-1 py-2.5 rounded-full border border-slate-200 text-slate-600 text-xs font-bold hover:bg-slate-50 cursor-pointer">Không bỏ</button>
+                  <button onClick={handleAbandon} disabled={loading} className="flex-1 py-2.5 rounded-full bg-rose-500 hover:bg-rose-600 text-white text-xs font-extrabold cursor-pointer disabled:opacity-60">Xác nhận bỏ đơn</button>
+                </div>
+              </div>
+            </div>
+          )}
 
         </Card>
       ) : (

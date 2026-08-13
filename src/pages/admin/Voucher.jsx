@@ -205,6 +205,7 @@ export default function Voucher() {
         ...formData,
         discountValue: Number(formData.discountValue),
         minOrderAmount: formData.minOrderAmount !== '' ? Number(formData.minOrderAmount) : null,
+        pointsCost: formData.issueType === 'LOYALTY' && formData.pointsCost !== '' ? Number(formData.pointsCost) : null,
         startDate: formData.startDate ? `${formData.startDate}:00` : null,
         endDate: formData.endDate ? `${formData.endDate}:00` : null,
       };

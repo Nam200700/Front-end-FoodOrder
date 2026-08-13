@@ -44,6 +44,38 @@ export function SkeletonChatMessage() {
   );
 }
 
+// Ô KPI/stat khi tải trang thống kê (thay cho spinner trắng cả trang).
+// theme="dark" cho admin (nền slate-950).
+export function SkeletonStatCard({ theme = 'light' }) {
+  const dark = theme === 'dark';
+  const shell = dark ? 'border-slate-800 bg-slate-950' : 'border-slate-100 bg-white';
+  const block = dark ? 'bg-slate-800' : 'bg-slate-200';
+  return (
+    <div className={`rounded-radius-xl p-5 border ${shell} shadow-sm animate-pulse`}>
+      <div className="flex items-center justify-between mb-3">
+        <div className={`h-2.5 ${block} rounded w-16`}></div>
+        <div className={`h-4 w-4 ${block} rounded`}></div>
+      </div>
+      <div className={`h-6 ${block} rounded w-24 mb-2`}></div>
+      <div className={`h-2.5 ${block} rounded w-20`}></div>
+    </div>
+  );
+}
+
+// Khối biểu đồ khi tải.
+export function SkeletonChartCard({ className = '', theme = 'light' }) {
+  const dark = theme === 'dark';
+  const shell = dark ? 'border-slate-800 bg-slate-950' : 'border-slate-100 bg-white';
+  const bar = dark ? 'bg-slate-800' : 'bg-slate-200';
+  const plot = dark ? 'bg-slate-900' : 'bg-slate-100';
+  return (
+    <div className={`rounded-radius-xl p-5 border ${shell} shadow-sm animate-pulse ${className}`}>
+      <div className={`h-3 ${bar} rounded w-1/3 mb-4`}></div>
+      <div className={`h-48 ${plot} rounded-radius-lg`}></div>
+    </div>
+  );
+}
+
 export function SkeletonNotificationCard() {
   return (
     <div className="bg-white rounded-radius-xl p-4 border border-slate-150 animate-pulse flex gap-3.5">

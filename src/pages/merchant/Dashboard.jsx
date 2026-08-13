@@ -12,10 +12,23 @@ import PeriodCompareStrip from '../../components/common/PeriodCompareStrip';
 import ForecastCard from '../../components/common/ForecastCard';
 import { formatCurrency } from '../../utils/format';
 import apiClient from '../../services/api';
-import Spinner from '../../components/common/Spinner';
 import { toast } from 'react-toastify';
 import ConfirmDialog from '../../components/common/ConfirmDialog';
 import { useFetchData } from '../../hooks/useFetchData';
+import InsightHeadline from '../../components/common/InsightHeadline';
+import { SkeletonStatCard, SkeletonChartCard } from '../../components/common/SkeletonCard';
+
+// Tiêu đề nhóm dẫn dắt mạch đọc của dashboard (Tổng quan → Xu hướng → Khách hàng & Thực đơn).
+function SectionTitle({ icon: Icon, children, hint }) {
+  return (
+    <div className="flex items-baseline gap-2 pt-1">
+      <h2 className="text-sm font-extrabold text-slate-700 flex items-center gap-1.5">
+        {Icon && <Icon size={16} className="text-md-secondary" />} {children}
+      </h2>
+      {hint && <span className="text-[11px] text-slate-400 font-medium">· {hint}</span>}
+    </div>
+  );
+}
 
 export default function MerchantDashboard() {
   const navigate = useNavigate();
@@ -167,7 +180,22 @@ export default function MerchantDashboard() {
     }
   };
 
-  if (loading && !restaurant && !noRestaurant) return <Spinner fullScreen />;
+  if (loading && !restaurant && !noRestaurant) {
+    return (
+      <div className="flex-1 p-4 md:p-8 max-w-7xl mx-auto w-full font-google-sans space-y-6">
+        <div className="h-7 w-64 bg-slate-200 rounded animate-pulse" />
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <SkeletonStatCard /><SkeletonStatCard /><SkeletonStatCard /><SkeletonStatCard />
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <SkeletonChartCard className="lg:col-span-2" /><SkeletonChartCard />
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <SkeletonChartCard /><SkeletonChartCard /><SkeletonChartCard />
+        </div>
+      </div>
+    );
+  }
 
   if (noRestaurant) {
     return (
@@ -186,14 +214,15 @@ export default function MerchantDashboard() {
   }
 
   // KPI: số lớn = TỔNG THỂ (luôn có nghĩa), dòng phụ = xu hướng 7 ngày (kèm % khi có kỳ trước)
+  // Màu icon KPI đồng bộ theo vai OWNER (xanh dương) — một hệ thị giác, không lẫn lộn.
   const kpis = [
-    { title: 'Doanh thu món', value: formatCurrency(Number(s.subtotal || 0)), icon: DollarSign, color: 'bg-emerald-100 text-emerald-600',
+    { title: 'Doanh thu món', value: formatCurrency(Number(s.subtotal || 0)), icon: DollarSign, color: 'bg-md-secondary/10 text-md-secondary',
       foot: `7 ngày: ${formatCurrency(revenue7d)}`, pct: revT.has ? revT.pct : null, dir: revT.dir },
     { title: 'Đơn hoàn tất', value: `${s.completedOrders ?? 0} đơn`, icon: PackageOpen, color: 'bg-md-secondary/10 text-md-secondary',
       foot: `7 ngày: ${orders7d} đơn`, pct: ordT.has ? ordT.pct : null, dir: ordT.dir },
-    { title: 'Giá trị đơn TB (AOV)', value: formatCurrency(Number(s.avgOrderValue || 0)), icon: BarChart3, color: 'bg-indigo-100 text-indigo-600',
+    { title: 'Giá trị đơn TB (AOV)', value: formatCurrency(Number(s.avgOrderValue || 0)), icon: BarChart3, color: 'bg-md-secondary/10 text-md-secondary',
       foot: 'Trung bình mỗi đơn hoàn tất', pct: null },
-    { title: 'Đánh giá trung bình', value: `${averageRating} ★`, icon: Star, color: 'bg-amber-100 text-amber-600',
+    { title: 'Đánh giá trung bình', value: `${averageRating} ★`, icon: Star, color: 'bg-md-secondary/10 text-md-secondary',
       foot: `Từ ${reviewsCount} đánh giá`, pct: null },
   ];
 
@@ -217,6 +246,21 @@ export default function MerchantDashboard() {
           <span>{restaurant.status ? 'QUÁN ĐANG MỞ CỬA' : 'QUÁN ĐANG ĐÓNG CỬA'}</span>
         </button>
       </div>
+
+      {/* Câu insight dẫn dắt — nói ngay tình hình tuần bằng lời */}
+      <InsightHeadline
+        icon={TrendingUp}
+        accent="#1A73E8"
+        eyebrow="7 ngày qua"
+        trend={revT.has ? { pct: revT.pct } : undefined}
+      >
+        {revenue7d > 0 ? (
+          <>7 ngày qua quán thu <b className="text-slate-900">{formatCurrency(revenue7d)}</b> từ {orders7d} đơn hoàn tất
+          {revT.has && <> · {revT.dir === 'up' ? 'tăng' : 'giảm'} so với tuần trước</>}.</>
+        ) : (
+          <>Chưa có doanh thu trong 7 ngày qua — mở cửa và nhận đơn để bắt đầu nhé.</>
+        )}
+      </InsightHeadline>
 
       {/* ─── CẢNH BÁO KINH DOANH ─── */}
       <div className="space-y-2.5">
@@ -249,6 +293,8 @@ export default function MerchantDashboard() {
         )}
       </div>
 
+      <SectionTitle icon={BarChart3} hint="chỉ số chính & so sánh kỳ">Tổng quan</SectionTitle>
+
       {/* ─── KPI (xu hướng 7 ngày) ─── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {kpis.map((item, idx) => {
@@ -278,6 +324,8 @@ export default function MerchantDashboard() {
 
       {/* ─── SO SÁNH KỲ: hôm nay · tuần · tháng (vs kỳ trước) ─── */}
       <PeriodCompareStrip comparison={comparison} formatValue={formatCurrency} theme="light" accent="text-md-secondary" unit="đơn" />
+
+      <SectionTitle icon={TrendingUp} hint="doanh thu theo ngày · giờ cao điểm · dự báo">Xu hướng</SectionTitle>
 
       {/* ─── DOANH THU (rút gọn) + GIỜ CAO ĐIỂM ─── */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -359,6 +407,8 @@ export default function MerchantDashboard() {
           </div>
         </div>
       </div>
+
+      <SectionTitle icon={Users} hint="khách quay lại · sức khoẻ thực đơn · món bán chạy">Khách hàng &amp; Thực đơn</SectionTitle>
 
       {/* ─── KHÁCH HÀNG + THỰC ĐƠN + TOP MÓN ─── */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

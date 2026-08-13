@@ -155,7 +155,7 @@ export default function AdminLayout() {
             </div>
             <div className="flex flex-col min-w-0">
               <span className="text-sm font-bold text-slate-200 truncate">{user.name}</span>
-              <span className="text-[10px] bg-purple-900 text-purple-300 font-bold px-1.5 py-0.5 rounded-full w-max mt-1">
+              <span className="text-[10px] bg-purple-600 text-white font-bold px-2 py-0.5 rounded-full w-max mt-1 shadow-sm">
                 Root Admin
               </span>
             </div>

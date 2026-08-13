@@ -32,7 +32,8 @@ export default function Voucher() {
     startDate: '',
     endDate: '',
     status: 'ACTIVE',
-    issueType: 'EVENT'
+    issueType: 'EVENT',
+    pointsCost: ''
   });
 
   const [submitting, setSubmitting] = useState(false);
@@ -87,7 +88,8 @@ export default function Voucher() {
       startDate: '',
       endDate: '',
       status: 'ACTIVE',
-      issueType: 'EVENT'
+      issueType: 'EVENT',
+      pointsCost: ''
     });
     formModal.open(null);
   };
@@ -108,7 +110,8 @@ export default function Voucher() {
       startDate: formatLocalDateTime(voucher.startDate),
       endDate: formatLocalDateTime(voucher.endDate),
       status: voucher.status || 'ACTIVE',
-      issueType: voucher.issueType || 'EVENT'
+      issueType: voucher.issueType || 'EVENT',
+      pointsCost: voucher.pointsCost != null ? voucher.pointsCost : ''
     });
     formModal.open(voucher.voucherId);
   };
@@ -133,6 +136,15 @@ export default function Voucher() {
     if (isNaN(val) || val <= 0) {
       toast.error('Giá trị giảm phải là một số lớn hơn 0!');
       return false;
+    }
+
+    // Voucher đổi điểm bắt buộc nhập số điểm > 0
+    if (formData.issueType === 'LOYALTY') {
+      const pc = Number(formData.pointsCost);
+      if (formData.pointsCost === '' || isNaN(pc) || pc <= 0) {
+        toast.error('Voucher đổi điểm bắt buộc nhập số điểm cần để đổi (> 0)!');
+        return false;
+      }
     }
 
     if (formData.discountType === 'PERCENT' && val > 100) {
@@ -193,6 +205,7 @@ export default function Voucher() {
         ...formData,
         discountValue: Number(formData.discountValue),
         minOrderAmount: formData.minOrderAmount !== '' ? Number(formData.minOrderAmount) : null,
+        pointsCost: formData.issueType === 'LOYALTY' && formData.pointsCost !== '' ? Number(formData.pointsCost) : null,
         startDate: formData.startDate ? `${formData.startDate}:00` : null,
         endDate: formData.endDate ? `${formData.endDate}:00` : null,
       };
@@ -358,12 +371,17 @@ export default function Voucher() {
                     <td className="py-3.5 px-4 w-40 text-slate-800 font-bold truncate" title={v.name}>{v.name}</td>
                     <td className="py-3.5 px-4 w-32 truncate">
                       <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold ${
-                        v.issueType === 'EVENT' 
-                          ? 'bg-indigo-50 text-indigo-600 border border-indigo-200' 
-                          : 'bg-rose-50 text-rose-600 border border-rose-200'
+                        v.issueType === 'EVENT'
+                          ? 'bg-indigo-50 text-indigo-600 border border-indigo-200'
+                          : v.issueType === 'LOYALTY'
+                            ? 'bg-amber-50 text-amber-600 border border-amber-200'
+                            : 'bg-rose-50 text-rose-600 border border-rose-200'
                       }`}>
-                        {v.issueType === 'EVENT' ? 'Sự kiện' : 'Hủy đơn hàng'}
+                        {v.issueType === 'EVENT' ? 'Sự kiện' : v.issueType === 'LOYALTY' ? 'Đổi điểm' : 'Hủy đơn hàng'}
                       </span>
+                      {v.issueType === 'LOYALTY' && v.pointsCost != null && (
+                        <span className="block mt-1 text-[10px] font-bold text-amber-600">Cần {v.pointsCost} điểm</span>
+                      )}
                     </td>
                     <td className="py-3.5 px-4 w-28 text-slate-600 truncate">
                       {v.discountType === 'PERCENT' ? 'Phần trăm (%)' : v.discountType === 'FIXED' ? 'Cố định (VNĐ)' : 'Miễn phí ship'}
@@ -514,7 +532,8 @@ export default function Voucher() {
                 }`}
               >
                 <option value="EVENT">Sự kiện</option>
-                <option value="ORDER_CANCELLED">Hủy đơn hàng</option>
+                <option value="ORDER_CANCELLED">Hủy đơn hàng (đền bù)</option>
+                <option value="LOYALTY">Đổi điểm thưởng</option>
               </select>
             </div>
 
@@ -577,6 +596,24 @@ export default function Voucher() {
                 }`}
               />
             </div>
+
+            {/* Số điểm cần để đổi — CHỈ cho loại "Đổi điểm" (LOYALTY) */}
+            {formData.issueType === 'LOYALTY' && (
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Số điểm cần để đổi <b className="text-amber-500">(*)</b>
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  step="1"
+                  value={formData.pointsCost}
+                  onChange={(e) => setFormData({ ...formData, pointsCost: e.target.value })}
+                  placeholder="VD: 100 (điểm thưởng)"
+                  className="w-full px-3 py-2 text-xs bg-amber-50/60 border border-amber-200 rounded-xl focus:outline-none focus:border-amber-500 text-slate-800 font-bold"
+                />
+              </div>
+            )}
 
             {/* Trạng Thái (Cho phép sửa) */}
             <div>

@@ -61,7 +61,8 @@ export default function AdminUsers() {
         role: user.role,
         status: user.status ? 'ACTIVE' : 'BLOCKED',
         lockedAt: user.lockedAt,
-        lockedReason: user.lockedReason
+        lockedReason: user.lockedReason,
+        reputation: user.reputationScore
       })),
       totalPages: data?.totalPages || 1,
       totalElements: data?.totalElements || 0
@@ -261,6 +262,7 @@ export default function AdminUsers() {
                   <th className="py-3.5 px-4">Địa chỉ Email</th>
                   <th className="py-3.5 px-4">Số điện thoại</th>
                   <th className="py-3.5 px-4">Vai trò</th>
+                  <th className="py-3.5 px-4">Uy tín</th>
                   <th className="py-3.5 px-4">Trạng thái</th>
                   <th className="py-3.5 px-4">Thao tác</th>
                 </tr>
@@ -284,6 +286,16 @@ export default function AdminUsers() {
                     </td>
                     <td className="py-3.5 px-4">
                       <Badge variant="role" role={user.role} />
+                    </td>
+                    <td className="py-3.5 px-4">
+                      {typeof user.reputation === 'number' ? (
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-black border ${
+                          user.reputation >= 70 ? 'text-emerald-700 border-emerald-200 bg-emerald-50'
+                            : user.reputation >= 40 ? 'text-amber-700 border-amber-200 bg-amber-50'
+                              : 'text-red-700 border-red-200 bg-red-50'}`}>
+                          {user.reputation}
+                        </span>
+                      ) : <span className="text-slate-300">—</span>}
                     </td>
                     <td className="py-3.5 px-4">
                       {user.status === 'ACTIVE' ? (

@@ -7,9 +7,10 @@ import RangeSelect from '../../components/common/RangeSelect';
 import InfoTip from '../../components/common/InfoTip';
 import { formatCurrency } from '../../utils/format';
 import apiClient from '../../services/api';
-import Spinner from '../../components/common/Spinner';
 import KPICard from '../../components/common/KPICard';
 import GaugeChart from '../../components/common/GaugeChart';
+import InsightHeadline from '../../components/common/InsightHeadline';
+import { SkeletonStatCard, SkeletonChartCard } from '../../components/common/SkeletonCard';
 import {
   ClipboardList, TrendingUp, TrendingDown, Minus, ShoppingBag, Users, DollarSign,
   Award, Calendar, CreditCard, Percent, Store, Flame, BarChart3, AreaChart,
@@ -34,6 +35,18 @@ function statusIcon(name = '') {
 // Bảng màu báo cáo Merchant: DẪN ĐẦU xanh dương #1A73E8 (thương hiệu merchant),
 // KHÔNG dùng cam #FF6B35 của Customer. Màu sau mang ý nghĩa (xanh lá=tốt, vàng=chờ, đỏ=huỷ).
 const COLORS = ['#1A73E8', '#34A853', '#FBBC05', '#EA4335', '#9C27B0', '#00897B'];
+
+// Tiêu đề nhóm dẫn dắt mạch đọc báo cáo (Dòng tiền → Vận hành → Phân bổ & Xu hướng).
+function SectionTitle({ icon: Icon, children, hint }) {
+  return (
+    <div className="flex items-baseline gap-2 pt-1">
+      <h2 className="text-sm font-extrabold text-slate-700 flex items-center gap-1.5">
+        {Icon && <Icon size={16} className="text-md-secondary" />} {children}
+      </h2>
+      {hint && <span className="text-[11px] text-slate-400 font-medium">· {hint}</span>}
+    </div>
+  );
+}
 
 const PAYMENT_LABELS = { PAID: 'Đã thanh toán', PENDING: 'Chờ thanh toán', REFUNDED: 'Đã hoàn tiền', FAILED: 'Thất bại' };
 const STATUS_LABELS = {
@@ -261,15 +274,41 @@ export default function MerchantStats() {
       </div>
 
       {(loadingRes || (loadingReport && !report)) ? (
-        <Spinner />
+        <div className="space-y-6">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <SkeletonStatCard /><SkeletonStatCard /><SkeletonStatCard /><SkeletonStatCard />
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+            <SkeletonStatCard /><SkeletonStatCard /><SkeletonStatCard /><SkeletonStatCard /><SkeletonStatCard />
+          </div>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <SkeletonChartCard className="lg:col-span-2" /><SkeletonChartCard />
+          </div>
+        </div>
       ) : (
         <div className={`space-y-6 transition-opacity duration-200 ${loadingReport ? 'opacity-50' : 'opacity-100'}`}>
+
+          {/* Câu insight dẫn dắt — tóm tắt kỳ đang chọn bằng lời */}
+          <InsightHeadline
+            icon={DollarSign}
+            accent="#1A73E8"
+            eyebrow={seriesActive ? (filterSummary || 'Đang lọc') : RANGE_LABEL[filterRange]}
+            trend={rangeCompare && !seriesActive && rangeCompare.valueDelta?.has ? { pct: rangeCompare.valueDelta.pct } : undefined}
+          >
+            {(earnings > 0 || subtotal > 0) ? (
+              <>{seriesActive ? 'Theo bộ lọc đang chọn' : RANGE_LABEL[filterRange]}, quán thực nhận <b className="text-slate-900">{formatCurrency(earnings)}</b> từ {completedOrders} đơn hoàn tất · doanh thu món {formatCurrency(subtotal)}.</>
+            ) : (
+              <>Chưa có giao dịch nào khớp phạm vi đang chọn.</>
+            )}
+          </InsightHeadline>
 
           {seriesActive && (
             <div className="flex items-center gap-2 rounded-radius-lg bg-md-secondary/5 border border-md-secondary/20 px-3.5 py-2 text-[11px] font-bold text-md-secondary">
               <CalendarRange size={13} /> Toàn bộ số liệu đang lọc theo: <span className="text-slate-700">{filterSummary || 'bộ lọc đã chọn'}</span>
             </div>
           )}
+
+          <SectionTitle icon={DollarSign} hint="quán thực nhận, tiền món, chiết khấu, giao vận">Dòng tiền</SectionTitle>
 
           {/* KPI dòng tiền (4) */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
@@ -322,6 +361,8 @@ export default function MerchantStats() {
             </div>
           )}
 
+          <SectionTitle icon={Gauge} hint="GTV, AOV, khách, tỷ lệ huỷ/hoàn thành">Vận hành</SectionTitle>
+
           {/* Dải chỉ số vận hành (5) — chiều sâu thêm */}
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
             {[
@@ -369,8 +410,10 @@ export default function MerchantStats() {
             })}
           </div>
 
+          <SectionTitle icon={BarChart3} hint="phân bổ dòng tiền · xu hướng · top món · trạng thái">Phân bổ &amp; Xu hướng</SectionTitle>
+
           {/* Phân bổ dòng tiền */}
-          <div className="bg-slate-50 border border-slate-200/60 rounded-[1.25rem] p-5 space-y-3.5 shadow-sm">
+          <div className="bg-slate-50 border border-slate-200/60 rounded-radius-xl p-5 space-y-3.5 shadow-sm">
             <div className="flex justify-between items-center border-b border-slate-200/60 pb-2">
               <h3 className="text-xs font-extrabold text-slate-800 uppercase tracking-wider">Phân Bổ Dòng Tiền Giao Dịch</h3>
               <span className="text-[10px] text-slate-500 font-bold">Chu kỳ: {RANGE_LABEL[filterRange]}</span>
@@ -391,7 +434,7 @@ export default function MerchantStats() {
 
           {/* Biểu đồ xu hướng + Thanh toán */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="bg-white rounded-[1.25rem] p-5 border border-slate-200/60 shadow-sm lg:col-span-2 space-y-4">
+            <div className="bg-white rounded-radius-xl p-5 border border-slate-200/60 shadow-sm lg:col-span-2 space-y-4">
               <div className="flex items-center justify-between">
                 <div className="min-w-0">
                   <h3 className="text-xs font-extrabold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
@@ -421,7 +464,7 @@ export default function MerchantStats() {
             </div>
 
             {/* Thanh toán donut */}
-            <div className="bg-white rounded-[1.25rem] p-5 border border-slate-200/60 shadow-sm flex flex-col justify-between min-h-[340px] space-y-4">
+            <div className="bg-white rounded-radius-xl p-5 border border-slate-200/60 shadow-sm flex flex-col justify-between min-h-[340px] space-y-4">
               <div className="flex items-center justify-between">
                 <h3 className="text-xs font-extrabold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
                   <CreditCard className="text-blue-500" size={16} /> Trạng Thái Thanh Toán
@@ -447,7 +490,7 @@ export default function MerchantStats() {
 
           {/* Top món + Trạng thái đơn */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="bg-white rounded-[1.25rem] p-5 border border-slate-200/60 shadow-sm lg:col-span-2 space-y-4">
+            <div className="bg-white rounded-radius-xl p-5 border border-slate-200/60 shadow-sm lg:col-span-2 space-y-4">
               <div className="flex items-center justify-between gap-2 flex-wrap">
                 <h3 className="text-xs font-extrabold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
                   <Award className="text-yellow-500" size={18} /> Top Món Ăn Bán Chạy
@@ -513,7 +556,7 @@ export default function MerchantStats() {
             </div>
 
             {/* Trạng thái đơn donut */}
-            <div className="bg-white rounded-[1.25rem] p-5 border border-slate-200/60 shadow-sm flex flex-col justify-between min-h-[300px] space-y-4 self-start">
+            <div className="bg-white rounded-radius-xl p-5 border border-slate-200/60 shadow-sm flex flex-col justify-between min-h-[300px] space-y-4 self-start">
               <h3 className="text-xs font-extrabold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
                 <Calendar className="text-purple-500" size={16} /> Tỷ Lệ Trạng Thái Đơn
               </h3>

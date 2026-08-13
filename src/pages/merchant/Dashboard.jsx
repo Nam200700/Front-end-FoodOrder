@@ -293,6 +293,8 @@ export default function MerchantDashboard() {
         )}
       </div>
 
+      <SectionTitle icon={BarChart3} hint="chỉ số chính & so sánh kỳ">Tổng quan</SectionTitle>
+
       {/* ─── KPI (xu hướng 7 ngày) ─── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {kpis.map((item, idx) => {
@@ -322,6 +324,8 @@ export default function MerchantDashboard() {
 
       {/* ─── SO SÁNH KỲ: hôm nay · tuần · tháng (vs kỳ trước) ─── */}
       <PeriodCompareStrip comparison={comparison} formatValue={formatCurrency} theme="light" accent="text-md-secondary" unit="đơn" />
+
+      <SectionTitle icon={TrendingUp} hint="doanh thu theo ngày · giờ cao điểm · dự báo">Xu hướng</SectionTitle>
 
       {/* ─── DOANH THU (rút gọn) + GIỜ CAO ĐIỂM ─── */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -403,6 +407,8 @@ export default function MerchantDashboard() {
           </div>
         </div>
       </div>
+
+      <SectionTitle icon={Users} hint="khách quay lại · sức khoẻ thực đơn · món bán chạy">Khách hàng &amp; Thực đơn</SectionTitle>
 
       {/* ─── KHÁCH HÀNG + THỰC ĐƠN + TOP MÓN ─── */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

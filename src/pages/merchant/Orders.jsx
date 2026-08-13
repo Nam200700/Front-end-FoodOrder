@@ -414,10 +414,17 @@ export default function MerchantOrders() {
     setSubmittingCancel(true);
     try {
       const orderIdToCancel = cancelModal.data;
-      await apiClient.patch(`/merchant/orders/${orderIdToCancel}/reject`, {
-        rejectReason: cancelReasonInput.trim()
-      });
-      toast.success(`Đã từ chối thành công đơn hàng #${orderIdToCancel}`);
+      if (cancelMode === 'cancel') {
+        await apiClient.patch(`/merchant/orders/${orderIdToCancel}/cancel`, {
+          reason: cancelReasonInput.trim()
+        });
+        toast.success(`Đã hủy đơn #${orderIdToCancel}. Khách được đền voucher; điểm uy tín quán bị trừ.`);
+      } else {
+        await apiClient.patch(`/merchant/orders/${orderIdToCancel}/reject`, {
+          rejectReason: cancelReasonInput.trim()
+        });
+        toast.success(`Đã từ chối thành công đơn hàng #${orderIdToCancel}`);
+      }
       setNewOrderIds((s) => { const n = new Set(s); n.delete(orderIdToCancel.toString()); return n; });
       cancelModal.close();
       if (detailModal.data && detailModal.data.orderId.toString() === orderIdToCancel.toString()) {

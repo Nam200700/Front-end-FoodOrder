@@ -214,14 +214,15 @@ export default function MerchantDashboard() {
   }
 
   // KPI: số lớn = TỔNG THỂ (luôn có nghĩa), dòng phụ = xu hướng 7 ngày (kèm % khi có kỳ trước)
+  // Màu icon KPI đồng bộ theo vai OWNER (xanh dương) — một hệ thị giác, không lẫn lộn.
   const kpis = [
-    { title: 'Doanh thu món', value: formatCurrency(Number(s.subtotal || 0)), icon: DollarSign, color: 'bg-emerald-100 text-emerald-600',
+    { title: 'Doanh thu món', value: formatCurrency(Number(s.subtotal || 0)), icon: DollarSign, color: 'bg-md-secondary/10 text-md-secondary',
       foot: `7 ngày: ${formatCurrency(revenue7d)}`, pct: revT.has ? revT.pct : null, dir: revT.dir },
     { title: 'Đơn hoàn tất', value: `${s.completedOrders ?? 0} đơn`, icon: PackageOpen, color: 'bg-md-secondary/10 text-md-secondary',
       foot: `7 ngày: ${orders7d} đơn`, pct: ordT.has ? ordT.pct : null, dir: ordT.dir },
-    { title: 'Giá trị đơn TB (AOV)', value: formatCurrency(Number(s.avgOrderValue || 0)), icon: BarChart3, color: 'bg-indigo-100 text-indigo-600',
+    { title: 'Giá trị đơn TB (AOV)', value: formatCurrency(Number(s.avgOrderValue || 0)), icon: BarChart3, color: 'bg-md-secondary/10 text-md-secondary',
       foot: 'Trung bình mỗi đơn hoàn tất', pct: null },
-    { title: 'Đánh giá trung bình', value: `${averageRating} ★`, icon: Star, color: 'bg-amber-100 text-amber-600',
+    { title: 'Đánh giá trung bình', value: `${averageRating} ★`, icon: Star, color: 'bg-md-secondary/10 text-md-secondary',
       foot: `Từ ${reviewsCount} đánh giá`, pct: null },
   ];
 
@@ -245,6 +246,21 @@ export default function MerchantDashboard() {
           <span>{restaurant.status ? 'QUÁN ĐANG MỞ CỬA' : 'QUÁN ĐANG ĐÓNG CỬA'}</span>
         </button>
       </div>
+
+      {/* Câu insight dẫn dắt — nói ngay tình hình tuần bằng lời */}
+      <InsightHeadline
+        icon={TrendingUp}
+        accent="#1A73E8"
+        eyebrow="7 ngày qua"
+        trend={revT.has ? { pct: revT.pct } : undefined}
+      >
+        {revenue7d > 0 ? (
+          <>7 ngày qua quán thu <b className="text-slate-900">{formatCurrency(revenue7d)}</b> từ {orders7d} đơn hoàn tất
+          {revT.has && <> · {revT.dir === 'up' ? 'tăng' : 'giảm'} so với tuần trước</>}.</>
+        ) : (
+          <>Chưa có doanh thu trong 7 ngày qua — mở cửa và nhận đơn để bắt đầu nhé.</>
+        )}
+      </InsightHeadline>
 
       {/* ─── CẢNH BÁO KINH DOANH ─── */}
       <div className="space-y-2.5">

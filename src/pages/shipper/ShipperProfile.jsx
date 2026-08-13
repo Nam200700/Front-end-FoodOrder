@@ -29,6 +29,8 @@ export default function ShipperProfile() {
   const [activeDelivery, setActiveDelivery] = useState(0);
   const [totalDelivery, setTotalDelivery] = useState(0);
   const [avgRating, setAvgRating] = useState(5.0);
+  const [reputationScore, setReputationScore] = useState(100);
+  const [cancelCount, setCancelCount] = useState(0);
   // Ảnh chụp giá trị gốc để biết form CÓ THAY ĐỔI chưa (dirty state — chỉ bật nút Lưu khi có sửa).
   const [initial, setInitial] = useState({ name: '', email: '', phone: '', vehicleType: '', licensePlate: '' });
   const fileInputRef = useRef(null);

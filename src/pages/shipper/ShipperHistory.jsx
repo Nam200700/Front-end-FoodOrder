@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { History, ClipboardList, Clipboard, Check, X, Utensils, Wallet, CheckCircle2, ChevronLeft, ChevronRight, User, Clock, Sparkles, Package, Calendar, Coins, Bike, PackageSearch, Search, SlidersHorizontal, ArrowDownUp, ChevronDown, TrendingUp, CalendarDays, CalendarRange } from 'lucide-react';
+import { History, ClipboardList, Clipboard, Check, X, Utensils, Wallet, CheckCircle2, ChevronLeft, ChevronRight, User, Clock, Sparkles, Package, Calendar, Coins, Bike, PackageSearch, Search, SlidersHorizontal, ArrowDownUp, ChevronDown, TrendingUp, CalendarDays, CalendarRange, Ban } from 'lucide-react';
 import { formatCurrency, normalizeForMatch } from '../../utils/format';
 import { useFetchData } from '../../hooks/useFetchData';
 import { SkeletonOrderCard } from '../../components/common/SkeletonCard';
@@ -158,14 +158,18 @@ export default function ShipperHistory() {
 
   // ─── TỔNG QUAN (theo kết quả đang lọc, kiểu trip-summary Grab/Uber) ───
   const doneList = filteredList.filter((i) => i.status === 'COMPLETED');
+  const cancelledList = filteredList.filter((i) => i.status === 'CANCELLED');
   const deliveringCount = filteredList.filter((i) => i.status === 'DELIVERING' || i.status === 'READY_FOR_PICKUP').length;
   const sumFee = doneList.reduce((s, i) => s + (i.fee || 0), 0);
   const avgFee = doneList.length ? sumFee / doneList.length : 0;
+  // Tỷ lệ hoàn thành = thành công / (thành công + đã hủy) — thước đo độ tin cậy của tài xế.
+  const relDenom = doneList.length + cancelledList.length;
+  const completionRate = relDenom > 0 ? Math.round((doneList.length / relDenom) * 100) : 100;
   const summaryStats = [
     { icon: Wallet, tint: 'text-md-tertiary', bg: 'from-[#E8F5E9]/70 to-white border-[#C8E6C9]/60', value: formatCurrency(sumFee), label: 'Tổng phí đã nhận' },
     { icon: CheckCircle2, tint: 'text-emerald-500', bg: 'from-emerald-50/70 to-white border-emerald-100', value: doneList.length, label: 'Chuyến thành công' },
-    { icon: Bike, tint: 'text-blue-500', bg: 'from-blue-50/70 to-white border-blue-100', value: deliveringCount, label: 'Đang giao' },
-    { icon: TrendingUp, tint: 'text-amber-500', bg: 'from-amber-50/70 to-white border-amber-100', value: formatCurrency(avgFee), label: 'TB mỗi chuyến' },
+    { icon: Ban, tint: 'text-rose-500', bg: 'from-rose-50/70 to-white border-rose-100', value: cancelledList.length, label: 'Đơn đã hủy' },
+    { icon: TrendingUp, tint: 'text-amber-500', bg: 'from-amber-50/70 to-white border-amber-100', value: `${completionRate}%`, label: 'Tỷ lệ hoàn thành' },
   ];
 
   // tab trạng thái
@@ -173,6 +177,7 @@ export default function ShipperHistory() {
     { id: 'ALL', label: 'Tất cả' },
     { id: 'DELIVERING', label: 'Đang giao' },
     { id: 'COMPLETED', label: 'Thành công' },
+    { id: 'CANCELLED', label: 'Đã hủy' },
   ];
 
   // chip lọc theo mốc thời gian

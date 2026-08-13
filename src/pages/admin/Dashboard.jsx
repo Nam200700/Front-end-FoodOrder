@@ -304,6 +304,9 @@ export default function AdminDashboard() {
         })}
       </div>
 
+      {/* ─── XU HƯỚNG & DỰ BÁO ─── */}
+      <SectionTitle icon={TrendingUp} hint="dòng tiền đang đi về đâu">Xu hướng &amp; dự báo</SectionTitle>
+
       {/* ─── GTV 30 NGÀY (server) + GIỜ CAO ĐIỂM ─── */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="bg-slate-950 border border-slate-800 rounded-radius-xl p-5 lg:col-span-2 space-y-4">
@@ -393,6 +396,9 @@ export default function AdminDashboard() {
           </div>
         </div>
       </div>
+
+      {/* ─── VẬN HÀNH & KIỂM DUYỆT ─── */}
+      <SectionTitle icon={Shield} hint="việc cần người xử lý">Vận hành &amp; kiểm duyệt</SectionTitle>
 
       {/* ─── KIỂM DUYỆT + VẬN HÀNH + TOÀN VẸN THANH TOÁN ─── */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -485,6 +491,9 @@ export default function AdminDashboard() {
           </p>
         </div>
       </div>
+
+      {/* ─── KHUYẾN MÃI ─── */}
+      <SectionTitle icon={Ticket} hint="hiệu quả voucher 30 ngày">Khuyến mãi</SectionTitle>
 
       {/* ─── PHÂN TÍCH VOUCHER (30 ngày) ─── */}
       {(() => {

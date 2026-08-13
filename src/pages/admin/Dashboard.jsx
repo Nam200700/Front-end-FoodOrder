@@ -199,7 +199,6 @@ export default function AdminDashboard() {
           <h1 className="font-display-small text-xl md:text-2xl font-bold text-slate-100 flex items-center gap-2">
             <Shield className="text-purple-400" size={24} /> Admin Control Panel
           </h1>
-          <p className="text-xs text-slate-400 mt-1">Tổng quan sức khoẻ toàn hệ thống · số liệu thật, tính trực tiếp trên toàn bộ dữ liệu</p>
         </div>
         <button
           onClick={() => { refetchOverview(); refetchInsights(); }}

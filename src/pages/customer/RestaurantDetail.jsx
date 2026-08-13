@@ -596,7 +596,7 @@ function GroupOrderPanel({ groupOrder, isHost, myMember, onMarkReady, onLock, on
             className="w-full !border-emerald-500/40 !text-emerald-700 hover:!bg-emerald-50 font-extrabold shadow-sm transition-all duration-200" 
             icon={CheckCheck}
           >
-            Hoàn tất chọn món
+            Hoàn Tất Chọn Món
           </Button>
         )}
         {isHost && isOpen && (
@@ -607,7 +607,7 @@ function GroupOrderPanel({ groupOrder, isHost, myMember, onMarkReady, onLock, on
             className="w-full !border-amber-500/40 !text-amber-700 hover:!bg-amber-50 font-extrabold shadow-sm transition-all duration-200" 
             icon={Lock}
           >
-            Khóa phiên (Ngừng nhận món)
+            Khóa Phiên (Ngừng chọn món)
           </Button>
         )}
         {canCheckout && (
@@ -616,7 +616,7 @@ function GroupOrderPanel({ groupOrder, isHost, myMember, onMarkReady, onLock, on
             disabled={busy} 
             className="w-full !bg-gradient-to-r !from-emerald-600 !to-teal-600 hover:!from-emerald-700 hover:!to-teal-700 text-white font-extrabold shadow-md hover:shadow-lg transition-all duration-200"
           >
-            Đặt đơn
+            Đặt Hàng
           </Button>
         )}
         {!isHost && isOpen && (
@@ -627,7 +627,7 @@ function GroupOrderPanel({ groupOrder, isHost, myMember, onMarkReady, onLock, on
             className="w-full !text-rose-600 !border-rose-200 hover:!bg-rose-50 font-bold transition-all duration-200" 
             icon={LogOut}
           >
-            Rời khỏi nhóm
+            Rời Khỏi Nhóm
           </Button>
         )}
         {isHost && groupOrder.status !== 'ORDERED' && groupOrder.status !== 'CANCELLED' && (
@@ -638,7 +638,7 @@ function GroupOrderPanel({ groupOrder, isHost, myMember, onMarkReady, onLock, on
             className="w-full !text-rose-500 hover:!bg-rose-50/60 font-semibold transition-all duration-200" 
             icon={Ban}
           >
-            Hủy phiên đặt nhóm
+            Hủy Đặt Đơn Nhóm
           </Button>
         )}
       </div>
@@ -697,6 +697,9 @@ export default function RestaurantDetail() {
   const minDuration = Math.max(10, durationMinutes - 3);
   const maxDuration = Math.max(minDuration + 5, durationMinutes + 3);
   const durationText = cachedShipping ? `${minDuration}-${maxDuration} phút` : '--';
+
+  const confirmInviteModal = useModalState(null); 
+
 
   useEffect(() => {
     const fetchDetails = async () => {
@@ -796,32 +799,6 @@ export default function RestaurantDetail() {
 
   // ═══════════════════════ ĐẶT ĐƠN NHÓM ═══════════════════════
 
-  // Vào trang qua link mời (?group=CODE) → tự động tham gia phiên
-  // useEffect(() => {
-  //   const code = searchParams.get('group');
-  //   if (!code || groupOrder) return;
-  //   (async () => {
-  //     try {
-  //       setGroupBusy(true);
-  //       const res = await apiClient.post(`/group-orders/invite/${code}/join`);
-  //       setGroupOrder(res.data?.data || null);
-  //       toast.success('Đã tham gia phiên đặt nhóm!');
-  //     } catch (err) {
-  //       toast.error(err.response?.data?.message || 'Không thể tham gia phiên đặt nhóm (có thể đã hết hạn).');
-  //       const next = new URLSearchParams(searchParams);
-  //       next.delete('group');
-  //       setSearchParams(next, { replace: true });
-  //     } finally {
-  //       setGroupBusy(false);
-  //     }
-  //   })();
-  //   // eslint-disable-next-line react-hooks/exhaustive-deps
-  // }, [searchParams]);
-
-  // 1. Khai báo Modal state ở component (ví dụ: RestaurantDetail.jsx)
-  const confirmInviteModal = useModalState(null); // Lưu thông tin preview phiên đặt nhóm
-
-  // 2. Thay thế useEffect xử lý link mời hiện tại bằng đoạn sau để fetch preview và mở modal
   useEffect(() => {
     const code = searchParams.get('group');
     if (!code || groupOrder) return;
@@ -844,10 +821,10 @@ export default function RestaurantDetail() {
         setGroupBusy(false);
       }
     })();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
 
-  // 3. Hàm xử lý khi người dùng ấn nút "Tham gia ngay" trên modal
+
+  // Hàm xử lý khi người dùng ấn nút "Tham gia ngay" trên modal
   const handleConfirmJoin = async () => {
     const code = confirmInviteModal.data?.code;
     if (!code) return;
@@ -869,12 +846,67 @@ export default function RestaurantDetail() {
     }
   };
 
-  // 4. Hàm xử lý khi người dùng bấm hủy/đóng modal
+  // Hàm xử lý khi người dùng bấm hủy/đóng modal
   const handleCancelJoin = () => {
     confirmInviteModal.close();
     const next = new URLSearchParams(searchParams);
     next.delete('group');
     setSearchParams(next, { replace: true });
+  };
+
+  const activeGroupCheckedRef = useRef(false);
+
+  // Khôi phục phiên đặt nhóm đang hoạt động của quán này khi mở lại trang
+  useEffect(() => {
+    if (activeGroupCheckedRef.current) return;
+    if (searchParams.get('group')) return;
+    if (groupOrder) return;
+    activeGroupCheckedRef.current = true;
+    (async () => {
+      try {
+        const res = await apiClient.get(`/group-orders/active/restaurant/${id}`);
+        if (res.data?.data) setGroupOrder(res.data.data);
+      } catch (err) {
+        console.warn('[GroupOrder] Không có phiên đang hoạt động:', err.response?.data || err);
+      }
+    })();
+  }, [id]);
+
+  const confirmCheckoutModal = useModalState();
+
+  //đặt đơn nhóm — gọi API thật, force = bỏ qua kiểm tra sẵn sàng
+  const doCheckoutGroup = async (force = false) => {
+    setGroupBusy(true);
+    try {
+      const res = await apiClient.post(`/group-orders/${groupOrder.groupOrderId}/checkout`, {
+        paymentMethod: 'COD',
+        force,
+      });
+      toast.success('Đặt đơn nhóm thành công!');
+      setGroupOrder(null);
+      confirmCheckoutModal.close();
+      clearGroupParam();
+      const orderId = res.data?.data?.orderId;
+      if (orderId) navigate(`/orders/${orderId}`);
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Không thể chốt đơn nhóm');
+    } finally {
+      setGroupBusy(false);
+    }
+  };
+
+  // Trước khi chốt: kiểm tra còn thành viên (trừ host) chưa "Hoàn tất chọn món"
+  // không — nếu có, hỏi xác nhận trước khi thực sự gọi API chốt đơn.
+  const handleCheckoutGroup = () => {
+    if (!groupOrder) return;
+    const unreadyMembers = (groupOrder.members || []).filter(
+      (m) => !m.isHost && m.status !== 'READY' && m.status !== 'LEFT'
+    );
+    if (unreadyMembers.length > 0) {
+      confirmCheckoutModal.open({ unreadyMembers });
+      return;
+    }
+    doCheckoutGroup(false);
   };
 
   const refreshGroupOrder = async (groupOrderId = groupOrder?.groupOrderId) => {
@@ -892,7 +924,6 @@ export default function RestaurantDetail() {
     if (!groupOrder || (groupOrder.status !== 'OPEN' && groupOrder.status !== 'LOCKED')) return;
     const timer = setInterval(() => refreshGroupOrder(groupOrder.groupOrderId), 6000);
     return () => clearInterval(timer);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [groupOrder?.groupOrderId, groupOrder?.status]);
 
   const handleCreateGroupOrder = async () => {
@@ -978,21 +1009,21 @@ export default function RestaurantDetail() {
   };
 
   //đặt đơn nhóm
-  const handleCheckoutGroup = async () => {
-    setGroupBusy(true);
-    try {
-      const res = await apiClient.post(`/group-orders/${groupOrder.groupOrderId}/checkout`, { paymentMethod: 'COD' });
-      toast.success('Đặt đơn nhóm thành công!');
-      setGroupOrder(null);
-      clearGroupParam();
-      const orderId = res.data?.data?.orderId;
-      if (orderId) navigate(`/orders/${orderId}`);
-    } catch (err) {
-      toast.error(err.response?.data?.message || 'Không thể chốt đơn nhóm');
-    } finally {
-      setGroupBusy(false);
-    }
-  };
+  // const handleCheckoutGroup = async () => {
+  //   setGroupBusy(true);
+  //   try {
+  //     const res = await apiClient.post(`/group-orders/${groupOrder.groupOrderId}/checkout`, { paymentMethod: 'COD' });
+  //     toast.success('Đặt đơn nhóm thành công!');
+  //     setGroupOrder(null);
+  //     clearGroupParam();
+  //     const orderId = res.data?.data?.orderId;
+  //     if (orderId) navigate(`/orders/${orderId}`);
+  //   } catch (err) {
+  //     toast.error(err.response?.data?.message || 'Không thể chốt đơn nhóm');
+  //   } finally {
+  //     setGroupBusy(false);
+  //   }
+  // };
 
   const handleLeaveGroup = async () => {
     setGroupBusy(true);
@@ -1309,7 +1340,7 @@ export default function RestaurantDetail() {
                   icon={QrCode}
                   className="bg-emerald-50 hover:bg-emerald-100 text-emerald-600 font-bold flex-1 sm:w-auto px-3 whitespace-nowrap"
                 >
-                  Mã mời: {groupOrder.inviteCode}
+                  Đang đặt đơn nhóm
                 </Button>
               )}
               <Button 
@@ -1826,7 +1857,7 @@ export default function RestaurantDetail() {
             </div>
 
             <p className="text-[11px] text-slate-400">
-              Mã mời: <span className="font-black text-slate-600 tracking-widest">{groupOrder.inviteCode}</span>
+              Mã mời: <span className="font-black text-slate-600 tracking-widest break-all">{groupOrder.inviteCode}</span>
             </p>
           </div>
         )}
@@ -1962,6 +1993,50 @@ export default function RestaurantDetail() {
               className="flex-1 !px-5 !py-2 !text-xs !font-bold !bg-primary-600 hover:!bg-primary-700 !text-white shadow-md mb-0"
             >
               Tham gia ngay
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* ─── MODAL XÁC NHẬN CHỐT ĐƠN KHI CÒN THÀNH VIÊN CHƯA SẴN SÀNG ─────────── */}
+      <Modal
+        isOpen={confirmCheckoutModal.isOpen}
+        onClose={() => confirmCheckoutModal.close()}
+        title="Vẫn còn thành viên chưa xong"
+        size="sm"
+        className="[&_h2]:!text-slate-900 [&_h2]:!text-base [&_h2]:md:!text-lg [&_h2]:!font-bold"
+      >
+        <div className="space-y-4 -mt-3">
+          <p className="text-xs sm:text-sm text-md-on-surface-variant font-medium">
+            {confirmCheckoutModal.data?.unreadyMembers?.length} thành viên chưa bấm "Hoàn tất chọn món". Nếu chốt đơn ngay, họ sẽ không kịp bổ sung thêm món nữa.
+          </p>
+
+          {confirmCheckoutModal.data?.unreadyMembers?.length > 0 && (
+            <ul className="space-y-1.5 max-h-32 overflow-y-auto no-scrollbar">
+              {confirmCheckoutModal.data.unreadyMembers.map((m) => (
+                <li key={m.memberId} className="flex items-center justify-between text-xs font-semibold bg-amber-50 border border-amber-100 rounded-lg px-3 py-2">
+                  <span className="text-slate-700 truncate">{m.fullName}</span>
+                  <span className="text-amber-600 shrink-0">{m.items?.length ? `${m.items.length} món` : 'Chưa chọn món'}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+
+          <div className="flex items-center gap-3 pt-2 border-t border-slate-100">
+            <Button
+              variant="outline"
+              onClick={() => confirmCheckoutModal.close()}
+              disabled={groupBusy}
+              className="flex-1 font-bold !py-2 !text-xs"
+            >
+              Chờ thêm
+            </Button>
+            <Button
+              onClick={() => doCheckoutGroup(true)}
+              disabled={groupBusy}
+              className="flex-1 !py-2 !text-xs !font-bold !bg-primary-600 hover:!bg-primary-700 !text-white shadow-md mb-0"
+            >
+              Vẫn chốt đơn
             </Button>
           </div>
         </div>

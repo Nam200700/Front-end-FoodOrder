@@ -9,7 +9,7 @@ import {
   MessageSquare, AlertTriangle, Bike, AlertCircle, X, ZoomIn, ChevronLeft, ChevronRight,
   Utensils, Info, Truck, Wallet, Timer, Sparkles, TrendingUp, ThumbsUp, Award, ArrowDownUp,
   Camera, ChevronDown, Frown, Meh, Smile, Laugh, MessageSquareText, Store,
-  Users, Copy, QrCode, Link2, Lock, Send, LogOut, Ban, CheckCheck, Pencil, StickyNote,
+  Users, Copy, QrCode, Link2, Lock, Send, LogOut, Ban, CheckCheck, Pencil, StickyNote, Edit2
 } from 'lucide-react';
 import { formatCurrency } from '../../utils/format';
 import { getFoodImageUrl, DEFAULT_FOOD_IMAGE } from '../../utils/avatarHelper';
@@ -22,6 +22,7 @@ import { toast } from 'react-toastify';
 import { mapRestaurant } from '../../utils/mappers';
 import { useModalState } from '../../hooks/useModalState';
 import { useFetchData } from '../../hooks/useFetchData';
+import MapModal2 from '../../components/common/Map';
 
 // Hàng 5 sao dùng chung — tô theo điểm (làm tròn), tuỳ chọn hiệu ứng pop cho sinh động.
 function StarRow({ value = 0, size = 14, animate = false, className = '' }) {
@@ -511,7 +512,7 @@ const GROUP_STATUS_META = {
  * thành viên đánh dấu sẵn sàng hoặc rời phiên.
  * Món của CHÍNH MÌNH có thêm icon ghi chú (Pencil) và icon xoá (X).
  */
-function GroupOrderPanel({ groupOrder, isHost, myMember, onMarkReady, onLock, onCheckout, onLeave, onCancel, onShowInvite, busy, handleRemoveGroupItem, onEditNote }) {
+function GroupOrderPanel({ groupOrder, isHost, myMember, onMarkReady, onLock, onCheckout, onLeave, onCancel, onShowInvite, busy, handleRemoveGroupItem, onEditNote, shippingFee, onChangeAddress }) {
   const { user } = useAuthStore();
   if (!groupOrder) return null;
   const isOpen = groupOrder.status === 'OPEN';
@@ -535,6 +536,18 @@ function GroupOrderPanel({ groupOrder, isHost, myMember, onMarkReady, onLock, on
         <span className={`text-[10px] font-black px-2 py-1 rounded-full ${statusMeta.cls}`}>{statusMeta.label}</span>
         <span className="text-[11px] text-slate-400 font-semibold">{groupOrder.memberCount} thành viên · {groupOrder.totalItemCount} món</span>
       </div>
+
+      {isHost && groupOrder.status === 'OPEN' && onChangeAddress && (
+        <button
+          onClick={onChangeAddress}
+          className="w-full flex items-center justify-between text-xs bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-lg px-3 py-2 mb-3 transition-colors"
+        >
+          <span className="flex items-center gap-1.5 text-slate-500 font-semibold">
+            <MapPin size={13} /> Giao đến:
+          </span>
+          <span className="font-bold text-slate-700 truncate max-w-[150px]">{groupOrder.deliveryAddress}</span>
+        </button>
+      )}
 
       <div className="space-y-2.5 max-h-64 overflow-y-auto no-scrollbar pr-1">
         {groupOrder.members?.map((m) => {
@@ -602,9 +615,19 @@ function GroupOrderPanel({ groupOrder, isHost, myMember, onMarkReady, onLock, on
         })}
       </div>
 
-      <div className="flex items-center justify-between border-t border-slate-100 pt-3 mt-4">
-        <span className="text-xs font-bold text-md-on-surface-variant">Tạm tính cả nhóm</span>
-        <span className="text-base font-extrabold text-emerald-600">{formatCurrency(groupOrder.subtotalAmount || 0)}</span>
+      <div className="space-y-1.5 border-t border-slate-100 pt-3 mt-4">
+        <div className="flex items-center justify-between text-xs text-slate-500">
+          <span className="flex items-center gap-1.5">Tạm tính cả nhóm</span>
+          <span className="font-bold text-slate-700">{formatCurrency(groupOrder.subtotalAmount || 0)}</span>
+        </div>
+        <div className="flex items-center justify-between text-xs text-slate-500">
+          <span className="flex items-center gap-1.5">Phí giao hàng</span>
+          <span className="font-bold text-slate-700">{formatCurrency(shippingFee)}</span>
+        </div>
+        <div className="flex items-center justify-between">
+          <span className="text-xs font-bold text-md-on-surface-variant">Tổng thanh toán</span>
+          <span className="text-base font-extrabold text-emerald-600">{formatCurrency(groupOrder.subtotalAmount + shippingFee)}</span>
+        </div>
       </div>
 
       <div className="mt-4 space-y-2.5">
@@ -634,7 +657,7 @@ function GroupOrderPanel({ groupOrder, isHost, myMember, onMarkReady, onLock, on
           <Button 
             onClick={onCheckout} 
             disabled={busy} 
-            className="w-full !bg-gradient-to-r !from-emerald-600 !to-teal-600 hover:!from-emerald-700 hover:!to-teal-700 text-white font-extrabold shadow-md hover:shadow-lg transition-all duration-200"
+            className="w-full !bg-primary-to-r !from-emerald-600 !to-teal-600 hover:!from-emerald-700 hover:!to-teal-700 text-white font-extrabold shadow-md hover:shadow-lg transition-all duration-200"
           >
             Đặt Hàng
           </Button>
@@ -725,6 +748,27 @@ export default function RestaurantDetail() {
 
   const confirmInviteModal = useModalState(null); 
 
+  // ─── Địa chỉ giao hàng cho phiên nhóm — cùng flow với Cart.jsx (danh sách + bản đồ) ───
+  const groupAddressListModal = useModalState();   // giống addressListModal ở Cart.jsx
+  const groupMapModal = useModalState();           // giống mapModal2 ở Cart.jsx
+  const [groupUserAddresses, setGroupUserAddresses] = useState([]);
+  const [savingGroupAddress, setSavingGroupAddress] = useState(false);
+  const [groupEditingAddressId, setGroupEditingAddressId] = useState(null);
+  const [groupAddressLabel, setGroupAddressLabel] = useState('Nhà riêng');
+  const [groupMapInitialCoords, setGroupMapInitialCoords] = useState({
+    lat: user?.lat || 10.762622,
+    lng: user?.lng || 106.660172,
+  });
+
+  useEffect(() => {
+    if (!id) return;
+    
+    const customerLat = user?.lat;
+    const customerLng = user?.lng;
+
+    fetchShippingForRestaurant(id, customerLat, customerLng);
+    
+  }, [id, user?.lat, user?.lng, fetchShippingForRestaurant]);
 
   useEffect(() => {
     const fetchDetails = async () => {
@@ -744,12 +788,12 @@ export default function RestaurantDetail() {
         const realFoods = menuResponse.data?.data || [];
 
         if (realRes) {
-          const cached = restaurantShippingCache[id];
-          if (!cached) {
-            const customerLat = user?.lat || 10.762622;
-            const customerLng = user?.lng || 106.660172;
-            fetchShippingForRestaurant(id, customerLat, customerLng);
-          }
+          // const cached = restaurantShippingCache[id];
+          // if (!cached) {
+          //   const customerLat = user?.lat || 10.762622;
+          //   const customerLng = user?.lng || 106.660172;
+          //   fetchShippingForRestaurant(id, customerLat, customerLng);
+          // }
 
           // SỐ SAO & TỔNG ĐÁNH GIÁ lấy TOÀN CỤC từ BE (mapRestaurant → realRes.rating/reviewsCount).
           // Danh sách đánh giá do tab Đánh giá (ReviewsTab) tự nạp có lọc/sắp xếp/phân trang server-side.
@@ -1128,6 +1172,123 @@ export default function RestaurantDetail() {
       copyInviteLink();
     }
   };
+
+  // Mở modal danh sách địa chỉ cho phiên nhóm — chỉ host, khi phiên còn OPEN
+  const openGroupAddressModal = async () => {
+    try {
+      const res = await apiClient.get('/addresses');
+      setGroupUserAddresses(res.data?.data || []);
+    } catch (err) {
+      console.warn('Không tải được danh sách địa chỉ:', err);
+    }
+    groupAddressListModal.open();
+  };
+
+  // Chọn 1 địa chỉ đã lưu -> áp trực tiếp cho phiên nhóm qua addressId
+  // Chọn 1 địa chỉ đã lưu -> đặt làm MẶC ĐỊNH trong sổ địa chỉ (PUT /addresses/{id})
+// rồi áp luôn địa chỉ đó cho phiên nhóm (PATCH /group-orders/{id}/address)
+  const selectGroupAddress = async (item) => {
+    if (!groupOrder) return;
+    setSavingGroupAddress(true);
+    try {
+      // 1) Lưu làm địa chỉ mặc định xuống DB — đồng bộ với AddressCustomer/Cart.jsx
+      await apiClient.put(`/addresses/${item.addressId}`, {
+        label: item.label || 'Nhà riêng',
+        address: item.address,
+        latitude: Number(item.latitude),
+        longitude: Number(item.longitude),
+        isDefault: true,
+      });
+
+      // 2) Áp địa chỉ này cho phiên nhóm
+      const res = await apiClient.patch(`/group-orders/${groupOrder.groupOrderId}/address`, {
+        addressId: item.addressId,
+      });
+      setGroupOrder(res.data?.data || null);
+
+      // 3) Nạp lại danh sách để phản ánh cờ "Mặc định" mới trên UI
+      const listRes = await apiClient.get('/addresses');
+      setGroupUserAddresses(listRes.data?.data || []);
+
+      toast.success('Đã đặt làm mặc định và cập nhật địa chỉ giao hàng cho phiên nhóm!');
+      groupAddressListModal.close();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Không thể đổi địa chỉ.');
+    } finally {
+      setSavingGroupAddress(false);
+    }
+  };
+
+  // Mở bản đồ để THÊM địa chỉ mới (giống handleOpenAddModal ở Cart.jsx)
+  const handleOpenGroupAddModal = () => {
+    setGroupEditingAddressId(null);
+    setGroupAddressLabel('Nhà riêng');
+    setGroupMapInitialCoords({
+      lat: user?.lat || 10.762622,
+      lng: user?.lng || 106.660172,
+    });
+    groupAddressListModal.close();
+    groupMapModal.open();
+  };
+
+  // Mở bản đồ để SỬA địa chỉ đã có (giống handleOpenEditModal ở Cart.jsx)
+  const handleOpenGroupEditModal = (item) => {
+    setGroupEditingAddressId(item.addressId);
+    setGroupAddressLabel(item.label || 'Nhà riêng');
+    setGroupMapInitialCoords({
+      lat: Number(item.latitude) || 10.762622,
+      lng: Number(item.longitude) || 106.660172,
+    });
+    groupAddressListModal.close();
+    groupMapModal.open();
+  };
+
+  // Xác nhận trên bản đồ -> lưu vào /addresses (y hệt Cart.jsx), rồi áp luôn cho phiên nhóm
+  const handleGroupMapConfirmAndSave = async (latVal, lngVal, addressNameVal) => {
+    try {
+      const payload = {
+        label: groupAddressLabel || 'Nhà riêng',
+        address: addressNameVal,
+        latitude: Number(latVal),
+        longitude: Number(lngVal),
+        isDefault: groupUserAddresses.length === 0,
+      };
+
+      let savedAddressId = groupEditingAddressId;
+      if (groupEditingAddressId) {
+        await apiClient.put(`/addresses/${groupEditingAddressId}`, payload);
+        toast.success('Cập nhật địa chỉ thành công!');
+      } else {
+        const res = await apiClient.post('/addresses', payload);
+        savedAddressId = res.data?.data?.addressId;
+        toast.success('Thêm địa chỉ mới thành công!');
+      }
+
+      // Áp địa chỉ vừa lưu cho phiên nhóm — ưu tiên addressId, fallback toạ độ/text nếu chưa có id
+      if (groupOrder) {
+        const res = savedAddressId
+          ? await apiClient.patch(`/group-orders/${groupOrder.groupOrderId}/address`, { addressId: savedAddressId })
+          : await apiClient.patch(`/group-orders/${groupOrder.groupOrderId}/address`, {
+              deliveryAddress: addressNameVal,
+              deliveryLat: Number(latVal),
+              deliveryLng: Number(lngVal),
+            });
+        setGroupOrder(res.data?.data || null);
+      }
+
+      groupMapModal.close();
+      setGroupEditingAddressId(null);
+
+      const listRes = await apiClient.get('/addresses');
+      setGroupUserAddresses(listRes.data?.data || []);
+      groupAddressListModal.open();
+    } catch (err) {
+      console.error('Lỗi lưu địa chỉ cho phiên nhóm:', err);
+      toast.error(err.response?.data?.message || 'Lưu địa chỉ thất bại!');
+    }
+  };
+
+  
 
   // ═══════════════════════ HẾT PHẦN NHÓM ═══════════════════════
 
@@ -1629,6 +1790,8 @@ export default function RestaurantDetail() {
                 onShowInvite={() => inviteModal.open()}
                 handleRemoveGroupItem={handleRemoveGroupItem}
                 onEditNote={openNoteEditor}
+                shippingFee={shippingFee}
+                onChangeAddress={openGroupAddressModal}
               />
             ) : (
               <Card variant="elevated" className="p-5">
@@ -2127,6 +2290,93 @@ export default function RestaurantDetail() {
           </div>
         </div>
       </Modal>
+
+      {/* ─── MODAL DANH SÁCH ĐỊA CHỈ CHO PHIÊN NHÓM (đồng bộ với AddressCustomer/Cart.jsx) ─── */}
+      <Modal
+        isOpen={groupAddressListModal.isOpen}
+        onClose={() => groupAddressListModal.close()}
+        title="Địa Chỉ Giao Hàng Cho Phiên Nhóm"
+        size="md"
+        className="!rounded-2xl"
+      >
+        <div className="space-y-4 -mx-6 -my-6 flex flex-col h-full">
+          <div className="max-h-[55vh] overflow-y-auto space-y-3 px-6 pt-2 pb-1">
+            {groupUserAddresses.map((item) => {
+              const isSelected = groupOrder?.deliveryAddress === item.address;
+              return (
+                <div
+                  key={item.addressId}
+                  onClick={() => 
+                    selectGroupAddress(item)
+                  }
+                  className={`p-4 rounded-2xl border transition-all cursor-pointer flex items-start gap-3.5 relative ${
+                    isSelected ? 'border-md-primary bg-orange-50/20 shadow-sm' : 'border-slate-200/80 hover:border-slate-300 bg-white'
+                  }`}
+                >
+                  <div className={`mt-1 w-4 h-4 rounded-full border flex items-center justify-center shrink-0 transition-colors ${
+                    isSelected ? 'border-md-primary bg-md-primary' : 'border-slate-300 bg-white'
+                  }`}>
+                    {isSelected && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
+                  </div>
+
+                  <div className="flex-1 text-xs space-y-1">
+                    <span className="font-extrabold text-slate-900 text-sm flex items-center gap-2 flex-wrap">
+                      {item.label || 'Địa chỉ'}
+                      {item.default && (
+                        <span className="px-2 py-0.5 text-[10px] font-bold text-md-primary bg-orange-50 border border-orange-200 rounded-md">
+                          Mặc định
+                        </span>
+                      )}
+                    </span>
+                    <p className="text-slate-600 leading-relaxed font-normal pr-4">{item.address}</p>
+                  </div>
+
+                  <Button
+                    type="button"
+                    variant="text"
+                    size="sm"
+                    icon={Edit2}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleOpenGroupEditModal(item);
+                    }}
+                    className="absolute right-3.5 top-3 !inline-flex items-center gap-1 text-[11px] font-bold !text-md-primary hover:!bg-orange-50/75 !py-1 !px-2 !rounded-lg !shadow-none cursor-pointer"
+                  >
+                    Cập nhật
+                  </Button>
+                </div>
+              );
+            })}
+            {groupUserAddresses.length === 0 && (
+              <p className="text-xs text-slate-500 text-center py-6">Chưa có địa chỉ nào được lưu.</p>
+            )}
+          </div>
+
+          <div className="px-6 pt-3 pb-4 border-t border-slate-100 bg-white mt-auto">
+            <Button
+              onClick={handleOpenGroupAddModal}
+              disabled={savingGroupAddress}
+              className="w-full !bg-md-primary hover:!bg-md-primary/90 text-white font-bold py-3.5 rounded-2xl text-xs uppercase tracking-wider shadow-md shadow-orange-500/20 cursor-pointer flex items-center justify-center gap-1.5"
+            >
+              <span className="text-base font-black">+</span> Thêm Địa Chỉ Mới
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* ─── MODAL BẢN ĐỒ THÊM/SỬA ĐỊA CHỈ CHO PHIÊN NHÓM ─────────────────────────── */}
+      <MapModal2
+        key={`group-${groupEditingAddressId || 'new'}-${groupMapInitialCoords.lat}-${groupMapInitialCoords.lng}`}
+        isOpen={groupMapModal.isOpen}
+        onClose={() => groupMapModal.close()}
+        onConfirm={handleGroupMapConfirmAndSave}
+        isEditMode={Boolean(groupEditingAddressId)}
+        initialLat={groupMapInitialCoords.lat}
+        initialLng={groupMapInitialCoords.lng}
+        addressLabel={groupAddressLabel}
+        setAddressLabel={setGroupAddressLabel}
+        showLabelSelector={true}
+      />
 
       {selectedImage && (
         <div 

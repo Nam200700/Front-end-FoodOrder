@@ -32,7 +32,8 @@ export default function Voucher() {
     startDate: '',
     endDate: '',
     status: 'ACTIVE',
-    issueType: 'EVENT'
+    issueType: 'EVENT',
+    pointsCost: ''
   });
 
   const [submitting, setSubmitting] = useState(false);
@@ -87,7 +88,8 @@ export default function Voucher() {
       startDate: '',
       endDate: '',
       status: 'ACTIVE',
-      issueType: 'EVENT'
+      issueType: 'EVENT',
+      pointsCost: ''
     });
     formModal.open(null);
   };
@@ -108,7 +110,8 @@ export default function Voucher() {
       startDate: formatLocalDateTime(voucher.startDate),
       endDate: formatLocalDateTime(voucher.endDate),
       status: voucher.status || 'ACTIVE',
-      issueType: voucher.issueType || 'EVENT'
+      issueType: voucher.issueType || 'EVENT',
+      pointsCost: voucher.pointsCost != null ? voucher.pointsCost : ''
     });
     formModal.open(voucher.voucherId);
   };
@@ -358,12 +361,17 @@ export default function Voucher() {
                     <td className="py-3.5 px-4 w-40 text-slate-800 font-bold truncate" title={v.name}>{v.name}</td>
                     <td className="py-3.5 px-4 w-32 truncate">
                       <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold ${
-                        v.issueType === 'EVENT' 
-                          ? 'bg-indigo-50 text-indigo-600 border border-indigo-200' 
-                          : 'bg-rose-50 text-rose-600 border border-rose-200'
+                        v.issueType === 'EVENT'
+                          ? 'bg-indigo-50 text-indigo-600 border border-indigo-200'
+                          : v.issueType === 'LOYALTY'
+                            ? 'bg-amber-50 text-amber-600 border border-amber-200'
+                            : 'bg-rose-50 text-rose-600 border border-rose-200'
                       }`}>
-                        {v.issueType === 'EVENT' ? 'Sự kiện' : 'Hủy đơn hàng'}
+                        {v.issueType === 'EVENT' ? 'Sự kiện' : v.issueType === 'LOYALTY' ? 'Đổi điểm' : 'Hủy đơn hàng'}
                       </span>
+                      {v.issueType === 'LOYALTY' && v.pointsCost != null && (
+                        <span className="block mt-1 text-[10px] font-bold text-amber-600">Cần {v.pointsCost} điểm</span>
+                      )}
                     </td>
                     <td className="py-3.5 px-4 w-28 text-slate-600 truncate">
                       {v.discountType === 'PERCENT' ? 'Phần trăm (%)' : v.discountType === 'FIXED' ? 'Cố định (VNĐ)' : 'Miễn phí ship'}

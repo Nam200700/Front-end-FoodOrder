@@ -301,7 +301,7 @@ export default function Profile() {
 
   return (
     <div className="flex-1 p-4 md:p-8 max-w-4xl mx-auto w-full font-google-sans pb-24 space-y-6">
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
       {/* ─── CỘT TRÁI: thẻ thành viên + thẻ truy cập nhanh ───────────────────────── */}
       <div className="flex flex-col gap-6">
 
@@ -467,7 +467,7 @@ export default function Profile() {
       </div>
 
       {/* ─── CỘT PHẢI: form hồ sơ ──────────────────────────── */}
-      <Card className="p-5 border border-md-outline-variant/20 shadow-sm space-y-5.5 animate-slide-up h-full flex flex-col">
+      <Card className="p-5 border border-md-outline-variant/20 shadow-sm space-y-5.5 animate-slide-up">
         <div className="flex items-center gap-2.5 pb-3 border-b border-md-outline-variant/20">
           <span className="w-8 h-8 rounded-xl bg-gradient-to-br from-md-primary to-[#FF8C42] text-white flex items-center justify-center shadow-sm animate-float">
             <User size={16} />
@@ -568,7 +568,7 @@ export default function Profile() {
           disabled={updating}
           loading={updating}
           icon={updating ? undefined : Save}
-          className="group w-full mt-auto bg-md-primary text-white font-bold py-3.5 px-4 rounded-radius-full shadow-shadow-2 hover:shadow-shadow-3 hover:translate-y-[-1.5px] active:translate-y-[0px] transition-all flex items-center justify-center gap-2 text-xs uppercase tracking-wider cursor-pointer [&_svg]:group-hover:rotate-[-8deg] [&_svg]:transition-transform"
+          className="group w-full bg-md-primary text-white font-bold py-3.5 px-4 rounded-radius-full shadow-shadow-2 hover:shadow-shadow-3 hover:translate-y-[-1.5px] active:translate-y-[0px] transition-all flex items-center justify-center gap-2 text-xs uppercase tracking-wider cursor-pointer [&_svg]:group-hover:rotate-[-8deg] [&_svg]:transition-transform"
         >
           Cập nhật thông tin
         </Button>

@@ -44,9 +44,36 @@ export default function Profile() {
   const addressListModal = useModalState(); 
   const mapModal2 = useModalState();        
 
-  // Danh sách địa chỉ 
+  // Danh sách địa chỉ
   const [userAddresses, setUserAddresses] = useState([]);
   const [selectedAddressId, setSelectedAddressId] = useState(null);
+
+  // Uy tín & điểm thưởng (loyalty)
+  const [account, setAccount] = useState(null);
+  const [loyaltyOpen, setLoyaltyOpen] = useState(false);
+  const [loyaltyCatalog, setLoyaltyCatalog] = useState([]);
+  const [redeemingId, setRedeemingId] = useState(null);
+
+  const fetchAccount = async () => {
+    try { const r = await apiClient.get('/users/me'); setAccount(r.data?.data || null); } catch { /* ignore */ }
+  };
+  useEffect(() => { fetchAccount(); }, []);
+
+  const openLoyalty = async () => {
+    setLoyaltyOpen(true);
+    try { const r = await apiClient.get('/users/loyalty/catalog'); setLoyaltyCatalog(r.data?.data || []); }
+    catch { setLoyaltyCatalog([]); }
+  };
+  const handleRedeem = async (voucherId) => {
+    setRedeemingId(voucherId);
+    try {
+      await apiClient.post('/users/loyalty/redeem', { voucherId });
+      toast.success('Đổi điểm thành công! Voucher đã vào ví của bạn.');
+      await fetchAccount();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Không đổi được điểm.');
+    } finally { setRedeemingId(null); }
+  };
 
   // State phục vụ việc thêm/sửa địa chỉ qua MapModal2
   const [editingAddressId, setEditingAddressId] = useState(null); 

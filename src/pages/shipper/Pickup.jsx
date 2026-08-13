@@ -381,6 +381,28 @@ export default function ShipperPickup() {
     mapRef.current.fitBounds(polylineRef.current.getBounds(), { padding: [40, 40] });
   }, [routeCoords, mapReady]);
 
+  const [abandonOpen, setAbandonOpen] = useState(false);
+  const [abandonReason, setAbandonReason] = useState('');
+
+  const handleAbandon = async () => {
+    if (!activeJob) return;
+    if (!abandonReason.trim()) { toast.warn('Vui lòng nhập lý do bỏ đơn'); return; }
+    try {
+      setLoading(true);
+      await apiClient.patch(`/shipper/orders/${activeJob.id}/abandon`, { reason: abandonReason.trim() });
+      toast.info('Đã bỏ đơn. Lưu ý: bỏ đơn sẽ bị TRỪ điểm uy tín — hạn chế bỏ đơn nhé!');
+      setAbandonOpen(false);
+      setAbandonReason('');
+      setActiveJob(null);
+      setRouteCoords([]);
+      await fetchAvailableOrders();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Không thể bỏ đơn lúc này.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleAcceptJob = async (order) => {
     try {
       setLoading(true);

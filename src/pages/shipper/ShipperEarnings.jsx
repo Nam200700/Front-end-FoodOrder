@@ -4,7 +4,43 @@ import { DollarSign, TrendingUp, Star, CheckCircle2, Wallet, BarChart3, Calendar
 import { formatCurrency } from '../../utils/format';
 import { useFetchData } from '../../hooks/useFetchData';
 import ErrorState from '../../components/common/ErrorState';
-import { SkeletonOrderCard } from '../../components/common/SkeletonCard';
+import { SkeletonStatCard, SkeletonChartCard } from '../../components/common/SkeletonCard';
+import InsightHeadline from '../../components/common/InsightHeadline';
+
+// Biểu đồ cột thu nhập dùng chung cho "tuần này theo thứ" & "6 tháng" (khử trùng lặp,
+// vẫn giữ nhãn số trên đầu cột + tô đậm cột cao điểm — phần dẫn dắt người đọc).
+function EarningsBarChart({ data, xKey = 'day', highlightKey = null, xFontSize = 14, maxBar = 54 }) {
+  return (
+    <div className="h-64 w-full text-sm font-semibold">
+      <ResponsiveContainer width="100%" height="100%">
+        <BarChart data={data} margin={{ top: 22, right: 10, left: -12, bottom: 0 }}>
+          <CartesianGrid strokeDasharray="3 3" vertical={false} />
+          <XAxis dataKey={xKey} tickLine={false} axisLine={false} tick={{ fontSize: xFontSize, fontWeight: 700, fill: '#475569' }} />
+          <YAxis tickLine={false} axisLine={false} allowDecimals={false} width={38} tick={{ fontSize: 13, fill: '#94a3b8' }} tickFormatter={(v) => (v === 0 ? '0' : `${Math.round(v / 1000)}k`)} />
+          <Tooltip formatter={(value) => [formatCurrency(value), 'Thu nhập']} cursor={{ fill: 'rgba(52,168,83,0.06)' }} contentStyle={{ fontSize: 13, fontWeight: 600, borderRadius: 10 }} />
+          <Bar dataKey="amount" radius={[6, 6, 0, 0]} maxBarSize={maxBar} fill="#34A853">
+            {highlightKey && data.map((entry, idx) => (
+              <Cell key={idx} fill={entry[xKey] === highlightKey && entry.amount > 0 ? '#2E7D32' : '#34A853'} />
+            ))}
+            <LabelList dataKey="amount" position="top" formatter={(v) => (v > 0 ? `${Math.round(v / 1000)}k` : '')} style={{ fontSize: 13, fontWeight: 800, fill: '#334155' }} />
+          </Bar>
+        </BarChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}
+
+// Tiêu đề nhóm dẫn dắt mạch đọc: Tổng quan → Xu hướng → Gợi ý.
+function SectionTitle({ icon: Icon, children, hint }) {
+  return (
+    <div className="flex items-baseline gap-2 pt-1">
+      <h2 className="text-sm font-extrabold text-slate-700 flex items-center gap-1.5">
+        {Icon && <Icon size={16} className="text-md-tertiary" />} {children}
+      </h2>
+      {hint && <span className="text-[11px] text-slate-400 font-medium">· {hint}</span>}
+    </div>
+  );
+}
 
 export default function ShipperEarnings() {
   // Nhận DTO tổng hợp từ server (/shipper/stats/insights) → map về đúng shape UI đang dùng.

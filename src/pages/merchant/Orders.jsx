@@ -826,13 +826,15 @@ export default function MerchantOrders() {
       <Modal
         isOpen={cancelModal.isOpen}
         onClose={handleCloseCancelModal}
-        title={`Xác Nhận Từ Chối Đơn Hàng #${cancelModal.data}`}
+        title={`${cancelMode === 'cancel' ? 'Xác Nhận Hủy Đơn Hàng' : 'Xác Nhận Từ Chối Đơn Hàng'} #${cancelModal.data}`}
         size="sm"
       >
         <div className="space-y-4 text-slate-700">
           <div className="p-3 bg-rose-50 text-rose-800 rounded-lg text-xs font-medium border border-rose-100 flex items-start gap-2">
             <AlertCircle className="shrink-0 mt-0.5 text-rose-600" size={15} />
-            <span>Lưu ý: Hành động từ chối đơn hàng sẽ hủy giao dịch của khách hàng ngay lập tức.</span>
+            <span>{cancelMode === 'cancel'
+              ? 'Lưu ý: Hủy đơn ĐÃ xác nhận sẽ TRỪ điểm uy tín của quán và khách được đền voucher.'
+              : 'Lưu ý: Hành động từ chối đơn hàng sẽ hủy giao dịch của khách hàng ngay lập tức.'}</span>
           </div>
 
           <div className="space-y-1.5">
@@ -886,7 +888,7 @@ export default function MerchantOrders() {
               onClick={handleCancelSubmit}
               className="!py-2 rounded-lg text-xs"
             >
-              Xác nhận từ chối
+              {cancelMode === 'cancel' ? 'Xác nhận hủy đơn' : 'Xác nhận từ chối'}
             </Button>
           </div>
         </div>

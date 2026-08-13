@@ -12,8 +12,21 @@ import { periodComparison, monthEndForecast, forecastNextDays } from '../../util
 import PeriodCompareStrip from '../../components/common/PeriodCompareStrip';
 import ForecastCard from '../../components/common/ForecastCard';
 import { formatCurrency } from '../../utils/format';
-import Spinner from '../../components/common/Spinner';
+import InsightHeadline from '../../components/common/InsightHeadline';
+import { SkeletonStatCard, SkeletonChartCard } from '../../components/common/SkeletonCard';
 import { useFetchData } from '../../hooks/useFetchData';
+
+// Tiêu đề nhóm dẫn chuyện (dark theme admin) — chia trang thành các chương.
+function SectionTitle({ icon: Icon, children, hint }) {
+  return (
+    <div className="flex items-center gap-2 pt-1">
+      {Icon && <Icon size={16} className="text-purple-400 shrink-0" />}
+      <h2 className="text-sm font-extrabold text-slate-200 uppercase tracking-wider">{children}</h2>
+      {hint && <span className="text-[10px] text-slate-500 font-semibold hidden sm:inline">· {hint}</span>}
+      <div className="flex-1 h-px bg-slate-800/80 ml-1" />
+    </div>
+  );
+}
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
@@ -63,7 +76,18 @@ export default function AdminDashboard() {
   }, [voucherAnalytics]);
 
   if (loading && !overviewStats) {
-    return <Spinner fullScreen />;
+    return (
+      <div className="flex-1 p-4 md:p-8 max-w-7xl mx-auto w-full space-y-6">
+        <SkeletonChartCard theme="dark" className="!h-24 !p-4" />
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          {Array.from({ length: 4 }).map((_, i) => <SkeletonStatCard key={i} theme="dark" />)}
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <SkeletonChartCard theme="dark" className="lg:col-span-2" />
+          <SkeletonChartCard theme="dark" />
+        </div>
+      </div>
+    );
   }
 
   if (hasError) {
@@ -175,7 +199,6 @@ export default function AdminDashboard() {
           <h1 className="font-display-small text-xl md:text-2xl font-bold text-slate-100 flex items-center gap-2">
             <Shield className="text-purple-400" size={24} /> Admin Control Panel
           </h1>
-          <p className="text-xs text-slate-400 mt-1">Tổng quan sức khoẻ toàn hệ thống · số liệu thật, tính trực tiếp trên toàn bộ dữ liệu</p>
         </div>
         <button
           onClick={() => { refetchOverview(); refetchInsights(); }}
@@ -184,6 +207,19 @@ export default function AdminDashboard() {
           <RefreshCw size={13} /> Làm mới
         </button>
       </div>
+
+      {/* ─── CÂU CHUYỆN DỮ LIỆU: chốt ngay điều quan trọng nhất ─── */}
+      <InsightHeadline
+        theme="dark"
+        icon={TrendingUp}
+        accent="#9334E6"
+        eyebrow="7 ngày qua"
+        trend={gmvT.has ? { pct: gmvT.pct } : undefined}
+      >
+        Toàn sàn 7 ngày qua đạt <span className="font-black text-slate-100">{formatCurrency(gmv7d)}</span> GTV
+        {' '}từ <span className="font-black text-slate-100">{orders7d.toLocaleString('vi-VN')}</span> đơn hoàn tất
+        {gmvT.has ? <>, {gmvT.dir === 'up' ? 'tăng' : 'giảm'} {Math.abs(gmvT.pct)}% so với tuần trước.</> : '.'}
+      </InsightHeadline>
 
       {/* ─── CẢNH BÁO HỆ THỐNG ─── */}
       <div className="space-y-2.5">
@@ -215,6 +251,9 @@ export default function AdminDashboard() {
           })
         )}
       </div>
+
+      {/* ─── TỔNG QUAN ─── */}
+      <SectionTitle icon={Activity} hint="sức khoẻ toàn sàn lúc này">Tổng quan</SectionTitle>
 
       {/* ─── KPI XU HƯỚNG ─── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
@@ -263,6 +302,9 @@ export default function AdminDashboard() {
           );
         })}
       </div>
+
+      {/* ─── XU HƯỚNG & DỰ BÁO ─── */}
+      <SectionTitle icon={TrendingUp} hint="dòng tiền đang đi về đâu">Xu hướng &amp; dự báo</SectionTitle>
 
       {/* ─── GTV 30 NGÀY (server) + GIỜ CAO ĐIỂM ─── */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -353,6 +395,9 @@ export default function AdminDashboard() {
           </div>
         </div>
       </div>
+
+      {/* ─── VẬN HÀNH & KIỂM DUYỆT ─── */}
+      <SectionTitle icon={Shield} hint="việc cần người xử lý">Vận hành &amp; kiểm duyệt</SectionTitle>
 
       {/* ─── KIỂM DUYỆT + VẬN HÀNH + TOÀN VẸN THANH TOÁN ─── */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -445,6 +490,9 @@ export default function AdminDashboard() {
           </p>
         </div>
       </div>
+
+      {/* ─── KHUYẾN MÃI ─── */}
+      <SectionTitle icon={Ticket} hint="hiệu quả voucher 30 ngày">Khuyến mãi</SectionTitle>
 
       {/* ─── PHÂN TÍCH VOUCHER (30 ngày) ─── */}
       {(() => {

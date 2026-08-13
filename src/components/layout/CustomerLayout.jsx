@@ -19,7 +19,6 @@ import {
   X,
   Sparkles
 } from 'lucide-react';
-import { formatCurrency } from '../../utils/format';
 import { useAuthStore } from '../../stores/authStore';
 import { useWebSocketContext } from '../../contexts/WebSocketContext';
 import { toast, ToastContainer } from 'react-toastify';
@@ -39,7 +38,6 @@ export default function CustomerLayout() {
   const location = useLocation();
   const carts = useCartStore((state) => state.carts);
   const cartCount = carts.reduce((total, cart) => total + (cart.items || []).reduce((sum, item) => sum + item.quantity, 0), 0);
-  const total = carts.reduce((sum, cart) => sum + (cart.subtotal || 0), 0);
   const fetchCart = useCartStore((state) => state.fetchCart);
   const { conversations, connectWebSocket, disconnectWebSocket } = useChatStore();
   const { unreadCount } = useNotificationStore();
@@ -226,26 +224,6 @@ export default function CustomerLayout() {
             tooltipClass="absolute left-22 bg-md-on-surface text-white text-xs px-2.5 py-1.5 rounded-radius-md shadow-md opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap z-50"
           />
         </div>
-
-        {/* Thẻ giỏ hàng mini — CTA riêng của khách (dữ liệu THẬT), không role nào khác có */}
-        {!sidebarCollapsed && cartCount > 0 && (
-          <div className="px-4 pb-1">
-            <button
-              onClick={() => navigate('/cart')}
-              className="w-full flex items-center gap-3 p-3 rounded-radius-xl bg-orange-50 border border-orange-100 hover:border-md-primary/40 hover:shadow-sm transition-all cursor-pointer group"
-            >
-              <span className="relative w-9 h-9 rounded-radius-lg bg-gradient-to-tr from-md-primary to-amber-400 text-white flex items-center justify-center shrink-0 shadow-sm group-hover:scale-105 transition-transform">
-                <ShoppingCart size={16} />
-                <span className="absolute -top-1.5 -right-1.5 bg-white text-md-primary text-[9px] font-extrabold w-4 h-4 rounded-full flex items-center justify-center border border-orange-100">{cartCount}</span>
-              </span>
-              <div className="flex flex-col items-start min-w-0 flex-1">
-                <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wide leading-none">Giỏ hàng của bạn</span>
-                <span className="text-sm font-extrabold text-md-primary truncate leading-none mt-1">{formatCurrency(total)}</span>
-              </div>
-              <ChevronRight size={16} className="text-md-primary shrink-0 group-hover:translate-x-0.5 transition-transform" />
-            </button>
-          </div>
-        )}
 
         {/* Bottom Actions */}
         <div className="p-3 border-t border-orange-100/70">

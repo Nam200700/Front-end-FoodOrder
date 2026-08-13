@@ -2,7 +2,8 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import RevenueAreaChart from '../../components/common/RevenueAreaChart';
 import { formatCurrency } from '../../utils/format';
 import apiClient from '../../services/api';
-import Spinner from '../../components/common/Spinner';
+import InsightHeadline from '../../components/common/InsightHeadline';
+import { SkeletonStatCard, SkeletonChartCard } from '../../components/common/SkeletonCard';
 import KPICard from '../../components/common/KPICard';
 import DonutChart from '../../components/common/DonutChart';
 import {
@@ -49,6 +50,18 @@ const RANGE_TABS = [
   { id: 'thisYear', label: 'Năm Nay' },
   { id: 'all', label: 'Tất Cả' },
 ];
+
+// Tiêu đề nhóm dẫn chuyện (dark theme) — chia báo cáo thành các chương rõ ràng.
+function SectionTitle({ icon: Icon, children, hint }) {
+  return (
+    <div className="flex items-center gap-2 pt-1">
+      {Icon && <Icon size={16} className="text-purple-400 shrink-0" />}
+      <h2 className="text-sm font-extrabold text-slate-200 uppercase tracking-wider">{children}</h2>
+      {hint && <span className="text-[10px] text-slate-500 font-semibold hidden sm:inline">· {hint}</span>}
+      <div className="flex-1 h-px bg-slate-800/80 ml-1" />
+    </div>
+  );
+}
 
 export default function AdminStats() {
   const [overview, setOverview] = useState(null);
@@ -183,7 +196,18 @@ export default function AdminStats() {
   }, [rankedTop, topQuery, topExpanded]);
 
   if (loadingOverview && !overview && !report) {
-    return <Spinner fullScreen />;
+    return (
+      <div className="flex-1 p-4 md:p-8 max-w-6xl mx-auto w-full space-y-6">
+        <SkeletonChartCard theme="dark" className="!h-20 !p-4" />
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          {Array.from({ length: 4 }).map((_, i) => <SkeletonStatCard key={i} theme="dark" />)}
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <SkeletonChartCard theme="dark" className="lg:col-span-2" />
+          <SkeletonChartCard theme="dark" />
+        </div>
+      </div>
+    );
   }
 
   const s = report || {};
@@ -241,11 +265,30 @@ export default function AdminStats() {
 
       <div className={`space-y-6 transition-opacity duration-200 ${loadingReport ? 'opacity-50' : 'opacity-100'}`}>
 
+        {/* ─── CÂU CHUYỆN DỮ LIỆU: chốt ngay con số quan trọng của kỳ ─── */}
+        <InsightHeadline
+          theme="dark"
+          icon={DollarSign}
+          accent="#9334E6"
+          eyebrow={seriesActive ? (filterSummary || 'Đang lọc') : `Kỳ: ${RANGE_LABEL[filterRange]}`}
+          trend={rangeCompare && !seriesActive && rangeCompare.valueDelta.has ? { pct: rangeCompare.valueDelta.pct } : undefined}
+        >
+          Kỳ này sàn xử lý <span className="font-black text-slate-100">{formatCurrency(gtv)}</span> GTV,
+          {' '}thu về <span className="font-black text-slate-100">{formatCurrency(commission)}</span> hoa hồng
+          {' '}từ <span className="font-black text-slate-100">{completedOrders.toLocaleString('vi-VN')}</span> đơn hoàn tất
+          {rangeCompare && !seriesActive && rangeCompare.valueDelta.has
+            ? <>, {rangeCompare.valueDelta.dir === 'up' ? 'tăng' : rangeCompare.valueDelta.dir === 'down' ? 'giảm' : 'đi ngang'} so với {rangeCompare.label}.</>
+            : '.'}
+        </InsightHeadline>
+
         {seriesActive && (
           <div className="flex items-center gap-2 rounded-radius-lg bg-purple-950/30 border border-purple-900/40 px-3.5 py-2 text-[11px] font-bold text-purple-300">
             <CalendarRange size={13} /> Toàn bộ số liệu đang lọc theo: <span className="text-purple-200">{filterSummary || 'bộ lọc đã chọn'}</span>
           </div>
         )}
+
+        {/* ─── DÒNG TIỀN ─── */}
+        <SectionTitle icon={DollarSign} hint="tiền chảy về đâu">Dòng tiền</SectionTitle>
 
         {/* 4 KPI dòng tiền */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
@@ -294,6 +337,9 @@ export default function AdminStats() {
           </div>
         )}
 
+        {/* ─── VẬN HÀNH ─── */}
+        <SectionTitle icon={Gauge} hint="chất lượng đơn & hiệu suất">Vận hành</SectionTitle>
+
         {/* Dải chỉ số vận hành (chiều sâu) */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           {[
@@ -340,8 +386,11 @@ export default function AdminStats() {
           })}
         </div>
 
+        {/* ─── PHÂN BỔ & XU HƯỚNG ─── */}
+        <SectionTitle icon={BarChart3} hint="đối soát, cơ cấu & bảng xếp hạng">Phân bổ &amp; xu hướng</SectionTitle>
+
         {/* Đối soát dòng tiền */}
-        <div className="bg-slate-950 border border-slate-850 rounded-[1.25rem] p-5 space-y-4 shadow-md">
+        <div className="bg-slate-950 border border-slate-850 rounded-radius-xl p-5 space-y-4 shadow-md">
           <div className="flex justify-between items-center border-b border-slate-800 pb-2">
             <h3 className="text-xs font-extrabold text-slate-200 uppercase tracking-wider">Đối Soát Dòng Tiền Giao Dịch Hệ Thống</h3>
             <span className="text-[10px] text-slate-500 font-bold">Chu kỳ: {RANGE_LABEL[filterRange]}</span>
@@ -362,7 +411,7 @@ export default function AdminStats() {
 
         {/* Biểu đồ xu hướng + Cơ cấu thành viên */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="bg-slate-950 border border-slate-850 rounded-[1.25rem] p-5 shadow-md lg:col-span-2 space-y-4">
+          <div className="bg-slate-950 border border-slate-850 rounded-radius-xl p-5 shadow-md lg:col-span-2 space-y-4">
             <div className="flex items-start justify-between gap-2 flex-wrap">
               <div className="min-w-0">
                 <h3 className="text-xs font-extrabold text-slate-200 uppercase tracking-wider flex items-center gap-1.5">
@@ -392,7 +441,7 @@ export default function AdminStats() {
             )}
           </div>
 
-          <div className="bg-slate-950 border border-slate-850 rounded-[1.25rem] p-5 shadow-md flex flex-col justify-between min-h-[350px] space-y-4">
+          <div className="bg-slate-950 border border-slate-850 rounded-radius-xl p-5 shadow-md flex flex-col justify-between min-h-[350px] space-y-4">
             <h3 className="text-xs font-extrabold text-slate-200 uppercase tracking-wider flex items-center gap-1.5">
               <Users className="text-emerald-400" size={16} /> Cơ Cấu Thành Viên Hệ Thống
             </h3>
@@ -409,7 +458,7 @@ export default function AdminStats() {
 
         {/* Top quán + Thanh toán */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="bg-slate-950 border border-slate-850 rounded-[1.25rem] p-5 shadow-md lg:col-span-2 space-y-4">
+          <div className="bg-slate-950 border border-slate-850 rounded-radius-xl p-5 shadow-md lg:col-span-2 space-y-4">
             <div className="flex items-center justify-between gap-2 flex-wrap">
               <h3 className="text-xs font-extrabold text-slate-200 uppercase tracking-wider flex items-center gap-1.5">
                 <Store className="text-yellow-500" size={16} /> Top Quán Dẫn Đầu Doanh Thu
@@ -476,7 +525,7 @@ export default function AdminStats() {
             )}
           </div>
 
-          <div className="bg-slate-950 border border-slate-850 rounded-[1.25rem] p-5 shadow-md flex flex-col justify-between min-h-[280px] space-y-4 self-start">
+          <div className="bg-slate-950 border border-slate-850 rounded-radius-xl p-5 shadow-md flex flex-col justify-between min-h-[280px] space-y-4 self-start">
             <div className="flex items-center justify-between">
               <h3 className="text-xs font-extrabold text-slate-200 uppercase tracking-wider flex items-center gap-1.5">
                 <CreditCard className="text-purple-400" size={16} /> Trạng Thái Thanh Toán

@@ -336,6 +336,8 @@ export default function ShipperEarnings() {
         </div>
       </div>
 
+      <SectionTitle icon={BarChart3} hint="tuần này theo thứ · xu hướng 6 tháng">Xu hướng thu nhập</SectionTitle>
+
       {/* ─── HAI BIỂU ĐỒ CẠNH NHAU trên desktop: tuần này | 6 tháng ─── */}
       <div className="grid lg:grid-cols-2 gap-4 md:gap-6 items-start">
 
@@ -365,23 +367,7 @@ export default function ShipperEarnings() {
         </p>
 
         {hasData ? (
-          <div className="h-64 w-full text-sm font-semibold">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={displayData} margin={{ top: 22, right: 10, left: -12, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                <XAxis dataKey="day" tickLine={false} axisLine={false} tick={{ fontSize: 14, fontWeight: 700, fill: '#475569' }} />
-                <YAxis tickLine={false} axisLine={false} allowDecimals={false} width={38} tick={{ fontSize: 13, fill: '#94a3b8' }} tickFormatter={(v) => (v === 0 ? '0' : `${Math.round(v / 1000)}k`)} />
-                <Tooltip formatter={(value) => [formatCurrency(value), 'Thu nhập']} cursor={{ fill: 'rgba(52,168,83,0.06)' }} contentStyle={{ fontSize: 13, fontWeight: 600, borderRadius: 10 }} />
-                {/* tô đậm cột ngày cao điểm, các ngày khác nhạt hơn + ghi số tiền trên đầu cột */}
-                <Bar dataKey="amount" radius={[6, 6, 0, 0]} maxBarSize={54}>
-                  {displayData.map((entry, idx) => (
-                    <Cell key={idx} fill={bestDay && entry.day === bestDay.day && entry.amount > 0 ? '#2E7D32' : '#34A853'} />
-                  ))}
-                  <LabelList dataKey="amount" position="top" formatter={(v) => (v > 0 ? `${Math.round(v / 1000)}k` : '')} style={{ fontSize: 13, fontWeight: 800, fill: '#334155' }} />
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
+          <EarningsBarChart data={displayData} xKey="day" highlightKey={bestDay?.day} xFontSize={14} maxBar={54} />
         ) : (
           /* Tuần này chưa có đơn → hiện thông báo rõ ràng thay vì biểu đồ trục 0 lỗi */
           <div className="h-56 flex flex-col items-center justify-center text-center gap-3 bg-slate-50/60 rounded-radius-lg border border-dashed border-slate-200">
@@ -405,19 +391,7 @@ export default function ShipperEarnings() {
           <p className="text-xs text-slate-500 font-semibold mt-1">Tổng phí ship mỗi tháng — xem bạn đang lên hay xuống</p>
         </div>
         {monthlyHasData ? (
-          <div className="h-64 w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={monthlyData} margin={{ top: 22, right: 10, left: -12, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                <XAxis dataKey="label" tickLine={false} axisLine={false} tick={{ fontSize: 13, fontWeight: 700, fill: '#475569' }} />
-                <YAxis tickLine={false} axisLine={false} allowDecimals={false} width={38} tick={{ fontSize: 13, fill: '#94a3b8' }} tickFormatter={(v) => (v === 0 ? '0' : `${Math.round(v / 1000)}k`)} />
-                <Tooltip formatter={(value) => [formatCurrency(value), 'Thu nhập']} cursor={{ fill: 'rgba(52,168,83,0.06)' }} contentStyle={{ fontSize: 13, fontWeight: 600, borderRadius: 10 }} />
-                <Bar dataKey="amount" radius={[6, 6, 0, 0]} maxBarSize={48} fill="#34A853">
-                  <LabelList dataKey="amount" position="top" formatter={(v) => (v > 0 ? `${Math.round(v / 1000)}k` : '')} style={{ fontSize: 12, fontWeight: 800, fill: '#334155' }} />
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
+          <EarningsBarChart data={monthlyData} xKey="label" xFontSize={13} maxBar={48} />
         ) : (
           <div className="h-48 flex flex-col items-center justify-center text-center gap-2 bg-slate-50/60 rounded-radius-lg border border-dashed border-slate-200">
             <BarChart3 size={28} className="text-slate-300 animate-float" />
@@ -427,6 +401,8 @@ export default function ShipperEarnings() {
       </div>
 
       </div>{/* đóng grid 2 biểu đồ */}
+
+      <SectionTitle icon={Lightbulb} hint="dựa trên dữ liệu thật của bạn">Gợi ý cải thiện</SectionTitle>
 
       {/* ─── 3 Ô MÁCH NƯỚC: thứ kiếm tốt · khung giờ vàng · TB mỗi ngày làm ─── */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 md:gap-4">

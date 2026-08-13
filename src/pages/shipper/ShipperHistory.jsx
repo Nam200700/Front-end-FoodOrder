@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { History, ClipboardList, Clipboard, Check, X, Utensils, Wallet, CheckCircle2, ChevronLeft, ChevronRight, User, Clock, Sparkles, Package, Calendar, Coins, Bike, PackageSearch, Search, SlidersHorizontal, ArrowDownUp, ChevronDown, TrendingUp, CalendarDays, CalendarRange } from 'lucide-react';
+import { History, ClipboardList, Clipboard, Check, X, Utensils, Wallet, CheckCircle2, ChevronLeft, ChevronRight, User, Clock, Sparkles, Package, Calendar, Coins, Bike, PackageSearch, Search, SlidersHorizontal, ArrowDownUp, ChevronDown, TrendingUp, CalendarDays, CalendarRange, Ban } from 'lucide-react';
 import { formatCurrency, normalizeForMatch } from '../../utils/format';
 import { useFetchData } from '../../hooks/useFetchData';
 import { SkeletonOrderCard } from '../../components/common/SkeletonCard';
@@ -158,14 +158,18 @@ export default function ShipperHistory() {
 
   // ─── TỔNG QUAN (theo kết quả đang lọc, kiểu trip-summary Grab/Uber) ───
   const doneList = filteredList.filter((i) => i.status === 'COMPLETED');
+  const cancelledList = filteredList.filter((i) => i.status === 'CANCELLED');
   const deliveringCount = filteredList.filter((i) => i.status === 'DELIVERING' || i.status === 'READY_FOR_PICKUP').length;
   const sumFee = doneList.reduce((s, i) => s + (i.fee || 0), 0);
   const avgFee = doneList.length ? sumFee / doneList.length : 0;
+  // Tỷ lệ hoàn thành = thành công / (thành công + đã hủy) — thước đo độ tin cậy của tài xế.
+  const relDenom = doneList.length + cancelledList.length;
+  const completionRate = relDenom > 0 ? Math.round((doneList.length / relDenom) * 100) : 100;
   const summaryStats = [
     { icon: Wallet, tint: 'text-md-tertiary', bg: 'from-[#E8F5E9]/70 to-white border-[#C8E6C9]/60', value: formatCurrency(sumFee), label: 'Tổng phí đã nhận' },
     { icon: CheckCircle2, tint: 'text-emerald-500', bg: 'from-emerald-50/70 to-white border-emerald-100', value: doneList.length, label: 'Chuyến thành công' },
-    { icon: Bike, tint: 'text-blue-500', bg: 'from-blue-50/70 to-white border-blue-100', value: deliveringCount, label: 'Đang giao' },
-    { icon: TrendingUp, tint: 'text-amber-500', bg: 'from-amber-50/70 to-white border-amber-100', value: formatCurrency(avgFee), label: 'TB mỗi chuyến' },
+    { icon: Ban, tint: 'text-rose-500', bg: 'from-rose-50/70 to-white border-rose-100', value: cancelledList.length, label: 'Đơn đã hủy' },
+    { icon: TrendingUp, tint: 'text-amber-500', bg: 'from-amber-50/70 to-white border-amber-100', value: `${completionRate}%`, label: 'Tỷ lệ hoàn thành' },
   ];
 
   // tab trạng thái
@@ -173,6 +177,7 @@ export default function ShipperHistory() {
     { id: 'ALL', label: 'Tất cả' },
     { id: 'DELIVERING', label: 'Đang giao' },
     { id: 'COMPLETED', label: 'Thành công' },
+    { id: 'CANCELLED', label: 'Đã hủy' },
   ];
 
   // chip lọc theo mốc thời gian
@@ -416,7 +421,14 @@ export default function ShipperHistory() {
           ) : (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-3.5">
               {pageItems.map((item, idx) => {
+                // 3 trạng thái từ góc nhìn shipper: hoàn tất / đang giao / đã bỏ đơn
                 const isDone = item.status === 'COMPLETED';
+                const isCancelled = item.status === 'CANCELLED';
+                const meta = isDone
+                  ? { bar: 'bg-md-tertiary', iconWrap: 'bg-[#E8F5E9] text-md-tertiary border-[#C8E6C9]', Icon: Check, badge: 'bg-emerald-50 text-emerald-700 border-emerald-100', label: 'Thành công', BadgeIcon: CheckCircle2, pulse: false }
+                  : isCancelled
+                    ? { bar: 'bg-rose-400', iconWrap: 'bg-rose-50 text-rose-500 border-rose-100', Icon: X, badge: 'bg-rose-50 text-rose-700 border-rose-100', label: 'Đã hủy', BadgeIcon: Ban, pulse: false }
+                    : { bar: 'bg-blue-400', iconWrap: 'bg-blue-50 text-blue-500 border-blue-100', Icon: Bike, badge: 'bg-blue-50 text-blue-700 border-blue-100', label: 'Đang giao', BadgeIcon: null, pulse: true };
                 return (
                   <Card
                     key={item.id}
@@ -424,17 +436,13 @@ export default function ShipperHistory() {
                     style={{ animationDelay: `${idx * 55}ms` }}
                     className="group flex items-stretch overflow-hidden animate-rise-in transition-all hover:shadow-shadow-3 hover:-translate-y-0.5"
                   >
-                    <div className={`w-1.5 group-hover:w-2.5 shrink-0 transition-all duration-300 ${isDone ? 'bg-md-tertiary' : 'bg-blue-400'}`} />
+                    <div className={`w-1.5 group-hover:w-2.5 shrink-0 transition-all duration-300 ${meta.bar}`} />
                     <div className="flex-1 p-4 flex items-center gap-3.5 min-w-0">
-                      {/* Icon trạng thái — done: dấu check; đang giao: xe máy nhấp nháy */}
+                      {/* Icon trạng thái — done: check; đang giao: xe nhấp nháy; đã hủy: dấu X */}
                       <div className="relative shrink-0">
-                        {!isDone && <span className="absolute inset-0 rounded-radius-lg bg-blue-400/25 animate-ping" />}
-                        <div className={`relative w-11 h-11 rounded-radius-lg flex items-center justify-center shadow-sm border transition-transform group-hover:scale-105 ${
-                          isDone
-                            ? 'bg-[#E8F5E9] text-md-tertiary border-[#C8E6C9]'
-                            : 'bg-blue-50 text-blue-500 border-blue-100'
-                        }`}>
-                          {isDone ? <Check size={18} strokeWidth={3} /> : <Bike size={18} strokeWidth={2.6} />}
+                        {meta.pulse && <span className="absolute inset-0 rounded-radius-lg bg-blue-400/25 animate-ping" />}
+                        <div className={`relative w-11 h-11 rounded-radius-lg flex items-center justify-center shadow-sm border transition-transform group-hover:scale-105 ${meta.iconWrap}`}>
+                          <meta.Icon size={18} strokeWidth={isCancelled ? 2.8 : isDone ? 3 : 2.6} />
                         </div>
                       </div>
 
@@ -447,14 +455,10 @@ export default function ShipperHistory() {
                           <span className="text-[11px] text-slate-400 font-medium flex items-center gap-1">
                             <Calendar size={11} className="shrink-0" /> {item.date}
                           </span>
-                          <span className={`text-[9px] font-bold border px-2 py-0.5 rounded-full inline-flex items-center gap-1 ${
-                            isDone
-                              ? 'bg-emerald-50 text-emerald-700 border-emerald-100'
-                              : 'bg-blue-50 text-blue-700 border-blue-100'
-                          }`}>
-                            {isDone
-                              ? <><CheckCircle2 size={10} /> Thành công</>
-                              : <><span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" /> Đang giao</>}
+                          <span className={`text-[9px] font-bold border px-2 py-0.5 rounded-full inline-flex items-center gap-1 ${meta.badge}`}>
+                            {meta.BadgeIcon
+                              ? <><meta.BadgeIcon size={10} /> {meta.label}</>
+                              : <><span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" /> {meta.label}</>}
                           </span>
                         </div>
 
@@ -468,12 +472,23 @@ export default function ShipperHistory() {
                         </div>
                       </div>
 
-                      {/* Phí ship — tách bằng đường kẻ dọc, canh giữa theo chiều cao card */}
+                      {/* Cột phải: đơn hoàn tất hiện phí; đơn đã hủy hiện nhãn "Đã bỏ đơn" (không nhận phí) */}
                       <div className="shrink-0 self-stretch pl-3.5 border-l border-slate-100 flex flex-col justify-center items-end text-right">
-                        <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wide">Phí giao hàng</span>
-                        <span className="mt-1.5 text-sm font-extrabold px-2.5 py-1 rounded-radius-full text-md-tertiary bg-[#E8F5E9] inline-flex items-center gap-1 transition-transform group-hover:scale-105">
-                          <Coins size={13} className="shrink-0" /> {formatCurrency(item.fee)}
-                        </span>
+                        {isCancelled ? (
+                          <>
+                            <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wide">Kết quả</span>
+                            <span className="mt-1.5 text-[11px] font-extrabold px-2.5 py-1 rounded-radius-full text-rose-600 bg-rose-50 border border-rose-100 inline-flex items-center gap-1">
+                              <Ban size={12} className="shrink-0" /> Đã bỏ đơn
+                            </span>
+                          </>
+                        ) : (
+                          <>
+                            <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wide">Phí giao hàng</span>
+                            <span className={`mt-1.5 text-sm font-extrabold px-2.5 py-1 rounded-radius-full inline-flex items-center gap-1 transition-transform group-hover:scale-105 ${isDone ? 'text-md-tertiary bg-[#E8F5E9]' : 'text-blue-600 bg-blue-50'}`}>
+                              <Coins size={13} className="shrink-0" /> {formatCurrency(item.fee)}
+                            </span>
+                          </>
+                        )}
                       </div>
                     </div>
                   </Card>

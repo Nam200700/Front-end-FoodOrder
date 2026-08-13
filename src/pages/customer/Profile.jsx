@@ -44,9 +44,36 @@ export default function Profile() {
   const addressListModal = useModalState(); 
   const mapModal2 = useModalState();        
 
-  // Danh sách địa chỉ 
+  // Danh sách địa chỉ
   const [userAddresses, setUserAddresses] = useState([]);
   const [selectedAddressId, setSelectedAddressId] = useState(null);
+
+  // Uy tín & điểm thưởng (loyalty)
+  const [account, setAccount] = useState(null);
+  const [loyaltyOpen, setLoyaltyOpen] = useState(false);
+  const [loyaltyCatalog, setLoyaltyCatalog] = useState([]);
+  const [redeemingId, setRedeemingId] = useState(null);
+
+  const fetchAccount = async () => {
+    try { const r = await apiClient.get('/users/me'); setAccount(r.data?.data || null); } catch { /* ignore */ }
+  };
+  useEffect(() => { fetchAccount(); }, []);
+
+  const openLoyalty = async () => {
+    setLoyaltyOpen(true);
+    try { const r = await apiClient.get('/users/loyalty/catalog'); setLoyaltyCatalog(r.data?.data || []); }
+    catch { setLoyaltyCatalog([]); }
+  };
+  const handleRedeem = async (voucherId) => {
+    setRedeemingId(voucherId);
+    try {
+      await apiClient.post('/users/loyalty/redeem', { voucherId });
+      toast.success('Đổi điểm thành công! Voucher đã vào ví của bạn.');
+      await fetchAccount();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Không đổi được điểm.');
+    } finally { setRedeemingId(null); }
+  };
 
   // State phục vụ việc thêm/sửa địa chỉ qua MapModal2
   const [editingAddressId, setEditingAddressId] = useState(null); 
@@ -274,7 +301,7 @@ export default function Profile() {
 
   return (
     <div className="flex-1 p-4 md:p-8 max-w-4xl mx-auto w-full font-google-sans pb-24 space-y-6">
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
       {/* ─── CỘT TRÁI: thẻ thành viên + thẻ truy cập nhanh ───────────────────────── */}
       <div className="flex flex-col gap-6">
 
@@ -333,6 +360,79 @@ export default function Profile() {
         </div>
       </div>
 
+      <Card className="p-5 border border-md-outline-variant/20 shadow-sm">
+        <h3 className="text-sm font-extrabold text-md-on-surface flex items-center gap-2 pb-3 mb-3 border-b border-md-outline-variant/20">
+          <ShieldCheck size={16} className="text-md-primary" /> Uy tín & Điểm thưởng
+        </h3>
+        {(() => {
+          const rep = account?.reputationScore ?? user?.reputationScore ?? 100;
+          const points = account?.loyaltyPoints ?? user?.loyaltyPoints ?? 0;
+          const good = rep >= 70, mid = rep >= 40 && rep < 70;
+          const barColor = good ? 'bg-emerald-500' : mid ? 'bg-amber-500' : 'bg-rose-500';
+          const txtColor = good ? 'text-emerald-600' : mid ? 'text-amber-600' : 'text-rose-600';
+          return (
+            <div className="space-y-4">
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className="text-[11px] font-bold text-slate-500">Điểm uy tín</span>
+                  <span className={`text-sm font-black ${txtColor}`}>{rep}/100</span>
+                </div>
+                <div className="h-2.5 w-full bg-slate-100 rounded-full overflow-hidden">
+                  <div className={`h-full ${barColor} rounded-full transition-all duration-500`} style={{ width: `${Math.max(0, Math.min(100, rep))}%` }} />
+                </div>
+                {rep < 40 && <p className="text-[10px] text-rose-500 font-semibold mt-1.5">Uy tín thấp — hạn chế hủy đơn để tránh bị tạm chặn đặt hàng.</p>}
+              </div>
+              <div className="flex items-center justify-between p-3 rounded-radius-lg bg-gradient-to-r from-orange-50 to-amber-50 border border-orange-100">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <span className="w-9 h-9 rounded-radius-md bg-[#FF6B35] text-white flex items-center justify-center shrink-0"><Sparkles size={16} /></span>
+                  <div className="min-w-0">
+                    <p className="text-[11px] text-slate-500 font-semibold">Điểm thưởng</p>
+                    <p className="text-base font-black text-[#FF6B35] leading-none">{points} <span className="text-[10px] font-bold text-slate-400">điểm</span></p>
+                  </div>
+                </div>
+                <button onClick={openLoyalty} className="px-3 py-1.5 rounded-full bg-[#FF6B35] hover:bg-orange-600 text-white text-[11px] font-extrabold cursor-pointer shrink-0 transition-colors">Đổi điểm</button>
+              </div>
+            </div>
+          );
+        })()}
+      </Card>
+
+      {loyaltyOpen && (
+        <div className="fixed inset-0 z-[9999] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setLoyaltyOpen(false)}>
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-5 max-h-[85vh] overflow-y-auto animate-scale-up" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-1">
+              <h3 className="text-sm font-extrabold text-slate-800 flex items-center gap-2"><Sparkles size={16} className="text-[#FF6B35]" /> Đổi điểm thưởng</h3>
+              <button onClick={() => setLoyaltyOpen(false)} className="text-slate-400 hover:text-slate-600 cursor-pointer text-lg leading-none">✕</button>
+            </div>
+            <p className="text-[11px] text-slate-500 font-semibold mb-4">Bạn đang có <b className="text-[#FF6B35]">{account?.loyaltyPoints ?? 0}</b> điểm.</p>
+            {loyaltyCatalog.length === 0 ? (
+              <p className="text-xs text-slate-400 text-center py-6">Chưa có ưu đãi để đổi.</p>
+            ) : (
+              <div className="space-y-2.5">
+                {loyaltyCatalog.map((v) => {
+                  const can = (account?.loyaltyPoints ?? 0) >= (v.pointsCost ?? 0);
+                  return (
+                    <div key={v.voucherId} className="flex items-center justify-between gap-3 p-3 rounded-radius-lg border border-slate-200">
+                      <div className="min-w-0">
+                        <p className="text-xs font-extrabold text-slate-800 truncate">{v.name}</p>
+                        <p className="text-[11px] text-[#FF6B35] font-bold">{v.pointsCost} điểm</p>
+                      </div>
+                      <button
+                        disabled={!can || redeemingId === v.voucherId}
+                        onClick={() => handleRedeem(v.voucherId)}
+                        className="px-3 py-1.5 rounded-full text-[11px] font-extrabold cursor-pointer shrink-0 disabled:opacity-40 disabled:cursor-not-allowed bg-[#FF6B35] hover:bg-orange-600 text-white transition-colors"
+                      >
+                        {redeemingId === v.voucherId ? '...' : can ? 'Đổi' : 'Thiếu điểm'}
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       <Card className="p-5 border border-md-outline-variant/20 shadow-sm flex-1">
         <h3 className="text-sm font-extrabold text-md-on-surface flex items-center gap-2 pb-3 mb-2 border-b border-md-outline-variant/20">
           <Sparkles size={16} className="text-md-primary animate-twinkle" /> Truy cập nhanh
@@ -367,7 +467,7 @@ export default function Profile() {
       </div>
 
       {/* ─── CỘT PHẢI: form hồ sơ ──────────────────────────── */}
-      <Card className="p-5 border border-md-outline-variant/20 shadow-sm space-y-5.5 animate-slide-up h-full flex flex-col">
+      <Card className="p-5 border border-md-outline-variant/20 shadow-sm space-y-5.5 animate-slide-up">
         <div className="flex items-center gap-2.5 pb-3 border-b border-md-outline-variant/20">
           <span className="w-8 h-8 rounded-xl bg-gradient-to-br from-md-primary to-[#FF8C42] text-white flex items-center justify-center shadow-sm animate-float">
             <User size={16} />
@@ -468,7 +568,7 @@ export default function Profile() {
           disabled={updating}
           loading={updating}
           icon={updating ? undefined : Save}
-          className="group w-full mt-auto bg-md-primary text-white font-bold py-3.5 px-4 rounded-radius-full shadow-shadow-2 hover:shadow-shadow-3 hover:translate-y-[-1.5px] active:translate-y-[0px] transition-all flex items-center justify-center gap-2 text-xs uppercase tracking-wider cursor-pointer [&_svg]:group-hover:rotate-[-8deg] [&_svg]:transition-transform"
+          className="group w-full bg-md-primary text-white font-bold py-3.5 px-4 rounded-radius-full shadow-shadow-2 hover:shadow-shadow-3 hover:translate-y-[-1.5px] active:translate-y-[0px] transition-all flex items-center justify-center gap-2 text-xs uppercase tracking-wider cursor-pointer [&_svg]:group-hover:rotate-[-8deg] [&_svg]:transition-transform"
         >
           Cập nhật thông tin
         </Button>

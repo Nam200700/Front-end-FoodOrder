@@ -29,6 +29,8 @@ export default function ShipperProfile() {
   const [activeDelivery, setActiveDelivery] = useState(0);
   const [totalDelivery, setTotalDelivery] = useState(0);
   const [avgRating, setAvgRating] = useState(5.0);
+  const [reputationScore, setReputationScore] = useState(100);
+  const [cancelCount, setCancelCount] = useState(0);
   // Ảnh chụp giá trị gốc để biết form CÓ THAY ĐỔI chưa (dirty state — chỉ bật nút Lưu khi có sửa).
   const [initial, setInitial] = useState({ name: '', email: '', phone: '', vehicleType: '', licensePlate: '' });
   const fileInputRef = useRef(null);
@@ -63,6 +65,8 @@ export default function ShipperProfile() {
         setActiveDelivery(realUser.activeDelivery || 0);
         setTotalDelivery(realUser.totalDelivery || 0);
         setAvgRating(realUser.avgRating || 5.0);
+        setReputationScore(realUser.reputationScore ?? 100);
+        setCancelCount(realUser.cancelCount || 0);
         setInitial({
           name: realUser.fullName || '',
           email: realUser.email || '',
@@ -277,6 +281,45 @@ export default function ShipperProfile() {
                   ))}
                 </div>
               </div>
+            </Card>
+
+            {/* Uy tín & tỷ lệ hủy đơn */}
+            <Card variant="flat" className="p-5 border-slate-200/60 shadow-sm animate-slide-up">
+              <h3 className="font-bold text-sm text-slate-800 flex items-center gap-1.5 mb-3">
+                <ShieldCheck size={16} className="text-md-tertiary" /> Uy tín & Tỷ lệ hủy
+              </h3>
+              {(() => {
+                const rep = reputationScore ?? 100;
+                const totalHandled = (cancelCount || 0) + (totalDelivery || 0);
+                const rate = totalHandled > 0 ? Math.round((cancelCount / totalHandled) * 100) : 0;
+                const good = rep >= 70, mid = rep >= 50 && rep < 70;
+                const barColor = good ? 'bg-emerald-500' : mid ? 'bg-amber-500' : 'bg-rose-500';
+                const txtColor = good ? 'text-emerald-600' : mid ? 'text-amber-600' : 'text-rose-600';
+                return (
+                  <div className="space-y-4">
+                    <div>
+                      <div className="flex items-center justify-between mb-1.5">
+                        <span className="text-[11px] font-bold text-slate-500">Điểm uy tín</span>
+                        <span className={`text-sm font-black ${txtColor}`}>{rep}/100</span>
+                      </div>
+                      <div className="h-2.5 w-full bg-slate-100 rounded-full overflow-hidden">
+                        <div className={`h-full ${barColor} rounded-full transition-all duration-500`} style={{ width: `${Math.max(0, Math.min(100, rep))}%` }} />
+                      </div>
+                      {rep < 50 && <p className="text-[10px] text-rose-500 font-semibold mt-1.5">Uy tín dưới 50 — bạn tạm thời không nhận được đơn mới. Hãy hoàn tất tốt các đơn để hồi điểm.</p>}
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="rounded-2xl p-3 flex flex-col items-center border bg-rose-50/60 border-rose-100/50">
+                        <span className="text-base font-black text-rose-500 leading-none">{cancelCount || 0}</span>
+                        <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider mt-1">Đơn đã bỏ</span>
+                      </div>
+                      <div className="rounded-2xl p-3 flex flex-col items-center border bg-slate-50/60 border-slate-100">
+                        <span className="text-base font-black text-slate-700 leading-none">{rate}%</span>
+                        <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider mt-1">Tỷ lệ hủy</span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
             </Card>
 
             {/* Hoàn thiện hồ sơ — thanh tiến độ + checklist field thật (flex-1 để giãn khớp đáy với form) */}

@@ -587,6 +587,24 @@ export default function Voucher() {
               />
             </div>
 
+            {/* Số điểm cần để đổi — CHỈ cho loại "Đổi điểm" (LOYALTY) */}
+            {formData.issueType === 'LOYALTY' && (
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Số điểm cần để đổi <b className="text-amber-500">(*)</b>
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  step="1"
+                  value={formData.pointsCost}
+                  onChange={(e) => setFormData({ ...formData, pointsCost: e.target.value })}
+                  placeholder="VD: 100 (điểm thưởng)"
+                  className="w-full px-3 py-2 text-xs bg-amber-50/60 border border-amber-200 rounded-xl focus:outline-none focus:border-amber-500 text-slate-800 font-bold"
+                />
+              </div>
+            )}
+
             {/* Trạng Thái (Cho phép sửa) */}
             <div>
               <label className="block text-xs font-bold text-slate-700 mb-1">Trạng Thái (*)</label>

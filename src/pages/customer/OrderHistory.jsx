@@ -439,8 +439,9 @@ export default function OrderHistory() {
           </span> */}
         </div>
 
-        {/* Dải tổng quan: tổng đơn · đã giao · tổng chi tiêu */}
-        <div className="grid grid-cols-3 gap-3 mb-5">
+        {/* Dải tổng quan: tổng đơn · đã giao · tổng chi tiêu.
+            Mobile: 2 ô nhỏ cùng hàng, ô "Đã chi tiêu" tràn cả hàng để số tiền không bị cắt. */}
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-2.5 md:gap-3 mb-5">
           {[
             { icon: Receipt, label: 'Tổng đơn', value: summary.total, cls: 'text-slate-700', bg: 'bg-slate-100 text-slate-500' },
             { icon: CheckCircle2, label: 'Đã giao', value: summary.completed, cls: 'text-emerald-600', bg: 'bg-emerald-100 text-emerald-600' },
@@ -448,11 +449,15 @@ export default function OrderHistory() {
           ].map((st, i) => {
             const SIcon = st.icon;
             return (
-              <div key={i} className="group bg-white rounded-2xl border border-slate-100 shadow-sm p-3 md:p-4 flex items-center gap-3 animate-rise-in transition-all hover:-translate-y-0.5 hover:shadow-md" style={{ animationDelay: `${i * 70}ms` }}>
+              <div
+                key={i}
+                className={`group bg-white rounded-2xl border border-slate-100 shadow-sm p-3 md:p-4 flex items-center gap-2.5 md:gap-3 animate-rise-in transition-all hover:-translate-y-0.5 hover:shadow-md ${st.wide ? 'col-span-2 md:col-span-1' : ''}`}
+                style={{ animationDelay: `${i * 70}ms` }}
+              >
                 <span className={`w-9 h-9 md:w-10 md:h-10 rounded-xl flex items-center justify-center shrink-0 transition-transform group-hover:scale-110 ${st.bg}`}><SIcon size={18} /></span>
                 <div className="min-w-0">
-                  <p className="text-[10px] md:text-[11px] font-bold text-slate-400 uppercase tracking-wide">{st.label}</p>
-                  <p className={`font-black leading-tight truncate ${st.wide ? 'text-sm md:text-lg' : 'text-lg md:text-xl'} ${st.cls}`}>{st.value}</p>
+                  <p className="text-[10px] md:text-[11px] font-bold text-slate-400 uppercase tracking-wide truncate">{st.label}</p>
+                  <p className={`font-black leading-tight truncate ${st.wide ? 'text-lg md:text-lg' : 'text-lg md:text-xl'} ${st.cls}`}>{st.value}</p>
                 </div>
               </div>
             );
@@ -472,8 +477,8 @@ export default function OrderHistory() {
             />
           </div>
 
-          {/* Ô tìm kiếm góc phải */}
-          <div className="relative min-w-[240px] md:w-72 shrink-0">
+          {/* Ô tìm kiếm góc phải (full-width trên mobile) */}
+          <div className="relative w-full md:w-72 md:shrink-0">
             <span className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-slate-400">
               <Search size={16} />
             </span>
@@ -661,7 +666,7 @@ export default function OrderHistory() {
                             type="button"
                             onClick={(e) => cancelModal.open(order.id)}
                             icon={Ban}
-                            className="!px-2.5 !py-1.5 !bg-red-500 hover:!bg-red-600 text-white !rounded-lg text-[11px] !font-bold !shadow-sm w-full sm:w-auto"
+                            className="!px-2.5 !py-1.5 !bg-red-500 hover:!bg-red-600 text-white !rounded-lg text-[11px] !font-bold !shadow-sm flex-1 sm:flex-none sm:w-auto"
                           >
                             Hủy đơn
                           </Button>
@@ -713,23 +718,23 @@ export default function OrderHistory() {
                             type="button"
                             onClick={(e) => handleReorder(e, order)}
                             icon={RefreshCw}
-                            className="!px-2.5 !py-1.5 !bg-orange-500 hover:!bg-orange-600 text-white !rounded-lg text-[11px] !font-bold !shadow-sm whitespace-nowrap w-full sm:w-auto"
+                            className="!px-2.5 !py-1.5 !bg-orange-500 hover:!bg-orange-600 text-white !rounded-lg text-[11px] !font-bold !shadow-sm whitespace-nowrap flex-1 sm:flex-none sm:w-auto"
                           >
                             Mua lại
-                          </Button>         
+                          </Button>
                         )}
 
                         <Button
                           type="button"
                           onClick={(e) => {
-                            e.stopPropagation(); 
-                            detailModal.open(order); 
+                            e.stopPropagation();
+                            detailModal.open(order);
                           }}
                           icon={Eye}
-                          className="!px-2.5 !py-1.5 !bg-blue-500 hover:!bg-blue-600 !text-white !border-none !rounded-lg text-[11px] !font-bold !shadow-none whitespace-nowrap w-full sm:w-auto"
+                          className="!px-2.5 !py-1.5 !bg-blue-500 hover:!bg-blue-600 !text-white !border-none !rounded-lg text-[11px] !font-bold !shadow-none whitespace-nowrap flex-1 sm:flex-none sm:w-auto"
                         >
                           Chi tiết
-                        </Button>      
+                        </Button>
                       </div>
                     </div>
                   </Card>

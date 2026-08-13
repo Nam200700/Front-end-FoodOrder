@@ -138,6 +138,15 @@ export default function Voucher() {
       return false;
     }
 
+    // Voucher đổi điểm bắt buộc nhập số điểm > 0
+    if (formData.issueType === 'LOYALTY') {
+      const pc = Number(formData.pointsCost);
+      if (formData.pointsCost === '' || isNaN(pc) || pc <= 0) {
+        toast.error('Voucher đổi điểm bắt buộc nhập số điểm cần để đổi (> 0)!');
+        return false;
+      }
+    }
+
     if (formData.discountType === 'PERCENT' && val > 100) {
       toast.error('Giá trị giảm theo phần trăm (%) không được vượt quá 100%!');
       return false;

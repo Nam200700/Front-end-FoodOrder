@@ -5,7 +5,7 @@ import { useWebSocketContext } from '../../contexts/WebSocketContext';
 import {
   ShoppingBag, RefreshCw, Ban, AlertCircle, MessageSquare, Star, FileText, MapPin, CreditCard, Eye,
   User, Phone, Bike, Wallet, StickyNote, CalendarClock, UtensilsCrossed, Package, BadgeCheck, Clock, Check,
-  Store, CheckCircle2, ChevronRight, Receipt, Ticket, ChevronLeft, Search, X
+  Store, CheckCircle2, ChevronRight, Receipt, Ticket, ChevronLeft, Search, X, Heart, Home, Sparkles
 } from 'lucide-react';
 import { formatCurrency } from '../../utils/format';
 import { getFoodImageUrl, DEFAULT_FOOD_IMAGE } from '../../utils/avatarHelper';

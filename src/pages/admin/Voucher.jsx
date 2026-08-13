@@ -522,7 +522,8 @@ export default function Voucher() {
                 }`}
               >
                 <option value="EVENT">Sự kiện</option>
-                <option value="ORDER_CANCELLED">Hủy đơn hàng</option>
+                <option value="ORDER_CANCELLED">Hủy đơn hàng (đền bù)</option>
+                <option value="LOYALTY">Đổi điểm thưởng</option>
               </select>
             </div>
 

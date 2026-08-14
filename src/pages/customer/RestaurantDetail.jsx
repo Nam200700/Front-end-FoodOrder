@@ -919,7 +919,7 @@ export default function RestaurantDetail() {
           return;
         }
 
-        // Chưa tham gia -> mở modal xác nhận như cũ
+        // Chưa tham gia -> mở modal xác nhận 
         confirmInviteModal.open({ code, preview: previewData });
       } catch (err) {
         toast.error(err.response?.data?.message || 'Không tìm thấy phiên đặt nhóm hoặc đã hết hạn.');
@@ -931,7 +931,6 @@ export default function RestaurantDetail() {
       }
     })();
   }, [searchParams]);
-
 
   // Hàm xử lý khi người dùng ấn nút "Tham gia ngay" trên modal
   const handleConfirmJoin = async () => {
@@ -2013,7 +2012,7 @@ export default function RestaurantDetail() {
                   disabled={groupBusy}
                   className="text-[10px] xs:text-sm font-extrabold bg-white/20 hover:bg-white/30 px-2.5 py-1 xs:px-4 xs:py-1.5 rounded-full transition-colors disabled:opacity-60"
                 >
-                  Chốt đơn
+                  Đặt Hàng
                 </button>
               ) : (
                 <button
@@ -2350,7 +2349,7 @@ export default function RestaurantDetail() {
               disabled={groupBusy}
               className="flex-1 !py-2 !text-xs !font-bold !bg-primary-600 hover:!bg-primary-700 !text-white shadow-md mb-0"
             >
-              Xác Nhận Đặt Hàng
+              Xác Nhận 
             </Button>
           </div>
         </div>

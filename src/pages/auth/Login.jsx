@@ -380,13 +380,13 @@ export default function Login() {
                     <Eye
                       size={16}
                       className={`absolute inset-0 m-auto transition-all duration-300 ${
-                        showPassword ? 'opacity-0 scale-50 -rotate-90' : 'opacity-100 scale-100 rotate-0'
+                        showPassword ? 'opacity-100 scale-100 rotate-0' : 'opacity-0 scale-50 -rotate-90'
                       }`}
                     />
                     <EyeOff
                       size={16}
                       className={`absolute inset-0 m-auto transition-all duration-300 ${
-                        showPassword ? 'opacity-100 scale-100 rotate-0' : 'opacity-0 scale-50 rotate-90'
+                        showPassword ? 'opacity-0 scale-50 rotate-90' : 'opacity-100 scale-100 rotate-0'
                       }`}
                     />
                   </button>

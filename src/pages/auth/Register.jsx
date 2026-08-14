@@ -9,6 +9,7 @@ import Input from '../../components/common/Input';
 import Card from '../../components/common/Card';
 import MapModal from '../../components/common/MapModal';
 import { toast } from 'react-toastify';
+import MapModal2 from '../../components/common/Map';
 
 // Panel hero ĐỔI THEO VAI TRÒ (màu + tiêu đề + icon + lợi ích) → hero "sống", ăn khớp bước chọn role.
 // Gradient để tông sâu, bớt chói (bài học chống chói ở Login); lợi ích là MÔ TẢ TÍNH NĂNG thật, không số bịa.
@@ -107,8 +108,11 @@ export default function Register() {
     setRestaurantAddress(address);
     setRestaurantLat(lat);
     setRestaurantLng(lng);
+    clearError('restaurantAddress');
   };
   const [errors, setErrors] = useState({});
+
+  const [restaurantAddressLabel, setRestaurantAddressLabel] = useState('Khác');
 
   const handlePhoneBlur = () => {
     if (!validatePhone(phone)) {
@@ -188,26 +192,29 @@ export default function Register() {
     setErrors({});
 
     const localErrors = {};
-    if (!validateName(name)) {
-      localErrors.fullName = 'Vui lòng nhập họ tên (tối thiểu 2 ký tự).';
-    }
-    if (!validateEmail(email)) {
-      localErrors.email = 'Email không hợp lệ (ví dụ: ten@example.com).';
-    }
-    if (!validatePhone(phone)) {
-      localErrors.phone = 'Số điện thoại không hợp lệ (phải bắt đầu bằng số 0 và gồm 10 chữ số).';
-    }
-    if (!validatePassword(password)) {
-      localErrors.password = 'Mật khẩu phải chứa ít nhất 8 ký tự.';
-    }
-    // Field bắt buộc riêng cho đối tác (Owner/Shipper) để không gửi hồ sơ thiếu thông tin lên Admin
+    if (!name.trim()) localErrors.fullName = 'Vui lòng nhập họ tên.';
+    else if (!validateName(name)) localErrors.fullName = 'Họ tên phải có tối thiểu 2 ký tự.';
+
+    if (!email.trim()) localErrors.email = 'Vui lòng nhập email.';
+    else if (!validateEmail(email)) localErrors.email = 'Email không hợp lệ (ví dụ: ten@example.com).';
+
+    if (!phone.trim()) localErrors.phone = 'Vui lòng nhập số điện thoại.';
+    else if (!validatePhone(phone)) localErrors.phone = 'Số điện thoại không hợp lệ (phải bắt đầu bằng số 0 và gồm 10 chữ số).';
+
+    if (!password.trim()) localErrors.password = 'Vui lòng nhập mật khẩu.';
+    else if (!validatePassword(password)) localErrors.password = 'Mật khẩu phải chứa ít nhất 8 ký tự.';
+
     if (role === 'OWNER') {
       if (!restaurantName.trim()) localErrors.restaurantName = 'Vui lòng nhập tên quán ăn.';
-      if (!validatePhone(restaurantPhone)) localErrors.restaurantPhone = 'Số điện thoại quán không hợp lệ (bắt đầu bằng 0, gồm 10 chữ số).';
+      if (!restaurantPhone.trim()) localErrors.restaurantPhone = 'Vui lòng nhập số điện thoại quán.';
+      else if (!validatePhone(restaurantPhone)) localErrors.restaurantPhone = 'Số điện thoại quán không hợp lệ (bắt đầu bằng 0, gồm 10 chữ số).';
       if (!restaurantAddress.trim()) localErrors.restaurantAddress = 'Vui lòng chọn địa chỉ quán trên bản đồ.';
     } else if (role === 'SHIPPER') {
-      if (!validateIdCard(idCard)) localErrors.idCard = 'CCCD/CMND phải gồm 9 hoặc 12 chữ số.';
-      if (!validateLicensePlate(licensePlate)) localErrors.licensePlate = 'Biển số chưa đúng định dạng (VD: 59H1-234.56 hoặc 51F-123.45).';
+      if (!idCard.trim()) localErrors.idCard = 'Vui lòng nhập số CCCD/CMND.';
+      else if (!validateIdCard(idCard)) localErrors.idCard = 'CCCD/CMND phải gồm 9 hoặc 12 chữ số.';
+
+      if (!licensePlate.trim()) localErrors.licensePlate = 'Vui lòng nhập biển số xe.';
+      else if (!validateLicensePlate(licensePlate)) localErrors.licensePlate = 'Biển số chưa đúng định dạng (VD: 59H1-234.56 hoặc 51F-123.45).';
     }
 
     if (Object.keys(localErrors).length > 0) {
@@ -248,18 +255,23 @@ export default function Register() {
       } else {
         const msg = res.error || '';
         const code = res.errorCode;
-        if (code === 'PHONE_EXISTS' || msg.includes('Số điện thoại') || msg.toLowerCase().includes('phone')) {
-          setErrors({ phone: 'Số điện thoại này đã được đăng ký trên hệ thống!' });
+        if (code === 'PHONE_EXISTS') {
+          setErrors(prev => ({ ...prev, phone: 'Số điện thoại này đã được đăng ký trên hệ thống!' }));
           setStep(2);
         } else if (code === 'EMAIL_EXISTS' || msg.includes('Email') || msg.toLowerCase().includes('email')) {
-          setErrors({ email: 'Email này đã được sử dụng bởi một tài khoản khác!' });
+          setErrors(prev => ({ ...prev, email: 'Email này đã được sử dụng bởi một tài khoản khác!' }));
           setStep(2);
+        } else if (code === 'RESTAURANT_PHONE_EXISTS') {
+          setErrors(prev => ({ ...prev, restaurantPhone: 'Số điện thoại quán đã được đăng ký!' }));
+          setStep(3); // Giữ hoặc đưa về bước 3 để thấy lỗi của quán ăn
         } else if (code === 'ID_CARD_EXISTS' || msg.includes('CCCD')) {
-          setErrors({ idCard: 'Số CCCD/CMND này đã được sử dụng để đăng ký tài khoản khác!' });
+          setErrors(prev => ({ ...prev, idCard: 'Số CCCD/CMND này đã được sử dụng để đăng ký tài khoản khác!' }));
+          setStep(3);
         } else if (code === 'LICENSE_PLATE_EXISTS' || msg.includes('Biển số xe')) {
-          setErrors({ licensePlate: 'Biển số xe này đã được đăng ký bởi tài xế khác!' });
+          setErrors(prev => ({ ...prev, licensePlate: 'Biển số xe này đã được đăng ký bởi tài xế khác!' }));
+          setStep(3);
         } else {
-          toast.error(msg);
+          toast.error(msg || 'Đã có lỗi xảy ra, vui lòng thử lại.');
         }
       }
     }
@@ -302,10 +314,19 @@ export default function Register() {
   // Kiểm tra 4 field cơ bản trước khi cho qua bước tiếp theo (chặn đi tiếp khi còn lỗi)
   const validateStep2 = () => {
     const le = {};
-    if (!validateName(name)) le.fullName = 'Vui lòng nhập họ tên (tối thiểu 2 ký tự).';
-    if (!validateEmail(email)) le.email = 'Email không hợp lệ (ví dụ: ten@example.com).';
-    if (!validatePhone(phone)) le.phone = 'Số điện thoại không hợp lệ (phải bắt đầu bằng số 0 và gồm 10 chữ số).';
-    if (!validatePassword(password)) le.password = 'Mật khẩu phải chứa ít nhất 8 ký tự.';
+
+    if (!name.trim()) le.fullName = 'Vui lòng nhập họ và tên.';
+    else if (!validateName(name)) le.fullName = 'Họ tên phải có ít nhất 2 ký tự.';
+
+    if (!email.trim()) le.email = 'Vui lòng nhập địa chỉ email.';
+    else if (!validateEmail(email)) le.email = 'Email không hợp lệ (ví dụ: ten@example.com).';
+
+    if (!phone.trim()) le.phone = 'Vui lòng nhập số điện thoại.';
+    else if (!validatePhone(phone)) le.phone = 'Số điện thoại không hợp lệ (phải bắt đầu bằng số 0 và gồm 10 chữ số).';
+
+    if (!password) le.password = 'Vui lòng nhập mật khẩu.';
+    else if (!validatePassword(password)) le.password = 'Mật khẩu phải chứa ít nhất 8 ký tự.';
+
     setErrors(le);
     return Object.keys(le).length === 0;
   };
@@ -791,8 +812,8 @@ export default function Register() {
                   type="text"
                   required
                   value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  onBlur={handleNameBlur}
+                  onChange={(e) => { setName(e.target.value); clearError('fullName'); }}
+                  // onBlur={handleNameBlur}
                   placeholder="Nguyễn Văn A..."
                   icon={User}
                   error={errors.fullName}
@@ -805,8 +826,8 @@ export default function Register() {
                       type="email"
                       required
                       value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      onBlur={handleEmailBlur}
+                      onChange={(e) => { setEmail(e.target.value); clearError('email');}}
+                      // onBlur={handleEmailBlur}
                       placeholder="ten@example.com..."
                       icon={Mail}
                       error={errors.email}
@@ -834,14 +855,14 @@ export default function Register() {
                     type="tel"
                     required
                     value={phone}
-                    onChange={(e) => setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
-                    onBlur={handlePhoneBlur}
-                    placeholder="0901234567..."
+                    onChange={(e) => {setPhone(e.target.value.replace(/\D/g, '').slice(0, 10)); clearError('phone');}}
+                    // onBlur={handlePhoneBlur}
+                    placeholder="0901234567"
                     icon={Phone}
                     error={errors.phone}
                     inputMode="numeric"
                     maxLength={10}
-                    helperText="10 chữ số, bắt đầu bằng 0"
+                    // helperText="10 chữ số, bắt đầu bằng 0"
                   />
                 </div>
 
@@ -850,8 +871,8 @@ export default function Register() {
                   type="password"
                   required
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  onBlur={handlePasswordBlur}
+                  onChange={(e) => {setPassword(e.target.value); clearError('password');}}
+                  // onBlur={handlePasswordBlur}
                   placeholder="Tối thiểu 8 ký tự"
                   icon={Lock}
                   error={errors.password}
@@ -948,10 +969,10 @@ export default function Register() {
                     <Input
                       label="Tên Quán Ăn"
                       type="text"
-                      required
+                      // required
                       value={restaurantName}
-                      onChange={(e) => setRestaurantName(e.target.value)}
-                      onBlur={handleRestaurantNameBlur}
+                      onChange={(e) => {setRestaurantName(e.target.value); clearError('restaurantName');}}
+                      // onBlur={handleRestaurantNameBlur}
                       placeholder="Ví dụ: Cơm Tấm Sài Gòn..."
                       icon={Store}
                       error={errors.restaurantName}
@@ -961,10 +982,10 @@ export default function Register() {
                       <Input
                         label="Số Điện Thoại Quán Ăn"
                         type="tel"
-                        required
+                        // required
                         value={restaurantPhone}
-                        onChange={(e) => setRestaurantPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
-                        onBlur={handleRestaurantPhoneBlur}
+                        onChange={(e) => {setRestaurantPhone(e.target.value.replace(/\D/g, '').slice(0, 10)); clearError('restaurantPhone');}}
+                        // onBlur={handleRestaurantPhoneBlur}
                         placeholder="Để khách liên hệ..."
                         icon={Phone}
                         error={errors.restaurantPhone}
@@ -977,7 +998,7 @@ export default function Register() {
                         <Input
                           label="Địa chỉ quán ăn"
                           type="text"
-                          required
+                          // required
                           readOnly
                           value={restaurantAddress}
                           placeholder="Chọn vị trí quán ăn trên bản đồ..."
@@ -1012,10 +1033,10 @@ export default function Register() {
                       <Input
                         label="Số CCCD / CMND"
                         type="text"
-                        required
+                        // required
                         value={idCard}
-                        onChange={(e) => setIdCard(e.target.value.replace(/\D/g, '').slice(0, 12))}
-                        onBlur={handleIdCardBlur}
+                        onChange={(e) => { setIdCard(e.target.value.replace(/\D/g, '').slice(0, 12)); clearError('idCard'); }}
+                        // onBlur={handleIdCardBlur}
                         placeholder="Số CCCD 12 số..."
                         icon={FileText}
                         error={errors.idCard}
@@ -1027,10 +1048,10 @@ export default function Register() {
                       <Input
                         label="Biển Số Xe"
                         type="text"
-                        required
+                        // required
                         value={licensePlate}
-                        onChange={(e) => handleLicensePlateChange(e.target.value)}
-                        onBlur={handleLicensePlateBlur}
+                        onChange={(e) => {handleLicensePlateChange(e.target.value); clearError('licensePlate');}}
+                        // onBlur={handleLicensePlateBlur}
                         placeholder="Ví dụ: 59H1-23456..."
                         icon={Bike}
                         error={errors.licensePlate}
@@ -1132,10 +1153,22 @@ export default function Register() {
         </div>
       </div>
       
-      <MapModal
+      {/* <MapModal
         isOpen={openMap}
         onClose={() => setOpenMap(false)}
         onConfirm={handleConfirmLocation}
+      /> */}
+
+      <MapModal2
+        isOpen={openMap}
+        onClose={() => setOpenMap(false)}
+        onConfirm={handleConfirmLocation}
+        initialLat={restaurantLat}
+        initialLng={restaurantLng}
+        isEditMode={!!restaurantAddress}
+        addressLabel={restaurantAddressLabel}
+        setAddressLabel={setRestaurantAddressLabel}
+        showLabelSelector={false}
       />
     </div>
   );

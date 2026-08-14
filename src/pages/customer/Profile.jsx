@@ -128,11 +128,9 @@ export default function Profile() {
       const defaultAddr = list.find(a => a.default);
       if (defaultAddr) {
         setSelectedAddressId(defaultAddr.addressId);
-        if (!address) {
-          setAddress(defaultAddr.address);
-          setLat(defaultAddr.latitude);
-          setLng(defaultAddr.longitude);
-        }
+        setAddress(defaultAddr.address);
+        setLat(defaultAddr.latitude);
+        setLng(defaultAddr.longitude);
       }
     } catch (err) {
       console.error('Lỗi tải danh sách địa chỉ:', err);

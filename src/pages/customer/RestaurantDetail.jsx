@@ -566,19 +566,28 @@ function GroupOrderPanel({
       </div>
 
       <div className="p-4 space-y-4">
-        {/* Địa chỉ giao hàng */}
-        {isHost && groupOrder.status === 'OPEN' && onChangeAddress && (
-          <button
-            onClick={onChangeAddress}
-            className="w-full flex items-start gap-2.5 text-xs bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl px-3 py-2.5 transition-colors text-left group"
-          >
-            <MapPin size={15} className="text-emerald-600 shrink-0 mt-0.5" />
-            <span className="flex-1 min-w-0">
-              <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-wide">Giao đến</span>
-              <span className="block font-bold text-slate-700 truncate">{groupOrder.deliveryAddress}</span>
-            </span>
-            <Edit2 size={13} className="text-slate-400 group-hover:text-emerald-600 shrink-0 mt-0.5 transition-colors" />
-          </button>
+        {groupOrder.deliveryAddress && (
+          isHost && groupOrder.status === 'OPEN' && onChangeAddress ? (
+            <button
+              onClick={onChangeAddress}
+              className="w-full flex items-start gap-2.5 text-xs bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl px-3 py-2.5 transition-colors text-left group"
+            >
+              <MapPin size={15} className="text-emerald-600 shrink-0 mt-0.5" />
+              <span className="flex-1 min-w-0">
+                <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-wide">Giao đến</span>
+                <span className="block font-bold text-slate-700 break-words whitespace-normal">{groupOrder.deliveryAddress}</span>
+              </span>
+              <Edit2 size={13} className="text-slate-400 group-hover:text-emerald-600 shrink-0 mt-0.5 transition-colors" />
+            </button>
+          ) : (
+            <div className="w-full flex items-start gap-2.5 text-xs bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5">
+              <MapPin size={15} className="text-slate-400 shrink-0 mt-0.5" />
+              <span className="flex-1 min-w-0">
+                <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-wide">Giao đến</span>
+                <span className="block font-bold text-slate-700 break-words whitespace-normal">{groupOrder.deliveryAddress}</span>
+              </span>
+            </div>
+          )
         )}
 
         {/* Danh sách thành viên */}
@@ -894,11 +903,23 @@ export default function RestaurantDetail() {
     (async () => {
       try {
         setGroupBusy(true);
-        // Gọi api lấy thông tin preview phiên đặt nhóm trước khi tham gia
         const res = await apiClient.get(`/group-orders/invite/${code}`);
         const previewData = res.data?.data;
-        
-        // Mở modal xác nhận với dữ liệu preview nhận được
+
+        // Nếu người dùng hiện tại ĐÃ LÀ thành viên của phiên này rồi thì tham gia
+        const alreadyMember = (previewData?.members || []).some(
+          (m) => m.userId === user?.id && m.status !== 'LEFT'
+        );
+
+        if (alreadyMember) {
+          setGroupOrder(previewData);
+          const next = new URLSearchParams(searchParams);
+          next.delete('group');
+          setSearchParams(next, { replace: true });
+          return;
+        }
+
+        // Chưa tham gia -> mở modal xác nhận như cũ
         confirmInviteModal.open({ code, preview: previewData });
       } catch (err) {
         toast.error(err.response?.data?.message || 'Không tìm thấy phiên đặt nhóm hoặc đã hết hạn.');
@@ -2269,28 +2290,50 @@ export default function RestaurantDetail() {
         </div>
       </Modal>
 
-      {/* ─── MODAL XÁC NHẬN CHỐT ĐƠN KHI CÒN THÀNH VIÊN CHƯA SẴN SÀNG ─────────── */}
+      {/* ─── MODAL XÁC NHẬN ĐẶT HÀNG NHÓM ─────────────────────────────────────── */}
       <Modal
         isOpen={confirmCheckoutModal.isOpen}
         onClose={() => confirmCheckoutModal.close()}
-        title="Còn Thành Viên Chưa Chọn Món Xong"
+        title={confirmCheckoutModal.data?.unreadyMembers?.length > 0 ? "Còn Thành Viên Chưa Chọn Món Xong" : "Xác Nhận Đặt Hàng Nhóm"}
         size="sm"
         className="[&_h2]:!text-slate-900 [&_h2]:!text-base [&_h2]:md:!text-lg [&_h2]:!font-bold"
       >
         <div className="space-y-4 -mt-3">
-          <p className="text-xs sm:text-sm text-md-on-surface-variant font-medium">
-            {confirmCheckoutModal.data?.unreadyMembers?.length} thành viên chưa bấm "Hoàn tất chọn món". Nếu chốt đơn ngay, họ sẽ không kịp bổ sung thêm món nữa.
-          </p>
+          {confirmCheckoutModal.data?.unreadyMembers?.length > 0 ? (
+            <>
+              <p className="text-xs sm:text-sm text-md-on-surface-variant font-medium">
+                {confirmCheckoutModal.data.unreadyMembers.length} thành viên chưa bấm "Hoàn tất chọn món". Nếu chốt đơn ngay, họ sẽ không kịp bổ sung thêm món nữa.
+              </p>
+              <ul className="space-y-1.5 max-h-32 overflow-y-auto no-scrollbar">
+                {confirmCheckoutModal.data.unreadyMembers.map((m) => (
+                  <li key={m.memberId} className="flex items-center justify-between text-xs font-semibold bg-amber-50 border border-amber-100 rounded-lg px-3 py-2">
+                    <span className="text-slate-700 truncate">{m.fullName}</span>
+                    <span className="text-amber-600 shrink-0">{m.items?.length ? `${m.items.length} món` : 'Chưa chọn món xong'}</span>
+                  </li>
+                ))}
+              </ul>
+            </>
+          ) : (
+            <p className="text-xs sm:text-sm text-md-on-surface-variant font-medium">
+              Bạn sắp chốt đơn cho <b className="text-slate-700">{groupOrder?.memberCount || 0} thành viên</b> tại <b className="text-slate-700">{restaurant?.name}</b>. Sau khi xác nhận, mọi người sẽ không thể chỉnh sửa món ăn nữa.
+            </p>
+          )}
 
-          {confirmCheckoutModal.data?.unreadyMembers?.length > 0 && (
-            <ul className="space-y-1.5 max-h-32 overflow-y-auto no-scrollbar">
-              {confirmCheckoutModal.data.unreadyMembers.map((m) => (
-                <li key={m.memberId} className="flex items-center justify-between text-xs font-semibold bg-amber-50 border border-amber-100 rounded-lg px-3 py-2">
-                  <span className="text-slate-700 truncate">{m.fullName}</span>
-                  <span className="text-amber-600 shrink-0">{m.items?.length ? `${m.items.length} món` : 'Chưa chọn món xong'}</span>
-                </li>
-              ))}
-            </ul>
+          {groupOrder && (
+            <div className="border border-slate-100 rounded-xl p-3 space-y-1.5 bg-slate-50/60 text-xs">
+              <div className="flex items-center justify-between text-slate-500">
+                <span>Tạm tính cả nhóm</span>
+                <span className="font-bold text-slate-700">{formatCurrency(groupOrder.subtotalAmount || 0)}</span>
+              </div>
+              <div className="flex items-center justify-between text-slate-500">
+                <span>Phí giao hàng</span>
+                <span className="font-bold text-slate-700">{formatCurrency(shippingFee || 0)}</span>
+              </div>
+              <div className="flex items-center justify-between pt-1.5 border-t border-slate-200">
+                <span className="font-bold text-slate-700">Tổng thanh toán</span>
+                <span className="font-extrabold text-emerald-600">{formatCurrency((groupOrder.subtotalAmount || 0) + (shippingFee || 0))}</span>
+              </div>
+            </div>
           )}
 
           <div className="flex items-center gap-3 pt-2 border-t border-slate-100">
@@ -2300,7 +2343,7 @@ export default function RestaurantDetail() {
               disabled={groupBusy}
               className="flex-1 font-bold !py-2 !text-xs"
             >
-              Chờ Thêm
+              {confirmCheckoutModal.data?.unreadyMembers?.length > 0 ? 'Chờ Thêm' : 'Hủy'}
             </Button>
             <Button
               onClick={() => doCheckoutGroup(true)}

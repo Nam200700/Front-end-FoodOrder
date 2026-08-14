@@ -99,18 +99,20 @@ export const useCartStore = create((set, get) => ({
   },
 
   fetchShippingForRestaurant: async (resId, deliveryLat, deliveryLng) => {
+    if (!resId || !deliveryLat || !deliveryLng) return;
+
     const { restaurantShippingCache } = get();
-    // Nếu đã có trong cache thì không gọi API nữa
-    if (restaurantShippingCache[resId]) return;
+    const cached = restaurantShippingCache[resId];
+    if (cached && cached.lat === deliveryLat && cached.lng === deliveryLng) return;
     try {
       const res = await apiClient.get("/shipping/calculate", {
         params: {
-          restaurantIds: [resId], 
+          restaurantIds: [resId],
           deliveryLat,
           deliveryLng
         }
       });
-      
+
       const data = res.data?.data?.[0];
       if (data) {
         set(state => ({
@@ -119,7 +121,9 @@ export const useCartStore = create((set, get) => ({
             [resId]: {
               shippingFee: data.shippingFee,
               distanceKm: data.distanceKm,
-              durationMinutes: data.durationMinutes
+              durationMinutes: data.durationMinutes,
+              lat: deliveryLat,   
+              lng: deliveryLng,
             }
           }
         }));

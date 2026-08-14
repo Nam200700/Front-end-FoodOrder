@@ -506,184 +506,201 @@ const GROUP_STATUS_META = {
   EXPIRED: { label: 'Hết hạn', cls: 'bg-slate-200 text-slate-500' },
 };
 
-/**
- * PANEL ĐẶT ĐƠN NHÓM — thay thế giỏ hàng cá nhân khi đang trong 1 phiên nhóm.
- * Hiển thị danh sách thành viên + món từng người, cho phép host khóa/chốt đơn,
- * thành viên đánh dấu sẵn sàng hoặc rời phiên.
- * Món của CHÍNH MÌNH có thêm icon ghi chú (Pencil) và icon xoá (X).
- */
-function GroupOrderPanel({ groupOrder, isHost, myMember, onMarkReady, onLock, onCheckout, onLeave, onCancel, onShowInvite, busy, handleRemoveGroupItem, onEditNote, shippingFee, onChangeAddress }) {
+function GroupOrderPanel({
+  groupOrder, isHost, myMember, onMarkReady, onLock, onCheckout, onLeave,
+  onCancel, onShowInvite, busy, handleRemoveGroupItem, onEditNote,
+  shippingFee, distanceKm, durationMinutes, onChangeAddress
+}) {
   const { user } = useAuthStore();
   if (!groupOrder) return null;
   const isOpen = groupOrder.status === 'OPEN';
   const canCheckout = isHost && (groupOrder.status === 'OPEN' || groupOrder.status === 'LOCKED');
   const statusMeta = GROUP_STATUS_META[groupOrder.status] || GROUP_STATUS_META.OPEN;
 
+  const members = groupOrder.members || [];
+  const readyCount = members.filter((m) => m.status === 'READY').length;
+  const activeCount = members.filter((m) => m.status !== 'LEFT').length || 1;
+  const readyPct = Math.round((readyCount / activeCount) * 100);
+
+  const memberInitial = (name) => (name || '?').trim().charAt(0).toUpperCase();
+  const memberColor = (name) => AVATAR_COLORS[((name || '?').charCodeAt(0) || 0) % AVATAR_COLORS.length];
+
   return (
-    <Card variant="elevated" className="p-5">
-      <div className="flex items-center justify-between mb-3">
-        <h3 className="text-xs font-extrabold text-md-on-surface uppercase tracking-wider flex items-center gap-1.5">
-          <Users size={15} className="text-emerald-600" /> Đơn nhóm
-        </h3>
+    <Card variant="elevated" className="p-0 overflow-hidden rounded-2xl border border-emerald-100 shadow-md">
+      {/* Header gradient */}
+      <div className="relative bg-gradient-to-br from-emerald-600 to-teal-600 text-white px-5 py-4">
+        <Users className="absolute -right-3 -bottom-3 text-white/10" size={90} strokeWidth={1} />
+        <div className="relative flex items-center justify-between">
+          <h3 className="text-xs font-extrabold uppercase tracking-wider flex items-center gap-1.5">
+            <Users size={15} /> Đơn Đặt Nhóm
+          </h3>
+          <span className={`text-[10px] font-black px-2.5 py-1 rounded-full bg-white/20 backdrop-blur-sm`}>
+            {statusMeta.label}
+          </span>
+        </div>
+        <div className="relative mt-2 flex items-center gap-3 text-[11px] font-semibold text-white/85">
+          <span>{groupOrder.memberCount} thành viên</span>
+          <span className="w-1 h-1 rounded-full bg-white/50" />
+          <span>{groupOrder.totalItemCount} món</span>
+        </div>
+
+        {/* Progress: bao nhiêu người đã sẵn sàng */}
+        <div className="relative mt-3">
+          <div className="flex items-center justify-between text-[10px] font-bold text-white/80 mb-1">
+            <span>Đã sẵn sàng</span>
+            <span>{readyCount}/{activeCount}</span>
+          </div>
+          <div className="h-1.5 w-full bg-white/20 rounded-full overflow-hidden">
+            <div className="h-full bg-white rounded-full transition-all duration-500" style={{ width: `${readyPct}%` }} />
+          </div>
+        </div>
+
         {isOpen && (
-          <button onClick={onShowInvite} className="text-[11px] font-bold text-emerald-600 hover:underline cursor-pointer flex items-center gap-1">
-            <QrCode size={12} /> Mời thêm
+          <button
+            onClick={onShowInvite}
+            className="relative mt-3 w-full inline-flex items-center justify-center gap-1.5 text-[11px] font-bold bg-white/15 hover:bg-white/25 transition-colors rounded-full py-1.5 cursor-pointer"
+          >
+            <QrCode size={12} /> Mời thêm bạn bè
           </button>
         )}
       </div>
 
-      <div className="flex items-center gap-2 mb-3.5">
-        <span className={`text-[10px] font-black px-2 py-1 rounded-full ${statusMeta.cls}`}>{statusMeta.label}</span>
-        <span className="text-[11px] text-slate-400 font-semibold">{groupOrder.memberCount} thành viên · {groupOrder.totalItemCount} món</span>
-      </div>
+      <div className="p-4 space-y-4">
+        {/* Địa chỉ giao hàng */}
+        {isHost && groupOrder.status === 'OPEN' && onChangeAddress && (
+          <button
+            onClick={onChangeAddress}
+            className="w-full flex items-start gap-2.5 text-xs bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl px-3 py-2.5 transition-colors text-left group"
+          >
+            <MapPin size={15} className="text-emerald-600 shrink-0 mt-0.5" />
+            <span className="flex-1 min-w-0">
+              <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-wide">Giao đến</span>
+              <span className="block font-bold text-slate-700 truncate">{groupOrder.deliveryAddress}</span>
+            </span>
+            <Edit2 size={13} className="text-slate-400 group-hover:text-emerald-600 shrink-0 mt-0.5 transition-colors" />
+          </button>
+        )}
 
-      {isHost && groupOrder.status === 'OPEN' && onChangeAddress && (
-        <button
-          onClick={onChangeAddress}
-          className="w-full flex items-center justify-between text-xs bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-lg px-3 py-2 mb-3 transition-colors"
-        >
-          <span className="flex items-center gap-1.5 text-slate-500 font-semibold">
-            <MapPin size={13} /> Giao đến:
-          </span>
-          <span className="font-bold text-slate-700 truncate max-w-[150px]">{groupOrder.deliveryAddress}</span>
-        </button>
-      )}
-
-      <div className="space-y-2.5 max-h-64 overflow-y-auto no-scrollbar pr-1">
-        {groupOrder.members?.map((m) => {
-          // Kiểm tra xem thành viên này có phải là user hiện tại đang đăng nhập không
-          const isCurrentUser = m.userId === user?.id;
-
-          return (
-            <div key={m.memberId} className="rounded-lg border border-slate-100 bg-slate-50/60 p-2.5">
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-xs font-bold text-slate-700 flex items-center gap-1.5 truncate min-w-0">
-                  <span className="truncate">{m.fullName}</span>
-                  {m.isHost && <span className="text-[9px] shrink-0 bg-orange-100 text-orange-600 px-1.5 py-0.5 rounded-full font-black">HOST</span>}
-                </span>
-                <span className={`text-[9px] font-black px-1.5 py-0.5 rounded-full shrink-0 ${m.status === 'READY' ? 'bg-emerald-100 text-emerald-700' : m.status === 'LEFT' ? 'bg-slate-200 text-slate-400' : 'bg-slate-200 text-slate-500'}`}>
-                  {m.status === 'READY' ? 'Sẵn sàng' : m.status === 'LEFT' ? 'Đã rời' : 'Đang chọn'}
-                </span>
+        {/* Danh sách thành viên */}
+        <div className="space-y-2 max-h-64 overflow-y-auto no-scrollbar pr-0.5">
+          {members.map((m) => {
+            const isCurrentUser = m.userId === user?.id;
+            const ready = m.status === 'READY';
+            return (
+              <div key={m.memberId} className="rounded-xl border border-slate-100 bg-slate-50/60 p-2.5">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className={`w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-black shrink-0 ${memberColor(m.fullName)}`}>
+                      {memberInitial(m.fullName)}
+                    </span>
+                    <span className="text-xs font-bold text-slate-700 flex items-center gap-1.5 truncate min-w-0">
+                      <span className="truncate">{m.fullName}</span>
+                      {m.isHost && <span className="text-[9px] shrink-0 bg-orange-100 text-orange-600 px-1.5 py-0.5 rounded-full font-black">HOST</span>}
+                    </span>
+                  </div>
+                  <span className={`inline-flex items-center gap-1 text-[9px] font-black px-1.5 py-0.5 rounded-full shrink-0 ${
+                    ready ? 'bg-emerald-100 text-emerald-700' : m.status === 'LEFT' ? 'bg-slate-200 text-slate-400' : 'bg-amber-100 text-amber-600'
+                  }`}>
+                    {ready && <CheckCheck size={10} />}
+                    {ready ? 'Sẵn sàng' : m.status === 'LEFT' ? 'Đã rời' : 'Đang chọn'}
+                  </span>
+                </div>
+                {m.items?.length > 0 ? (
+                  <ul className="mt-2 space-y-1 pl-9">
+                    {m.items.map((it) => (
+                      <li key={it.groupOrderItemId} className="text-[11px] text-slate-500 flex items-start justify-between gap-2">
+                        <div className="flex-1 min-w-0">
+                          <span className="truncate block font-medium text-slate-600">{it.foodName} × {it.quantity}</span>
+                          {it.note && (
+                            <span className="flex items-start gap-1 text-[10px] text-slate-400 italic mt-0.5">
+                              <StickyNote size={10} className="shrink-0 mt-0.5" />
+                              <span className="truncate">{it.note}</span>
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <span className="font-semibold text-slate-600">{formatCurrency(it.lineTotal)}</span>
+                          {isCurrentUser && groupOrder.status === 'OPEN' && (
+                            <>
+                              <button type="button" disabled={busy} onClick={() => onEditNote(it)}
+                                className="p-0.5 rounded text-slate-400 hover:text-emerald-600 hover:bg-emerald-100/60 transition-all disabled:opacity-50" title="Ghi chú">
+                                <Pencil size={12} />
+                              </button>
+                              <button type="button" disabled={busy} onClick={() => handleRemoveGroupItem(it.groupOrderItemId)}
+                                className="p-0.5 rounded text-slate-400 hover:text-red-600 hover:bg-red-50 transition-all disabled:opacity-50" title="Xóa">
+                                <X size={13} />
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="text-[11px] text-slate-400 italic mt-1.5 pl-9">Chưa chọn món</p>
+                )}
               </div>
-              {m.items?.length > 0 ? (
-                <ul className="mt-1.5 space-y-1">
-                  {m.items.map((it) => (
-                    <li key={it.groupOrderItemId} className="text-[11px] text-slate-500 flex items-start justify-between gap-2 group/item">
-                      <div className="flex-1 min-w-0">
-                        <span className="truncate block">{it.foodName} × {it.quantity}</span>
-                        {it.note && (
-                          <span className="flex items-start gap-1 text-[10px] text-slate-400 italic mt-0.5">
-                            <StickyNote size={10} className="shrink-0 mt-0.5" />
-                            <span className="truncate">{it.note}</span>
-                          </span>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-1.5 shrink-0">
-                        <span className="font-semibold text-slate-600">{formatCurrency(it.lineTotal)}</span>
-                        {/* Chỉ hiện nút ghi chú / xoá khi là món của chính user hiện tại và phiên đang ở trạng thái OPEN */}
-                        {isCurrentUser && groupOrder.status === 'OPEN' && (
-                          <>
-                            <button
-                              type="button"
-                              disabled={busy}
-                              onClick={() => onEditNote(it)}
-                              className="p-0.5 rounded text-slate-400 hover:text-md-primary hover:bg-md-primary/10 transition-all disabled:opacity-50"
-                              title="Ghi chú cho món này"
-                            >
-                              <Pencil size={12} />
-                            </button>
-                            <button
-                              type="button"
-                              disabled={busy}
-                              onClick={() => handleRemoveGroupItem(it.groupOrderItemId)}
-                              className="p-0.5 rounded text-slate-400 hover:text-red-600 hover:bg-red-50 transition-all disabled:opacity-50"
-                              title="Xóa món này"
-                            >
-                              <X size={13} />
-                            </button>
-                          </>
-                        )}
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="text-[11px] text-slate-400 italic mt-1">Chưa chọn món</p>
-              )}
+            );
+          })}
+        </div>
+
+        {/* Tóm tắt tiền */}
+        <div className="rounded-xl bg-slate-50 border border-slate-100 p-3 space-y-1.5">
+          <div className="flex items-center justify-between text-xs text-slate-500">
+            <span>Tạm tính cả nhóm</span>
+            <span className="font-bold text-slate-700">{formatCurrency(groupOrder.subtotalAmount || 0)}</span>
+          </div>
+          <div className="flex items-center justify-between text-xs text-slate-500">
+            <span className="flex items-center gap-1"> Phí giao hàng</span>
+            <span className="font-bold text-slate-700">{formatCurrency(shippingFee || 0)}</span>
+          </div>
+          {distanceKm != null && (
+            <div className="flex items-center justify-between text-xs text-slate-500">
+              <span className="flex items-center gap-1"> Khoảng cách</span>
+              <span className="font-bold text-slate-700">
+                {distanceKm.toFixed(1)} km{durationMinutes ? ` (~${Math.round(durationMinutes)} phút)` : ''}
+              </span>
             </div>
-          );
-        })}
-      </div>
+          )}
+          <div className="flex items-center justify-between pt-1.5 mt-1 border-t border-slate-200">
+            <span className="text-xs font-bold text-slate-700">Tổng thanh toán</span>
+            <span className="text-base font-extrabold text-emerald-600">{formatCurrency((groupOrder.subtotalAmount || 0) + (shippingFee || 0))}</span>
+          </div>
+        </div>
 
-      <div className="space-y-1.5 border-t border-slate-100 pt-3 mt-4">
-        <div className="flex items-center justify-between text-xs text-slate-500">
-          <span className="flex items-center gap-1.5">Tạm tính cả nhóm</span>
-          <span className="font-bold text-slate-700">{formatCurrency(groupOrder.subtotalAmount || 0)}</span>
+        {/* Hành động */}
+        <div className="space-y-2">
+          {isOpen && myMember?.status !== 'READY' && (
+            <Button onClick={onMarkReady} disabled={busy} variant="outline"
+              className="w-full !border-emerald-500/40 !text-emerald-700 hover:!bg-emerald-50 font-extrabold shadow-sm transition-all duration-200" icon={CheckCheck}>
+              Hoàn Tất Chọn Món
+            </Button>
+          )}
+          {isHost && isOpen && (
+            <Button onClick={onLock} disabled={busy} variant="outline"
+              className="w-full !border-amber-500/40 !text-amber-700 hover:!bg-amber-50 font-extrabold shadow-sm transition-all duration-200" icon={Lock}>
+              Khóa Phiên
+            </Button>
+          )}
+          {canCheckout && (
+            <Button onClick={onCheckout} disabled={busy}
+              className="w-full !bg-primary-to-r !from-emerald-600 !to-teal-600 hover:!from-emerald-700 hover:!to-teal-700 text-white font-extrabold shadow-md hover:shadow-lg transition-all duration-200">
+              Đặt Hàng
+            </Button>
+          )}
+          {!isHost && isOpen && (
+            <Button onClick={onLeave} disabled={busy} variant="outline"
+              className="w-full !text-rose-600 !border-rose-200 hover:!bg-rose-50 font-bold transition-all duration-200" icon={LogOut}>
+              Rời Khỏi Nhóm
+            </Button>
+          )}
+          {isHost && groupOrder.status !== 'ORDERED' && groupOrder.status !== 'CANCELLED' && (
+            <Button onClick={onCancel} disabled={busy} variant="text"
+              className="w-full !text-rose-500 hover:!bg-rose-50/60 font-semibold transition-all duration-200" icon={Ban}>
+              Hủy Đặt Đơn Nhóm
+            </Button>
+          )}
         </div>
-        <div className="flex items-center justify-between text-xs text-slate-500">
-          <span className="flex items-center gap-1.5">Phí giao hàng</span>
-          <span className="font-bold text-slate-700">{formatCurrency(shippingFee)}</span>
-        </div>
-        <div className="flex items-center justify-between">
-          <span className="text-xs font-bold text-md-on-surface-variant">Tổng thanh toán</span>
-          <span className="text-base font-extrabold text-emerald-600">{formatCurrency(groupOrder.subtotalAmount + shippingFee)}</span>
-        </div>
-      </div>
-
-      <div className="mt-4 space-y-2.5">
-        {isOpen && myMember?.status !== 'READY' && (
-          <Button 
-            onClick={onMarkReady} 
-            disabled={busy} 
-            variant="outline" 
-            className="w-full !border-emerald-500/40 !text-emerald-700 hover:!bg-emerald-50 font-extrabold shadow-sm transition-all duration-200" 
-            icon={CheckCheck}
-          >
-            Hoàn Tất Chọn Món
-          </Button>
-        )}
-        {isHost && isOpen && (
-          <Button 
-            onClick={onLock} 
-            disabled={busy} 
-            variant="outline" 
-            className="w-full !border-amber-500/40 !text-amber-700 hover:!bg-amber-50 font-extrabold shadow-sm transition-all duration-200" 
-            icon={Lock}
-          >
-            Khóa Phiên (Ngừng chọn món)
-          </Button>
-        )}
-        {canCheckout && (
-          <Button 
-            onClick={onCheckout} 
-            disabled={busy} 
-            className="w-full !bg-primary-to-r !from-emerald-600 !to-teal-600 hover:!from-emerald-700 hover:!to-teal-700 text-white font-extrabold shadow-md hover:shadow-lg transition-all duration-200"
-          >
-            Đặt Hàng
-          </Button>
-        )}
-        {!isHost && isOpen && (
-          <Button 
-            onClick={onLeave} 
-            disabled={busy} 
-            variant="outline" 
-            className="w-full !text-rose-600 !border-rose-200 hover:!bg-rose-50 font-bold transition-all duration-200" 
-            icon={LogOut}
-          >
-            Rời Khỏi Nhóm
-          </Button>
-        )}
-        {isHost && groupOrder.status !== 'ORDERED' && groupOrder.status !== 'CANCELLED' && (
-          <Button 
-            onClick={onCancel} 
-            disabled={busy} 
-            variant="text" 
-            className="w-full !text-rose-500 hover:!bg-rose-50/60 font-semibold transition-all duration-200" 
-            icon={Ban}
-          >
-            Hủy Đặt Đơn Nhóm
-          </Button>
-        )}
       </div>
     </Card>
   );
@@ -748,9 +765,9 @@ export default function RestaurantDetail() {
 
   const confirmInviteModal = useModalState(null); 
 
-  // ─── Địa chỉ giao hàng cho phiên nhóm — cùng flow với Cart.jsx (danh sách + bản đồ) ───
-  const groupAddressListModal = useModalState();   // giống addressListModal ở Cart.jsx
-  const groupMapModal = useModalState();           // giống mapModal2 ở Cart.jsx
+  // ─── Địa chỉ giao hàng cho phiên nhóm 
+  const groupAddressListModal = useModalState();   
+  const groupMapModal = useModalState();           
   const [groupUserAddresses, setGroupUserAddresses] = useState([]);
   const [savingGroupAddress, setSavingGroupAddress] = useState(false);
   const [groupEditingAddressId, setGroupEditingAddressId] = useState(null);
@@ -759,6 +776,8 @@ export default function RestaurantDetail() {
     lat: user?.lat || 10.762622,
     lng: user?.lng || 106.660172,
   });
+
+  const [groupSelectedAddressId, setGroupSelectedAddressId] = useState(null); 
 
   useEffect(() => {
     if (!id) return;
@@ -1177,7 +1196,10 @@ export default function RestaurantDetail() {
   const openGroupAddressModal = async () => {
     try {
       const res = await apiClient.get('/addresses');
-      setGroupUserAddresses(res.data?.data || []);
+      const list = res.data?.data || [];
+      setGroupUserAddresses(list);
+      const defaultAddr = list.find((a) => a.default);
+      if (defaultAddr) setGroupSelectedAddressId(defaultAddr.addressId);
     } catch (err) {
       console.warn('Không tải được danh sách địa chỉ:', err);
     }
@@ -1186,12 +1208,11 @@ export default function RestaurantDetail() {
 
   // Chọn 1 địa chỉ đã lưu -> áp trực tiếp cho phiên nhóm qua addressId
   // Chọn 1 địa chỉ đã lưu -> đặt làm MẶC ĐỊNH trong sổ địa chỉ (PUT /addresses/{id})
-// rồi áp luôn địa chỉ đó cho phiên nhóm (PATCH /group-orders/{id}/address)
   const selectGroupAddress = async (item) => {
     if (!groupOrder) return;
     setSavingGroupAddress(true);
+    setGroupSelectedAddressId(item.addressId); 
     try {
-      // 1) Lưu làm địa chỉ mặc định xuống DB — đồng bộ với AddressCustomer/Cart.jsx
       await apiClient.put(`/addresses/${item.addressId}`, {
         label: item.label || 'Nhà riêng',
         address: item.address,
@@ -1200,13 +1221,11 @@ export default function RestaurantDetail() {
         isDefault: true,
       });
 
-      // 2) Áp địa chỉ này cho phiên nhóm
       const res = await apiClient.patch(`/group-orders/${groupOrder.groupOrderId}/address`, {
         addressId: item.addressId,
       });
       setGroupOrder(res.data?.data || null);
 
-      // 3) Nạp lại danh sách để phản ánh cờ "Mặc định" mới trên UI
       const listRes = await apiClient.get('/addresses');
       setGroupUserAddresses(listRes.data?.data || []);
 
@@ -1274,6 +1293,7 @@ export default function RestaurantDetail() {
               deliveryLng: Number(lngVal),
             });
         setGroupOrder(res.data?.data || null);
+        if (savedAddressId) setGroupSelectedAddressId(savedAddressId);
       }
 
       groupMapModal.close();
@@ -1751,7 +1771,7 @@ export default function RestaurantDetail() {
                             </div>
 
                             {/* Ghi chú cho món — chỉ hiện khi đang trong phiên nhóm và món đã được chọn (qty > 0) */}
-                            {isGroupMode && qty > 0 && myGroupItem && groupOrder.status === 'OPEN' && (
+                            {/* {isGroupMode && qty > 0 && myGroupItem && groupOrder.status === 'OPEN' && (
                               <button
                                 type="button"
                                 onClick={() => openNoteEditor(myGroupItem)}
@@ -1764,7 +1784,7 @@ export default function RestaurantDetail() {
                                   <span>Thêm ghi chú cho món này</span>
                                 )}
                               </button>
-                            )}
+                            )} */}
                           </div>
                         </Card>
                       );
@@ -1791,6 +1811,8 @@ export default function RestaurantDetail() {
                 handleRemoveGroupItem={handleRemoveGroupItem}
                 onEditNote={openNoteEditor}
                 shippingFee={shippingFee}
+                distanceKm={cachedShipping?.distanceKm}
+                durationMinutes={durationMinutes}
                 onChangeAddress={openGroupAddressModal}
               />
             ) : (
@@ -2302,7 +2324,7 @@ export default function RestaurantDetail() {
         <div className="space-y-4 -mx-6 -my-6 flex flex-col h-full">
           <div className="max-h-[55vh] overflow-y-auto space-y-3 px-6 pt-2 pb-1">
             {groupUserAddresses.map((item) => {
-              const isSelected = groupOrder?.deliveryAddress === item.address;
+              const isSelected = groupSelectedAddressId === item.addressId;
               return (
                 <div
                   key={item.addressId}

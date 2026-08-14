@@ -330,11 +330,9 @@ export default function Cart() {
       const defaultAddr = list.find(a => a.default);
       if (defaultAddr) {
         setSelectedAddressId(defaultAddr.addressId);
-        if (!address) {
-          setAddress(defaultAddr.address);
-          setDeliveryLat(defaultAddr.latitude);
-          setDeliveryLng(defaultAddr.longitude);
-        }
+        setAddress(defaultAddr.address);
+        setDeliveryLat(defaultAddr.latitude);
+        setDeliveryLng(defaultAddr.longitude);
       }
     } catch (err) {
       console.error('Lỗi tải danh sách địa chỉ:', err);

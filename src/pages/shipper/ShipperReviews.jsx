@@ -443,7 +443,7 @@ export default function ShipperReviews() {
                         <p className="text-xs italic text-slate-400 px-1">Khách không để lại nhận xét.</p>
                       )}
 
-                      {rev.images && rev.images.length > 0 && (
+                      {/* {rev.images && rev.images.length > 0 && (
                         <div className="flex flex-wrap gap-2 mt-2.5">
                           {rev.images.map((imgUrl, index) => (
                             <div
@@ -462,7 +462,7 @@ export default function ShipperReviews() {
                             </div>
                           ))}
                         </div>
-                      )}
+                      )} */}
                     </div>
                   </Card>
                 ))}

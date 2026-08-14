@@ -9,7 +9,7 @@ import {
   MessageSquare, AlertTriangle, Bike, AlertCircle, X, ZoomIn, ChevronLeft, ChevronRight,
   Utensils, Info, Truck, Wallet, Timer, Sparkles, TrendingUp, ThumbsUp, Award, ArrowDownUp,
   Camera, ChevronDown, Frown, Meh, Smile, Laugh, MessageSquareText, Store,
-  Users, Copy, QrCode, Link2, Lock, Send, LogOut, Ban, CheckCheck, Pencil, StickyNote,
+  Users, Copy, QrCode, Link2, Lock, Send, LogOut, Ban, CheckCheck, Pencil, StickyNote, Edit2
 } from 'lucide-react';
 import { formatCurrency } from '../../utils/format';
 import { getFoodImageUrl, DEFAULT_FOOD_IMAGE } from '../../utils/avatarHelper';
@@ -22,6 +22,7 @@ import { toast } from 'react-toastify';
 import { mapRestaurant } from '../../utils/mappers';
 import { useModalState } from '../../hooks/useModalState';
 import { useFetchData } from '../../hooks/useFetchData';
+import MapModal2 from '../../components/common/Map';
 
 // Hàng 5 sao dùng chung — tô theo điểm (làm tròn), tuỳ chọn hiệu ứng pop cho sinh động.
 function StarRow({ value = 0, size = 14, animate = false, className = '' }) {
@@ -505,162 +506,210 @@ const GROUP_STATUS_META = {
   EXPIRED: { label: 'Hết hạn', cls: 'bg-slate-200 text-slate-500' },
 };
 
-/**
- * PANEL ĐẶT ĐƠN NHÓM — thay thế giỏ hàng cá nhân khi đang trong 1 phiên nhóm.
- * Hiển thị danh sách thành viên + món từng người, cho phép host khóa/chốt đơn,
- * thành viên đánh dấu sẵn sàng hoặc rời phiên.
- * Món của CHÍNH MÌNH có thêm icon ghi chú (Pencil) và icon xoá (X).
- */
-function GroupOrderPanel({ groupOrder, isHost, myMember, onMarkReady, onLock, onCheckout, onLeave, onCancel, onShowInvite, busy, handleRemoveGroupItem, onEditNote }) {
+function GroupOrderPanel({
+  groupOrder, isHost, myMember, onMarkReady, onLock, onCheckout, onLeave,
+  onCancel, onShowInvite, busy, handleRemoveGroupItem, onEditNote,
+  shippingFee, distanceKm, durationMinutes, onChangeAddress
+}) {
   const { user } = useAuthStore();
   if (!groupOrder) return null;
   const isOpen = groupOrder.status === 'OPEN';
   const canCheckout = isHost && (groupOrder.status === 'OPEN' || groupOrder.status === 'LOCKED');
   const statusMeta = GROUP_STATUS_META[groupOrder.status] || GROUP_STATUS_META.OPEN;
 
+  const members = groupOrder.members || [];
+  const readyCount = members.filter((m) => m.status === 'READY').length;
+  const activeCount = members.filter((m) => m.status !== 'LEFT').length || 1;
+  const readyPct = Math.round((readyCount / activeCount) * 100);
+
+  const memberInitial = (name) => (name || '?').trim().charAt(0).toUpperCase();
+  const memberColor = (name) => AVATAR_COLORS[((name || '?').charCodeAt(0) || 0) % AVATAR_COLORS.length];
+
   return (
-    <Card variant="elevated" className="p-5">
-      <div className="flex items-center justify-between mb-3">
-        <h3 className="text-xs font-extrabold text-md-on-surface uppercase tracking-wider flex items-center gap-1.5">
-          <Users size={15} className="text-emerald-600" /> Đơn nhóm
-        </h3>
+    <Card variant="elevated" className="p-0 overflow-hidden rounded-2xl border border-emerald-100 shadow-md">
+      {/* Header gradient */}
+      <div className="relative bg-gradient-to-br from-[#E85A2A] to-[#FF6B35] text-white px-5 py-4">
+        <Users className="absolute -right-3 -bottom-3 text-white/10" size={90} strokeWidth={1} />
+        <div className="relative flex items-center justify-between">
+          <h3 className="text-xs font-extrabold uppercase tracking-wider flex items-center gap-1.5">
+            <Users size={15} /> Đơn Đặt Nhóm
+          </h3>
+          <span className={`text-[10px] font-black px-2.5 py-1 rounded-full bg-white/20 backdrop-blur-sm`}>
+            {statusMeta.label}
+          </span>
+        </div>
+        <div className="relative mt-2 flex items-center gap-3 text-[11px] font-semibold text-white/85">
+          <span>{groupOrder.memberCount} thành viên</span>
+          <span className="w-1 h-1 rounded-full bg-white/50" />
+          <span>{groupOrder.totalItemCount} món</span>
+        </div>
+
+        {/* Progress: bao nhiêu người đã sẵn sàng */}
+        <div className="relative mt-3">
+          <div className="flex items-center justify-between text-[10px] font-bold text-white/80 mb-1">
+            <span>Đã sẵn sàng</span>
+            <span>{readyCount}/{activeCount}</span>
+          </div>
+          <div className="h-1.5 w-full bg-white/20 rounded-full overflow-hidden">
+            <div className="h-full bg-white rounded-full transition-all duration-500" style={{ width: `${readyPct}%` }} />
+          </div>
+        </div>
+
         {isOpen && (
-          <button onClick={onShowInvite} className="text-[11px] font-bold text-emerald-600 hover:underline cursor-pointer flex items-center gap-1">
-            <QrCode size={12} /> Mời thêm
+          <button
+            onClick={onShowInvite}
+            className="relative mt-3 w-full inline-flex items-center justify-center gap-1.5 text-[11px] font-bold bg-white/15 hover:bg-white/25 transition-colors rounded-full py-1.5 cursor-pointer"
+          >
+            <QrCode size={12} /> Mời thêm bạn bè
           </button>
         )}
       </div>
 
-      <div className="flex items-center gap-2 mb-3.5">
-        <span className={`text-[10px] font-black px-2 py-1 rounded-full ${statusMeta.cls}`}>{statusMeta.label}</span>
-        <span className="text-[11px] text-slate-400 font-semibold">{groupOrder.memberCount} thành viên · {groupOrder.totalItemCount} món</span>
-      </div>
-
-      <div className="space-y-2.5 max-h-64 overflow-y-auto no-scrollbar pr-1">
-        {groupOrder.members?.map((m) => {
-          // Kiểm tra xem thành viên này có phải là user hiện tại đang đăng nhập không
-          const isCurrentUser = m.userId === user?.id;
-
-          return (
-            <div key={m.memberId} className="rounded-lg border border-slate-100 bg-slate-50/60 p-2.5">
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-xs font-bold text-slate-700 flex items-center gap-1.5 truncate min-w-0">
-                  <span className="truncate">{m.fullName}</span>
-                  {m.isHost && <span className="text-[9px] shrink-0 bg-orange-100 text-orange-600 px-1.5 py-0.5 rounded-full font-black">HOST</span>}
-                </span>
-                <span className={`text-[9px] font-black px-1.5 py-0.5 rounded-full shrink-0 ${m.status === 'READY' ? 'bg-emerald-100 text-emerald-700' : m.status === 'LEFT' ? 'bg-slate-200 text-slate-400' : 'bg-slate-200 text-slate-500'}`}>
-                  {m.status === 'READY' ? 'Sẵn sàng' : m.status === 'LEFT' ? 'Đã rời' : 'Đang chọn'}
-                </span>
-              </div>
-              {m.items?.length > 0 ? (
-                <ul className="mt-1.5 space-y-1">
-                  {m.items.map((it) => (
-                    <li key={it.groupOrderItemId} className="text-[11px] text-slate-500 flex items-start justify-between gap-2 group/item">
-                      <div className="flex-1 min-w-0">
-                        <span className="truncate block">{it.foodName} × {it.quantity}</span>
-                        {it.note && (
-                          <span className="flex items-start gap-1 text-[10px] text-slate-400 italic mt-0.5">
-                            <StickyNote size={10} className="shrink-0 mt-0.5" />
-                            <span className="truncate">{it.note}</span>
-                          </span>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-1.5 shrink-0">
-                        <span className="font-semibold text-slate-600">{formatCurrency(it.lineTotal)}</span>
-                        {/* Chỉ hiện nút ghi chú / xoá khi là món của chính user hiện tại và phiên đang ở trạng thái OPEN */}
-                        {isCurrentUser && groupOrder.status === 'OPEN' && (
-                          <>
-                            <button
-                              type="button"
-                              disabled={busy}
-                              onClick={() => onEditNote(it)}
-                              className="p-0.5 rounded text-slate-400 hover:text-md-primary hover:bg-md-primary/10 transition-all disabled:opacity-50"
-                              title="Ghi chú cho món này"
-                            >
-                              <Pencil size={12} />
-                            </button>
-                            <button
-                              type="button"
-                              disabled={busy}
-                              onClick={() => handleRemoveGroupItem(it.groupOrderItemId)}
-                              className="p-0.5 rounded text-slate-400 hover:text-red-600 hover:bg-red-50 transition-all disabled:opacity-50"
-                              title="Xóa món này"
-                            >
-                              <X size={13} />
-                            </button>
-                          </>
-                        )}
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="text-[11px] text-slate-400 italic mt-1">Chưa chọn món</p>
-              )}
+      <div className="p-4 space-y-4">
+        {groupOrder.deliveryAddress && (
+          isHost && groupOrder.status === 'OPEN' && onChangeAddress ? (
+            <button
+              onClick={onChangeAddress}
+              className="w-full flex items-start gap-2.5 text-xs bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl px-3 py-2.5 transition-colors text-left group"
+            >
+              <MapPin size={15} className="text-emerald-600 shrink-0 mt-0.5" />
+              <span className="flex-1 min-w-0">
+                <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-wide">Giao đến</span>
+                <span className="block font-bold text-slate-700 break-words whitespace-normal">{groupOrder.deliveryAddress}</span>
+              </span>
+              <Edit2 size={13} className="text-slate-400 group-hover:text-emerald-600 shrink-0 mt-0.5 transition-colors" />
+            </button>
+          ) : (
+            <div className="w-full flex items-start gap-2.5 text-xs bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5">
+              <MapPin size={15} className="text-slate-400 shrink-0 mt-0.5" />
+              <span className="flex-1 min-w-0">
+                <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-wide">Giao đến</span>
+                <span className="block font-bold text-slate-700 break-words whitespace-normal">{groupOrder.deliveryAddress}</span>
+              </span>
             </div>
-          );
-        })}
-      </div>
+          )
+        )}
 
-      <div className="flex items-center justify-between border-t border-slate-100 pt-3 mt-4">
-        <span className="text-xs font-bold text-md-on-surface-variant">Tạm tính cả nhóm</span>
-        <span className="text-base font-extrabold text-emerald-600">{formatCurrency(groupOrder.subtotalAmount || 0)}</span>
-      </div>
+        {/* Danh sách thành viên */}
+        <div className="space-y-2 max-h-64 overflow-y-auto no-scrollbar pr-0.5">
+          {members.map((m) => {
+            const isCurrentUser = m.userId === user?.id;
+            const ready = m.status === 'READY';
+            return (
+              <div key={m.memberId} className="rounded-xl border border-slate-100 bg-slate-50/60 p-2.5">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className={`w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-black shrink-0 ${memberColor(m.fullName)}`}>
+                      {memberInitial(m.fullName)}
+                    </span>
+                    <span className="text-xs font-bold text-slate-700 flex items-center gap-1.5 truncate min-w-0">
+                      <span className="truncate">{m.fullName}</span>
+                      {m.isHost && <span className="text-[9px] shrink-0 bg-orange-100 text-orange-600 px-1.5 py-0.5 rounded-full font-black">HOST</span>}
+                    </span>
+                  </div>
+                  <span className={`inline-flex items-center gap-1 text-[9px] font-black px-1.5 py-0.5 rounded-full shrink-0 ${
+                    ready ? 'bg-emerald-100 text-emerald-700' : m.status === 'LEFT' ? 'bg-slate-200 text-slate-400' : 'bg-amber-100 text-amber-600'
+                  }`}>
+                    {ready && <CheckCheck size={10} />}
+                    {ready ? 'Sẵn sàng' : m.status === 'LEFT' ? 'Đã rời' : 'Đang chọn'}
+                  </span>
+                </div>
+                {m.items?.length > 0 ? (
+                  <ul className="mt-2 space-y-1 pl-9">
+                    {m.items.map((it) => (
+                      <li key={it.groupOrderItemId} className="text-[11px] text-slate-500 flex items-start justify-between gap-2">
+                        <div className="flex-1 min-w-0">
+                          <span className="truncate block font-medium text-slate-600">{it.foodName} × {it.quantity}</span>
+                          {it.note && (
+                            <span className="flex items-start gap-1 text-[10px] text-slate-400 italic mt-0.5">
+                              <StickyNote size={10} className="shrink-0 mt-0.5" />
+                              <span className="truncate">{it.note}</span>
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <span className="font-semibold text-slate-600">{formatCurrency(it.lineTotal)}</span>
+                          {isCurrentUser && groupOrder.status === 'OPEN' && (
+                            <>
+                              <button type="button" disabled={busy} onClick={() => onEditNote(it)}
+                                className="p-0.5 rounded text-slate-400 hover:text-emerald-600 hover:bg-emerald-100/60 transition-all disabled:opacity-50" title="Ghi chú">
+                                <Pencil size={12} />
+                              </button>
+                              <button type="button" disabled={busy} onClick={() => handleRemoveGroupItem(it.groupOrderItemId)}
+                                className="p-0.5 rounded text-slate-400 hover:text-red-600 hover:bg-red-50 transition-all disabled:opacity-50" title="Xóa">
+                                <X size={13} />
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="text-[11px] text-slate-400 italic mt-1.5 pl-9">Chưa chọn món</p>
+                )}
+              </div>
+            );
+          })}
+        </div>
 
-      <div className="mt-4 space-y-2.5">
-        {isOpen && myMember?.status !== 'READY' && (
-          <Button 
-            onClick={onMarkReady} 
-            disabled={busy} 
-            variant="outline" 
-            className="w-full !border-emerald-500/40 !text-emerald-700 hover:!bg-emerald-50 font-extrabold shadow-sm transition-all duration-200" 
-            icon={CheckCheck}
-          >
-            Hoàn Tất Chọn Món
-          </Button>
-        )}
-        {isHost && isOpen && (
-          <Button 
-            onClick={onLock} 
-            disabled={busy} 
-            variant="outline" 
-            className="w-full !border-amber-500/40 !text-amber-700 hover:!bg-amber-50 font-extrabold shadow-sm transition-all duration-200" 
-            icon={Lock}
-          >
-            Khóa Phiên (Ngừng chọn món)
-          </Button>
-        )}
-        {canCheckout && (
-          <Button 
-            onClick={onCheckout} 
-            disabled={busy} 
-            className="w-full !bg-gradient-to-r !from-emerald-600 !to-teal-600 hover:!from-emerald-700 hover:!to-teal-700 text-white font-extrabold shadow-md hover:shadow-lg transition-all duration-200"
-          >
-            Đặt Hàng
-          </Button>
-        )}
-        {!isHost && isOpen && (
-          <Button 
-            onClick={onLeave} 
-            disabled={busy} 
-            variant="outline" 
-            className="w-full !text-rose-600 !border-rose-200 hover:!bg-rose-50 font-bold transition-all duration-200" 
-            icon={LogOut}
-          >
-            Rời Khỏi Nhóm
-          </Button>
-        )}
-        {isHost && groupOrder.status !== 'ORDERED' && groupOrder.status !== 'CANCELLED' && (
-          <Button 
-            onClick={onCancel} 
-            disabled={busy} 
-            variant="text" 
-            className="w-full !text-rose-500 hover:!bg-rose-50/60 font-semibold transition-all duration-200" 
-            icon={Ban}
-          >
-            Hủy Đặt Đơn Nhóm
-          </Button>
-        )}
+        {/* Tóm tắt tiền */}
+        <div className="rounded-xl bg-slate-50 border border-slate-100 p-3 space-y-1.5">
+          <div className="flex items-center justify-between text-xs text-slate-500">
+            <span>Tạm tính cả nhóm</span>
+            <span className="font-bold text-slate-700">{formatCurrency(groupOrder.subtotalAmount || 0)}</span>
+          </div>
+          <div className="flex items-center justify-between text-xs text-slate-500">
+            <span className="flex items-center gap-1"> Phí giao hàng</span>
+            <span className="font-bold text-slate-700">{formatCurrency(shippingFee || 0)}</span>
+          </div>
+          {distanceKm != null && (
+            <div className="flex items-center justify-between text-xs text-slate-500">
+              <span className="flex items-center gap-1"> Khoảng cách</span>
+              <span className="font-bold text-slate-700">
+                {distanceKm.toFixed(1)} km{durationMinutes ? ` (~${Math.round(durationMinutes)} phút)` : ''}
+              </span>
+            </div>
+          )}
+          <div className="flex items-center justify-between pt-1.5 mt-1 border-t border-slate-200">
+            <span className="text-xs font-bold text-slate-700">Tổng thanh toán</span>
+            <span className="text-base font-extrabold text-emerald-600">{formatCurrency((groupOrder.subtotalAmount || 0) + (shippingFee || 0))}</span>
+          </div>
+        </div>
+
+        {/* Hành động */}
+        <div className="space-y-2">
+          {isOpen && myMember?.status !== 'READY' && (
+            <Button onClick={onMarkReady} disabled={busy} variant="outline"
+              className="w-full !border-emerald-500/40 !text-emerald-700 hover:!bg-emerald-50 font-extrabold shadow-sm transition-all duration-200" icon={CheckCheck}>
+              Hoàn Tất Chọn Món
+            </Button>
+          )}
+          {isHost && isOpen && (
+            <Button onClick={onLock} disabled={busy} variant="outline"
+              className="w-full !border-amber-500/40 !text-amber-700 hover:!bg-amber-50 font-extrabold shadow-sm transition-all duration-200" icon={Lock}>
+              Khóa Phiên
+            </Button>
+          )}
+          {canCheckout && (
+            <Button onClick={onCheckout} disabled={busy}
+              className="w-full !bg-primary-to-r !from-emerald-600 !to-teal-600 hover:!from-emerald-700 hover:!to-teal-700 text-white font-extrabold shadow-md hover:shadow-lg transition-all duration-200">
+              Đặt Hàng
+            </Button>
+          )}
+          {!isHost && isOpen && (
+            <Button onClick={onLeave} disabled={busy} variant="outline"
+              className="w-full !text-rose-600 !border-rose-200 hover:!bg-rose-50 font-bold transition-all duration-200" icon={LogOut}>
+              Rời Khỏi Nhóm
+            </Button>
+          )}
+          {isHost && groupOrder.status !== 'ORDERED' && groupOrder.status !== 'CANCELLED' && (
+            <Button onClick={onCancel} disabled={busy} variant="text"
+              className="w-full !text-rose-500 hover:!bg-rose-50/60 font-semibold transition-all duration-200" icon={Ban}>
+              Hủy Đặt Đơn Nhóm
+            </Button>
+          )}
+        </div>
       </div>
     </Card>
   );
@@ -725,6 +774,30 @@ export default function RestaurantDetail() {
 
   const confirmInviteModal = useModalState(null); 
 
+  // ─── Địa chỉ giao hàng cho phiên nhóm 
+  const groupAddressListModal = useModalState();   
+  const groupMapModal = useModalState();           
+  const [groupUserAddresses, setGroupUserAddresses] = useState([]);
+  const [savingGroupAddress, setSavingGroupAddress] = useState(false);
+  const [groupEditingAddressId, setGroupEditingAddressId] = useState(null);
+  const [groupAddressLabel, setGroupAddressLabel] = useState('Nhà riêng');
+  const [groupMapInitialCoords, setGroupMapInitialCoords] = useState({
+    lat: user?.lat || 10.762622,
+    lng: user?.lng || 106.660172,
+  });
+
+  const [groupSelectedAddressId, setGroupSelectedAddressId] = useState(null); 
+  const groupDetailModal = useModalState(); 
+
+  useEffect(() => {
+    if (!id) return;
+    
+    const customerLat = user?.lat;
+    const customerLng = user?.lng;
+
+    fetchShippingForRestaurant(id, customerLat, customerLng);
+    
+  }, [id, user?.lat, user?.lng, fetchShippingForRestaurant]);
 
   useEffect(() => {
     const fetchDetails = async () => {
@@ -744,12 +817,12 @@ export default function RestaurantDetail() {
         const realFoods = menuResponse.data?.data || [];
 
         if (realRes) {
-          const cached = restaurantShippingCache[id];
-          if (!cached) {
-            const customerLat = user?.lat || 10.762622;
-            const customerLng = user?.lng || 106.660172;
-            fetchShippingForRestaurant(id, customerLat, customerLng);
-          }
+          // const cached = restaurantShippingCache[id];
+          // if (!cached) {
+          //   const customerLat = user?.lat || 10.762622;
+          //   const customerLng = user?.lng || 106.660172;
+          //   fetchShippingForRestaurant(id, customerLat, customerLng);
+          // }
 
           // SỐ SAO & TỔNG ĐÁNH GIÁ lấy TOÀN CỤC từ BE (mapRestaurant → realRes.rating/reviewsCount).
           // Danh sách đánh giá do tab Đánh giá (ReviewsTab) tự nạp có lọc/sắp xếp/phân trang server-side.
@@ -831,11 +904,23 @@ export default function RestaurantDetail() {
     (async () => {
       try {
         setGroupBusy(true);
-        // Gọi api lấy thông tin preview phiên đặt nhóm trước khi tham gia
         const res = await apiClient.get(`/group-orders/invite/${code}`);
         const previewData = res.data?.data;
-        
-        // Mở modal xác nhận với dữ liệu preview nhận được
+
+        // Nếu người dùng hiện tại ĐÃ LÀ thành viên của phiên này rồi thì tham gia
+        const alreadyMember = (previewData?.members || []).some(
+          (m) => m.userId === user?.id && m.status !== 'LEFT'
+        );
+
+        if (alreadyMember) {
+          setGroupOrder(previewData);
+          const next = new URLSearchParams(searchParams);
+          next.delete('group');
+          setSearchParams(next, { replace: true });
+          return;
+        }
+
+        // Chưa tham gia -> mở modal xác nhận 
         confirmInviteModal.open({ code, preview: previewData });
       } catch (err) {
         toast.error(err.response?.data?.message || 'Không tìm thấy phiên đặt nhóm hoặc đã hết hạn.');
@@ -847,7 +932,6 @@ export default function RestaurantDetail() {
       }
     })();
   }, [searchParams]);
-
 
   // Hàm xử lý khi người dùng ấn nút "Tham gia ngay" trên modal
   const handleConfirmJoin = async () => {
@@ -920,18 +1004,12 @@ export default function RestaurantDetail() {
     }
   };
 
-  // Trước khi chốt: kiểm tra còn thành viên (trừ host) chưa "Hoàn tất chọn món"
-  // không — nếu có, hỏi xác nhận trước khi thực sự gọi API chốt đơn.
   const handleCheckoutGroup = () => {
     if (!groupOrder) return;
     const unreadyMembers = (groupOrder.members || []).filter(
       (m) => !m.isHost && m.status !== 'READY' && m.status !== 'LEFT'
     );
-    if (unreadyMembers.length > 0) {
-      confirmCheckoutModal.open({ unreadyMembers });
-      return;
-    }
-    doCheckoutGroup(false);
+    confirmCheckoutModal.open({ unreadyMembers });
   };
 
   const refreshGroupOrder = async (groupOrderId = groupOrder?.groupOrderId) => {
@@ -1129,6 +1207,124 @@ export default function RestaurantDetail() {
     }
   };
 
+  // Mở modal danh sách địa chỉ cho phiên nhóm — chỉ host, khi phiên còn OPEN
+  const openGroupAddressModal = async () => {
+    try {
+      const res = await apiClient.get('/addresses');
+      const list = res.data?.data || [];
+      setGroupUserAddresses(list);
+      const defaultAddr = list.find((a) => a.default);
+      if (defaultAddr) setGroupSelectedAddressId(defaultAddr.addressId);
+    } catch (err) {
+      console.warn('Không tải được danh sách địa chỉ:', err);
+    }
+    groupAddressListModal.open();
+  };
+
+  // Chọn 1 địa chỉ đã lưu -> áp trực tiếp cho phiên nhóm qua addressId
+  // Chọn 1 địa chỉ đã lưu -> đặt làm MẶC ĐỊNH trong sổ địa chỉ (PUT /addresses/{id})
+  const selectGroupAddress = async (item) => {
+    if (!groupOrder) return;
+    setSavingGroupAddress(true);
+    setGroupSelectedAddressId(item.addressId); 
+    try {
+      await apiClient.put(`/addresses/${item.addressId}`, {
+        label: item.label || 'Nhà riêng',
+        address: item.address,
+        latitude: Number(item.latitude),
+        longitude: Number(item.longitude),
+        isDefault: true,
+      });
+
+      const res = await apiClient.patch(`/group-orders/${groupOrder.groupOrderId}/address`, {
+        addressId: item.addressId,
+      });
+      setGroupOrder(res.data?.data || null);
+
+      const listRes = await apiClient.get('/addresses');
+      setGroupUserAddresses(listRes.data?.data || []);
+
+      toast.success('Đã đặt làm mặc định và cập nhật địa chỉ giao hàng cho phiên nhóm!');
+      groupAddressListModal.close();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Không thể đổi địa chỉ.');
+    } finally {
+      setSavingGroupAddress(false);
+    }
+  };
+
+  // Mở bản đồ để THÊM địa chỉ mới (giống handleOpenAddModal ở Cart.jsx)
+  const handleOpenGroupAddModal = () => {
+    setGroupEditingAddressId(null);
+    setGroupAddressLabel('Nhà riêng');
+    setGroupMapInitialCoords({
+      lat: user?.lat || 10.762622,
+      lng: user?.lng || 106.660172,
+    });
+    groupAddressListModal.close();
+    groupMapModal.open();
+  };
+
+  // Mở bản đồ để SỬA địa chỉ đã có (giống handleOpenEditModal ở Cart.jsx)
+  const handleOpenGroupEditModal = (item) => {
+    setGroupEditingAddressId(item.addressId);
+    setGroupAddressLabel(item.label || 'Nhà riêng');
+    setGroupMapInitialCoords({
+      lat: Number(item.latitude) || 10.762622,
+      lng: Number(item.longitude) || 106.660172,
+    });
+    groupAddressListModal.close();
+    groupMapModal.open();
+  };
+
+  // Xác nhận trên bản đồ -> lưu vào /addresses (y hệt Cart.jsx), rồi áp luôn cho phiên nhóm
+  const handleGroupMapConfirmAndSave = async (latVal, lngVal, addressNameVal) => {
+    try {
+      const payload = {
+        label: groupAddressLabel || 'Nhà riêng',
+        address: addressNameVal,
+        latitude: Number(latVal),
+        longitude: Number(lngVal),
+        isDefault: groupUserAddresses.length === 0,
+      };
+
+      let savedAddressId = groupEditingAddressId;
+      if (groupEditingAddressId) {
+        await apiClient.put(`/addresses/${groupEditingAddressId}`, payload);
+        toast.success('Cập nhật địa chỉ thành công!');
+      } else {
+        const res = await apiClient.post('/addresses', payload);
+        savedAddressId = res.data?.data?.addressId;
+        toast.success('Thêm địa chỉ mới thành công!');
+      }
+
+      // Áp địa chỉ vừa lưu cho phiên nhóm — ưu tiên addressId, fallback toạ độ/text nếu chưa có id
+      if (groupOrder) {
+        const res = savedAddressId
+          ? await apiClient.patch(`/group-orders/${groupOrder.groupOrderId}/address`, { addressId: savedAddressId })
+          : await apiClient.patch(`/group-orders/${groupOrder.groupOrderId}/address`, {
+              deliveryAddress: addressNameVal,
+              deliveryLat: Number(latVal),
+              deliveryLng: Number(lngVal),
+            });
+        setGroupOrder(res.data?.data || null);
+        if (savedAddressId) setGroupSelectedAddressId(savedAddressId);
+      }
+
+      groupMapModal.close();
+      setGroupEditingAddressId(null);
+
+      const listRes = await apiClient.get('/addresses');
+      setGroupUserAddresses(listRes.data?.data || []);
+      groupAddressListModal.open();
+    } catch (err) {
+      console.error('Lỗi lưu địa chỉ cho phiên nhóm:', err);
+      toast.error(err.response?.data?.message || 'Lưu địa chỉ thất bại!');
+    }
+  };
+
+  
+
   // ═══════════════════════ HẾT PHẦN NHÓM ═══════════════════════
 
   //thêm vào giỏ hàng — giữ nguyên luồng cá nhân, chỉ rẽ nhánh khi đang trong phiên nhóm
@@ -1325,7 +1521,7 @@ export default function RestaurantDetail() {
               </h1>
 
               {/* Trạng thái mở/đóng cửa — chấm sống (live) + khung giờ */}
-              <div className="flex items-center justify-center sm:justify-start gap-2 mt-2.5">
+              <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 mt-2.5">
                 {restaurant.isOpen !== false ? (
                   <span className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-radius-full">
                     <span className="relative flex w-2 h-2">
@@ -1365,14 +1561,14 @@ export default function RestaurantDetail() {
               </div>
             </div>
 
-            <div className="flex flex-row flex-wrap gap-3 self-center sm:self-start w-full sm:w-auto shrink-0">
+            <div className="grid grid-cols-2 sm:flex sm:flex-row gap-2.5 sm:gap-3 w-full sm:w-auto shrink-0">
               {/* Nút Đặt đơn nhóm — CHỈ thêm mới, không đụng nút cũ */}
               {!isGroupMode ? (
                 <Button
                   variant="outline"
                   onClick={() => createGroupModal.open()}
                   icon={Users}
-                  className="bg-emerald-50 hover:bg-emerald-100 text-emerald-600 font-bold flex-1 sm:w-auto px-3 whitespace-nowrap"
+                  className="bg-emerald-50 hover:bg-emerald-100 text-emerald-600 font-bold w-full sm:w-auto px-3 !text-xs sm:!text-sm whitespace-nowrap col-span-2 sm:col-span-1"
                 >
                   Đặt đơn nhóm
                 </Button>
@@ -1381,16 +1577,16 @@ export default function RestaurantDetail() {
                   variant="outline"
                   onClick={() => inviteModal.open()}
                   icon={QrCode}
-                  className="bg-emerald-50 hover:bg-emerald-100 text-emerald-600 font-bold flex-1 sm:w-auto px-3 whitespace-nowrap"
+                  className="bg-emerald-50 hover:bg-emerald-100 text-emerald-600 font-bold w-full sm:w-auto px-3 !text-xs sm:!text-sm whitespace-nowrap col-span-2 sm:col-span-1"
                 >
                   Đang đặt đơn nhóm
                 </Button>
               )}
-              <Button 
+              <Button
                 variant="outline"
                 onClick={handleChatWithMerchant}
                 icon={MessageSquare}
-                className="bg-md-primary/10 hover:bg-md-primary/20 text-md-primary font-bold flex-1 sm:w-auto px-3 whitespace-nowrap"
+                className="bg-md-primary/10 hover:bg-md-primary/20 text-md-primary font-bold w-full sm:w-auto px-3 !text-xs sm:!text-sm whitespace-nowrap"
               >
                 Chat với quán
               </Button>
@@ -1398,7 +1594,7 @@ export default function RestaurantDetail() {
                 variant="outline"
                 onClick={() => reportModal.open()}
                 icon={AlertTriangle}
-                className="border-red-200 hover:border-red-300 text-red-500 hover:bg-red-50 font-bold flex-1 sm:w-auto shrink-0 px-3 whitespace-nowrap"
+                className="border-red-200 hover:border-red-300 text-red-500 hover:bg-red-50 font-bold w-full sm:w-auto shrink-0 px-3 !text-xs sm:!text-sm whitespace-nowrap"
               >
                 Báo cáo
               </Button>
@@ -1588,22 +1784,6 @@ export default function RestaurantDetail() {
                                 )}
                               </div>
                             </div>
-
-                            {/* Ghi chú cho món — chỉ hiện khi đang trong phiên nhóm và món đã được chọn (qty > 0) */}
-                            {isGroupMode && qty > 0 && myGroupItem && groupOrder.status === 'OPEN' && (
-                              <button
-                                type="button"
-                                onClick={() => openNoteEditor(myGroupItem)}
-                                className="mt-2 inline-flex items-center gap-1 text-[11px] font-semibold text-md-primary/80 hover:text-md-primary transition-colors self-start"
-                              >
-                                <Pencil size={11} />
-                                {myGroupItem.note ? (
-                                  <span className="truncate max-w-[220px]">Ghi chú: {myGroupItem.note}</span>
-                                ) : (
-                                  <span>Thêm ghi chú cho món này</span>
-                                )}
-                              </button>
-                            )}
                           </div>
                         </Card>
                       );
@@ -1629,6 +1809,10 @@ export default function RestaurantDetail() {
                 onShowInvite={() => inviteModal.open()}
                 handleRemoveGroupItem={handleRemoveGroupItem}
                 onEditNote={openNoteEditor}
+                shippingFee={shippingFee}
+                distanceKm={cachedShipping?.distanceKm}
+                durationMinutes={durationMinutes}
+                onChangeAddress={openGroupAddressModal}
               />
             ) : (
               <Card variant="elevated" className="p-5">
@@ -1788,11 +1972,17 @@ export default function RestaurantDetail() {
       {/* ─── FLOATING BOTTOM BAR: cá nhân (giữ nguyên) HOẶC đơn nhóm ────────────── */}
       {isGroupMode && myMember ? (
         <div className="fixed bottom-24 md:bottom-0 left-0 right-0 p-3 xs:p-5 bg-white/80 backdrop-blur-md border-t border-md-outline-variant/30 flex justify-center z-50 shadow-shadow-4 xl:hidden">
-          <div className="w-full max-w-5xl flex items-center justify-between bg-emerald-600 text-white px-4 py-3 xs:px-6 xs:py-4.5 rounded-radius-full shadow-shadow-4">
-            <div className="flex items-center gap-2 xs:gap-3 min-w-0">
+          <div className="w-full max-w-5xl flex items-center justify-between bg-gradient-to-r from-[#E85A2A] to-[#FF6B35] text-white px-4 py-3 xs:px-6 xs:py-4.5 rounded-radius-full shadow-shadow-4">
+            <button
+              onClick={() => groupDetailModal.open()}
+              className="flex items-center gap-2 xs:gap-3 min-w-0 cursor-pointer"
+            >
               <Users size={20} className="shrink-0" />
-              <span className="text-xs xs:text-sm font-extrabold truncate">Cả nhóm: {formatCurrency(groupOrder.subtotalAmount || 0)}</span>
-            </div>
+              <span className="flex flex-col items-start min-w-0">
+                <span className="text-xs xs:text-sm font-extrabold truncate">Cả nhóm: {formatCurrency(groupOrder.subtotalAmount || 0)}</span>
+                <span className="text-[10px] font-semibold text-white/80 underline underline-offset-2">Xem chi tiết</span>
+              </span>
+            </button>
             <div className="flex items-center gap-2 shrink-0">
               <button
                 onClick={() => inviteModal.open()}
@@ -1807,7 +1997,7 @@ export default function RestaurantDetail() {
                   disabled={groupBusy}
                   className="text-[10px] xs:text-sm font-extrabold bg-white/20 hover:bg-white/30 px-2.5 py-1 xs:px-4 xs:py-1.5 rounded-full transition-colors disabled:opacity-60"
                 >
-                  Chốt đơn
+                  Đặt Hàng
                 </button>
               ) : (
                 <button
@@ -2084,28 +2274,46 @@ export default function RestaurantDetail() {
         </div>
       </Modal>
 
-      {/* ─── MODAL XÁC NHẬN CHỐT ĐƠN KHI CÒN THÀNH VIÊN CHƯA SẴN SÀNG ─────────── */}
+      {/* ─── MODAL XÁC NHẬN ĐẶT HÀNG NHÓM ─────────────────────────────────────── */}
       <Modal
         isOpen={confirmCheckoutModal.isOpen}
         onClose={() => confirmCheckoutModal.close()}
-        title="Còn Thành Viên Chưa Chọn Món Xong"
+        title={confirmCheckoutModal.data?.unreadyMembers?.length > 0 ? "Còn Thành Viên Chưa Chọn Món Xong" : "Xác Nhận Đặt Hàng Nhóm"}
         size="sm"
         className="[&_h2]:!text-slate-900 [&_h2]:!text-base [&_h2]:md:!text-lg [&_h2]:!font-bold"
       >
         <div className="space-y-4 -mt-3">
-          <p className="text-xs sm:text-sm text-md-on-surface-variant font-medium">
-            {confirmCheckoutModal.data?.unreadyMembers?.length} thành viên chưa bấm "Hoàn tất chọn món". Nếu chốt đơn ngay, họ sẽ không kịp bổ sung thêm món nữa.
-          </p>
+          {confirmCheckoutModal.data?.unreadyMembers?.length > 0 ? (
+            <>
+              <p className="text-xs sm:text-sm text-md-on-surface-variant font-medium">
+                {confirmCheckoutModal.data.unreadyMembers.length} thành viên chưa bấm "Hoàn tất chọn món". Nếu chốt đơn ngay, họ sẽ không kịp bổ sung thêm món nữa.
+              </p>
+              <ul className="space-y-1.5 max-h-32 overflow-y-auto no-scrollbar">
+                {confirmCheckoutModal.data.unreadyMembers.map((m) => (
+                  <li key={m.memberId} className="flex items-center justify-between text-xs font-semibold bg-amber-50 border border-amber-100 rounded-lg px-3 py-2">
+                    <span className="text-slate-700 truncate">{m.fullName}</span>
+                    <span className="text-amber-600 shrink-0">{m.items?.length ? `${m.items.length} món` : 'Chưa chọn món xong'}</span>
+                  </li>
+                ))}
+              </ul>
+            </>
+          ) : null}
 
-          {confirmCheckoutModal.data?.unreadyMembers?.length > 0 && (
-            <ul className="space-y-1.5 max-h-32 overflow-y-auto no-scrollbar">
-              {confirmCheckoutModal.data.unreadyMembers.map((m) => (
-                <li key={m.memberId} className="flex items-center justify-between text-xs font-semibold bg-amber-50 border border-amber-100 rounded-lg px-3 py-2">
-                  <span className="text-slate-700 truncate">{m.fullName}</span>
-                  <span className="text-amber-600 shrink-0">{m.items?.length ? `${m.items.length} món` : 'Chưa chọn món xong'}</span>
-                </li>
-              ))}
-            </ul>
+          {groupOrder && (
+            <div className="border border-slate-100 rounded-xl p-3 space-y-1.5 bg-slate-50/60 text-xs">
+              <div className="flex items-center justify-between text-slate-500">
+                <span>Tạm tính cả nhóm</span>
+                <span className="font-bold text-slate-700">{formatCurrency(groupOrder.subtotalAmount || 0)}</span>
+              </div>
+              <div className="flex items-center justify-between text-slate-500">
+                <span>Phí giao hàng</span>
+                <span className="font-bold text-slate-700">{formatCurrency(shippingFee || 0)}</span>
+              </div>
+              <div className="flex items-center justify-between pt-1.5 border-t border-slate-200">
+                <span className="font-bold text-slate-700">Tổng thanh toán</span>
+                <span className="font-extrabold text-emerald-600">{formatCurrency((groupOrder.subtotalAmount || 0) + (shippingFee || 0))}</span>
+              </div>
+            </div>
           )}
 
           <div className="flex items-center gap-3 pt-2 border-t border-slate-100">
@@ -2115,18 +2323,275 @@ export default function RestaurantDetail() {
               disabled={groupBusy}
               className="flex-1 font-bold !py-2 !text-xs"
             >
-              Chờ Thêm
+              {confirmCheckoutModal.data?.unreadyMembers?.length > 0 ? 'Chờ Thêm' : 'Hủy'}
             </Button>
             <Button
               onClick={() => doCheckoutGroup(true)}
               disabled={groupBusy}
               className="flex-1 !py-2 !text-xs !font-bold !bg-primary-600 hover:!bg-primary-700 !text-white shadow-md mb-0"
             >
-              Xác Nhận Đặt Hàng
+              Xác Nhận
             </Button>
           </div>
         </div>
       </Modal>
+
+      {/* ─── MODAL DANH SÁCH ĐỊA CHỈ CHO PHIÊN NHÓM (đồng bộ với AddressCustomer/Cart.jsx) ─── */}
+      <Modal
+        isOpen={groupAddressListModal.isOpen}
+        onClose={() => groupAddressListModal.close()}
+        title="Địa Chỉ Giao Hàng"
+        size="md"
+        className="!rounded-2xl"
+      >
+        <div className="space-y-4 -mx-6 -my-6 flex flex-col h-full">
+          <div className="max-h-[55vh] overflow-y-auto space-y-3 px-6 pt-2 pb-1">
+            {groupUserAddresses.map((item) => {
+              const isSelected = groupSelectedAddressId === item.addressId;
+              return (
+                <div
+                  key={item.addressId}
+                  onClick={() => 
+                    selectGroupAddress(item)
+                  }
+                  className={`p-4 rounded-2xl border transition-all cursor-pointer flex items-start gap-3.5 relative ${
+                    isSelected ? 'border-md-primary bg-orange-50/20 shadow-sm' : 'border-slate-200/80 hover:border-slate-300 bg-white'
+                  }`}
+                >
+                  <div className={`mt-1 w-4 h-4 rounded-full border flex items-center justify-center shrink-0 transition-colors ${
+                    isSelected ? 'border-md-primary bg-md-primary' : 'border-slate-300 bg-white'
+                  }`}>
+                    {isSelected && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
+                  </div>
+
+                  <div className="flex-1 text-xs space-y-1">
+                    <span className="font-extrabold text-slate-900 text-sm flex items-center gap-2 flex-wrap">
+                      {item.label || 'Địa chỉ'}
+                      {item.default && (
+                        <span className="px-2 py-0.5 text-[10px] font-bold text-md-primary bg-orange-50 border border-orange-200 rounded-md">
+                          Mặc định
+                        </span>
+                      )}
+                    </span>
+                    <p className="text-slate-600 leading-relaxed font-normal pr-4">{item.address}</p>
+                  </div>
+
+                  <Button
+                    type="button"
+                    variant="text"
+                    size="sm"
+                    icon={Edit2}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleOpenGroupEditModal(item);
+                    }}
+                    className="absolute right-3.5 top-3 !inline-flex items-center gap-1 text-[11px] font-bold !text-md-primary hover:!bg-orange-50/75 !py-1 !px-2 !rounded-lg !shadow-none cursor-pointer"
+                  >
+                    Cập nhật
+                  </Button>
+                </div>
+              );
+            })}
+            {groupUserAddresses.length === 0 && (
+              <p className="text-xs text-slate-500 text-center py-6">Chưa có địa chỉ nào được lưu.</p>
+            )}
+          </div>
+
+          <div className="px-6 pt-3 pb-4 border-t border-slate-100 bg-white mt-auto">
+            <Button
+              onClick={handleOpenGroupAddModal}
+              disabled={savingGroupAddress}
+              className="w-full !bg-md-primary hover:!bg-md-primary/90 text-white font-bold py-3.5 rounded-2xl text-xs uppercase tracking-wider shadow-md shadow-orange-500/20 cursor-pointer flex items-center justify-center gap-1.5"
+            >
+              <span className="text-base font-black">+</span> Thêm Địa Chỉ Mới
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* ─── MODAL XEM CHI TIẾT ĐƠN NHÓM (mobile) ──────────────────────────────── */}
+      <Modal
+        isOpen={groupDetailModal.isOpen}
+        onClose={() => groupDetailModal.close()}
+        title="Chi Tiết Đơn Đặt Nhóm"
+        size="sm"
+        className="!rounded-2xl [&_h2]:!text-slate-900 [&_h2]:!text-base [&_h2]:!font-bold"
+      >
+        {groupOrder && (() => {
+          const isOpen = groupOrder.status === 'OPEN';
+          const canCheckout = isHost && (groupOrder.status === 'OPEN' || groupOrder.status === 'LOCKED');
+          const statusMeta = GROUP_STATUS_META[groupOrder.status] || GROUP_STATUS_META.OPEN;
+          const members = groupOrder.members || [];
+          const readyCount = members.filter((m) => m.status === 'READY').length;
+          const activeCount = members.filter((m) => m.status !== 'LEFT').length || 1;
+          const memberInitial = (name) => (name || '?').trim().charAt(0).toUpperCase();
+          const memberColor = (name) => AVATAR_COLORS[((name || '?').charCodeAt(0) || 0) % AVATAR_COLORS.length];
+
+          return (
+            <div className="-mx-6 -my-6 -mt-3 flex flex-col max-h-[75vh]">
+              {/* Trạng thái + tiến độ — gọn 1 dòng */}
+              <div className="px-6 pb-3 border-b border-slate-100 shrink-0">
+                <div className="flex items-center justify-between text-xs">
+                  <span className={`font-black px-2 py-0.5 rounded-full ${statusMeta.cls}`}>{statusMeta.label}</span>
+                  <span className="text-slate-400 font-semibold">
+                    {readyCount}/{activeCount} sẵn sàng · {groupOrder.totalItemCount} món
+                  </span>
+                </div>
+                <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden mt-2">
+                  <div
+                    className="h-full bg-gradient-to-r from-[#E85A2A] to-[#FF6B35] rounded-full transition-all duration-500"
+                    style={{ width: `${Math.round((readyCount / activeCount) * 100)}%` }}
+                  />
+                </div>
+              </div>
+
+              {/* Nội dung cuộn: địa chỉ + danh sách thành viên */}
+              <div className="flex-1 overflow-y-auto px-6 py-3 space-y-3 no-scrollbar">
+                {groupOrder.deliveryAddress && (
+                  <div className="flex items-start gap-2.5 text-xs bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5">
+                    <MapPin size={14} className="text-orange-500 shrink-0 mt-0.5" />
+                    <span className="flex-1 min-w-0">
+                      <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-wide">Giao đến</span>
+                      <span className="block font-bold text-slate-700 break-words">{groupOrder.deliveryAddress}</span>
+                    </span>
+                    {isHost && isOpen && (
+                      <button
+                        onClick={() => { groupDetailModal.close(); openGroupAddressModal(); }}
+                        className="shrink-0 text-[11px] font-bold text-orange-600 hover:underline"
+                      >
+                        Đổi
+                      </button>
+                    )}
+                  </div>
+                )}
+
+                <div className="space-y-2">
+                  {members.map((m) => {
+                    const isCurrentUser = m.userId === user?.id;
+                    const ready = m.status === 'READY';
+                    return (
+                      <div key={m.memberId} className="rounded-xl border border-slate-100 bg-slate-50/60 p-2.5">
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <span className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-black shrink-0 ${memberColor(m.fullName)}`}>
+                              {memberInitial(m.fullName)}
+                            </span>
+                            <span className="text-xs font-bold text-slate-700 flex items-center gap-1.5 truncate min-w-0">
+                              <span className="truncate">{m.fullName}</span>
+                              {m.isHost && <span className="text-[8px] shrink-0 bg-orange-100 text-orange-600 px-1.5 py-0.5 rounded-full font-black">HOST</span>}
+                            </span>
+                          </div>
+                          <span className={`inline-flex items-center gap-1 text-[9px] font-black px-1.5 py-0.5 rounded-full shrink-0 ${
+                            ready ? 'bg-emerald-100 text-emerald-700' : m.status === 'LEFT' ? 'bg-slate-200 text-slate-400' : 'bg-amber-100 text-amber-600'
+                          }`}>
+                            {ready ? 'Sẵn sàng' : m.status === 'LEFT' ? 'Đã rời' : 'Đang chọn'}
+                          </span>
+                        </div>
+                        {m.items?.length > 0 ? (
+                          <ul className="mt-1.5 space-y-1 pl-8">
+                            {m.items.map((it) => (
+                              <li key={it.groupOrderItemId} className="text-[11px] text-slate-500 flex items-center justify-between gap-2">
+                                <span className="truncate flex-1 min-w-0">{it.foodName} × {it.quantity}</span>
+                                <div className="flex items-center gap-1 shrink-0">
+                                  <span className="font-semibold text-slate-600">{formatCurrency(it.lineTotal)}</span>
+                                  {isCurrentUser && isOpen && (
+                                    <>
+                                      <button onClick={() => { openNoteEditor(it); }} className="p-0.5 text-slate-400 hover:text-orange-600">
+                                        <Pencil size={11} />
+                                      </button>
+                                      <button onClick={() => handleRemoveGroupItem(it.groupOrderItemId)} className="p-0.5 text-slate-400 hover:text-red-600">
+                                        <X size={12} />
+                                      </button>
+                                    </>
+                                  )}
+                                </div>
+                              </li>
+                            ))}
+                          </ul>
+                        ) : (
+                          <p className="text-[11px] text-slate-400 italic mt-1 pl-8">Chưa chọn món</p>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Tóm tắt tiền + hành động — cố định dưới cùng */}
+              <div className="shrink-0 border-t border-slate-100 px-6 pt-3 pb-4 space-y-3 bg-white">
+                <div className="space-y-1 text-xs">
+                  <div className="flex items-center justify-between text-slate-500">
+                    <span>Tạm tính</span>
+                    <span className="font-bold text-slate-700">{formatCurrency(groupOrder.subtotalAmount || 0)}</span>
+                  </div>
+                  <div className="flex items-center justify-between text-slate-500">
+                    <span>Phí giao hàng</span>
+                    <span className="font-bold text-slate-700">{formatCurrency(shippingFee || 0)}</span>
+                  </div>
+                  <div className="flex items-center justify-between pt-1 border-t border-slate-100">
+                    <span className="font-bold text-slate-700">Tổng thanh toán</span>
+                    <span className="text-sm font-extrabold text-orange-600">
+                      {formatCurrency((groupOrder.subtotalAmount || 0) + (shippingFee || 0))}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Nút hành động — xếp dọc, full-width, dễ bấm trên mobile */}
+                <div className="space-y-2">
+                  {canCheckout && (
+                    <Button onClick={() => { groupDetailModal.close(); handleCheckoutGroup(); }} disabled={groupBusy}
+                      className="w-full !bg-gradient-to-r !from-[#E85A2A] !to-[#FF6B35] text-white font-bold !text-sm !py-2.5">
+                      Đặt Hàng
+                    </Button>
+                  )}
+                  {isOpen && myMember?.status !== 'READY' && (
+                    <Button onClick={handleMarkReady} disabled={groupBusy} variant="outline"
+                      className="w-full !border-emerald-500/40 !text-emerald-700 hover:!bg-emerald-50 font-bold !text-sm !py-2.5">
+                      Hoàn Tất Chọn Món
+                    </Button>
+                  )}
+                  {isHost && isOpen && (
+                    <Button onClick={handleLockGroup} disabled={groupBusy} variant="outline"
+                      className="w-full !border-amber-500/40 !text-amber-700 hover:!bg-amber-50 font-bold !text-sm !py-2.5">
+                      Khóa Phiên
+                    </Button>
+                  )}
+                  {!isHost && isOpen && (
+                    <Button onClick={handleLeaveGroup} disabled={groupBusy} variant="outline"
+                      className="w-full !text-rose-600 !border-rose-200 hover:!bg-rose-50 font-bold !text-sm !py-2.5">
+                      Rời Nhóm
+                    </Button>
+                  )}
+                </div>
+
+                {isHost && groupOrder.status !== 'ORDERED' && groupOrder.status !== 'CANCELLED' && (
+                  <button
+                    onClick={handleCancelGroup}
+                    disabled={groupBusy}
+                    className="w-full text-center text-[11px] font-semibold text-rose-500 hover:underline pt-0.5"
+                  >
+                    Hủy Đặt Đơn Nhóm
+                  </button>
+                )}
+              </div>
+            </div>
+          );
+        })()}
+      </Modal>
+
+      {/* ─── MODAL BẢN ĐỒ THÊM/SỬA ĐỊA CHỈ CHO PHIÊN NHÓM ─────────────────────────── */}
+      <MapModal2
+        key={`group-${groupEditingAddressId || 'new'}-${groupMapInitialCoords.lat}-${groupMapInitialCoords.lng}`}
+        isOpen={groupMapModal.isOpen}
+        onClose={() => groupMapModal.close()}
+        onConfirm={handleGroupMapConfirmAndSave}
+        isEditMode={Boolean(groupEditingAddressId)}
+        initialLat={groupMapInitialCoords.lat}
+        initialLng={groupMapInitialCoords.lng}
+        addressLabel={groupAddressLabel}
+        setAddressLabel={setGroupAddressLabel}
+        showLabelSelector={true}
+      />
 
       {selectedImage && (
         <div 

@@ -188,7 +188,7 @@ export default function MerchantMenu() {
     const getPriceError = (val) => {
       const strVal = String(val).trim();
       if (strVal === '') return 'Vui lòng nhập giá.';
-      if (isNaN(Number(val)) || Number(val) < 0) return 'Giá không hợp lệ.';
+      if (isNaN(Number(val)) || Number(val) <= 0) return 'Giá không hợp lệ.';
       return '';
     };
 

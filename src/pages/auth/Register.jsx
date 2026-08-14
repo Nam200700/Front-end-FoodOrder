@@ -20,7 +20,7 @@ const ROLE_HERO = {
     head: ['Đặt món ngon,', 'giao tận cửa'],
     sub: 'Khám phá món yêu thích từ nhiều quán và đặt hàng chỉ trong vài chạm.',
     benefits: [
-      { Icon: UtensilsCrossed, label: 'Kho món đa dạng từ nhiều quán' },
+      { Icon: UtensilsCrossed, label: 'Món đa dạng từ nhiều quán' },
       { Icon: MapPin, label: 'Theo dõi đơn hàng trực quan' },
       { Icon: ShieldCheck, label: 'Thanh toán an toàn, minh bạch' },
     ],

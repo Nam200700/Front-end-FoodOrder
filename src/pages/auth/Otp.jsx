@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../../stores/authStore';
-import { ShieldCheck, ArrowLeft, RefreshCw, Mail, Lock, CheckCircle2, Clock } from 'lucide-react';
+import { ShieldCheck, ArrowLeft, RefreshCw, Mail, Lock, CheckCircle2, Clock, AlertCircle } from 'lucide-react';
 import apiClient from '../../services/api';
 import { toast } from 'react-toastify';
 
@@ -31,17 +31,36 @@ export default function Otp() {
   const [loading, setLoading] = useState(false);
   const [focusIdx, setFocusIdx] = useState(0);
   const [shake, setShake] = useState(false);
+  // Lỗi hiển thị NGAY DƯỚI ô nhập: người dùng đang nhìn vào ô OTP nên dễ thấy hơn
+  // toast ở góc màn hình (nhất là trên điện thoại). Nội dung lấy từ BE nên hiện đúng
+  // "Mã OTP không chính xác!" / "Mã OTP đã hết hạn!" / "Tài khoản tạm khóa đến ...".
+  const [error, setError] = useState('');
+  // Số giây còn bị tạm khóa do nhập sai quá nhiều lần. BE trả về trong
+  // data.retryAfterSeconds (kèm header Retry-After) -> FE đếm ngược thời gian thực,
+  // user thấy chính xác còn bao lâu mà không phải tải lại trang.
+  const [lockLeft, setLockLeft] = useState(0);
   const inputRefs = useRef([]);
+
+  const locked = lockLeft > 0;
 
   useEffect(() => {
     const interval = setInterval(() => {
       setTimer((prev) => (prev > 0 ? prev - 1 : 0));
+      setLockLeft((prev) => (prev > 0 ? prev - 1 : 0));
     }, 1000);
     return () => clearInterval(interval);
   }, []);
 
+  // 125 -> "02:05"
+  const formatCountdown = (totalSeconds) => {
+    const m = Math.floor(totalSeconds / 60);
+    const s = totalSeconds % 60;
+    return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+  };
+
   const handleChange = (index, value) => {
-    if (isNaN(value)) return;
+    if (isNaN(value) || locked) return;
+    setError('');           // gõ lại số mới -> xoá lỗi cũ
     const newOtp = [...otp];
     newOtp[index] = value.substring(value.length - 1);
     setOtp(newOtp);
@@ -61,8 +80,10 @@ export default function Otp() {
 
   const handlePaste = (e) => {
     e.preventDefault();
+    if (locked) return;
     const pasteData = e.clipboardData.getData('text').trim();
     if (pasteData.length === 6 && !isNaN(pasteData)) {
+      setError('');
       const newOtp = pasteData.split('');
       setOtp(newOtp);
       inputRefs.current[5].focus();
@@ -75,9 +96,10 @@ export default function Otp() {
   const handleSubmit = async (e) => {
     if (e) e.preventDefault();
     const otpString = otp.join('');
-    if (otpString.length < 6) return;
+    if (otpString.length < 6 || locked) return;
 
     setLoading(true);
+    setError('');
     try {
       const result = await apiClient.post('/auth/verify-otp', { email, otp: otpString });
       const { token, user } = result.data.data;
@@ -97,7 +119,16 @@ export default function Otp() {
       }
     } catch (err) {
       console.error('[Otp]: Verification failed', err);
-      toast.error(err.response?.data?.message || 'Mã OTP không đúng hoặc đã hết hạn.');
+      const msg = err.response?.data?.message || 'Mã OTP không đúng hoặc đã hết hạn.';
+      // Bị tạm khóa: chuyển sang khối đếm ngược, không hiện thêm dòng lỗi thường.
+      const retryAfter = err.response?.data?.data?.retryAfterSeconds;
+      if (retryAfter > 0) {
+        setLockLeft(retryAfter);
+        setError('');
+      } else {
+        setError(msg);
+      }
+      toast.error(msg);
       setOtp(['', '', '', '', '', '']);
       setShake(true);
       setTimeout(() => setShake(false), 450);
@@ -115,13 +146,16 @@ export default function Otp() {
   }, [otp]);
 
   const handleResend = async () => {
-    if (timer > 0) return;
+    if (timer > 0 || locked) return;
     if (resendCount >= MAX_RESEND) {
-      toast.error('Bạn đã vượt quá số lần yêu cầu gửi lại OTP cho phép (tối đa 3 lần).');
+      const msg = 'Bạn đã vượt quá số lần yêu cầu gửi lại OTP cho phép (tối đa 3 lần).';
+      setError(msg);
+      toast.error(msg);
       return;
     }
 
     setLoading(true);
+    setError('');
     try {
       await apiClient.post('/auth/resend-otp', { email });
       setResendCount(c => c + 1);
@@ -131,7 +165,15 @@ export default function Otp() {
       toast.success('Mã OTP mới đã được gửi tới email của bạn.');
     } catch (err) {
       console.error('[Otp]: Resend failed', err);
-      toast.error(err.response?.data?.message || 'Gửi lại OTP thất bại. Vui lòng thử lại sau.');
+      const msg = err.response?.data?.message || 'Gửi lại OTP thất bại. Vui lòng thử lại sau.';
+      const retryAfter = err.response?.data?.data?.retryAfterSeconds;
+      if (retryAfter > 0) {
+        setLockLeft(retryAfter);
+        setError('');
+      } else {
+        setError(msg);
+      }
+      toast.error(msg);
     } finally {
       setLoading(false);
     }
@@ -206,6 +248,7 @@ export default function Otp() {
                 const isFilled = digit !== '';
                 const isFocus = focusIdx === index;
                 const active = isFilled || isFocus;
+                const bad = !!error || locked;   // tô đỏ khi sai mã hoặc đang bị khóa
                 return (
                   <input
                     key={index}
@@ -218,17 +261,59 @@ export default function Otp() {
                     onKeyDown={(e) => handleKeyDown(index, e)}
                     onFocus={() => setFocusIdx(index)}
                     onBlur={() => setFocusIdx(-1)}
-                    className="w-12 h-14 text-center text-2xl font-black rounded-2xl border-2 outline-none transition-all duration-200 text-md-on-surface"
+                    disabled={locked}
+                    aria-invalid={!!error || locked}
+                    className="w-12 h-14 text-center text-2xl font-black rounded-2xl border-2 outline-none transition-all duration-200 text-md-on-surface disabled:cursor-not-allowed"
                     style={{
-                      borderColor: active ? accent : '#e2e8f0',
-                      backgroundColor: isFilled ? `${accent}0f` : '#f8fafc',
-                      boxShadow: isFocus ? `0 0 0 4px ${accent}1f` : 'none',
+                      borderColor: bad ? '#EA4335' : (active ? accent : '#e2e8f0'),
+                      backgroundColor: bad ? '#EA43350d' : (isFilled ? `${accent}0f` : '#f8fafc'),
+                      boxShadow: isFocus ? `0 0 0 4px ${bad ? '#EA43351f' : `${accent}1f`}` : 'none',
                       transform: isFocus ? 'translateY(-2px)' : 'none',
+                      opacity: locked ? 0.6 : 1,
                     }}
                   />
                 );
               })}
             </div>
+
+            {/* Đang bị tạm khóa: đếm ngược thời gian thực, thay cho dòng lỗi thường */}
+            {locked && (
+              <div
+                role="alert"
+                aria-live="polite"
+                className="px-3.5 py-3 rounded-radius-md border animate-rise-in"
+                style={{ backgroundColor: '#EA43350d', borderColor: '#EA433540' }}
+              >
+                <div className="flex items-start gap-2" style={{ color: '#C5221F' }}>
+                  <AlertCircle size={15} className="shrink-0 mt-px" />
+                  <span className="text-xs font-bold leading-relaxed">
+                    Bạn đã nhập sai quá nhiều lần. Vui lòng chờ hết thời gian bên dưới.
+                  </span>
+                </div>
+                <div className="mt-2.5 flex items-center justify-center gap-2">
+                  <Clock size={14} style={{ color: '#C5221F' }} />
+                  <span
+                    className="text-2xl font-black tabular-nums tracking-wider"
+                    style={{ color: '#C5221F' }}
+                  >
+                    {formatCountdown(lockLeft)}
+                  </span>
+                </div>
+              </div>
+            )}
+
+            {/* Thông báo lỗi ngay dưới ô nhập — role="alert" để trình đọc màn hình đọc lên */}
+            {!locked && error && (
+              <div
+                role="alert"
+                aria-live="assertive"
+                className="flex items-start gap-2 px-3.5 py-2.5 rounded-radius-md border animate-rise-in"
+                style={{ color: '#C5221F', backgroundColor: '#EA43350d', borderColor: '#EA433540' }}
+              >
+                <AlertCircle size={15} className="shrink-0 mt-px" />
+                <span className="text-xs font-bold leading-relaxed">{error}</span>
+              </div>
+            )}
 
             {/* Chỉ báo tiến trình nhập (6 chấm) */}
             <div className="flex justify-center gap-1.5">
@@ -240,11 +325,15 @@ export default function Otp() {
 
             <button
               type="submit"
-              disabled={loading || !complete}
+              disabled={loading || !complete || locked}
               className="w-full text-white font-bold py-3.5 px-4 rounded-radius-full shadow-shadow-2 hover:shadow-shadow-3 hover:-translate-y-0.5 active:translate-y-0 transition-all flex items-center justify-center gap-2 text-sm uppercase tracking-wider disabled:opacity-45 disabled:pointer-events-none cursor-pointer"
               style={{ backgroundColor: accent }}
             >
-              {loading ? (
+              {locked ? (
+                <>
+                  <Clock size={16} /> Tạm khóa {formatCountdown(lockLeft)}
+                </>
+              ) : loading ? (
                 <>
                   <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
                   Đang xác thực...
@@ -267,7 +356,7 @@ export default function Otp() {
             ) : (
               <button
                 onClick={handleResend}
-                disabled={loading || attemptsLeft <= 0}
+                disabled={loading || attemptsLeft <= 0 || locked}
                 className="font-bold hover:underline inline-flex items-center gap-1 disabled:opacity-50 disabled:no-underline cursor-pointer"
                 style={{ color: accent }}
               >

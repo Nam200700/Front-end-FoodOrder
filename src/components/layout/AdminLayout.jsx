@@ -3,8 +3,6 @@ import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import apiClient from '../../services/api';
 import { useAuthStore } from '../../stores/authStore';
 import { getAvatarUrl } from '../../utils/avatarHelper';
-import { toast, ToastContainer } from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.css';
 import {
   BarChart3,
   Store,
@@ -311,9 +309,7 @@ export default function AdminLayout() {
         <Outlet />
       </main>
 
-      {/* TOAST POPUP TOÀN CỤC THỜI GIAN THỰC */}
-      <ToastContainer />
-      <input 
+      <input
         type="file" 
         ref={fileInputRef} 
         className="hidden" 

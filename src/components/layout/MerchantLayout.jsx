@@ -5,8 +5,7 @@ import { useChatStore } from '../../stores/chatStore';
 import { useOrderStore } from '../../stores/orderStore';
 import apiClient from '../../services/api';
 import { getRestaurantBannerUrl } from '../../utils/avatarHelper';
-import { toast, ToastContainer } from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.css';
+import { toast } from 'react-toastify';
 import {
   BarChart3,
   ClipboardList,
@@ -330,8 +329,7 @@ export default function MerchantLayout() {
         <Outlet />
       </main>
 
-      <ToastContainer />
-      <input 
+      <input
         type="file" 
         ref={fileInputRef} 
         className="hidden" 

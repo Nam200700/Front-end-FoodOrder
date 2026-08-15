@@ -1341,9 +1341,14 @@ export default function RestaurantDetail() {
   const handleQtyButtonChange = (item, newQty) => {
     if (isGroupMode) {
       handleUpdateGroupQty(item, newQty);
-    } else {
-      updateQty(item.id, getItemQty(item.id), newQty);
+      return;
     }
+
+    const cartItem = cartItems.find((i) => Number(i.foodId) === Number(item.id));
+    if (!cartItem) {
+      return;
+    }
+    updateQty(cartItem.cartItemId, newQty);
   };
 
   //chat 

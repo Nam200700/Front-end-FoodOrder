@@ -21,13 +21,15 @@ import MapModal2 from '../../components/common/Map';
 import { formatDateTime} from '../../utils/format';
 
 // Nhận diện loại voucher: icon + màu riêng cho FREESHIP / PERCENT / FIXED
-// grad = nền gradient cho icon chip; anim = chuyển động idle RIÊNG theo loại (xe chạy / % lắc / ví nảy)
 const VOUCHER_TYPE_META = {
   FREESHIP: { icon: Truck, label: 'Miễn phí ship', chip: 'bg-teal-100 text-teal-700', strip: 'bg-teal-400', value: 'text-teal-700', grad: 'from-teal-400 to-emerald-500', anim: 'animate-wiggle' },
   PERCENT: { icon: BadgePercent, label: 'Giảm theo %', chip: 'bg-orange-100 text-[#ff6b35]', strip: 'bg-[#ff6b35]', value: 'text-[#ff6b35]', grad: 'from-amber-400 to-[#ff6b35]', anim: 'animate-bob' },
   FIXED: { icon: Wallet, label: 'Giảm tiền mặt', chip: 'bg-blue-100 text-blue-700', strip: 'bg-blue-400', value: 'text-blue-700', grad: 'from-blue-400 to-indigo-500', anim: 'animate-float' },
 };
 const vmeta = (t) => VOUCHER_TYPE_META[t] || VOUCHER_TYPE_META.FIXED;
+
+// Bán kính giao hàng tối đa hệ thống hỗ trợ (km)
+const MAX_DELIVERY_DISTANCE_KM = 10;
 
 // Trạng thái hạn dùng: sắp hết hạn (≤3 ngày) để nhắc khách dùng sớm
 const expiryInfo = (dateVal) => {
@@ -52,18 +54,19 @@ export default function Cart() {
   const [deliveryLng, setDeliveryLng] = useState(user?.lng || null);
 
   const [orderNotes, setOrderNotes] = useState('');
-  const [submittingCartId, setSubmittingCartId] = useState(null);
+  const [isSubmittingOrder, setIsSubmittingOrder] = useState(false);
 
   // lưu các quán đã chọn
   const [selectedRestaurantIds, setSelectedRestaurantIds] = useState([]);
   const [bulkOrderPayload, setBulkOrderPayload] = useState(null);
 
   const [isUpdatingLocation, setIsUpdatingLocation] = useState(false);
-  
   const [paymentMethod, setPaymentMethod] = useState('COD');
 
   const confirmOrderModal = useModalState(); // Modal đặt hàng
   const deleteCartModal = useModalState({ restaurantId: null, restaurantName: '' }); // Modal xóa giỏ hàng
+  const orderSummaryModal = useModalState(); // Modal xem/sửa nhanh thông tin đơn hàng trên mobile
+  const mobileDeliveryInfoModal = useModalState(); // Modal sửa "Thông tin giao hàng" (người nhận/địa chỉ) trên mobile
 
   // id truyền từ RestaurantDetail.jsx
   const targetRestaurantId = location.state?.targetRestaurantId;
@@ -137,7 +140,6 @@ export default function Cart() {
           }
         }, 300); 
         
-        // Xóa state điều hướng để lần sau refresh không bị lặp lại
         navigate(location.pathname, { replace: true, state: {} });
       }
     }
@@ -160,24 +162,32 @@ export default function Cart() {
       return;
     }
 
-    // --- Validate khoảng cách > 10km & Giờ hoạt động cho từng quán được chọn ---
+    // Validate khoảng cách, giờ hoạt động và điều kiện voucher cho từng quán được chọn
     for (const cart of currentSelectedCarts) {
       const shipInfo = shippingInfos[cart.restaurantId];
       const distance = shipInfo?.distanceKm || 0;
 
-      // 1. Kiểm tra khoảng cách
-      if (distance > 10) {
-        toast.error(`Quán "${cart.restaurantName}" cách bạn ${distance.toFixed(1)} km (vượt quá 10km). Hệ thống chỉ hỗ trợ đặt quán trong phạm vi 10 km!`);
+      if (distance > MAX_DELIVERY_DISTANCE_KM) {
+        toast.error(`Quán "${cart.restaurantName}" cách bạn ${distance.toFixed(1)} km (vượt quá ${MAX_DELIVERY_DISTANCE_KM}km). Hệ thống chỉ hỗ trợ đặt quán trong phạm vi ${MAX_DELIVERY_DISTANCE_KM} km!`);
         return;
       }
 
-      if (cart.open === false) {
+      if (cart.isOpen === false) {
         toast.error(`Quán "${cart.restaurantName}" hiện đã đóng cửa (Giờ mở cửa ${cart.opensAt} - ${cart.closesAt}). Vui lòng quay lại sau!`);
         return;
       }
+
+      // Kiểm tra voucher đã chọn xem tiền món ăn có < minOrderAmount không
+      const selectedV = selectedVouchers[cart.restaurantId];
+      if (selectedV) {
+        const minOrder = selectedV.minOrderAmount != null ? Number(selectedV.minOrderAmount) : 0;
+        if (minOrder > 0 && cart.subtotal < minOrder) {
+          toast.error(`Quán "${cart.restaurantName}": Đơn hàng chưa đạt mức tối thiểu ${formatCurrency(minOrder)} để sử dụng voucher ${selectedV.code}!`);
+          return;
+        }
+      }
     }
 
-    // Xây dựng map voucher cho từng quán được chọn { [restaurantId]: userVoucherId }
     const restaurantVouchersMap = {};
     selectedRestaurantIds.forEach(resId => {
       const v = selectedVouchers[resId];
@@ -200,11 +210,10 @@ export default function Cart() {
     confirmOrderModal.open();
   };
 
-  // Thực thi đặt hàng
   const executeBulkPlaceOrder = async () => {
     if (!bulkOrderPayload) return;
   
-    setSubmittingCartId('BULK_ORDER'); 
+    setIsSubmittingOrder(true);
     confirmOrderModal.close();
 
     try {
@@ -217,7 +226,8 @@ export default function Cart() {
         console.warn('Lỗi đồng bộ profile trước khi đặt hàng:', err);
       }
 
-      await apiClient.post("/orders", bulkOrderPayload);
+      // Luôn lấy ghi chú mới nhất từ state (phòng trường hợp người dùng chỉnh sửa ghi chú ngay trong Modal xác nhận)
+      await apiClient.post("/orders", { ...bulkOrderPayload, note: orderNotes });
 
       toast.success('Đặt hàng thành công!');
       setOrderNotes('');
@@ -228,7 +238,7 @@ export default function Cart() {
     } catch(err) {
       toast.error(err.response?.data?.message || 'Đã xảy ra lỗi khi đặt hàng. Vui lòng thử lại!');
     } finally {
-      setSubmittingCartId(null);
+      setIsSubmittingOrder(false);
       setBulkOrderPayload(null);
     }
   };
@@ -242,8 +252,8 @@ export default function Cart() {
     }
 
     const currentDistance = Number(distance) || 0;
-    if (currentDistance > 10) {
-      toast.error(`Quán "${cart.restaurantName}" cách bạn ${currentDistance.toFixed(1)} km. Hệ thống chỉ hỗ trợ đặt quán trong phạm vi 10 km!`);
+    if (currentDistance > MAX_DELIVERY_DISTANCE_KM) {
+      toast.error(`Quán "${cart.restaurantName}" cách bạn ${currentDistance.toFixed(1)} km. Hệ thống chỉ hỗ trợ đặt quán trong phạm vi ${MAX_DELIVERY_DISTANCE_KM} km!`);
       return;
     }
 
@@ -260,8 +270,36 @@ export default function Cart() {
   const handleSelectAll = () => {
     if (isAllSelected) {
       setSelectedRestaurantIds([]);
-    } else {
-      setSelectedRestaurantIds(carts.map(cart => Number(cart.restaurantId)));
+      return;
+    }
+
+    // Chỉ chọn được các quán đang mở cửa và trong bán kính giao hàng cho phép.
+    // Các quán không hợp lệ sẽ bị loại và thông báo cho khách biết lý do.
+    const eligibleIds = [];
+    const closedNames = [];
+    const tooFarNames = [];
+
+    carts.forEach(cart => {
+      const distance = shippingInfos[cart.restaurantId]?.distanceKm || 0;
+
+      if (cart.isOpen === false) {
+        closedNames.push(cart.restaurantName);
+        return;
+      }
+      if (distance > MAX_DELIVERY_DISTANCE_KM) {
+        tooFarNames.push(cart.restaurantName);
+        return;
+      }
+      eligibleIds.push(Number(cart.restaurantId));
+    });
+
+    setSelectedRestaurantIds(eligibleIds);
+
+    if (closedNames.length > 0) {
+      toast.error(`Không thể chọn quán "${closedNames.join(', ')}" vì hiện đã đóng cửa!`);
+    }
+    if (tooFarNames.length > 0) {
+      toast.error(`Không thể chọn quán "${tooFarNames.join(', ')}" vì vượt quá bán kính giao hàng ${MAX_DELIVERY_DISTANCE_KM} km!`);
     }
   };
 
@@ -275,7 +313,6 @@ export default function Cart() {
     setSelectedRestaurantIds(prev => 
       prev.filter(id => Number(id) !== Number(restaurantId))
     );
-    // Xóa voucher đã chọn của quán nếu có
     setSelectedVouchers(prev => {
       const updated = { ...prev };
       delete updated[restaurantId];
@@ -285,7 +322,6 @@ export default function Cart() {
     toast.success('Đã xóa giỏ hàng thành công!');
   };
 
-  // Danh sách địa chỉ
   const fetchUserAddresses = async () => {
     try {
       const res = await apiClient.get('/addresses');
@@ -294,18 +330,15 @@ export default function Cart() {
       const defaultAddr = list.find(a => a.default);
       if (defaultAddr) {
         setSelectedAddressId(defaultAddr.addressId);
-        if (!address) {
-          setAddress(defaultAddr.address);
-          setDeliveryLat(defaultAddr.latitude);
-          setDeliveryLng(defaultAddr.longitude);
-        }
+        setAddress(defaultAddr.address);
+        setDeliveryLat(defaultAddr.latitude);
+        setDeliveryLng(defaultAddr.longitude);
       }
     } catch (err) {
       console.error('Lỗi tải danh sách địa chỉ:', err);
     }
   };
 
-  //chọn địa chỉ
   const handleSelectAddressItem = async (item) => {
     setSelectedAddressId(item.addressId);
     setAddress(item.address);
@@ -360,7 +393,6 @@ export default function Cart() {
     mapModal2.open();
   };
 
-  //cập nhật/thêm mới địa chỉ
   const handleMapConfirmAndSave = async (latVal, lngVal, addressNameVal) => {
     try {
       const payload = {
@@ -410,18 +442,29 @@ export default function Cart() {
     }
   };
 
-  // Mở modal voucher dành riêng cho một nhà hàng cụ thể
   const handleOpenVoucherModalForRestaurant = (restaurantId) => {
     setSelectingRestaurantId(restaurantId);
     fetchVouchersData();
     voucherModal.open();
   };
 
-  // Chọn voucher cho nhà hàng đang mở modal
+  // =========================================================================
+  // XỬ LÝ CLICK CHỌN VOUCHER (BẮN TOAST CẢNH BÁO NẾU ĐƠN < minOrderAmount)
+  // =========================================================================
   const handleSelectVoucherForRestaurant = (voucherItem) => {
     if (!selectingRestaurantId) return;
 
-    // Kiểm tra xem voucher này đã chọn cho quán khác chưa
+    const currentCart = carts.find(c => Number(c.restaurantId) === Number(selectingRestaurantId));
+    const currentSubtotal = currentCart ? currentCart.subtotal : 0;
+    const minOrder = voucherItem.minOrderAmount != null ? Number(voucherItem.minOrderAmount) : 0;
+
+    // 1. KIỂM TRA ĐƠN HÀNG TỐI THIỂU (minOrderAmount)
+    if (minOrder > 0 && currentSubtotal < minOrder) {
+      toast.warning(`Đơn hàng chưa đạt mức tối thiểu ${formatCurrency(minOrder)} để sử dụng voucher ${voucherItem.code}!`);
+      return;
+    }
+
+    // 2. KIỂM TRA XEM VOUCHER NÀY ĐÃ ĐƯỢC ÁP DỤNG CHO QUÁN KHÁC CHƯA
     const isAlreadyUsedInOtherRes = Object.entries(selectedVouchers).some(
       ([resId, v]) => Number(resId) !== Number(selectingRestaurantId) && v?.userVoucherId === voucherItem.userVoucherId
     );
@@ -435,19 +478,19 @@ export default function Cart() {
       ...prev,
       [selectingRestaurantId]: voucherItem
     }));
+    toast.success(`Đã chọn mã ${voucherItem.code} cho quán ${currentCart?.restaurantName || ''}!`);
     voucherModal.close();
   };
 
-  // Hủy voucher của một quán
   const handleRemoveVoucherForRestaurant = (restaurantId) => {
     setSelectedVouchers(prev => {
       const copy = { ...prev };
       delete copy[restaurantId];
       return copy;
     });
+    toast.info('Đã bỏ chọn voucher của quán!');
   };
 
-  //nhận voucher
   const handleClaimPublicVoucher = async (voucherId) => {
     try {
       await apiClient.post(`/vouchers/${voucherId}/add`);
@@ -458,7 +501,6 @@ export default function Cart() {
     }
   };
 
-  // TÍNH TOÁN CÁC THÔNG SỐ CỦA CÁC QUÁN ĐANG ĐƯỢC CHỌN
   const selectedCarts = useMemo(() => {
     return carts.filter(c => selectedRestaurantIds.includes(Number(c.restaurantId)));
   }, [carts, selectedRestaurantIds]);
@@ -467,7 +509,6 @@ export default function Cart() {
     return selectedCarts.reduce((s, c) => s + c.items.reduce((a, i) => a + i.quantity, 0), 0);
   }, [selectedCarts]);
 
-  //Tổng tiền hàng chưa tính phí ship/giảm giá
   const selectedItemsSubtotal = useMemo(() => {
     return selectedCarts.reduce((sum, cart) => sum + cart.subtotal, 0);
   }, [selectedCarts]);
@@ -479,12 +520,18 @@ export default function Cart() {
     }, 0);
   }, [selectedCarts, shippingInfos]);
 
-  // Hàm tính tiền giảm của 1 voucher trên 1 quán
   const calculateCartDiscount = (cart) => {
     const voucher = selectedVouchers[cart.restaurantId];
     if (!voucher) return 0;
 
     const subtotal = cart.subtotal;
+    const minOrder = voucher.minOrderAmount != null ? Number(voucher.minOrderAmount) : 0;
+
+    // Nếu tiền món < minOrder -> không tính giảm giá
+    if (minOrder > 0 && subtotal < minOrder) {
+      return 0;
+    }
+
     const shipFee = shippingInfos[cart.restaurantId]?.shippingFee || 0;
     const totalBefore = subtotal + shipFee;
 
@@ -493,6 +540,9 @@ export default function Cart() {
       discount = Number(voucher.discountValue) || 0;
     } else if (voucher.discountType === 'PERCENT') {
       discount = (subtotal * Number(voucher.discountValue)) / 100;
+      if (voucher.maxDiscountAmount && discount > Number(voucher.maxDiscountAmount)) {
+        discount = Number(voucher.maxDiscountAmount);
+      }
     } else if (voucher.discountType === 'FREESHIP') {
       discount = shipFee;
     }
@@ -504,21 +554,28 @@ export default function Cart() {
     return selectedCarts.reduce((sum, cart) => sum + calculateCartDiscount(cart), 0);
   }, [selectedCarts, selectedVouchers, shippingInfos]);
 
-  // Ước tính số tiền THẬT tiết kiệm được nếu áp voucher này cho quán đang mở modal (hỗ trợ khách chọn đúng mã).
   const estimateVoucherSaving = (voucher) => {
     const cart = carts.find(c => Number(c.restaurantId) === Number(selectingRestaurantId));
     if (!cart || !voucher) return 0;
+
+    const minOrder = voucher.minOrderAmount != null ? Number(voucher.minOrderAmount) : 0;
+    if (minOrder > 0 && cart.subtotal < minOrder) return 0;
+
     const subtotal = cart.subtotal;
     const shipFee = shippingInfos[selectingRestaurantId]?.shippingFee || 0;
     const totalBefore = subtotal + shipFee;
     let d = 0;
     if (voucher.discountType === 'FIXED') d = Number(voucher.discountValue) || 0;
-    else if (voucher.discountType === 'PERCENT') d = (subtotal * Number(voucher.discountValue)) / 100;
+    else if (voucher.discountType === 'PERCENT') {
+      d = (subtotal * Number(voucher.discountValue)) / 100;
+      if (voucher.maxDiscountAmount && d > Number(voucher.maxDiscountAmount)) {
+        d = Number(voucher.maxDiscountAmount);
+      }
+    }
     else if (voucher.discountType === 'FREESHIP') d = shipFee;
     return Math.round(d > totalBefore ? totalBefore : d);
   };
 
-  // Voucher tiết kiệm nhiều nhất cho quán này → gắn nhãn "Tiết kiệm nhất" gợi ý khách.
   const bestUserVoucherId = useMemo(() => {
     if (!selectingRestaurantId || myVouchers.length === 0) return null;
     let best = null, bestVal = 0;
@@ -539,7 +596,6 @@ export default function Cart() {
         <div className="max-w-md w-full bg-white border border-orange-100/80 rounded-3xl p-8 shadow-sm flex flex-col items-center text-center animate-rise-in relative overflow-hidden">
           <span className="pointer-events-none absolute -top-14 -right-14 w-40 h-40 bg-orange-100/40 rounded-full blur-2xl" />
 
-          {/* Túi giỏ hàng nổi + tia lấp lánh */}
           <div className="relative mb-5">
             <div className="w-24 h-24 bg-gradient-to-br from-orange-100 to-amber-50 rounded-full flex items-center justify-center border border-orange-100 shadow-inner animate-float">
               <ShoppingBag size={40} className="text-[#ff6b35]" />
@@ -560,7 +616,6 @@ export default function Cart() {
             <Search size={15} /> Khám phá món ngon ngay
           </Button>
 
-          {/* Lối đi nhanh — để khách không cụt hứng */}
           <div className="w-full mt-6 pt-5 border-t border-slate-100 grid grid-cols-3 gap-2.5">
             {[
               { label: 'Trang chủ', icon: Sparkles, to: '/', color: 'bg-orange-50 text-[#ff6b35]' },
@@ -588,7 +643,7 @@ export default function Cart() {
   }
 
   return (
-    <div className="flex-1 p-4 md:p-5 w-full font-google-sans pb-24 bg-slate-50 min-h-screen">
+    <div className="flex-1 p-4 md:p-5 w-full font-google-sans pb-32 lg:pb-24 bg-slate-50 min-h-screen">
       <div className="flex items-center justify-between mb-5 gap-3">
         <div className="flex items-center gap-3 min-w-0">
           <button onClick={() => navigate(-1)} className="p-1.5 rounded-full hover:bg-slate-200 text-slate-600 transition-colors cursor-pointer shrink-0">
@@ -612,6 +667,27 @@ export default function Cart() {
         </button>
       </div>
 
+      {/* ================= THANH THÔNG TIN GIAO HÀNG RÚT GỌN (CHỈ HIỂN THỊ TRÊN MOBILE) ================= */}
+      <button
+        type="button"
+        onClick={mobileDeliveryInfoModal.open}
+        className="lg:hidden w-full flex items-center gap-3 p-3.5 mb-4 rounded-2xl border border-slate-200 bg-white shadow-sm active:scale-[0.99] transition-transform cursor-pointer text-left"
+      >
+        <span className="w-9 h-9 rounded-xl bg-orange-50 text-[#ff6b35] flex items-center justify-center shrink-0">
+          <Truck size={18} />
+        </span>
+        <div className="flex-1 min-w-0">
+          <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">THÔNG TIN GIAO HÀNG</p>
+          <p className="text-xs font-semibold text-slate-700 truncate">
+            {fullname ? `${fullname} - ` : ''} {phone ? `${phone}` : ''}
+          </p>
+          <p className="text-xs font-semibold text-slate-700 truncate">
+            {address || 'Chưa chọn địa chỉ giao hàng'}
+          </p>
+        </div>
+        <Edit2 size={15} className="text-slate-400 shrink-0" />
+      </button>
+
       <div className="flex flex-col lg:flex-row gap-5 items-start">
         {/* CỘT TRÁI: DANH SÁCH GIỎ HÀNG THEO TỪNG QUÁN */}
         <div className="flex-1 space-y-4 w-full">
@@ -624,14 +700,15 @@ export default function Cart() {
             const cartItemCount = cart.items.reduce((a, i) => a + i.quantity, 0);
             const isChecked = selectedRestaurantIds.includes(Number(cart.restaurantId));
 
-            // Voucher & tính tiền từng quán
             const restaurantVoucher = selectedVouchers[cart.restaurantId];
             const cartDiscount = calculateCartDiscount(cart);
             const cartTotal = (cart.subtotal + shippingFee) - cartDiscount;
 
             const isOpen = cart.isOpen;
+            const isTooFar = distance > MAX_DELIVERY_DISTANCE_KM;
 
-            const isTooFar = distance > 10;
+            const minOrderRequired = restaurantVoucher && restaurantVoucher.minOrderAmount != null ? Number(restaurantVoucher.minOrderAmount) : 0;
+            const isVoucherNotMet = restaurantVoucher && minOrderRequired > 0 && cart.subtotal < minOrderRequired;
 
             return (
               <Card 
@@ -692,7 +769,7 @@ export default function Cart() {
                     <XCircle size={18} className="shrink-0 text-red-500 mt-0.5" />
                     <div className="space-y-1">
                         <p className="leading-snug">
-                          <span className="font-extrabold text-red-800">Không thể đặt hàng:</span> Quán cách bạn <span className="font-bold text-red-900">{distance.toFixed(1)} km</span> (vượt quá bán kính tối đa <span className="font-bold">10 km</span>).
+                          <span className="font-extrabold text-red-800">Không thể đặt hàng:</span> Quán cách bạn <span className="font-bold text-red-900">{distance.toFixed(1)} km</span> (vượt quá bán kính tối đa <span className="font-bold">{MAX_DELIVERY_DISTANCE_KM} km</span>).
                         </p>
                     </div>
                   </div>
@@ -829,36 +906,54 @@ export default function Cart() {
                 </div>
 
                 {/* --- KHU VỰC VOUCHER RIÊNG CHO QUÁN NÀY --- */}
-                <div className="px-4 py-2.5 bg-orange-50/40 border-t border-slate-100 flex items-center justify-between gap-3">
-                  <div className="flex items-center gap-2 text-xs shrink-0">
-                    <BadgePercent size={15} className="text-[#ff6b35]" />
-                    <span className="font-bold text-slate-700">Giảm giá voucher:</span>
+                <div className="px-4 py-2.5 bg-orange-50/40 border-t border-slate-100 flex flex-col gap-2">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-2 text-xs shrink-0">
+                      <BadgePercent size={15} className="text-[#ff6b35]" />
+                      <span className="font-bold text-slate-700">Giảm giá voucher:</span>
+                    </div>
+
+                    {restaurantVoucher ? (
+                      <div className="flex items-center gap-2 bg-white border border-orange-200 rounded-lg pl-2.5 pr-1.5 py-1 text-xs min-w-0 shadow-sm">
+                        <span className="inline-flex items-center gap-1 font-extrabold text-[#ff6b35] shrink-0"><Tag size={12} /> {restaurantVoucher.code}</span>
+                        <span className="text-[11px] font-semibold text-emerald-600 truncate">
+                          {restaurantVoucher.discountType === 'FIXED' && `-${formatCurrency(restaurantVoucher.discountValue)}`}
+                          {restaurantVoucher.discountType === 'PERCENT' && `-${restaurantVoucher.discountValue}%`}
+                          {restaurantVoucher.discountType === 'FREESHIP' && 'Freeship'}
+                        </span>
+                        <button
+                          onClick={() => handleRemoveVoucherForRestaurant(cart.restaurantId)}
+                          className="p-0.5 rounded-full text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors cursor-pointer shrink-0"
+                          title="Bỏ chọn voucher"
+                        >
+                          <X size={13} strokeWidth={2.5} />
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => handleOpenVoucherModalForRestaurant(cart.restaurantId)}
+                        className="text-xs font-bold text-[#ff6b35] hover:bg-orange-100/60 px-2.5 py-1 rounded-lg cursor-pointer inline-flex items-center gap-1 transition-colors"
+                      >
+                        Chọn voucher <ChevronRight size={13} />
+                      </button>
+                    )}
                   </div>
 
-                  {restaurantVoucher ? (
-                    <div className="flex items-center gap-2 bg-white border border-orange-200 rounded-lg pl-2.5 pr-1.5 py-1 text-xs min-w-0 shadow-sm">
-                      <span className="inline-flex items-center gap-1 font-extrabold text-[#ff6b35] shrink-0"><Tag size={12} /> {restaurantVoucher.code}</span>
-                      <span className="text-[11px] font-semibold text-emerald-600 truncate">
-                        {restaurantVoucher.discountType === 'FIXED' && `-${formatCurrency(restaurantVoucher.discountValue)}`}
-                        {restaurantVoucher.discountType === 'PERCENT' && `-${restaurantVoucher.discountValue}%`}
-                        {restaurantVoucher.discountType === 'FREESHIP' && 'Freeship'}
+                  {/* BÁO CẢNH BÁO NẾU GIẢM SỐ LƯỢNG MÓN LÀM ĐƠN CHƯA ĐẠT MIN_ORDER */}
+                  {isVoucherNotMet && (
+                    <div className="p-2 bg-amber-50 border border-amber-200 rounded-lg text-[11px] font-bold text-amber-800 flex items-center justify-between gap-2 animate-rise-in">
+                      <span className="flex items-center gap-1.5">
+                        <AlertTriangle size={13} className="text-amber-600 shrink-0" />
+                        Đơn hàng chưa đạt mức tối thiểu {formatCurrency(minOrderRequired)} để sử dụng voucher {restaurantVoucher.code}
                       </span>
-                      <button
+                      <button 
                         onClick={() => handleRemoveVoucherForRestaurant(cart.restaurantId)}
-                        className="p-0.5 rounded-full text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors cursor-pointer shrink-0"
-                        title="Bỏ chọn voucher"
+                        className="text-amber-900 underline text-[10px] shrink-0 hover:text-red-600"
                       >
-                        <X size={13} strokeWidth={2.5} />
+                        Bỏ mã
                       </button>
                     </div>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => handleOpenVoucherModalForRestaurant(cart.restaurantId)}
-                      className="text-xs font-bold text-[#ff6b35] hover:bg-orange-100/60 px-2.5 py-1 rounded-lg cursor-pointer inline-flex items-center gap-1 transition-colors"
-                    >
-                      Chọn voucher <ChevronRight size={13} />
-                    </button>
                   )}
                 </div>
 
@@ -867,11 +962,7 @@ export default function Cart() {
                   <div className="flex items-center justify-between text-sm text-slate-600">
                     <div className="space-y-1 w-full">
                       <div className="flex justify-between items-center">
-                        <span className="text-xs text-slate-500 flex items-center gap-1.5"><ShoppingBag size={13} className="text-slate-400" /> Số lượng món:</span>
-                        <span className="font-bold text-xs text-slate-700">{cartItemCount} món</span>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-xs text-slate-500 flex items-center gap-1.5"><Receipt size={13} className="text-slate-400" /> Tạm tính:</span>
+                        <span className="text-xs text-slate-500 flex items-center gap-1.5"><Receipt size={13} className="text-slate-400" /> Tạm tính ({cartItemCount} món):</span>
                         <span className="font-bold text-xs text-slate-700">{formatCurrency(cart.subtotal)}</span>
                       </div>
                       <div className="flex justify-between items-center">
@@ -908,8 +999,8 @@ export default function Cart() {
           })}
         </div>
 
-        {/* CỘT PHẢI: THÔNG TIN GIAO HÀNG & TỔNG QUAN ĐƠN HÀNG */}
-        <aside className="w-full lg:w-80 shrink-0 lg:sticky lg:top-5 space-y-4">
+        {/* CỘT PHẢI: THÔNG TIN GIAO HÀNG & TỔNG QUAN ĐƠN HÀNG — hiển thị trên desktop. */}
+        <aside className="hidden lg:block w-full lg:w-80 shrink-0 lg:sticky lg:top-5 space-y-4">
           
           {/* THÔNG TIN GIAO HÀNG */}
           <Card variant="flat" className="p-5 !border-slate-200/80 !rounded-2xl space-y-4">
@@ -941,7 +1032,6 @@ export default function Cart() {
                   type="tel"
                   value={phone}
                   readOnly
-                  onChange={(e) => setPhone(e.target.value)}
                   className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl bg-slate-50 text-slate-600 font-semibold focus:outline-none cursor-not-allowed transition-all duration-200"
                 />
               </div>
@@ -981,8 +1071,8 @@ export default function Cart() {
             </div>
           </Card>
 
-          {/* TỔNG QUAN ĐƠN HÀNG */}
-          <Card variant="flat" className="p-4 !border-slate-200 !rounded-2xl flex flex-col space-y-3">
+          {/* TỔNG QUAN ĐƠN HÀNG — chỉ hiển thị trên desktop (lg trở lên). */}
+          <Card variant="flat" className="hidden lg:flex p-4 !border-slate-200 !rounded-2xl flex-col space-y-3">
             <h3 className="text-xs font-extrabold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
               <Receipt size={15} className="text-[#ff6b35]" /> Tổng quan đơn hàng
             </h3>
@@ -992,47 +1082,6 @@ export default function Cart() {
               <span className="font-extrabold text-slate-800">{selectedRestaurantIds.length} / {carts.length}</span>
             </div>
 
-            <div className="flex items-center justify-between text-xs text-slate-600">
-              <span className="flex items-center gap-1.5"><ShoppingBag size={13} className="text-slate-400" /> Tổng số món:</span>
-              <span className="font-extrabold text-slate-800">{totalItems} món</span>
-            </div>
-
-            {/* Hiển thị Tạm tính tiền hàng */}
-            <div className="flex items-center justify-between text-xs text-slate-600">
-              <span className="flex items-center gap-1.5"><Receipt size={13} className="text-slate-400" /> Tiền hàng:</span>
-              <span className="font-bold text-slate-800">{formatCurrency(selectedItemsSubtotal)}</span>
-            </div>
-
-            {/* Hiển thị Phí vận chuyển */}
-            <div className="flex items-center justify-between text-xs text-slate-600">
-              <span className="flex items-center gap-1.5"><Bike size={13} className="text-slate-400" /> Phí vận chuyển:</span>
-              <span className="font-bold text-slate-800">
-                {isCalculatingShipping ? 'Đang tính...' : formatCurrency(totalShippingFee)}
-              </span>
-            </div>
-
-            {/* Tổng giảm giá từ tất cả voucher đã chọn */}
-            {totalDiscountAmount > 0 && (
-              <div className="flex items-center justify-between text-xs text-emerald-600 font-bold bg-emerald-50/70 -mx-1 px-2 py-1.5 rounded-lg">
-                <span className="flex items-center gap-1.5"><BadgePercent size={13} /> Giảm giá từ voucher:</span>
-                <span>- {formatCurrency(totalDiscountAmount)}</span>
-              </div>
-            )}
-
-            <div className="pt-2 border-t border-slate-100 mb-1">
-              <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5 mb-1.5">
-                <StickyNote size={13} /> Ghi chú đơn hàng
-              </label>
-              <textarea
-                rows={2}
-                value={orderNotes}
-                onChange={(e) => setOrderNotes(e.target.value)}
-                placeholder="Thêm ghi chú cho đơn hàng"
-                className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl bg-white text-slate-700 font-semibold focus:outline-none focus:border-[#ff6b35] focus:ring-1 focus:ring-orange-100 transition-all duration-200 resize-none"
-              />
-            </div>
-
-            {/* Tổng thanh toán cuối cùng */}
             <div className="flex items-center justify-between text-sm text-slate-600 pt-2 border-t border-slate-100 mt-1">
               <span className="font-bold text-slate-700">Tổng thanh toán:</span>
               <span className="font-black text-[#ff6b35] text-lg">
@@ -1042,8 +1091,8 @@ export default function Cart() {
 
             <Button
               onClick={handleBulkPlaceOrder}
-              disabled={selectedRestaurantIds.length === 0 || submittingCartId === 'BULK_ORDER' || isUpdatingLocation || isCalculatingShipping}
-              loading={submittingCartId === 'BULK_ORDER'}
+              disabled={selectedRestaurantIds.length === 0 || isSubmittingOrder || isUpdatingLocation || isCalculatingShipping}
+              loading={isSubmittingOrder}
               icon={ShoppingBag}
               className="w-full !mt-0 !bg-orange-600 hover:!bg-orange-700 text-white font-bold py-3 rounded-xl flex items-center justify-center gap-2"
             >
@@ -1053,6 +1102,174 @@ export default function Cart() {
         </aside>
       </div>
 
+      {/* ================= THANH ĐẶT HÀNG CỐ ĐỊNH (CHỈ HIỂN THỊ TRÊN MOBILE) ================= */}
+      <div
+        className="lg:hidden fixed inset-x-0 z-40 px-3"
+        style={{ bottom: 'calc(var(--bottom-nav-height, 72px) + 10px)' }}
+      >
+        <div className="flex items-center justify-between gap-3 bg-white border border-slate-200 rounded-2xl shadow-[0_6px_24px_rgba(15,23,42,0.15)] px-4 py-3">
+          <button
+            type="button"
+            onClick={() => orderSummaryModal.open()}
+            className="min-w-0 flex-1 text-left cursor-pointer"
+          >
+            <div className="flex items-center gap-1.5 text-[11px] font-semibold text-slate-500">
+              <Store size={12} className="text-[#ff6b35] shrink-0" />
+              <span className="truncate">{selectedRestaurantIds.length} / {carts.length} quán đã chọn</span>
+              <Edit2 size={11} className="text-slate-400 shrink-0" />
+            </div>
+            <div className="flex items-baseline gap-1">
+              <span className="text-base font-black text-[#ff6b35] leading-tight">
+                {isCalculatingShipping || isUpdatingLocation ? 'Đang tính...' : formatCurrency(finalTotalAmount)}
+              </span>
+            </div>
+          </button>
+
+          <Button
+            onClick={handleBulkPlaceOrder}
+            disabled={selectedRestaurantIds.length === 0 || isSubmittingOrder || isUpdatingLocation || isCalculatingShipping}
+            loading={isSubmittingOrder}
+            icon={ShoppingBag}
+            className="!mt-0 !w-auto shrink-0 !bg-orange-600 hover:!bg-orange-700 text-white font-bold py-3 px-5 rounded-xl flex items-center justify-center gap-2 whitespace-nowrap"
+          >
+            {selectedRestaurantIds.length === 0 ? 'Chọn quán' : `Đặt Hàng${selectedRestaurantIds.length > 1 ? ` · ${selectedRestaurantIds.length}` : ''}`}
+          </Button>
+        </div>
+      </div>
+
+      {/* Modal "Thông Tin Giao Hàng" — chỉ dùng trên mobile, mở từ thanh rút gọn ở đầu trang.*/}
+      <Modal
+        isOpen={mobileDeliveryInfoModal.isOpen}
+        onClose={mobileDeliveryInfoModal.close}
+        title="Thông Tin Giao Hàng"
+        size="sm"
+      >
+        <div className="space-y-3.5">
+          <div className="space-y-1">
+            <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+              <User size={12} className="text-indigo-500" /> Người nhận
+            </label>
+            <input
+              type="text"
+              value={fullname}
+              onChange={(e) => setFullname(e.target.value)}
+              placeholder="Nhập tên người nhận"
+              className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl bg-white text-slate-700 font-semibold focus:outline-none focus:border-[#ff6b35] focus:ring-1 focus:ring-orange-100 transition-all duration-200"
+            />
+          </div>
+
+          <div className="space-y-1 mb-1">
+            <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+              <Phone size={12} className="text-emerald-500" /> Số điện thoại
+            </label>
+            <input
+              type="tel"
+              value={phone}
+              readOnly
+              className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl bg-slate-50 text-slate-600 font-semibold focus:outline-none cursor-not-allowed transition-all duration-200"
+            />
+          </div>
+
+          <div className="space-y-1.5 pt-1">
+            <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+              <MapPin size={12} className="text-rose-500" /> Địa chỉ nhận hàng
+            </label>
+            <div className="p-3 border border-slate-100 rounded-xl bg-slate-50/30 min-h-[56px] flex flex-col justify-center relative">
+              {isUpdatingLocation && (
+                <div className="absolute inset-0 bg-white/70 flex items-center justify-center rounded-xl">
+                  <Spinner size="sm" />
+                </div>
+              )}
+              <p className="text-xs text-slate-700 font-medium leading-relaxed">
+                {address || 'Chưa chọn địa chỉ giao hàng'}
+              </p>
+            </div>
+
+            <Button
+              type="button"
+              icon={address ? Edit2 : Plus}
+              onClick={() => {
+                mobileDeliveryInfoModal.close();
+                if (!address) {
+                  setEditingAddressId(null);
+                  setAddressLabel('Nhà riêng');
+                  mapModal2.open();
+                } else {
+                  addressListModal.open();
+                }
+              }}
+              className="w-full !mt-0 !bg-orange-600 hover:!bg-orange-700 text-white font-bold py-3 rounded-xl flex items-center justify-center gap-2"
+            >
+              {address ? 'Thay Đổi Địa Chỉ' : 'Thêm Mới Địa Chỉ'}
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Modal Xem/Sửa nhanh thông tin đơn hàng — chỉ dùng trên mobile, mở từ thanh đặt hàng cố định */}
+      <Modal
+        isOpen={orderSummaryModal.isOpen}
+        onClose={orderSummaryModal.close}
+        title="Thông Tin Đơn Hàng"
+        size="sm"
+      >
+        <div className="space-y-4">
+          <div className="border border-slate-100 rounded-xl p-3 space-y-2 bg-slate-50/50">
+            <div className="flex items-center justify-between text-xs text-slate-600">
+              <span className="flex items-center gap-1.5"><Store size={13} className="text-slate-400" /> Số quán đã chọn:</span>
+              <span className="font-bold text-slate-800">{selectedRestaurantIds.length} / {carts.length}</span>
+            </div>
+            <div className="flex items-center justify-between text-xs text-slate-600">
+              <span className="flex items-center gap-1.5"><ShoppingBag size={13} className="text-slate-400" /> Tổng số món:</span>
+              <span className="font-bold text-slate-800">{totalItems} món</span>
+            </div>
+            <div className="flex items-center justify-between text-xs text-slate-600">
+              <span className="flex items-center gap-1.5"><Receipt size={13} className="text-slate-400" /> Tiền hàng:</span>
+              <span className="font-bold text-slate-800">{formatCurrency(selectedItemsSubtotal)}</span>
+            </div>
+            <div className="flex items-center justify-between text-xs text-slate-600">
+              <span className="flex items-center gap-1.5"><Bike size={13} className="text-slate-400" /> Phí vận chuyển:</span>
+              <span className="font-bold text-slate-800">
+                {isCalculatingShipping ? 'Đang tính...' : formatCurrency(totalShippingFee)}
+              </span>
+            </div>
+            {totalDiscountAmount > 0 && (
+              <div className="flex items-center justify-between text-xs text-emerald-600 font-bold">
+                <span className="flex items-center gap-1.5"><BadgePercent size={13} /> Giảm giá voucher:</span>
+                <span>- {formatCurrency(totalDiscountAmount)}</span>
+              </div>
+            )}
+            <div className="flex items-center justify-between pt-2 border-t border-slate-200 text-sm">
+              <span className="font-bold text-slate-700">Tổng thanh toán:</span>
+              <span className="font-black text-[#ff6b35] text-base">
+                {isCalculatingShipping || isUpdatingLocation ? 'Đang tính...' : formatCurrency(finalTotalAmount)}
+              </span>
+            </div>
+          </div>
+
+          <div>
+            <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5 mb-1.5">
+              <StickyNote size={13} /> Ghi chú đơn hàng
+            </label>
+            <textarea
+              rows={3}
+              value={orderNotes}
+              onChange={(e) => setOrderNotes(e.target.value)}
+              placeholder="Thêm ghi chú cho đơn hàng"
+              className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl bg-white text-slate-700 font-semibold focus:outline-none focus:border-[#ff6b35] focus:ring-1 focus:ring-orange-100 transition-all duration-200 resize-none"
+            />
+          </div>
+
+          <Button
+            type="button"
+            onClick={orderSummaryModal.close}
+            className="w-full !rounded-xl !text-xs !font-bold !py-2.5 !bg-slate-800 hover:!bg-slate-900 text-white cursor-pointer"
+          >
+            Đóng
+          </Button>
+        </div>
+      </Modal>
+
       {/* Modal Confirm Order */}
       <Modal 
         isOpen={confirmOrderModal.isOpen} 
@@ -1060,12 +1277,66 @@ export default function Cart() {
         title="Xác Nhận Đặt Hàng"
         size="sm"
       >
-        <div className="text-center space-y-4">          
-          <p className="text-xs text-slate-500 leading-relaxed px-2">
-            Hệ thống chuẩn bị gửi đơn đặt hàng tới <span className="font-extrabold text-slate-700">{selectedRestaurantIds.length} quán</span>. Bạn có chắc chắn muốn đặt không?
+        <div className="space-y-4">          
+          <p className="text-xs text-slate-500 leading-relaxed px-2 text-center">
+            Hệ thống chuẩn bị gửi đơn đặt hàng tới <span className="font-extrabold text-slate-700">{selectedRestaurantIds.length} quán</span>. Vui lòng kiểm tra lại thông tin trước khi xác nhận.
           </p>
 
-          <div className="flex gap-3 pt-2 justify-center">
+          {/* Thông báo cho khách biết khi chọn nhiều quán sẽ tách thành nhiều đơn riêng biệt, tránh hoang mang khi thấy nhiều mã đơn sau khi đặt */}
+          {selectedRestaurantIds.length > 1 && (
+            <div className="p-2.5 bg-blue-50 border border-blue-200 rounded-xl text-[11px] font-semibold text-blue-700 flex items-start gap-2 leading-relaxed">
+              <AlertCircle size={14} className="shrink-0 mt-0.5 text-blue-500" />
+              <span>
+                Vì các món thuộc <span className="font-extrabold">{selectedRestaurantIds.length} quán khác nhau</span>, hệ thống sẽ tự động tách thành <span className="font-extrabold">{selectedRestaurantIds.length} đơn hàng riêng biệt</span> (mỗi quán 1 đơn) để chuẩn bị và giao độc lập. Bạn có thể theo dõi từng đơn tại mục "Đơn hàng".
+              </span>
+            </div>
+          )}
+
+          {/* Tóm tắt đơn hàng  */}
+          <div className="border border-slate-100 rounded-xl p-3 space-y-2 bg-slate-50/50">
+            <div className="flex items-center justify-between text-xs text-slate-600">
+              <span className="flex items-center gap-1.5"><ShoppingBag size={13} className="text-slate-400" /> Tổng số món:</span>
+              <span className="font-bold text-slate-800">{totalItems} món</span>
+            </div>
+            <div className="flex items-center justify-between text-xs text-slate-600">
+              <span className="flex items-center gap-1.5"><Receipt size={13} className="text-slate-400" /> Tiền hàng:</span>
+              <span className="font-bold text-slate-800">{formatCurrency(selectedItemsSubtotal)}</span>
+            </div>
+            <div className="flex items-center justify-between text-xs text-slate-600">
+              <span className="flex items-center gap-1.5"><Bike size={13} className="text-slate-400" /> Phí vận chuyển:</span>
+              <span className="font-bold text-slate-800">
+                {isCalculatingShipping ? 'Đang tính...' : formatCurrency(totalShippingFee)}
+              </span>
+            </div>
+            {totalDiscountAmount > 0 && (
+              <div className="flex items-center justify-between text-xs text-emerald-600 font-bold">
+                <span className="flex items-center gap-1.5"><BadgePercent size={13} /> Giảm giá voucher:</span>
+                <span>- {formatCurrency(totalDiscountAmount)}</span>
+              </div>
+            )}
+            <div className="flex items-center justify-between pt-2 border-t border-slate-200 text-sm">
+              <span className="font-bold text-slate-700">Tổng thanh toán:</span>
+              <span className="font-black text-[#ff6b35] text-base">
+                {isCalculatingShipping || isUpdatingLocation ? 'Đang tính...' : formatCurrency(finalTotalAmount)}
+              </span>
+            </div>
+          </div>
+
+          {/* Ghi chú đơn hàng — cho phép chỉnh sửa ngay tại bước xác nhận cuối cùng */}
+          <div>
+            <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5 mb-1.5">
+              <StickyNote size={13} /> Ghi chú đơn hàng
+            </label>
+            <textarea
+              rows={2}
+              value={orderNotes}
+              onChange={(e) => setOrderNotes(e.target.value)}
+              placeholder="Thêm ghi chú cho đơn hàng"
+              className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl bg-white text-slate-700 font-semibold focus:outline-none focus:border-[#ff6b35] focus:ring-1 focus:ring-orange-100 transition-all duration-200 resize-none"
+            />
+          </div>
+
+          <div className="flex gap-3 pt-1 justify-center">
             <Button
               type="button"
               variant="outline"
@@ -1085,7 +1356,7 @@ export default function Cart() {
         </div>
       </Modal>
 
-      {/* Modal Clear Cart */}
+      {/* modal xác nhận xóa giỏ hàng */}
       <Modal 
         isOpen={deleteCartModal.isOpen} 
         onClose={deleteCartModal.close}
@@ -1093,7 +1364,6 @@ export default function Cart() {
         size="sm"
       >
         <div className="text-center space-y-4">
-          {/* Icon thùng rác — quầng đỏ lan toả + thùng rung nhẹ (cảnh báo hành động xoá) */}
           <div className="flex justify-center pt-1">
             <div className="relative w-16 h-16">
               <span className="absolute inset-0 rounded-full bg-red-200/60 animate-halo" style={{ transformBox: 'fill-box', transformOrigin: 'center' }} />
@@ -1107,7 +1377,6 @@ export default function Cart() {
             Bạn chắc chắn muốn xóa toàn bộ sản phẩm thuộc giỏ hàng của <span className="font-extrabold text-slate-700">Quán {deleteCartModal.data?.restaurantName}</span>?
           </p>
 
-          {/* Nhắc "không thể hoàn tác" — dải cảnh báo hổ phách cho rõ mức độ */}
           <div className="inline-flex items-center gap-1.5 text-[11px] font-bold text-amber-700 bg-amber-50 border border-amber-200 px-3 py-1.5 rounded-full">
             <AlertTriangle size={13} className="shrink-0" /> Hành động này không thể hoàn tác
           </div>
@@ -1257,9 +1526,17 @@ export default function Cart() {
                       const isSelectedForThisRes = selectedVouchers[selectingRestaurantId]?.userVoucherId === item.userVoucherId;
                       const meta = vmeta(item.discountType);
                       const MetaIcon = meta.icon;
+                      
+                      const currentCart = carts.find(c => Number(c.restaurantId) === Number(selectingRestaurantId));
+                      const currentSubtotal = currentCart ? currentCart.subtotal : 0;
+                      const minOrder = item.minOrderAmount != null ? Number(item.minOrderAmount) : 0;
+                      const isEligible = minOrder === 0 || currentSubtotal >= minOrder;
+                      const missingAmount = minOrder - currentSubtotal;
+
                       const saving = estimateVoucherSaving(item);
-                      const isBest = bestUserVoucherId === item.userVoucherId && !isSelectedForThisRes;
+                      const isBest = bestUserVoucherId === item.userVoucherId && !isSelectedForThisRes && isEligible;
                       const exp = expiryInfo(item.expiredAt);
+
                       return (
                         <div
                           key={item.userVoucherId}
@@ -1268,13 +1545,15 @@ export default function Cart() {
                           className={`group relative p-3 sm:p-4 pl-4 rounded-2xl border transition-all cursor-pointer flex items-center justify-between gap-3 overflow-hidden animate-rise-in hover:-translate-y-0.5 ${
                             isSelectedForThisRes
                               ? 'border-[#ff6b35] bg-gradient-to-r from-orange-50/60 to-white shadow-md ring-1 ring-[#ff6b35]/30'
+                              : !isEligible
+                              ? 'border-slate-200 bg-slate-50/80 opacity-75'
                               : 'border-slate-200/80 hover:border-orange-300 hover:shadow-md bg-white'
                           }`}
                         >
                           <div className={`absolute left-0 top-0 bottom-0 w-1.5 ${isSelectedForThisRes ? 'bg-[#ff6b35]' : meta.strip} transition-colors`} />
-                          {/* Notch xé vé 2 đầu — cảm giác "tấm vé" thật */}
                           <span className="absolute -left-1 top-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-slate-100 border border-slate-200" />
                           <span className="absolute -right-1 top-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-slate-100 border border-slate-200" />
+                          
                           <span className={`shrink-0 w-10 h-10 rounded-xl flex items-center justify-center bg-gradient-to-br ${meta.grad} text-white shadow-sm transition-transform group-hover:scale-110 group-hover:-rotate-3`}>
                             <MetaIcon size={18} className={meta.anim} style={{ transformBox: 'fill-box', transformOrigin: 'center' }} />
                           </span>
@@ -1298,7 +1577,18 @@ export default function Cart() {
                                 {item.discountType === 'PERCENT' && `Giảm ${item.discountValue}%`}
                                 {item.discountType === 'FREESHIP' && 'Miễn phí vận chuyển'}
                               </span>
-                              {saving > 0 ? (
+
+                              {minOrder > 0 && (
+                                <span className="text-[10px] font-bold text-slate-600 bg-slate-100 px-1.5 py-0.5 rounded">
+                                  Đơn tối thiểu: {formatCurrency(minOrder)}
+                                </span>
+                              )}
+
+                              {!isEligible ? (
+                                <span className="inline-flex items-center gap-1 text-[10px] font-bold text-rose-600 bg-rose-50 px-2 py-0.5 rounded-full">
+                                  <AlertCircle size={10} /> Thiếu {formatCurrency(missingAmount)}
+                                </span>
+                              ) : saving > 0 ? (
                                 <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-600">
                                   <BadgePercent size={11} /> Tiết kiệm ~{formatCurrency(saving)} cho quán này
                                 </span>
@@ -1349,6 +1639,8 @@ export default function Cart() {
                       const meta = vmeta(pub.discountType);
                       const MetaIcon = meta.icon;
                       const exp = expiryInfo(pub.endDate);
+                      const minOrder = pub.minOrderAmount != null ? Number(pub.minOrderAmount) : 0;
+
                       return (
                         <div
                           key={pub.voucherId}
@@ -1376,6 +1668,13 @@ export default function Cart() {
                                 {pub.discountType === 'PERCENT' && `Giảm ${pub.discountValue}%`}
                                 {pub.discountType === 'FREESHIP' && 'Miễn phí vận chuyển'}
                               </span>
+                              {minOrder > 0 && (
+                                <span className="text-[10px] font-bold text-slate-600 bg-slate-100 px-1.5 py-0.5 rounded">
+                                  Đơn tối thiểu: {formatCurrency(minOrder)}
+                                </span>
+                              )}
+                            </div>
+                            <div className="pt-0.5">
                               <span className={`inline-flex items-center gap-1 text-[11px] ${exp.soon ? 'text-rose-500 font-bold' : 'text-slate-500'}`}>
                                 <Clock size={12} className="shrink-0" /> Hạn {formatDateTime(pub.endDate)}
                                 {exp.soon && <span className="inline-flex items-center gap-0.5 text-[9px] font-black px-1.5 py-0.5 rounded-full bg-rose-50 text-rose-600 shrink-0"><AlertCircle size={9} className="animate-pulse-slow" /> Sắp hết</span>}

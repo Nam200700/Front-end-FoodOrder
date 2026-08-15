@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Ticket, Plus, Search, Edit3, Ban, CheckCircle2, XCircle, Clock, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Ticket, Plus, Search, Edit3, Ban, CheckCircle2, XCircle, Clock, ChevronLeft, ChevronRight, Lock } from 'lucide-react';
 import { useFetchData } from '../../hooks/useFetchData';
 import apiClient from '../../services/api';
 import Spinner from '../../components/common/Spinner';
@@ -9,11 +9,11 @@ import ErrorState from '../../components/common/ErrorState';
 import Modal from '../../components/common/Modal';
 import FilterTabs from '../../components/common/FilterTabs';
 import { useModalState } from '../../hooks/useModalState';
-import { formatDateTime } from '../../utils/format';
+import { formatDateTime, formatCurrency } from '../../utils/format';
 
 export default function Voucher() {
   const [keyword, setKeyword] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all'); // all | ACTIVE | INACTIVE
+  const [statusFilter, setStatusFilter] = useState('all'); // all | ACTIVE | INACTIVE | EXPIRED
   const [page, setPage] = useState(0);
   const pageSize = 10;
 
@@ -22,26 +22,28 @@ export default function Voucher() {
   // Hook quản lý modal Xác nhận khóa
   const lockModal = useModalState();
 
-  // State form data (Đã bao gồm issueType)
+  // State form data 
   const [formData, setFormData] = useState({
     code: '',
     name: '',
-    discountType: '', 
+    discountType: 'PERCENT',
     discountValue: '',
+    minOrderAmount: '',
     startDate: '',
     endDate: '',
-    status: '', 
-    issueType: ''
+    status: 'ACTIVE',
+    issueType: 'EVENT',
+    pointsCost: ''
   });
 
   const [submitting, setSubmitting] = useState(false);
 
-  // Gọi API lấy thông tin KPI thống kê Voucher
+  // Gọi API lấy KPI thống kê Voucher
   const { data: statsData, refetch: refetchKpi } = useFetchData('/vouchers/stats', {
     mapFn: (res) => res?.result || res || { totalVouchers: 0, activeVouchers: 0, inactiveVouchers: 0, expiredVouchers: 0 }
   });
 
-  // Xây dựng URL API phân trang & lọc danh sách voucher
+  // URL API phân trang & lọc
   const apiUrl = useMemo(() => {
     const params = new URLSearchParams({
       page: page.toString(),
@@ -59,7 +61,7 @@ export default function Voucher() {
     return `/vouchers?${params.toString()}`;
   }, [page, pageSize, statusFilter, keyword]);
 
-  // Gọi API danh sách voucher
+  // Lấy danh sách voucher
   const { data: rawVouchersData, loading, error, refetch } = useFetchData(apiUrl, {
     mapFn: (res) => res?.result || res || {}
   });
@@ -68,7 +70,6 @@ export default function Voucher() {
   const totalPages = rawVouchersData?.totalPages || 1;
   const totalElements = rawVouchersData?.totalElements || vouchersList.length;
 
-  // Tabs bộ lọc trạng thái 
   const filterTabs = [
     { id: 'all', label: 'Tất cả', count: statsData?.totalVouchers },
     { id: 'ACTIVE', label: 'Đang hoạt động', count: statsData?.activeVouchers },
@@ -83,10 +84,12 @@ export default function Voucher() {
       name: '',
       discountType: 'PERCENT',
       discountValue: '',
+      minOrderAmount: '',
       startDate: '',
       endDate: '',
       status: 'ACTIVE',
-      issueType: 'MANUAL'
+      issueType: 'EVENT',
+      pointsCost: ''
     });
     formModal.open(null);
   };
@@ -103,15 +106,17 @@ export default function Voucher() {
       name: voucher.name || '',
       discountType: voucher.discountType || 'PERCENT',
       discountValue: voucher.discountValue || '',
+      minOrderAmount: voucher.minOrderAmount != null ? voucher.minOrderAmount : '',
       startDate: formatLocalDateTime(voucher.startDate),
       endDate: formatLocalDateTime(voucher.endDate),
       status: voucher.status || 'ACTIVE',
-      issueType: voucher.issueType || 'MANUAL'
+      issueType: voucher.issueType || 'EVENT',
+      pointsCost: voucher.pointsCost != null ? voucher.pointsCost : ''
     });
     formModal.open(voucher.voucherId);
   };
 
-  // Hàm Validate Form trước khi gửi API
+  // Validate Form chuẩn xác nghiệp vụ
   const validateForm = () => {
     if (!formData.code.trim()) {
       toast.error('Mã voucher không được để trống!');
@@ -121,6 +126,11 @@ export default function Voucher() {
       toast.error('Tên chương trình voucher không được để trống!');
       return false;
     }
+
+    if (formData.discountValue === '') {
+      toast.error('Vui lòng nhập giá trị giảm!');
+      return false;
+    }
     
     const val = Number(formData.discountValue);
     if (isNaN(val) || val <= 0) {
@@ -128,9 +138,39 @@ export default function Voucher() {
       return false;
     }
 
+    // Voucher đổi điểm bắt buộc nhập số điểm > 0
+    if (formData.issueType === 'LOYALTY') {
+      const pc = Number(formData.pointsCost);
+      if (formData.pointsCost === '' || isNaN(pc) || pc <= 0) {
+        toast.error('Voucher đổi điểm bắt buộc nhập số điểm cần để đổi (> 0)!');
+        return false;
+      }
+    }
+
     if (formData.discountType === 'PERCENT' && val > 100) {
-      toast.error('Giá trị giảm theo phần trăm (%) không được vượt quá 100!');
+      toast.error('Giá trị giảm theo phần trăm (%) không được vượt quá 100%!');
       return false;
+    }
+
+    // VALIDATE ĐƠN TỐI THIỂU (minOrderAmount)
+    if (formData.discountType === 'FIXED' && formData.issueType === 'EVENT') {
+      if (formData.minOrderAmount === '' || formData.minOrderAmount === null) {
+        toast.error('Voucher giảm cố định theo Sự kiện bắt buộc phải nhập Đơn tối thiểu!');
+        return false;
+      }
+      const minVal = Number(formData.minOrderAmount);
+      if (isNaN(minVal) || minVal < val) {
+        toast.error(`Đơn tối thiểu (${minVal.toLocaleString()} đ) phải lớn hơn hoặc bằng Giá trị giảm (${val.toLocaleString()} đ)!`);
+        return false;
+      }
+    } else {
+      if (formData.minOrderAmount !== '') {
+        const minVal = Number(formData.minOrderAmount);
+        if (isNaN(minVal) || minVal < 0) {
+          toast.error('Giá trị đơn tối thiểu không được nhỏ hơn 0!');
+          return false;
+        }
+      }
     }
 
     if (!formData.startDate) {
@@ -153,7 +193,7 @@ export default function Voucher() {
     return true;
   };
 
-  // Xử lý Submit Form (Thêm hoặc Sửa)
+  // Submit Form (Thêm hoặc Sửa)
   const handleSubmitForm = async (e) => {
     e.preventDefault();
 
@@ -164,13 +204,15 @@ export default function Voucher() {
       const payload = {
         ...formData,
         discountValue: Number(formData.discountValue),
+        minOrderAmount: formData.minOrderAmount !== '' ? Number(formData.minOrderAmount) : null,
+        pointsCost: formData.issueType === 'LOYALTY' && formData.pointsCost !== '' ? Number(formData.pointsCost) : null,
         startDate: formData.startDate ? `${formData.startDate}:00` : null,
         endDate: formData.endDate ? `${formData.endDate}:00` : null,
       };
 
       if (formModal.data) {
         await apiClient.put(`/vouchers/${formModal.data}`, payload);
-        toast.success('Cập nhật voucher thành công!');
+        toast.success('Cập nhật thông tin voucher thành công!');
       } else {
         await apiClient.post('/vouchers', payload);
         toast.success('Thêm mới voucher thành công!');
@@ -187,7 +229,7 @@ export default function Voucher() {
     }
   };
 
-  // Xử lý Khóa voucher 
+  // Khóa voucher
   const handleLockSubmit = async () => {
     try {
       const voucherId = lockModal.data;
@@ -201,6 +243,8 @@ export default function Voucher() {
       toast.error(err.response?.data?.message || 'Không thể khóa voucher này.');
     }
   };
+
+  const isEditMode = Boolean(formModal.data);
 
   if (loading && vouchersList.length === 0 && page === 0) {
     return <Spinner fullScreen />;
@@ -216,11 +260,11 @@ export default function Voucher() {
 
   return (
     <div className="flex-1 px-4 md:px-6 py-5 w-full font-google-sans text-slate-800 pb-24 space-y-5 bg-white min-h-screen">
-      {/* Tiêu đề & Nút Thêm */}
+      {/* Header */}
       <div className="flex justify-between items-center">
         <h1 className="text-lg font-bold text-slate-900 flex items-center gap-2">
           <Ticket className="text-purple-600" size={22} />
-          Quản Lý Voucher Giảm Giá
+          Quản Lý Voucher 
         </h1>
         <Button 
           onClick={handleOpenCreate}
@@ -230,7 +274,7 @@ export default function Voucher() {
         </Button>
       </div>
 
-      {/* Hàng KPI Tóm Tắt */}
+      {/* KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="bg-purple-50/50 border border-purple-100 p-4 rounded-2xl flex items-center gap-4">
           <div className="p-3 bg-purple-100 text-purple-600 rounded-xl">
@@ -270,7 +314,7 @@ export default function Voucher() {
         </div>
       </div>
 
-      {/* Thanh Filter Tabs & Tìm kiếm */}
+      {/* Filter Tabs & Search */}
       <div className="flex flex-col gap-3">
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
           <FilterTabs
@@ -296,7 +340,7 @@ export default function Voucher() {
         </div>
       </div>
 
-      {/* Bảng hiển thị danh sách voucher */}
+      {/* Voucher Table */}
       <div className="bg-white rounded-2xl border border-slate-200/80 overflow-hidden shadow-sm">
         {vouchersList.length === 0 ? (
           <div className="text-center py-14 text-slate-400 text-xs font-bold flex flex-col items-center gap-2">
@@ -305,16 +349,18 @@ export default function Voucher() {
           </div>
         ) : (
           <div className="overflow-x-auto no-scrollbar">
-            <table className="w-full text-xs text-left min-w-[1000px] table-fixed">
+            <table className="w-full text-xs text-left min-w-[1050px] table-fixed">
               <thead className="bg-slate-50 border-b border-slate-100 text-[10px] text-slate-500 font-bold uppercase tracking-wider">
                 <tr>
                   <th className="py-3.5 px-4 w-28">Mã Voucher</th>
-                  <th className="py-3.5 px-4 w-44">Tên chương trình</th>
+                  <th className="py-3.5 px-4 w-40">Tên chương trình</th>
+                  <th className="py-3.5 px-4 w-32">Loại phát hành</th>
                   <th className="py-3.5 px-4 w-32">Loại giảm</th>
-                  <th className="py-3.5 px-4 w-32">Giá trị giảm</th>
-                  <th className="py-3.5 px-4 w-28">Đã dùng</th>
+                  <th className="py-3.5 px-4 w-28">Giá trị giảm</th>
+                  <th className="py-3.5 px-4 w-32">Đơn tối thiểu</th>
+                  <th className="py-3.5 px-4 w-24">Đã dùng</th>
                   <th className="py-3.5 px-4 w-40">Thời gian hiệu lực</th>
-                  <th className="py-3.5 px-4 w-28">Trạng thái</th>
+                  <th className="py-3.5 px-4 w-37">Trạng thái</th>
                   <th className="py-3.5 px-4 w-28 text-center">Hành động</th>
                 </tr>
               </thead>
@@ -322,15 +368,34 @@ export default function Voucher() {
                 {vouchersList.map((v) => (
                   <tr key={v.voucherId} className="hover:bg-slate-50/60 transition-colors">
                     <td className="py-3.5 px-4 w-28 font-extrabold text-purple-600 truncate">{v.code}</td>
-                    <td className="py-3.5 px-4 w-44 text-slate-800 font-bold truncate" title={v.name}>{v.name}</td>
-                    <td className="py-3.5 px-4 w-32 text-slate-600 truncate">
-                      {v.discountType === 'PERCENT' ? 'Phần trăm (%)' : v.discountType === 'FIXED' ? 'Số tiền cố định' : 'Miễn phí vận chuyển'}
+                    <td className="py-3.5 px-4 w-40 text-slate-800 font-bold truncate" title={v.name}>{v.name}</td>
+                    <td className="py-3.5 px-4 w-32 truncate">
+                      <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold ${
+                        v.issueType === 'EVENT'
+                          ? 'bg-indigo-50 text-indigo-600 border border-indigo-200'
+                          : v.issueType === 'LOYALTY'
+                            ? 'bg-amber-50 text-amber-600 border border-amber-200'
+                            : 'bg-rose-50 text-rose-600 border border-rose-200'
+                      }`}>
+                        {v.issueType === 'EVENT' ? 'Sự kiện' : v.issueType === 'LOYALTY' ? 'Đổi điểm' : 'Hủy đơn hàng'}
+                      </span>
+                      {v.issueType === 'LOYALTY' && v.pointsCost != null && (
+                        <span className="block mt-1 text-[10px] font-bold text-amber-600">Cần {v.pointsCost} điểm</span>
+                      )}
                     </td>
-                    <td className="py-3.5 px-4 w-32 font-extrabold text-emerald-600 truncate">
-                      {v.discountType === 'PERCENT' ? `${v.discountValue}%` : v.discountType === 'FIXED' ? `${Number(v.discountValue).toLocaleString()} đ` : 'Freeship'}
+                    <td className="py-3.5 px-4 w-28 text-slate-600 truncate">
+                      {v.discountType === 'PERCENT' ? 'Phần trăm (%)' : v.discountType === 'FIXED' ? 'Cố định (VNĐ)' : 'Miễn phí ship'}
                     </td>
-                    <td className="py-3.5 px-4 w-32 text-slate-600 truncate">
-                      {v.usedQuantity || 0} 
+                    <td className="py-3.5 px-4 w-28 font-extrabold text-emerald-600 truncate">
+                      {v.discountType === 'PERCENT' ? `${v.discountValue}%` : v.discountType === 'FIXED' ? `${formatCurrency(v.discountValue)}` : 'Freeship'}
+                    </td>
+                    <td className="py-3.5 px-4 w-32 text-slate-700 font-bold truncate">
+                      {v.minOrderAmount != null && Number(v.minOrderAmount) > 0 
+                        ? `${formatCurrency(v.minOrderAmount)}` 
+                        : 'Không yêu cầu'}
+                    </td>
+                    <td className="py-3.5 px-4 w-24 text-slate-600 truncate">
+                      {v.usedQuantity || 0}
                     </td>
                     <td className="py-3.5 px-4 w-40 text-slate-500 text-[11px] truncate">
                       {formatDateTime(v.startDate)} <br/>đến {formatDateTime(v.endDate)}
@@ -346,7 +411,7 @@ export default function Voucher() {
                         {v.status === 'ACTIVE' ? 'Đang hoạt động' : (v.status === 'EXPIRED' || (v.endDate && new Date(v.endDate) < new Date())) ? 'Đã hết hạn' : 'Tạm khóa'}
                       </span>
                     </td>
-                    <td className="py-3.5 px-4 w-28 text-center">
+                    <td className="py-3.5 px-4 w-24 text-center">
                       <div className="flex items-center justify-center gap-1.5">
                         <button
                           onClick={() => handleOpenEdit(v)}
@@ -355,7 +420,7 @@ export default function Voucher() {
                         >
                           <Edit3 size={14} />
                         </button>
-                        {v.status === 'ACTIVE' && (
+                        {/* {v.status === 'ACTIVE' && (
                           <button
                             onClick={() => lockModal.open(v.voucherId)}
                             title="Khóa voucher"
@@ -363,7 +428,7 @@ export default function Voucher() {
                           >
                             <Ban size={14} />
                           </button>
-                        )}
+                        )} */}
                       </div>
                     </td>
                   </tr>
@@ -373,7 +438,7 @@ export default function Voucher() {
           </div>
         )}
 
-        {/* Phân trang */}
+        {/* Pagination */}
         {totalPages > 0 && (
           <div className="py-3.5 px-4 border-t border-slate-100 bg-white flex items-center justify-between gap-4">
             <span className="text-xs text-slate-500 font-medium">
@@ -415,41 +480,76 @@ export default function Voucher() {
       <Modal
         isOpen={formModal.isOpen}
         onClose={formModal.close}
-        title={formModal.data ? 'Cập Nhật Voucher' : 'Thêm Mới Voucher'}
+        title={isEditMode ? 'Cập Nhật Thông Tin Voucher' : 'Thêm Mới Voucher'}
         size="lg"
       >
         <form onSubmit={handleSubmitForm} className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Mã Voucher */}
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">Mã Voucher (*)</label>
+              <label className="block text-xs font-bold text-slate-700 mb-1 flex items-center justify-between">
+                <span>Mã Voucher (*)</span>
+                {isEditMode && <Lock size={12} className="text-slate-400" />}
+              </label>
               <input
                 type="text"
                 maxLength={50}
+                disabled={isEditMode}
                 value={formData.code}
                 onChange={(e) => setFormData({ ...formData, code: e.target.value.toUpperCase() })}
                 placeholder="VD: SALE50"
-                className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-purple-500 text-slate-800 uppercase"
+                className={`w-full px-3 py-2 text-xs border rounded-xl focus:outline-none uppercase ${
+                  isEditMode ? 'bg-slate-100 border-slate-200 text-slate-500 cursor-not-allowed font-bold' : 'bg-slate-50 border-slate-200 focus:border-purple-500 text-slate-800 font-extrabold'
+                }`}
               />
             </div>
 
+            {/* Tên Voucher (Cho phép sửa) */}
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">Tên Voucher (*)</label>
+              <label className="block text-xs font-bold text-slate-700 mb-1">Tên Chương Trình (*)</label>
               <input
                 type="text"
                 maxLength={255}
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                placeholder="VD: Giảm giá mùa hè"
-                className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-purple-500 text-slate-800"
+                placeholder="VD: Khuyến mãi sự kiện hè"
+                className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-purple-500 text-slate-800 font-semibold"
               />
             </div>
 
+            {/* Loại Phát Hành */}
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">Loại Giảm Giá (*)</label>
+              <label className="block text-xs font-bold text-slate-700 mb-1 flex items-center justify-between">
+                <span>Loại Phát Hành (*)</span>
+                {isEditMode && <Lock size={12} className="text-slate-400" />}
+              </label>
               <select
+                disabled={isEditMode}
+                value={formData.issueType}
+                onChange={(e) => setFormData({ ...formData, issueType: e.target.value })}
+                className={`w-full px-3 py-2 text-xs border rounded-xl focus:outline-none ${
+                  isEditMode ? 'bg-slate-100 border-slate-200 text-slate-500 cursor-not-allowed font-semibold' : 'bg-slate-50 border-slate-200 focus:border-purple-500 text-slate-800 font-semibold'
+                }`}
+              >
+                <option value="EVENT">Sự kiện</option>
+                <option value="ORDER_CANCELLED">Hủy đơn hàng (đền bù)</option>
+                <option value="LOYALTY">Đổi điểm thưởng</option>
+              </select>
+            </div>
+
+            {/* Loại Giảm Giá */}
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1 flex items-center justify-between">
+                <span>Loại Giảm Giá (*)</span>
+                {isEditMode && <Lock size={12} className="text-slate-400" />}
+              </label>
+              <select
+                disabled={isEditMode}
                 value={formData.discountType}
                 onChange={(e) => setFormData({ ...formData, discountType: e.target.value })}
-                className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-purple-500 text-slate-800"
+                className={`w-full px-3 py-2 text-xs border rounded-xl focus:outline-none ${
+                  isEditMode ? 'bg-slate-100 border-slate-200 text-slate-500 cursor-not-allowed font-semibold' : 'bg-slate-50 border-slate-200 focus:border-purple-500 text-slate-800 font-semibold'
+                }`}
               >
                 <option value="PERCENT">Phần trăm (%)</option>
                 <option value="FIXED">Số tiền cố định (VNĐ)</option>
@@ -457,62 +557,96 @@ export default function Voucher() {
               </select>
             </div>
 
+            {/* Giá Trị Giảm */}
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">Giá Trị Giảm (*)</label>
+              <label className="block text-xs font-bold text-slate-700 mb-1 flex items-center justify-between">
+                <span>Giá Trị Giảm (*)</span>
+                {isEditMode && <Lock size={12} className="text-slate-400" />}
+              </label>
               <input
                 type="number"
                 step="any"
+                disabled={isEditMode}
                 value={formData.discountValue}
                 onChange={(e) => setFormData({ ...formData, discountValue: e.target.value })}
-                placeholder="Nhập giá trị giảm"
-                className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-purple-500 text-slate-800"
+                placeholder="VD: 20000 hoặc 15 (%)"
+                className={`w-full px-3 py-2 text-xs border rounded-xl focus:outline-none ${
+                  isEditMode ? 'bg-slate-100 border-slate-200 text-slate-500 cursor-not-allowed font-bold' : 'bg-slate-50 border-slate-200 focus:border-purple-500 text-slate-800 font-bold'
+                }`}
               />
             </div>
 
-            {/* Thêm trường Loại Phát Hành (Issue Type) */}
+            {/* Giá Trị Đơn Hàng Tối Thiểu */}
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">Loại Phát Hành (*)</label>
-              <select
-                value={formData.issueType}
-                onChange={(e) => setFormData({ ...formData, issueType: e.target.value })}
-                className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-purple-500 text-slate-800"
-              >
-                <option value="NEW_USER">Người dùng mới (New User)</option>
-                <option value="BIRTHDAY">Sinh nhật (Birthday)</option>
-                <option value="EVENT">Sự kiện (Event)</option>
-                <option value="ORDER_CANCELLED">Hủy đơn hàng (Order Cancelled)</option>
-              </select>
+              <label className="block text-xs font-bold text-slate-700 mb-1 flex items-center justify-between">
+                <span>
+                  Đơn Tối Thiểu (VNĐ) {formData.discountType === 'FIXED' && formData.issueType === 'EVENT' ? <b className="text-rose-500">(*)</b> : '(Tùy chọn)'}
+                </span>
+                {isEditMode && <Lock size={12} className="text-slate-400" />}
+              </label>
+              <input
+                type="number"
+                step="any"
+                disabled={isEditMode}
+                value={formData.minOrderAmount}
+                onChange={(e) => setFormData({ ...formData, minOrderAmount: e.target.value })}
+                placeholder={formData.discountType === 'FIXED' && formData.issueType === 'EVENT' ? 'VD: 50000 (Bắt buộc >= Tiền giảm)' : 'VD: 50000 (Để trống nếu 0đ)'}
+                className={`w-full px-3 py-2 text-xs border rounded-xl focus:outline-none ${
+                  isEditMode ? 'bg-slate-100 border-slate-200 text-slate-500 cursor-not-allowed font-semibold' : 'bg-slate-50 border-slate-200 focus:border-purple-500 text-slate-800 font-semibold'
+                }`}
+              />
             </div>
 
+            {/* Số điểm cần để đổi — CHỈ cho loại "Đổi điểm" (LOYALTY) */}
+            {formData.issueType === 'LOYALTY' && (
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Số điểm cần để đổi <b className="text-amber-500">(*)</b>
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  step="1"
+                  value={formData.pointsCost}
+                  onChange={(e) => setFormData({ ...formData, pointsCost: e.target.value })}
+                  placeholder="VD: 100 (điểm thưởng)"
+                  className="w-full px-3 py-2 text-xs bg-amber-50/60 border border-amber-200 rounded-xl focus:outline-none focus:border-amber-500 text-slate-800 font-bold"
+                />
+              </div>
+            )}
+
+            {/* Trạng Thái (Cho phép sửa) */}
             <div>
               <label className="block text-xs font-bold text-slate-700 mb-1">Trạng Thái (*)</label>
               <select
                 value={formData.status}
                 onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-                className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-purple-500 text-slate-800"
+                className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-purple-500 text-slate-800 font-semibold"
               >
                 <option value="ACTIVE">Đang hoạt động</option>
                 <option value="INACTIVE">Tạm khóa</option>
               </select>
             </div>
 
+            {/* Thời Gian Bắt Đầu (Cho phép sửa) */}
             <div>
               <label className="block text-xs font-bold text-slate-700 mb-1">Thời Gian Bắt Đầu (*)</label>
               <input
                 type="datetime-local"
                 value={formData.startDate}
                 onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
-                className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-purple-500 text-slate-800"
+                className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-purple-500 text-slate-800 font-semibold"
               />
             </div>
 
+            {/* Thời Gian Kết Thúc (Cho phép sửa) */}
             <div>
               <label className="block text-xs font-bold text-slate-700 mb-1">Thời Gian Kết Thúc (*)</label>
               <input
                 type="datetime-local"
                 value={formData.endDate}
                 onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}
-                className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-purple-500 text-slate-800"
+                className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-purple-500 text-slate-800 font-semibold"
               />
             </div>
           </div>
@@ -545,7 +679,7 @@ export default function Voucher() {
         size="sm"
       >
         <div className="space-y-4">
-          <p className="text-xs text-slate-600 font-medium">
+          <p className="text-xs text-slate-600 font-medium leading-relaxed">
             Bạn có chắc chắn muốn khóa voucher này không? Voucher sẽ chuyển sang trạng thái tạm khóa và không thể sử dụng cho các đơn hàng mới.
           </p>
           <div className="flex justify-end gap-2 pt-2">

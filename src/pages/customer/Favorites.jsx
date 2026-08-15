@@ -4,8 +4,63 @@ import { Heart, Shuffle, Sparkles, Plus, Utensils, ArrowRight, Store, Star, MapP
 import { useFetchData } from '../../hooks/useFetchData';
 import apiClient from '../../services/api';
 import { SkeletonRestaurantCard } from '../../components/common/SkeletonCard';
-import EmptyState from '../../components/common/EmptyState';
 import ErrorState from '../../components/common/ErrorState';
+
+// Empty state GIÀU cho bộ sưu tập yêu thích rỗng — giải thích cách lưu + lợi ích + lối tắt,
+// thay cho ô trống đơn điệu.
+function RichFavoritesEmpty({ navigate }) {
+  const perks = [
+    { icon: Heart, title: 'Thả tim để lưu', desc: 'Nhấn ♥ ở trang chủ hoặc trang chi tiết quán', color: 'bg-rose-100 text-rose-600' },
+    { icon: DoorOpen, title: 'Biết quán đang mở', desc: 'Xem nhanh quán nào đang phục vụ để đặt ngay', color: 'bg-emerald-100 text-emerald-600' },
+    { icon: Shuffle, title: 'Chọn giúp khi phân vân', desc: 'Để MealDash bốc ngẫu nhiên một quán bạn đã lưu', color: 'bg-orange-100 text-orange-600' },
+  ];
+  return (
+    <div className="w-full max-w-2xl mx-auto py-8 px-4 text-center animate-rise-in">
+      <div className="relative w-20 h-20 mx-auto mb-5">
+        <div className="absolute -inset-1 rounded-radius-full bg-gradient-to-br from-rose-500 to-orange-400 opacity-20 blur-md" />
+        <div className="relative w-20 h-20 rounded-radius-full bg-gradient-to-br from-[#FF6B35] to-rose-500 flex items-center justify-center shadow-lg shadow-rose-500/25">
+          <Heart size={34} className="text-white fill-white" />
+        </div>
+        <Sparkles size={16} className="absolute -right-0.5 -top-0.5 text-amber-400" />
+      </div>
+
+      <h3 className="text-lg md:text-xl font-black text-slate-800">Bộ sưu tập của bạn đang trống</h3>
+      <p className="text-sm text-slate-500 font-medium mt-1.5 max-w-md mx-auto leading-relaxed">
+        Thả tim quán bạn thích để lưu lại — lần sau đặt lại món yêu thích chỉ với một chạm.
+      </p>
+
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-7 text-left">
+        {perks.map((p, i) => {
+          const PerkIcon = p.icon;
+          return (
+            <div key={i} className="bg-white border border-slate-100 rounded-radius-xl p-4 shadow-sm">
+              <span className={`w-10 h-10 rounded-radius-lg ${p.color} flex items-center justify-center mb-2.5`}>
+                <PerkIcon size={18} />
+              </span>
+              <p className="text-sm font-extrabold text-slate-800">{p.title}</p>
+              <p className="text-[11px] text-slate-500 font-medium mt-0.5 leading-relaxed">{p.desc}</p>
+            </div>
+          );
+        })}
+      </div>
+
+      <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mt-7">
+        <button
+          onClick={() => navigate('/explore')}
+          className="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-[#FF6B35] hover:bg-orange-600 text-white font-extrabold text-sm px-6 py-3 rounded-radius-full shadow-md shadow-orange-500/25 hover:-translate-y-0.5 transition-all cursor-pointer"
+        >
+          <Compass size={16} /> Khám phá quán ngon
+        </button>
+        <button
+          onClick={() => navigate('/')}
+          className="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-white border border-slate-200 hover:border-orange-300 text-slate-700 font-bold text-sm px-6 py-3 rounded-radius-full hover:bg-orange-50 transition-all cursor-pointer"
+        >
+          <Store size={16} /> Về trang chủ
+        </button>
+      </div>
+    </div>
+  );
+}
 
 export default function Favorites() {
   const navigate = useNavigate();
@@ -135,13 +190,7 @@ export default function Favorites() {
           <SkeletonRestaurantCard />
         </div>
       ) : list.length === 0 ? (
-        <EmptyState
-          title="Chưa có quán ăn yêu thích nào"
-          message="Hãy nhấn thả tim các quán ăn bạn yêu thích ở trang chủ hoặc chi tiết quán nhé!"
-          icon={Heart}
-          actionText="Khám phá ngay"
-          onAction={() => navigate('/explore')}
-        />
+        <RichFavoritesEmpty navigate={navigate} />
       ) : (
         <>
           {/* ─── DẢI THỐNG KÊ THẬT (4 ô, mỗi ô 1 màu) — suy ra từ dữ liệu, không bịa ── */}

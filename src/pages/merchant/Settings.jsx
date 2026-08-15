@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Store, Camera, Save, Map, Clock, MapPin, Phone, Eye, CheckCircle2, Circle, Image as ImageIcon, Lightbulb, FileText, Sparkles } from 'lucide-react';
+import { Store, Camera, Save, Map, Clock, MapPin, Phone, Eye, CheckCircle2, Circle, Image as ImageIcon, Lightbulb, FileText, Sparkles, ShieldCheck, AlertTriangle } from 'lucide-react';
 import { useFetchData } from '../../hooks/useFetchData';
 import { useImageUpload } from '../../hooks/useImageUpload'; // Import hook upload ảnh
 import apiClient from '../../services/api';
@@ -38,6 +38,12 @@ export default function MerchantSettings() {
   const mapModal2 = useModalState();
 
   const { data: restaurant, loading } = useFetchData('/merchant/restaurant');
+
+  // Uy tín chủ quán (điểm bị trừ khi từ chối/hủy đơn sau xác nhận)
+  const [account, setAccount] = useState(null);
+  useEffect(() => {
+    apiClient.get('/users/me').then(r => setAccount(r.data?.data || null)).catch(() => {});
+  }, []);
 
   useEffect(() => {
     if (restaurant) {
@@ -179,6 +185,49 @@ export default function MerchantSettings() {
 
         {/* ─── LIVE PREVIEW + phụ trợ (lấp khoảng trống cột trái) ─────────────── */}
         <div className="lg:col-span-2 lg:sticky lg:top-6 space-y-4">
+
+          {/* Uy tín & tỷ lệ hủy của quán */}
+          {(() => {
+            const rep = account?.reputationScore ?? 100;
+            const cancels = restaurant?.cancelCount ?? 0;
+            const done = restaurant?.orderCount ?? 0;
+            const denom = cancels + done;
+            const cancelRate = denom > 0 ? Math.round((cancels / denom) * 1000) / 10 : 0;
+            const good = rep >= 70, mid = rep >= 40 && rep < 70;
+            const barColor = good ? 'bg-emerald-500' : mid ? 'bg-amber-500' : 'bg-rose-500';
+            const txtColor = good ? 'text-emerald-600' : mid ? 'text-amber-600' : 'text-rose-600';
+            return (
+              <Card variant="elevated" className="p-4">
+                <span className="text-xs font-extrabold text-slate-700 flex items-center gap-1.5 mb-3">
+                  <ShieldCheck size={14} className="text-md-secondary" /> Uy tín quán
+                </span>
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className="text-[11px] font-bold text-slate-500">Điểm uy tín</span>
+                  <span className={`text-sm font-black ${txtColor}`}>{rep}/100</span>
+                </div>
+                <div className="h-2.5 w-full bg-slate-100 rounded-full overflow-hidden">
+                  <div className={`h-full ${barColor} rounded-full transition-all duration-500`} style={{ width: `${Math.max(0, Math.min(100, rep))}%` }} />
+                </div>
+                <div className="grid grid-cols-2 gap-2 mt-3">
+                  <div className="p-2.5 rounded-radius-lg bg-slate-50 border border-slate-100">
+                    <p className="text-[10px] text-slate-400 font-bold">Đơn tự hủy/từ chối</p>
+                    <p className="text-sm font-black text-slate-700 mt-0.5">{cancels}</p>
+                  </div>
+                  <div className="p-2.5 rounded-radius-lg bg-slate-50 border border-slate-100">
+                    <p className="text-[10px] text-slate-400 font-bold">Tỷ lệ hủy</p>
+                    <p className={`text-sm font-black mt-0.5 ${cancelRate >= 10 ? 'text-rose-600' : 'text-slate-700'}`}>{cancelRate}%</p>
+                  </div>
+                </div>
+                {rep < 70 && (
+                  <p className="text-[10px] text-amber-600 font-semibold mt-2.5 flex items-start gap-1">
+                    <AlertTriangle size={12} className="mt-0.5 shrink-0" />
+                    Hạn chế hủy đơn sau khi đã xác nhận để giữ uy tín quán.
+                  </p>
+                )}
+              </Card>
+            );
+          })()}
+
           <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
             <Eye size={13} /> Xem trước
           </span>

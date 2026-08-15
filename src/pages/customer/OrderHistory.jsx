@@ -5,7 +5,7 @@ import { useWebSocketContext } from '../../contexts/WebSocketContext';
 import {
   ShoppingBag, RefreshCw, Ban, AlertCircle, MessageSquare, Star, FileText, MapPin, CreditCard, Eye,
   User, Phone, Bike, Wallet, StickyNote, CalendarClock, UtensilsCrossed, Package, BadgeCheck, Clock, Check,
-  Store, CheckCircle2, ChevronRight, Receipt, Ticket, ChevronLeft, Search, X
+  Store, CheckCircle2, ChevronRight, Receipt, Ticket, ChevronLeft, Search, X, Heart, Home, Sparkles
 } from 'lucide-react';
 import { formatCurrency } from '../../utils/format';
 import { getFoodImageUrl, DEFAULT_FOOD_IMAGE } from '../../utils/avatarHelper';
@@ -105,6 +105,69 @@ function OrderProgress({ status }) {
             </div>
           );
         })}
+      </div>
+    </div>
+  );
+}
+
+// Empty state GIÀU cho khách chưa có đơn nào (tab "Tất cả") — hướng dẫn 3 bước + lối tắt hữu ích,
+// thay cho ô trống đơn điệu. Chỉ dùng khi KHÔNG lọc/không tìm kiếm.
+function RichFirstOrderEmpty({ navigate }) {
+  const steps = [
+    { icon: Search, title: 'Tìm quán & món', desc: 'Duyệt quán gần bạn hoặc tìm đúng món thèm', color: 'bg-orange-100 text-orange-600' },
+    { icon: ShoppingBag, title: 'Thêm vào giỏ', desc: 'Chọn món, ghi chú rồi thêm vào giỏ hàng', color: 'bg-blue-100 text-blue-600' },
+    { icon: Bike, title: 'Đặt & theo dõi', desc: 'Đặt đơn và theo dõi shipper theo thời gian thực', color: 'bg-emerald-100 text-emerald-600' },
+  ];
+  return (
+    <div className="w-full max-w-2xl mx-auto py-8 px-4 text-center animate-rise-in">
+      <div className="relative w-20 h-20 mx-auto mb-5">
+        <div className="absolute -inset-1 rounded-full bg-gradient-to-br from-orange-500 to-amber-400 opacity-20 blur-md" />
+        <div className="relative w-20 h-20 rounded-full bg-gradient-to-br from-[#FF6B35] to-[#FF8C42] flex items-center justify-center shadow-lg shadow-orange-500/25">
+          <ShoppingBag size={34} className="text-white" />
+        </div>
+        <Sparkles size={16} className="absolute -right-0.5 -top-0.5 text-amber-400" />
+      </div>
+
+      <h3 className="text-lg md:text-xl font-black text-slate-800">Bắt đầu đơn hàng đầu tiên của bạn!</h3>
+      <p className="text-sm text-slate-500 font-medium mt-1.5 max-w-md mx-auto leading-relaxed">
+        Bạn chưa có đơn nào. Chỉ 3 bước đơn giản là món ngon đến tận cửa.
+      </p>
+
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-7 text-left">
+        {steps.map((s, i) => {
+          const StepIcon = s.icon;
+          return (
+            <div key={i} className="relative bg-white border border-slate-100 rounded-2xl p-4 shadow-sm">
+              <span className="absolute -top-2.5 -left-2.5 w-6 h-6 rounded-full bg-slate-800 text-white text-[11px] font-black flex items-center justify-center shadow">{i + 1}</span>
+              <span className={`w-10 h-10 rounded-xl ${s.color} flex items-center justify-center mb-2.5`}>
+                <StepIcon size={18} />
+              </span>
+              <p className="text-sm font-extrabold text-slate-800">{s.title}</p>
+              <p className="text-[11px] text-slate-500 font-medium mt-0.5 leading-relaxed">{s.desc}</p>
+            </div>
+          );
+        })}
+      </div>
+
+      <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mt-7">
+        <button
+          onClick={() => navigate('/explore')}
+          className="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-[#FF6B35] hover:bg-orange-600 text-white font-extrabold text-sm px-6 py-3 rounded-full shadow-md shadow-orange-500/25 hover:-translate-y-0.5 transition-all cursor-pointer"
+        >
+          <UtensilsCrossed size={16} /> Khám phá món ngon
+        </button>
+        <button
+          onClick={() => navigate('/')}
+          className="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-white border border-slate-200 hover:border-orange-300 text-slate-700 font-bold text-sm px-6 py-3 rounded-full hover:bg-orange-50 transition-all cursor-pointer"
+        >
+          <Home size={16} /> Về trang chủ
+        </button>
+        <button
+          onClick={() => navigate('/favorites')}
+          className="w-full sm:w-auto inline-flex items-center justify-center gap-2 text-slate-500 hover:text-rose-500 font-bold text-sm px-4 py-3 transition-colors cursor-pointer"
+        >
+          <Heart size={16} /> Quán yêu thích
+        </button>
       </div>
     </div>
   );
@@ -376,8 +439,9 @@ export default function OrderHistory() {
           </span> */}
         </div>
 
-        {/* Dải tổng quan: tổng đơn · đã giao · tổng chi tiêu */}
-        <div className="grid grid-cols-3 gap-3 mb-5">
+        {/* Dải tổng quan: tổng đơn · đã giao · tổng chi tiêu.
+            Mobile: 2 ô nhỏ cùng hàng, ô "Đã chi tiêu" tràn cả hàng để số tiền không bị cắt. */}
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-2.5 md:gap-3 mb-5">
           {[
             { icon: Receipt, label: 'Tổng đơn', value: summary.total, cls: 'text-slate-700', bg: 'bg-slate-100 text-slate-500' },
             { icon: CheckCircle2, label: 'Đã giao', value: summary.completed, cls: 'text-emerald-600', bg: 'bg-emerald-100 text-emerald-600' },
@@ -385,11 +449,15 @@ export default function OrderHistory() {
           ].map((st, i) => {
             const SIcon = st.icon;
             return (
-              <div key={i} className="group bg-white rounded-2xl border border-slate-100 shadow-sm p-3 md:p-4 flex items-center gap-3 animate-rise-in transition-all hover:-translate-y-0.5 hover:shadow-md" style={{ animationDelay: `${i * 70}ms` }}>
+              <div
+                key={i}
+                className={`group bg-white rounded-2xl border border-slate-100 shadow-sm p-3 md:p-4 flex items-center gap-2.5 md:gap-3 animate-rise-in transition-all hover:-translate-y-0.5 hover:shadow-md ${st.wide ? 'col-span-2 md:col-span-1' : ''}`}
+                style={{ animationDelay: `${i * 70}ms` }}
+              >
                 <span className={`w-9 h-9 md:w-10 md:h-10 rounded-xl flex items-center justify-center shrink-0 transition-transform group-hover:scale-110 ${st.bg}`}><SIcon size={18} /></span>
                 <div className="min-w-0">
-                  <p className="text-[10px] md:text-[11px] font-bold text-slate-400 uppercase tracking-wide">{st.label}</p>
-                  <p className={`font-black leading-tight truncate ${st.wide ? 'text-sm md:text-lg' : 'text-lg md:text-xl'} ${st.cls}`}>{st.value}</p>
+                  <p className="text-[10px] md:text-[11px] font-bold text-slate-400 uppercase tracking-wide truncate">{st.label}</p>
+                  <p className={`font-black leading-tight truncate ${st.wide ? 'text-lg md:text-lg' : 'text-lg md:text-xl'} ${st.cls}`}>{st.value}</p>
                 </div>
               </div>
             );
@@ -409,8 +477,8 @@ export default function OrderHistory() {
             />
           </div>
 
-          {/* Ô tìm kiếm góc phải */}
-          <div className="relative min-w-[240px] md:w-72 shrink-0">
+          {/* Ô tìm kiếm góc phải (full-width trên mobile) */}
+          <div className="relative w-full md:w-72 md:shrink-0">
             <span className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-slate-400">
               <Search size={16} />
             </span>
@@ -445,19 +513,29 @@ export default function OrderHistory() {
               <ErrorState onRetry={fetchOrderHistory} />
             </div>
           ) : list.length === 0 ? (
-            <div className="flex justify-center items-center py-12">
-              <EmptyState
-                title="Không tìm thấy đơn hàng"
-                message={
-                  activeTab === 'ALL'
-                    ? 'Lịch sử mua hàng của bạn sẽ hiển thị tại đây khi bạn đặt đơn đầu tiên.'
-                    : `Bạn chưa có đơn hàng nào ở trạng thái "${ORDER_STATUS_TABS.find(t => t.id === activeTab)?.label}".`
-                }
-                icon={ShoppingBag}
-                actionText={activeTab === 'ALL' ? 'Khám phá món ngon' : undefined}
-                onAction={activeTab === 'ALL' ? () => navigate('/explore') : undefined}
-              />
-            </div>
+            debouncedKeyword.trim() ? (
+              <div className="flex justify-center items-center py-12">
+                <EmptyState
+                  title="Không tìm thấy đơn khớp"
+                  message={`Không có đơn nào khớp với "${debouncedKeyword.trim()}". Thử từ khoá khác nhé.`}
+                  icon={Search}
+                  actionText="Xóa tìm kiếm"
+                  onAction={() => setKeywordInput('')}
+                />
+              </div>
+            ) : activeTab === 'ALL' ? (
+              <RichFirstOrderEmpty navigate={navigate} />
+            ) : (
+              <div className="flex justify-center items-center py-12">
+                <EmptyState
+                  title="Chưa có đơn ở mục này"
+                  message={`Bạn chưa có đơn hàng nào ở trạng thái "${ORDER_STATUS_TABS.find(t => t.id === activeTab)?.label}".`}
+                  icon={ShoppingBag}
+                  actionText="Xem tất cả đơn"
+                  onAction={() => setActiveTab('ALL')}
+                />
+              </div>
+            )
           ) : (
             <div className="space-y-6">
               {/* Lưới danh sách đơn hàng */}
@@ -588,7 +666,7 @@ export default function OrderHistory() {
                             type="button"
                             onClick={(e) => cancelModal.open(order.id)}
                             icon={Ban}
-                            className="!px-2.5 !py-1.5 !bg-red-500 hover:!bg-red-600 text-white !rounded-lg text-[11px] !font-bold !shadow-sm w-full sm:w-auto"
+                            className="!px-2.5 !py-1.5 !bg-red-500 hover:!bg-red-600 text-white !rounded-lg text-[11px] !font-bold !shadow-sm flex-1 sm:flex-none sm:w-auto"
                           >
                             Hủy đơn
                           </Button>
@@ -640,23 +718,23 @@ export default function OrderHistory() {
                             type="button"
                             onClick={(e) => handleReorder(e, order)}
                             icon={RefreshCw}
-                            className="!px-2.5 !py-1.5 !bg-orange-500 hover:!bg-orange-600 text-white !rounded-lg text-[11px] !font-bold !shadow-sm whitespace-nowrap w-full sm:w-auto"
+                            className="!px-2.5 !py-1.5 !bg-orange-500 hover:!bg-orange-600 text-white !rounded-lg text-[11px] !font-bold !shadow-sm whitespace-nowrap flex-1 sm:flex-none sm:w-auto"
                           >
                             Mua lại
-                          </Button>         
+                          </Button>
                         )}
 
                         <Button
                           type="button"
                           onClick={(e) => {
-                            e.stopPropagation(); 
-                            detailModal.open(order); 
+                            e.stopPropagation();
+                            detailModal.open(order);
                           }}
                           icon={Eye}
-                          className="!px-2.5 !py-1.5 !bg-blue-500 hover:!bg-blue-600 !text-white !border-none !rounded-lg text-[11px] !font-bold !shadow-none whitespace-nowrap w-full sm:w-auto"
+                          className="!px-2.5 !py-1.5 !bg-blue-500 hover:!bg-blue-600 !text-white !border-none !rounded-lg text-[11px] !font-bold !shadow-none whitespace-nowrap flex-1 sm:flex-none sm:w-auto"
                         >
                           Chi tiết
-                        </Button>      
+                        </Button>
                       </div>
                     </div>
                   </Card>

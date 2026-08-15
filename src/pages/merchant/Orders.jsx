@@ -273,14 +273,13 @@ export default function MerchantOrders() {
   const watchPending = useCallback(async (alert) => {
     if (!restaurantId) return;
     try {
-      const res = await apiClient.get('/merchant/orders', { params: { restaurantId, size: 1000 } });
-      const all = res.data?.data?.content || [];
-      const counts = { ALL: all.length };
-      all.forEach((o) => { counts[o.orderStatus] = (counts[o.orderStatus] || 0) + 1; });
-      setStatusCounts(counts);
+      // Endpoint nhẹ: đếm tab bằng GROUP BY + danh sách đơn chờ rút gọn (thay vì tải cả nghìn đơn).
+      const res = await apiClient.get('/merchant/orders/monitor', { params: { restaurantId } });
+      const data = res.data?.data || {};
+      setStatusCounts(data.counts || {});
       setLastUpdated(new Date());
 
-      const pending = all.filter((o) => o.orderStatus === 'PENDING');
+      const pending = data.pending || []; // [{ orderId, customerName, totalAmount }]
       const pendingIds = pending.map((o) => o.orderId);
       const prev = prevPendingIdsRef.current;
       if (alert && prev !== null) {
@@ -390,8 +389,11 @@ export default function MerchantOrders() {
     }
   };
 
-  const handleOpenCancelModal = (e, orderId) => {
+  // mode: 'reject' = từ chối đơn PENDING ; 'cancel' = hủy đơn đã xác nhận (CONFIRMED/PREPARING)
+  const [cancelMode, setCancelMode] = useState('reject');
+  const handleOpenCancelModal = (e, orderId, mode = 'reject') => {
     e.stopPropagation();
+    setCancelMode(mode);
     cancelModal.open(orderId);
     setCancelReasonInput('');
   };
@@ -411,10 +413,17 @@ export default function MerchantOrders() {
     setSubmittingCancel(true);
     try {
       const orderIdToCancel = cancelModal.data;
-      await apiClient.patch(`/merchant/orders/${orderIdToCancel}/reject`, {
-        rejectReason: cancelReasonInput.trim()
-      });
-      toast.success(`Đã từ chối thành công đơn hàng #${orderIdToCancel}`);
+      if (cancelMode === 'cancel') {
+        await apiClient.patch(`/merchant/orders/${orderIdToCancel}/cancel`, {
+          reason: cancelReasonInput.trim()
+        });
+        toast.success(`Đã hủy đơn #${orderIdToCancel}. Khách được đền voucher; điểm uy tín quán bị trừ.`);
+      } else {
+        await apiClient.patch(`/merchant/orders/${orderIdToCancel}/reject`, {
+          rejectReason: cancelReasonInput.trim()
+        });
+        toast.success(`Đã từ chối thành công đơn hàng #${orderIdToCancel}`);
+      }
       setNewOrderIds((s) => { const n = new Set(s); n.delete(orderIdToCancel.toString()); return n; });
       cancelModal.close();
       if (detailModal.data && detailModal.data.orderId.toString() === orderIdToCancel.toString()) {
@@ -734,29 +743,53 @@ export default function MerchantOrders() {
                       )}
 
                       {order.status === 'CONFIRMED' && (
-                        <Button
-                          variant="primary"
-                          size="sm"
-                          loading={actionLoadingId === order.id}
-                          disabled={actionLoadingId === order.id}
-                          onClick={(e) => handlePreparing(e, order.id)}
-                          className="w-full sm:w-auto !py-2.5 rounded-lg text-xs !bg-blue-600"
-                        >
-                          Chuẩn bị món
-                        </Button>
+                        <>
+                          <Button
+                            variant="danger"
+                            size="sm"
+                            icon={Ban}
+                            disabled={actionLoadingId === order.id}
+                            onClick={(e) => handleOpenCancelModal(e, order.id, 'cancel')}
+                            className="w-full sm:w-auto !py-2.5 rounded-lg text-xs"
+                          >
+                            Hủy đơn
+                          </Button>
+                          <Button
+                            variant="primary"
+                            size="sm"
+                            loading={actionLoadingId === order.id}
+                            disabled={actionLoadingId === order.id}
+                            onClick={(e) => handlePreparing(e, order.id)}
+                            className="w-full sm:w-auto !py-2.5 rounded-lg text-xs !bg-blue-600"
+                          >
+                            Chuẩn bị món
+                          </Button>
+                        </>
                       )}
 
                       {order.status === 'PREPARING' && (
-                        <Button
-                          variant="secondary"
-                          size="sm"
-                          loading={actionLoadingId === order.id}
-                          disabled={actionLoadingId === order.id}
-                          onClick={(e) => handleReady(e, order.id)}
-                          className="w-full sm:w-auto !py-2.5 rounded-lg text-xs !bg-[#34A853] hover:!bg-[#2E8B49]"
-                        >
-                          Sẵn sàng giao
-                        </Button>
+                        <>
+                          <Button
+                            variant="danger"
+                            size="sm"
+                            icon={Ban}
+                            disabled={actionLoadingId === order.id}
+                            onClick={(e) => handleOpenCancelModal(e, order.id, 'cancel')}
+                            className="w-full sm:w-auto !py-2.5 rounded-lg text-xs"
+                          >
+                            Hủy đơn
+                          </Button>
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            loading={actionLoadingId === order.id}
+                            disabled={actionLoadingId === order.id}
+                            onClick={(e) => handleReady(e, order.id)}
+                            className="w-full sm:w-auto !py-2.5 rounded-lg text-xs !bg-[#34A853] hover:!bg-[#2E8B49]"
+                          >
+                            Sẵn sàng giao
+                          </Button>
+                        </>
                       )}
                     </div>
                   </div>
@@ -792,13 +825,15 @@ export default function MerchantOrders() {
       <Modal
         isOpen={cancelModal.isOpen}
         onClose={handleCloseCancelModal}
-        title={`Xác Nhận Từ Chối Đơn Hàng #${cancelModal.data}`}
+        title={`${cancelMode === 'cancel' ? 'Xác Nhận Hủy Đơn Hàng' : 'Xác Nhận Từ Chối Đơn Hàng'} #${cancelModal.data}`}
         size="sm"
       >
         <div className="space-y-4 text-slate-700">
           <div className="p-3 bg-rose-50 text-rose-800 rounded-lg text-xs font-medium border border-rose-100 flex items-start gap-2">
             <AlertCircle className="shrink-0 mt-0.5 text-rose-600" size={15} />
-            <span>Lưu ý: Hành động từ chối đơn hàng sẽ hủy giao dịch của khách hàng ngay lập tức.</span>
+            <span>{cancelMode === 'cancel'
+              ? 'Lưu ý: Hủy đơn ĐÃ xác nhận sẽ TRỪ điểm uy tín của quán và khách được đền voucher.'
+              : 'Lưu ý: Hành động từ chối đơn hàng sẽ hủy giao dịch của khách hàng ngay lập tức.'}</span>
           </div>
 
           <div className="space-y-1.5">
@@ -852,7 +887,7 @@ export default function MerchantOrders() {
               onClick={handleCancelSubmit}
               className="!py-2 rounded-lg text-xs"
             >
-              Xác nhận từ chối
+              {cancelMode === 'cancel' ? 'Xác nhận hủy đơn' : 'Xác nhận từ chối'}
             </Button>
           </div>
         </div>

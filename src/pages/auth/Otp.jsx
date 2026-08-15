@@ -35,17 +35,31 @@ export default function Otp() {
   // toast ở góc màn hình (nhất là trên điện thoại). Nội dung lấy từ BE nên hiện đúng
   // "Mã OTP không chính xác!" / "Mã OTP đã hết hạn!" / "Tài khoản tạm khóa đến ...".
   const [error, setError] = useState('');
+  // Số giây còn bị tạm khóa do nhập sai quá nhiều lần. BE trả về trong
+  // data.retryAfterSeconds (kèm header Retry-After) -> FE đếm ngược thời gian thực,
+  // user thấy chính xác còn bao lâu mà không phải tải lại trang.
+  const [lockLeft, setLockLeft] = useState(0);
   const inputRefs = useRef([]);
+
+  const locked = lockLeft > 0;
 
   useEffect(() => {
     const interval = setInterval(() => {
       setTimer((prev) => (prev > 0 ? prev - 1 : 0));
+      setLockLeft((prev) => (prev > 0 ? prev - 1 : 0));
     }, 1000);
     return () => clearInterval(interval);
   }, []);
 
+  // 125 -> "02:05"
+  const formatCountdown = (totalSeconds) => {
+    const m = Math.floor(totalSeconds / 60);
+    const s = totalSeconds % 60;
+    return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+  };
+
   const handleChange = (index, value) => {
-    if (isNaN(value)) return;
+    if (isNaN(value) || locked) return;
     setError('');           // gõ lại số mới -> xoá lỗi cũ
     const newOtp = [...otp];
     newOtp[index] = value.substring(value.length - 1);
@@ -81,7 +95,7 @@ export default function Otp() {
   const handleSubmit = async (e) => {
     if (e) e.preventDefault();
     const otpString = otp.join('');
-    if (otpString.length < 6) return;
+    if (otpString.length < 6 || locked) return;
 
     setLoading(true);
     setError('');
@@ -105,7 +119,14 @@ export default function Otp() {
     } catch (err) {
       console.error('[Otp]: Verification failed', err);
       const msg = err.response?.data?.message || 'Mã OTP không đúng hoặc đã hết hạn.';
-      setError(msg);
+      // Bị tạm khóa: chuyển sang khối đếm ngược, không hiện thêm dòng lỗi thường.
+      const retryAfter = err.response?.data?.data?.retryAfterSeconds;
+      if (retryAfter > 0) {
+        setLockLeft(retryAfter);
+        setError('');
+      } else {
+        setError(msg);
+      }
       toast.error(msg);
       setOtp(['', '', '', '', '', '']);
       setShake(true);
@@ -144,7 +165,13 @@ export default function Otp() {
     } catch (err) {
       console.error('[Otp]: Resend failed', err);
       const msg = err.response?.data?.message || 'Gửi lại OTP thất bại. Vui lòng thử lại sau.';
-      setError(msg);
+      const retryAfter = err.response?.data?.data?.retryAfterSeconds;
+      if (retryAfter > 0) {
+        setLockLeft(retryAfter);
+        setError('');
+      } else {
+        setError(msg);
+      }
       toast.error(msg);
     } finally {
       setLoading(false);
@@ -220,6 +247,7 @@ export default function Otp() {
                 const isFilled = digit !== '';
                 const isFocus = focusIdx === index;
                 const active = isFilled || isFocus;
+                const bad = !!error || locked;   // tô đỏ khi sai mã hoặc đang bị khóa
                 return (
                   <input
                     key={index}
@@ -232,13 +260,15 @@ export default function Otp() {
                     onKeyDown={(e) => handleKeyDown(index, e)}
                     onFocus={() => setFocusIdx(index)}
                     onBlur={() => setFocusIdx(-1)}
-                    aria-invalid={!!error}
-                    className="w-12 h-14 text-center text-2xl font-black rounded-2xl border-2 outline-none transition-all duration-200 text-md-on-surface"
+                    disabled={locked}
+                    aria-invalid={!!error || locked}
+                    className="w-12 h-14 text-center text-2xl font-black rounded-2xl border-2 outline-none transition-all duration-200 text-md-on-surface disabled:cursor-not-allowed"
                     style={{
-                      borderColor: error ? '#EA4335' : (active ? accent : '#e2e8f0'),
-                      backgroundColor: error ? '#EA43350d' : (isFilled ? `${accent}0f` : '#f8fafc'),
-                      boxShadow: isFocus ? `0 0 0 4px ${error ? '#EA43351f' : `${accent}1f`}` : 'none',
+                      borderColor: bad ? '#EA4335' : (active ? accent : '#e2e8f0'),
+                      backgroundColor: bad ? '#EA43350d' : (isFilled ? `${accent}0f` : '#f8fafc'),
+                      boxShadow: isFocus ? `0 0 0 4px ${bad ? '#EA43351f' : `${accent}1f`}` : 'none',
                       transform: isFocus ? 'translateY(-2px)' : 'none',
+                      opacity: locked ? 0.6 : 1,
                     }}
                   />
                 );

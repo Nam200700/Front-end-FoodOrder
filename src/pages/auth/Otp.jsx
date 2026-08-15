@@ -275,8 +275,34 @@ export default function Otp() {
               })}
             </div>
 
+            {/* Đang bị tạm khóa: đếm ngược thời gian thực, thay cho dòng lỗi thường */}
+            {locked && (
+              <div
+                role="alert"
+                aria-live="polite"
+                className="px-3.5 py-3 rounded-radius-md border animate-rise-in"
+                style={{ backgroundColor: '#EA43350d', borderColor: '#EA433540' }}
+              >
+                <div className="flex items-start gap-2" style={{ color: '#C5221F' }}>
+                  <AlertCircle size={15} className="shrink-0 mt-px" />
+                  <span className="text-xs font-bold leading-relaxed">
+                    Bạn đã nhập sai quá nhiều lần. Vui lòng chờ hết thời gian bên dưới.
+                  </span>
+                </div>
+                <div className="mt-2.5 flex items-center justify-center gap-2">
+                  <Clock size={14} style={{ color: '#C5221F' }} />
+                  <span
+                    className="text-2xl font-black tabular-nums tracking-wider"
+                    style={{ color: '#C5221F' }}
+                  >
+                    {formatCountdown(lockLeft)}
+                  </span>
+                </div>
+              </div>
+            )}
+
             {/* Thông báo lỗi ngay dưới ô nhập — role="alert" để trình đọc màn hình đọc lên */}
-            {error && (
+            {!locked && error && (
               <div
                 role="alert"
                 aria-live="assertive"
@@ -298,11 +324,15 @@ export default function Otp() {
 
             <button
               type="submit"
-              disabled={loading || !complete}
+              disabled={loading || !complete || locked}
               className="w-full text-white font-bold py-3.5 px-4 rounded-radius-full shadow-shadow-2 hover:shadow-shadow-3 hover:-translate-y-0.5 active:translate-y-0 transition-all flex items-center justify-center gap-2 text-sm uppercase tracking-wider disabled:opacity-45 disabled:pointer-events-none cursor-pointer"
               style={{ backgroundColor: accent }}
             >
-              {loading ? (
+              {locked ? (
+                <>
+                  <Clock size={16} /> Tạm khóa {formatCountdown(lockLeft)}
+                </>
+              ) : loading ? (
                 <>
                   <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
                   Đang xác thực...
@@ -325,7 +355,7 @@ export default function Otp() {
             ) : (
               <button
                 onClick={handleResend}
-                disabled={loading || attemptsLeft <= 0}
+                disabled={loading || attemptsLeft <= 0 || locked}
                 className="font-bold hover:underline inline-flex items-center gap-1 disabled:opacity-50 disabled:no-underline cursor-pointer"
                 style={{ color: accent }}
               >

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Store, Camera, Save, Map, Clock, MapPin, Phone, Eye, CheckCircle2, Circle, Image as ImageIcon, Lightbulb, FileText, Sparkles, ShieldCheck, AlertTriangle } from 'lucide-react';
+import { Store, Camera, Save, Map, Clock, MapPin, Phone, Eye, CheckCircle2, Circle, Image as ImageIcon, Lightbulb, FileText, Sparkles, ShieldCheck, AlertTriangle, AlertCircle } from 'lucide-react';
 import { useFetchData } from '../../hooks/useFetchData';
 import { useImageUpload } from '../../hooks/useImageUpload'; // Import hook upload ảnh
 import apiClient from '../../services/api';
@@ -11,6 +11,17 @@ import { validatePhone } from '../../utils/validation';
 import { toast } from 'react-toastify';
 import { useModalState } from '../../hooks/useModalState';
 import MapModal2 from '../../components/common/Map'; // Import MapModal2
+
+// Dòng báo lỗi dưới ô nhập. Đặt NGOÀI component để React không tháo-lắp lại sau mỗi lần gõ.
+function FieldError({ msg }) {
+  if (!msg) return null;
+  return (
+    <p className="flex items-start gap-1 text-[11px] font-semibold text-rose-600 mt-1.5 animate-rise-in">
+      <AlertCircle size={12} className="shrink-0 mt-px" />
+      {msg}
+    </p>
+  );
+}
 
 export default function MerchantSettings() {
   const [resName, setResName] = useState('');
@@ -33,6 +44,12 @@ export default function MerchantSettings() {
   const [saving, setSaving] = useState(false);
   const [hasRestaurant, setHasRestaurant] = useState(false);
   const [restaurantId, setRestaurantId] = useState(null);
+  // Lỗi theo từng ô. Toast trôi mất và không chỉ được ô nào sai — lỗi trùng SĐT quán
+  // phải hiện ngay dưới đúng ô đó.
+  const [errors, setErrors] = useState({});
+
+  const clearError = (field) =>
+    setErrors((prev) => (prev[field] ? { ...prev, [field]: undefined } : prev));
 
   // Sử dụng useModalState cho MapModal2
   const mapModal2 = useModalState();
@@ -88,6 +105,7 @@ export default function MerchantSettings() {
     setLongitude(selectedLng);
     if (addressName) {
       setAddress(addressName);
+      clearError('address');
     }
     mapModal2.close();
     toast.success("Đã cập nhật vị trí quán trên bản đồ!");
@@ -99,26 +117,22 @@ export default function MerchantSettings() {
   };
 
   const handleSave = async () => {
-    if (!resName.trim()) {
-      toast.warning('Vui lòng nhập tên quán!');
+    // Kiểm tra HẾT các ô rồi mới dừng: chủ quán thấy mọi chỗ sai trong một lần,
+    // không phải sửa xong ô này mới lòi ra ô kia.
+    const localErrors = {};
+    if (!resName.trim()) localErrors.resName = 'Vui lòng nhập tên quán.';
+    if (!openTime || !closeTime) localErrors.hours = 'Vui lòng chọn đầy đủ giờ mở cửa và đóng cửa.';
+
+    if (!phone.trim()) localErrors.phone = 'Vui lòng nhập số điện thoại liên hệ.';
+    else if (!validatePhone(phone)) localErrors.phone = 'Số điện thoại không hợp lệ (bắt đầu bằng 0, gồm 10 chữ số).';
+
+    if (!address.trim()) localErrors.address = 'Vui lòng cập nhật địa chỉ chi tiết quán.';
+
+    if (Object.keys(localErrors).length > 0) {
+      setErrors(localErrors);
       return;
     }
-    if (!openTime || !closeTime) {
-      toast.warning('Vui lòng chọn đầy đủ giờ mở cửa và đóng cửa!');
-      return;
-    }
-    if (!phone.trim()) {
-      toast.warning('Vui lòng nhập số điện thoại liên hệ!');
-      return;
-    }
-    if (!validatePhone(phone)) {
-      toast.warning('Số điện thoại không hợp lệ!');
-      return;
-    }
-    if (!address.trim()) {
-      toast.warning('Vui lòng cập nhật địa chỉ chi tiết quán!');
-      return;
-    }
+    setErrors({});
 
     setSaving(true);
     try {
@@ -146,7 +160,17 @@ export default function MerchantSettings() {
       }
     } catch (err) {
       console.error(err);
-      toast.error(err.response?.data?.message || 'Có lỗi xảy ra khi thiết lập nhà hàng. Vui lòng kiểm tra lại!');
+      const resData = err.response?.data;
+      // Guard bên BE trả errorCode RESTAURANT_PHONE_EXISTS kèm bản đồ lỗi đặt tên ô theo form
+      // đăng ký ("restaurantPhone"); màn này ô tên là "phone" nên map theo errorCode.
+      if (resData?.errorCode === 'RESTAURANT_PHONE_EXISTS') {
+        setErrors((prev) => ({
+          ...prev,
+          phone: resData?.data?.restaurantPhone || 'Số điện thoại này đã được một quán khác sử dụng!',
+        }));
+        return;
+      }
+      toast.error(resData?.message || 'Có lỗi xảy ra khi thiết lập nhà hàng. Vui lòng kiểm tra lại!');
     } finally {
       setSaving(false);
     }
@@ -167,6 +191,14 @@ export default function MerchantSettings() {
   ];
   const profileDone = profileChecks.filter(c => c.done).length;
   const profilePct = Math.round((profileDone / profileChecks.length) * 100);
+
+  // Ô nhập đổi sang tông đỏ khi có lỗi — giữ nguyên bố cục, chỉ đổi màu viền/nền.
+  const fieldClass = (bad) =>
+    `w-full px-4 py-2.5 border rounded-radius-lg text-xs focus:outline-none transition-all font-semibold ${
+      bad
+        ? 'bg-rose-50/60 border-rose-300 text-rose-700 focus:border-rose-400'
+        : 'bg-slate-50 border-slate-200 focus:border-md-secondary focus:bg-white'
+    }`;
 
   const tips = [
     { icon: ImageIcon, text: 'Dùng ảnh bìa sắc nét, đủ sáng để thu hút khách ngay từ cái nhìn đầu tiên.' },
@@ -346,35 +378,39 @@ export default function MerchantSettings() {
                 <input
                   type="text"
                   value={resName}
-                  onChange={(e) => setResName(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-radius-lg text-xs focus:outline-none focus:border-md-secondary focus:bg-white transition-all font-semibold"
+                  onChange={(e) => { setResName(e.target.value); clearError('resName'); }}
+                  className={`${fieldClass(errors.resName)} !pl-10`}
                 />
               </div>
+              <FieldError msg={errors.resName} />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">
-                  Giờ mở cửa *
-                </label>
-                <input
-                  type="time"
-                  value={openTime}
-                  onChange={(e) => setOpenTime(e.target.value)}
-                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-radius-lg text-xs focus:outline-none focus:border-md-secondary focus:bg-white transition-all font-semibold"
-                />
+            <div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">
+                    Giờ mở cửa *
+                  </label>
+                  <input
+                    type="time"
+                    value={openTime}
+                    onChange={(e) => { setOpenTime(e.target.value); clearError('hours'); }}
+                    className={fieldClass(errors.hours && !openTime)}
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">
+                    Giờ đóng cửa *
+                  </label>
+                  <input
+                    type="time"
+                    value={closeTime}
+                    onChange={(e) => { setCloseTime(e.target.value); clearError('hours'); }}
+                    className={fieldClass(errors.hours && !closeTime)}
+                  />
+                </div>
               </div>
-              <div>
-                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">
-                  Giờ đóng cửa *
-                </label>
-                <input
-                  type="time"
-                  value={closeTime}
-                  onChange={(e) => setCloseTime(e.target.value)}
-                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-radius-lg text-xs focus:outline-none focus:border-md-secondary focus:bg-white transition-all font-semibold"
-                />
-              </div>
+              <FieldError msg={errors.hours} />
             </div>
 
             <div>
@@ -384,9 +420,11 @@ export default function MerchantSettings() {
               <input
                 type="tel"
                 value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-radius-lg text-xs focus:outline-none focus:border-md-secondary focus:bg-white transition-all font-semibold"
+                onChange={(e) => { setPhone(e.target.value); clearError('phone'); }}
+                placeholder="Ví dụ: 0281000001"
+                className={fieldClass(errors.phone)}
               />
+              <FieldError msg={errors.phone} />
             </div>
 
             <div>
@@ -413,7 +451,7 @@ export default function MerchantSettings() {
                   readOnly
                   onClick={handleOpenMapModal}
                   value={address}
-                  className="w-full flex-1 px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-radius-lg text-xs focus:outline-none focus:border-md-secondary focus:bg-white transition-all resize-none font-semibold cursor-pointer"
+                  className={`${fieldClass(errors.address)} flex-1 resize-none cursor-pointer`}
                 />
                 <Button
                   type="button"
@@ -425,6 +463,7 @@ export default function MerchantSettings() {
                   Thay đổi
                 </Button>
               </div>
+              <FieldError msg={errors.address} />
             </div>
 
             <Button

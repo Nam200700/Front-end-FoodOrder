@@ -4,8 +4,6 @@ import { useAuthStore } from '../../stores/authStore';
 import { useChatStore } from '../../stores/chatStore';
 import apiClient from '../../services/api';
 import { getAvatarUrl } from '../../utils/avatarHelper';
-import { toast, ToastContainer } from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.css';
 import {
   Map,
   History,
@@ -258,8 +256,7 @@ export default function ShipperLayout() {
       <main className="flex-1 flex flex-col min-w-0 pt-14 md:pt-0 h-full overflow-y-auto relative">
         <Outlet />
       </main>
-      <ToastContainer />
-      <input 
+      <input
         type="file" 
         ref={fileInputRef} 
         className="hidden" 

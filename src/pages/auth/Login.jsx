@@ -72,7 +72,10 @@ export default function Login() {
   // Forgot Password State
   const [mode, setMode] = useState('login'); // 'login' or 'forgot-password'
   const [phoneOrEmail, setPhoneOrEmail] = useState('');
-  const [otpMethod, setOtpMethod] = useState('SMS'); // 'SMS' or 'EMAIL'
+  // Mặc định EMAIL: kênh SMS phụ thuộc nhà cung cấp bên ngoài (SpeedSMS) và hiện chưa
+  // được cấp quyền gửi, nên để mặc định SMS sẽ khiến mọi người dùng bấm quên mật khẩu
+  // đều nhận lỗi. Email đang chạy ổn định và miễn phí.
+  const [otpMethod, setOtpMethod] = useState('EMAIL'); // 'SMS' or 'EMAIL'
   const [otpSent, setOtpSent] = useState(false);
   const [otpCode, setOtpCode] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -507,7 +510,9 @@ export default function Login() {
                     </span>
                     <div className="grid grid-cols-2 gap-3">
                       {[
-                        { id: 'SMS', label: 'Gửi qua SMS', icon: MessageSquare },
+                        // SMS đang chờ nhà cung cấp cấp quyền gửi -> chưa cho chọn, bấm vào
+                        // báo "đang phát triển" thay vì để người dùng gửi rồi nhận lỗi.
+                        { id: 'SMS', label: 'Gửi qua SMS', icon: MessageSquare, comingSoon: true },
                         { id: 'EMAIL', label: 'Gửi qua Email', icon: Mail }
                       ].map((m) => {
                         const Icon = m.icon;
@@ -516,15 +521,30 @@ export default function Login() {
                           <button
                             key={m.id}
                             type="button"
-                            onClick={() => setOtpMethod(m.id)}
-                            className={`flex items-center justify-center gap-2 p-2.5 rounded-radius-lg border font-bold text-xs cursor-pointer transition-all ${
-                              isSelected
-                                ? 'border-[#FF6B35] bg-[#FF6B35]/5 text-[#FF6B35]'
-                                : 'border-slate-200 bg-white text-slate-500 hover:bg-slate-50'
+                            onClick={() => {
+                              if (m.comingSoon) {
+                                toast.info('Nhận mã qua SMS đang được phát triển. Bạn vui lòng chọn nhận qua Email.');
+                                return;
+                              }
+                              setOtpMethod(m.id);
+                            }}
+                            aria-disabled={m.comingSoon}
+                            title={m.comingSoon ? 'Tính năng đang phát triển' : undefined}
+                            className={`relative flex items-center justify-center gap-2 p-2.5 rounded-radius-lg border font-bold text-xs cursor-pointer transition-all ${
+                              m.comingSoon
+                                ? 'border-slate-200 bg-slate-50 text-slate-400'
+                                : isSelected
+                                  ? 'border-[#FF6B35] bg-[#FF6B35]/5 text-[#FF6B35]'
+                                  : 'border-slate-200 bg-white text-slate-500 hover:bg-slate-50'
                             }`}
                           >
                             <Icon size={14} />
                             {m.label}
+                            {m.comingSoon && (
+                              <span className="absolute -top-2 right-1.5 px-1.5 py-0.5 rounded-full bg-slate-200 text-slate-500 text-[9px] font-extrabold uppercase tracking-wide">
+                                Sắp có
+                              </span>
+                            )}
                           </button>
                         );
                       })}

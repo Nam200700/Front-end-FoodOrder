@@ -80,6 +80,7 @@ export default function Otp() {
 
   const handlePaste = (e) => {
     e.preventDefault();
+    if (locked) return;
     const pasteData = e.clipboardData.getData('text').trim();
     if (pasteData.length === 6 && !isNaN(pasteData)) {
       setError('');
@@ -145,7 +146,7 @@ export default function Otp() {
   }, [otp]);
 
   const handleResend = async () => {
-    if (timer > 0) return;
+    if (timer > 0 || locked) return;
     if (resendCount >= MAX_RESEND) {
       const msg = 'Bạn đã vượt quá số lần yêu cầu gửi lại OTP cho phép (tối đa 3 lần).';
       setError(msg);

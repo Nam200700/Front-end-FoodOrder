@@ -167,7 +167,9 @@ export const useAuthStore = create(
         } catch (error) {
           console.error('[Auth Store]: Owner re-register error', error);
           const errMsg = error.response?.data?.message || 'Gửi lại hồ sơ đối tác thất bại!';
-          return { success: false, error: errMsg };
+          // Trả kèm errorCode (RESTAURANT_PHONE_EXISTS...) để PartnerApproval tô đỏ đúng ô,
+          // thay vì chỉ hiện banner chung ở đầu form — giống cách register() đang làm.
+          return { success: false, errorCode: error.response?.data?.errorCode, error: errMsg };
         }
       },
 
@@ -193,7 +195,9 @@ export const useAuthStore = create(
         } catch (error) {
           console.error('[Auth Store]: Shipper re-register error', error);
           const errMsg = error.response?.data?.message || 'Gửi lại hồ sơ đối tác thất bại!';
-          return { success: false, error: errMsg };
+          // Trả kèm errorCode (ID_CARD_EXISTS / LICENSE_PLATE_EXISTS) để PartnerApproval
+          // tô đỏ đúng ô thay vì chỉ hiện banner chung ở đầu form.
+          return { success: false, errorCode: error.response?.data?.errorCode, error: errMsg };
         }
       },
 

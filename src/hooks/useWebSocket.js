@@ -3,6 +3,13 @@ import { Client } from '@stomp/stompjs';
 import { useAuthStore } from '../stores/authStore';
 import { validateWsMessage } from '../utils/wsMessageValidator';
 
+/*
+ * ⚠️ HOOK CŨ, HIỆN KHÔNG NƠI NÀO DÙNG — đã được thay bằng WebSocketContext
+ * (kết nối dùng chung + ref-count subscription). Giữ lại để tham khảo.
+ * Lưu ý: hook này dùng brokerURL với scheme ws:// nên KHÔNG dùng chung được
+ * utils/wsUrl.js (địa chỉ ở đó là http:// cho SockJS). Nếu cần dùng lại thì
+ * chuyển hẳn sang WebSocketContext thay vì sửa chỗ này.
+ */
 const WS_URL = import.meta.env.VITE_WS_URL || (
   import.meta.env.PROD
     ? (() => { throw new Error('[Config] VITE_WS_URL must be set in production!'); })()

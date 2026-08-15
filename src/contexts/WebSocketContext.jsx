@@ -3,13 +3,9 @@ import { Client } from '@stomp/stompjs';
 import SockJS from 'sockjs-client';
 import { useAuthStore } from '../stores/authStore';
 import { validateWsMessage } from '../utils/wsMessageValidator';
+import { WS_URL } from '../utils/wsUrl';
 
 const WebSocketContext = createContext(null);
-const WS_URL = import.meta.env.VITE_WS_URL || (
-  import.meta.env.PROD
-    ? (() => { throw new Error('[Config] VITE_WS_URL must be set in production!'); })()
-    : 'http://localhost:8080/ws'
-);
 
 export function WebSocketProvider({ children }) {
   const token = useAuthStore((state) => state.token);

@@ -3,9 +3,9 @@ import SockJS from 'sockjs-client';
 import { Client } from '@stomp/stompjs';
 import apiClient from '../services/api';
 import { useAuthStore } from './authStore';
-
-// Cấu hình URL cơ sở của WebSocket Spring Boot Backend
-const WS_BASE_URL = import.meta.env.VITE_WS_BASE_URL || 'http://localhost:8080/ws';
+// Dùng CHUNG địa chỉ với WebSocketContext — trước đây hai nơi đọc hai biến khác nhau
+// nên khi deploy chỉ khai một biến thì chat âm thầm trỏ về localhost.
+import { WS_URL as WS_BASE_URL } from '../utils/wsUrl';
 
 export const useChatStore = create((set, get) => ({
   conversations: [],

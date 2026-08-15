@@ -21,8 +21,6 @@ import {
 } from 'lucide-react';
 import { useAuthStore } from '../../stores/authStore';
 import { useWebSocketContext } from '../../contexts/WebSocketContext';
-import { toast, ToastContainer } from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.css';
 import apiClient from '../../services/api';
 import { getAvatarUrl } from '../../utils/avatarHelper';
 import { parseOrderEvent, notifyStatusChange } from '../../utils/orderStatusHelper';
@@ -347,9 +345,6 @@ export default function CustomerLayout() {
       <main className="flex-1 flex flex-col min-w-0 pt-14 md:pt-0 pb-16 md:pb-0 h-screen overflow-y-auto relative bg-md-surface">
         <Outlet />
       </main>
-
-      {/* TOAST POPUP TOÀN CỤC THỜI GIAN THỰC */}
-      <ToastContainer />
 
       {/* Input file ẩn phục vụ upload nhanh avatar */}
       <input 

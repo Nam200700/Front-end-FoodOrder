@@ -2,8 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../stores/authStore';
 import { Lock, Phone, ChevronRight, User, Store, Bike, Shield, KeyRound, Mail, MessageSquare, AlertTriangle, CheckCircle2, Check, Eye, EyeOff, ChefHat, Star, ShieldCheck, Pizza, Soup, IceCream, Croissant, Sandwich, CupSoda, Sparkles, Users, UserPlus, Loader2, LogIn, QrCode } from 'lucide-react';
-import { toast, ToastContainer } from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.css';
+import { toast } from 'react-toastify';
 import apiClient from '../../services/api';
 import { validatePassword, validatePhone } from '../../utils/validation';
 import QrLoginPanel from './QrLoginPanel';
@@ -670,7 +669,6 @@ export default function Login() {
 
         </div>
       </div>
-      <ToastContainer />
     </div>
   );
 }

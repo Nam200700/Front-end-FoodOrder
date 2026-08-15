@@ -805,7 +805,7 @@ export default function Cart() {
                                   <span className="text-[10px] font-medium text-slate-400 block mb-1">Số lượng</span>
                                   <div className="flex items-center border border-slate-200 rounded-lg bg-slate-50/50 p-0.5">
                                     <button
-                                      onClick={() => updateQty(item.foodId, item.quantity, item.quantity - 1)}
+                                      onClick={() => updateQty(item.cartItemId, item.quantity - 1)}
                                       disabled={item.quantity <= 1}
                                       className="w-6 h-6 flex items-center justify-center rounded-md text-slate-500 hover:bg-white hover:text-[#ff6b35] disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-slate-500 transition-all cursor-pointer active:scale-90"
                                     >
@@ -813,7 +813,7 @@ export default function Cart() {
                                     </button>
                                     <span className="w-8 text-center font-extrabold text-xs text-slate-800 select-none">{item.quantity}</span>
                                     <button
-                                      onClick={() => updateQty(item.foodId, item.quantity, item.quantity + 1)}
+                                      onClick={() => updateQty(item.cartItemId, item.quantity + 1)}
                                       className="w-6 h-6 flex items-center justify-center rounded-md text-slate-500 hover:bg-white hover:text-[#ff6b35] transition-all cursor-pointer active:scale-90"
                                     >
                                       <Plus size={13} strokeWidth={2.5} />
@@ -859,7 +859,7 @@ export default function Cart() {
                               
                               <div className="flex items-center border border-slate-200 rounded-lg bg-slate-50/50 p-0.5 w-fit">
                                 <button
-                                  onClick={() => updateQty(item.foodId, item.quantity, item.quantity - 1)}
+                                  onClick={() => updateQty(item.cartItemId, item.quantity - 1)}
                                   disabled={item.quantity <= 1}
                                   className="w-7 h-7 flex items-center justify-center rounded-md text-slate-500 hover:bg-white hover:text-[#ff6b35] disabled:opacity-40 transition-all cursor-pointer active:scale-90"
                                 >
@@ -867,7 +867,7 @@ export default function Cart() {
                                 </button>
                                 <span className="w-9 text-center font-extrabold text-sm text-slate-800 select-none">{item.quantity}</span>
                                 <button
-                                  onClick={() => updateQty(item.foodId, item.quantity, item.quantity + 1)}
+                                  onClick={() => updateQty(item.cartItemId, item.quantity + 1)}
                                   className="w-7 h-7 flex items-center justify-center rounded-md text-slate-500 hover:bg-white hover:text-[#ff6b35] transition-all cursor-pointer active:scale-90"
                                 >
                                   <Plus size={15} strokeWidth={2.5} />

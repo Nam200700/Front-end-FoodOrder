@@ -49,6 +49,10 @@ export default function PartnerApproval() {
 
   const [errors, setErrors] = useState({});
 
+  // Gõ lại vào ô nào thì xoá lỗi của ô đó — tránh chữ đỏ đứng mãi sau khi đã sửa.
+  const clearError = (field) =>
+    setErrors((prev) => (prev[field] ? { ...prev, [field]: undefined } : prev));
+
   const handleConfirmLocation = (lat, lng, address) => {
     setRestaurantAddress(address);
     setRestaurantLat(lat);
@@ -103,6 +107,20 @@ export default function PartnerApproval() {
     setLoading(false);
     if (res?.success) {
       toast.success('Gửi lại hồ sơ đối tác thành công! Vui lòng chờ xét duyệt từ Admin.');
+      return;
+    }
+
+    // Lỗi trùng định danh: tô đỏ đúng ô để user biết phải sửa chỗ nào, thay vì
+    // chỉ đọc banner chung rồi tự dò. Các lỗi khác vẫn hiện ở banner như cũ.
+    const FIELD_BY_ERROR_CODE = {
+      ID_CARD_EXISTS: ['idCard', 'Số CCCD/CMND này đã được sử dụng để đăng ký tài khoản khác!'],
+      LICENSE_PLATE_EXISTS: ['licensePlate', 'Biển số xe này đã được đăng ký bởi tài xế khác!'],
+      RESTAURANT_PHONE_EXISTS: ['restaurantPhone', 'Số điện thoại quán đã được đăng ký!'],
+    };
+    const mapped = FIELD_BY_ERROR_CODE[res?.errorCode];
+    if (mapped) {
+      const [field, message] = mapped;
+      setErrors((prev) => ({ ...prev, [field]: message }));
     } else {
       setErrorMsg(res?.error || 'Gửi lại hồ sơ thất bại. Vui lòng kiểm tra lại!');
     }
@@ -355,7 +373,7 @@ export default function PartnerApproval() {
                         type="tel"
                         required
                         value={restaurantPhone}
-                        onChange={(e) => setRestaurantPhone(e.target.value)}
+                        onChange={(e) => { setRestaurantPhone(e.target.value); clearError('restaurantPhone'); }}
                         placeholder="Để khách liên hệ..."
                         icon={Phone}
                         error={errors.restaurantPhone}
@@ -409,7 +427,7 @@ export default function PartnerApproval() {
                         type="text"
                         required
                         value={idCard}
-                        onChange={(e) => setIdCard(e.target.value)}
+                        onChange={(e) => { setIdCard(e.target.value); clearError('idCard'); }}
                         placeholder="CCCD gồm 12 số..."
                         icon={FileText}
                         error={errors.idCard}
@@ -420,7 +438,7 @@ export default function PartnerApproval() {
                         type="text"
                         required
                         value={licensePlate}
-                        onChange={(e) => setLicensePlate(e.target.value)}
+                        onChange={(e) => { setLicensePlate(e.target.value); clearError('licensePlate'); }}
                         placeholder="Ví dụ: 29A1-12345..."
                         icon={Bike}
                         error={errors.licensePlate}

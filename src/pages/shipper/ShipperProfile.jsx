@@ -1,15 +1,29 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../stores/authStore';
-import { User, Bike, Phone, LogOut, Camera, Mail, ShieldCheck, Clipboard, Trophy, Star, Package, CheckCircle2, Circle, MapPin, Lightbulb, Lock, Sparkles, Car, Save } from 'lucide-react';
+import { User, Bike, Phone, LogOut, Camera, Mail, ShieldCheck, Clipboard, Trophy, Star, Package, CheckCircle2, Circle, MapPin, Lightbulb, Lock, Sparkles, Car, Save, AlertCircle } from 'lucide-react';
 import apiClient from '../../services/api';
 import Spinner from '../../components/common/Spinner';
 import Card from '../../components/common/Card';
 import Button from '../../components/common/Button';
 import { getAvatarUrl } from '../../utils/avatarHelper';
 import { useAvatarUpload } from '../../hooks/useAvatarUpload';
-import { validateEmail } from '../../utils/validation';
+// Dùng CHUNG bộ kiểm tra với trang đăng ký shipper — trước đây trang này tự chế regex biển số
+// riêng, lỏng hơn nên biển sai vẫn lọt qua FE rồi mới bị BE chặn.
+import { validateEmail, validatePhone, validateLicensePlate, formatLicensePlate } from '../../utils/validation';
 import { toast } from 'react-toastify';
+
+// Dòng báo lỗi dưới ô nhập. Đặt NGOÀI component để React không tháo-lắp lại sau mỗi lần gõ
+// (bị lắp lại thì animation rise-in chạy lại liên tục, nhìn giật).
+function FieldError({ msg }) {
+  if (!msg) return null;
+  return (
+    <p className="flex items-start gap-1 text-[11px] font-semibold text-rose-600 mt-1.5 animate-rise-in">
+      <AlertCircle size={12} className="shrink-0 mt-px" />
+      {msg}
+    </p>
+  );
+}
 
 export default function ShipperProfile() {
   const navigate = useNavigate();
@@ -33,6 +47,9 @@ export default function ShipperProfile() {
   const [cancelCount, setCancelCount] = useState(0);
   // Ảnh chụp giá trị gốc để biết form CÓ THAY ĐỔI chưa (dirty state — chỉ bật nút Lưu khi có sửa).
   const [initial, setInitial] = useState({ name: '', email: '', phone: '', vehicleType: '', licensePlate: '' });
+  // Lỗi theo từng ô: { name, email, phone, licensePlate }. Toast trôi mất và không chỉ được
+  // ô nào sai — lỗi trùng lặp (SĐT/email/biển số) phải hiện ngay dưới đúng ô đó.
+  const [errors, setErrors] = useState({});
   const fileInputRef = useRef(null);
   const { uploading: uploadingAvatar, handleAvatarChange: uploadAvatar } = useAvatarUpload();
 
@@ -56,11 +73,15 @@ export default function ShipperProfile() {
       const response = await apiClient.get('/users/me');
       const realUser = response.data?.data;
       if (realUser) {
+        // Chuẩn hoá biển số ngay khi tải về rồi lấy CHÍNH giá trị đã chuẩn hoá làm mốc gốc,
+        // nếu không form sẽ báo "có thay đổi chưa lưu" ngay lúc vừa mở dù chưa ai gõ gì.
+        const vt = realUser.vehicleType || '';
+        const plate = formatLicensePlate(realUser.licensePlate || '', vt);
         setName(realUser.fullName || '');
         setPhone(realUser.phone || '');
         setEmail(realUser.email || '');
-        setVehicleType(realUser.vehicleType || '');
-        setLicensePlate(realUser.licensePlate || '');
+        setVehicleType(vt);
+        setLicensePlate(plate);
         setIdCard(realUser.idCard || 'Chưa cung cấp');
         setActiveDelivery(realUser.activeDelivery || 0);
         setTotalDelivery(realUser.totalDelivery || 0);
@@ -71,8 +92,8 @@ export default function ShipperProfile() {
           name: realUser.fullName || '',
           email: realUser.email || '',
           phone: realUser.phone || '',
-          vehicleType: realUser.vehicleType || '',
-          licensePlate: realUser.licensePlate || '',
+          vehicleType: vt,
+          licensePlate: plate,
         });
       }
     } catch (err) {
@@ -86,40 +107,51 @@ export default function ShipperProfile() {
     fetchProfile();
   }, []);
 
+  // Xoá lỗi của một ô ngay khi người dùng bắt đầu sửa ô đó.
+  const clearError = (field) =>
+    setErrors((prev) => (prev[field] ? { ...prev, [field]: undefined } : prev));
+
+  // Gõ tới đâu dấu "-" "." hiện tới đó — giống hệt trang đăng ký shipper, người dùng chỉ gõ chữ & số.
+  const handleLicensePlateChange = (raw) => {
+    setLicensePlate(formatLicensePlate(raw, vehicleType));
+    clearError('licensePlate');
+  };
+
+  // Đổi loại xe thì chèn lại dấu cho đúng cấu trúc xe máy/ô tô, không bắt gõ lại từ đầu.
+  const handleVehicleTypeChange = (next) => {
+    setVehicleType(next);
+    setLicensePlate((prev) => formatLicensePlate(prev, next));
+    clearError('licensePlate');
+  };
+
+  // Ánh xạ mã lỗi trùng lặp của BE về đúng ô để tô đỏ, thay vì đổ hết vào một toast chung chung.
+  const FIELD_BY_ERROR_CODE = {
+    PHONE_EXISTS: ['phone', 'Số điện thoại này đã được đăng ký cho tài khoản khác!'],
+    EMAIL_EXISTS: ['email', 'Email này đã được sử dụng bởi một tài khoản khác!'],
+    LICENSE_PLATE_EXISTS: ['licensePlate', 'Biển số xe này đã được đăng ký bởi tài xế khác!'],
+    ID_CARD_EXISTS: ['idCard', 'Số CCCD/CMND này đã được sử dụng để đăng ký tài khoản khác!'],
+  };
+
   const handleSave = async () => {
-    if (!name.trim()) {
-      toast.warning('Vui lòng nhập Họ và tên!');
-      return;
-    }
-    if (!email.trim()) {
-      toast.warning('Vui lòng nhập email!');
-      return;
-    }
-    if (!validateEmail(email)) {
-      toast.warning('Email Không hợp lệ!');
-      return;
-    }
+    // Kiểm tra HẾT các ô rồi mới dừng: người dùng thấy mọi chỗ sai trong một lần,
+    // không phải sửa xong ô này mới lòi ra ô kia.
+    const localErrors = {};
+    if (!name.trim()) localErrors.name = 'Vui lòng nhập họ và tên.';
 
-    if (!phone.trim()) {
-      toast.warning('Vui lòng nhập số điện thoại!');
-      return;
-    }
-    // SĐT Việt Nam: bắt đầu 0, 10 chữ số (cho phép khoảng trắng khi gõ).
-    if (!/^0\d{9}$/.test(phone.trim().replace(/\s/g, ''))) {
-      toast.warning('Số điện thoại không hợp lệ (10 số, bắt đầu bằng 0)!');
-      return;
-    }
+    if (!email.trim()) localErrors.email = 'Vui lòng nhập email.';
+    else if (!validateEmail(email)) localErrors.email = 'Email không hợp lệ.';
 
-    if (!licensePlate.trim()) {
-      toast.warning('Vui lòng nhập biển số xe!');
-      return;
-    }
+    if (!phone.trim()) localErrors.phone = 'Vui lòng nhập số điện thoại.';
+    else if (!validatePhone(phone)) localErrors.phone = 'Số điện thoại không hợp lệ (bắt đầu bằng 0, gồm 10 chữ số).';
 
-    const plateRegex = /^[0-9]{2}[A-Z0-9]{1,4}[-.]?[0-9]{3,4}(\.[0-9]{2})?$/;
-    if (!plateRegex.test(licensePlate.trim())) {
-      toast.warning('Biển số xe không hợp lệ (Ví dụ: 29E2-678.90)!');
+    if (!licensePlate.trim()) localErrors.licensePlate = 'Vui lòng nhập biển số xe.';
+    else if (!validateLicensePlate(licensePlate)) localErrors.licensePlate = 'Biển số chưa đúng định dạng (VD: 59H1-234.56 hoặc 51F-123.45).';
+
+    if (Object.keys(localErrors).length > 0) {
+      setErrors(localErrors);
       return;
     }
+    setErrors({});
 
     setUpdating(true);
     try {
@@ -144,7 +176,27 @@ export default function ShipperProfile() {
       toast.success('Đã cập nhật hồ sơ cá nhân thành công!');
     } catch (err) {
       console.error('Lỗi khi cập nhật hồ sơ shipper:', err);
-      toast.error(err.response?.data?.message || 'Có lỗi xảy ra khi cập nhật hồ sơ.');
+      const resData = err.response?.data;
+
+      // BE có thể trả nguyên bản đồ {field -> thông báo} khi sai nhiều ô cùng lúc — ưu tiên dùng.
+      const fieldErrors = resData?.data;
+      if (fieldErrors && typeof fieldErrors === 'object' && !Array.isArray(fieldErrors)) {
+        const picked = Object.fromEntries(
+          Object.entries(fieldErrors).filter(([, v]) => typeof v === 'string')
+        );
+        if (Object.keys(picked).length > 0) {
+          setErrors((prev) => ({ ...prev, ...picked }));
+          return;
+        }
+      }
+
+      const mapped = FIELD_BY_ERROR_CODE[resData?.errorCode];
+      if (mapped) {
+        setErrors((prev) => ({ ...prev, [mapped[0]]: mapped[1] }));
+        return;
+      }
+
+      toast.error(resData?.message || 'Có lỗi xảy ra khi cập nhật hồ sơ.');
     } finally {
       setUpdating(false);
     }
@@ -181,6 +233,15 @@ export default function ShipperProfile() {
   // Meta phương tiện: icon + nhãn theo loại xe (để hiện preview biển số sống động kiểu Grab/Uber)
   const vehicleMeta = { MOTORBIKE: { icon: Bike, label: 'Xe máy' }, CAR: { icon: Car, label: 'Ô tô' }, ALL: { icon: Bike, label: 'Tất cả' } }[vehicleType] || { icon: Bike, label: 'Phương tiện' };
   const VehicleIcon = vehicleMeta.icon;
+
+  // Ô nhập đổi sang tông đỏ khi có lỗi — giữ nguyên bố cục, chỉ đổi màu viền/nền.
+  const fieldClass = (bad) =>
+    `w-full pl-10 pr-4 py-2.5 border rounded-radius-lg text-xs focus:outline-none focus:ring-2 transition-all font-semibold ${
+      bad
+        ? 'bg-rose-50/60 border-rose-300 text-rose-700 focus:border-rose-400 focus:ring-rose-400/15'
+        : 'bg-slate-50 border-slate-200 text-slate-700 focus:border-md-tertiary focus:bg-white focus:ring-md-tertiary/15'
+    }`;
+
 
   // Mẹo chạy đơn cho tài xế (thuần trình bày)
   const shipperTips = [
@@ -378,10 +439,11 @@ export default function ShipperProfile() {
                   <input
                     type="text"
                     value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-radius-lg text-xs focus:outline-none focus:border-md-tertiary focus:bg-white focus:ring-2 focus:ring-md-tertiary/15 transition-all font-semibold text-slate-700"
+                    onChange={(e) => { setName(e.target.value); clearError('name'); }}
+                    className={fieldClass(errors.name)}
                   />
                 </div>
+                <FieldError msg={errors.name} />
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
@@ -394,10 +456,11 @@ export default function ShipperProfile() {
                     <input
                       type="email"
                       value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-radius-lg text-xs focus:outline-none focus:border-md-tertiary focus:bg-white focus:ring-2 focus:ring-md-tertiary/15 transition-all font-semibold text-slate-700"
+                      onChange={(e) => { setEmail(e.target.value); clearError('email'); }}
+                      className={fieldClass(errors.email)}
                     />
                   </div>
+                  <FieldError msg={errors.email} />
                 </div>
 
                 <div className="group/f">
@@ -409,11 +472,17 @@ export default function ShipperProfile() {
                     <input
                       type="tel"
                       value={phone}
-                      onChange={(e) => setPhone(e.target.value)}
+                      onChange={(e) => { setPhone(e.target.value); clearError('phone'); }}
                       placeholder="Ví dụ: 0901234567"
-                      className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-radius-lg text-xs focus:outline-none focus:border-md-tertiary focus:bg-white focus:ring-2 focus:ring-md-tertiary/15 transition-all font-semibold text-slate-700"
+                      className={fieldClass(errors.phone)}
                     />
                   </div>
+                  <FieldError msg={errors.phone} />
+                  {phone.trim() !== initial.phone && !errors.phone && (
+                    <p className="text-[11px] font-semibold text-amber-600 mt-1.5">
+                      Số điện thoại cũng là tên đăng nhập — đổi xong bạn phải dùng số mới để đăng nhập.
+                    </p>
+                  )}
                 </div>
               </div>
 
@@ -446,7 +515,7 @@ export default function ShipperProfile() {
                   </label>
                   <select
                     value={vehicleType}
-                    onChange={(e) => setVehicleType(e.target.value)}
+                    onChange={(e) => handleVehicleTypeChange(e.target.value)}
                     className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-radius-lg text-xs focus:outline-none focus:border-md-tertiary focus:bg-white transition-all font-semibold text-slate-700"
                   >
                     <option value="ALL">Tất cả</option>
@@ -461,11 +530,17 @@ export default function ShipperProfile() {
                   </label>
                   <input
                     type="text"
-                    placeholder="Ví dụ: 29E2-678.90"
+                    placeholder={vehicleType === 'CAR' ? 'Ví dụ: 51F-123.45' : 'Ví dụ: 59H1-234.56'}
                     value={licensePlate}
-                    onChange={(e) => setLicensePlate(e.target.value)}
-                    className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-radius-lg text-xs focus:outline-none focus:border-md-tertiary focus:bg-white focus:ring-2 focus:ring-md-tertiary/15 transition-all font-semibold text-slate-700"
+                    onChange={(e) => handleLicensePlateChange(e.target.value)}
+                    className={`${fieldClass(errors.licensePlate)} !pl-3`}
                   />
+                  <FieldError msg={errors.licensePlate} />
+                  {!errors.licensePlate && (
+                    <p className="text-[11px] font-semibold text-slate-400 mt-1.5">
+                      Chỉ gõ chữ &amp; số — dấu “-” “.” tự hiện.
+                    </p>
+                  )}
                 </div>
               </div>
 

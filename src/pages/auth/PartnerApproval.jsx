@@ -110,6 +110,12 @@ export default function PartnerApproval() {
       return;
     }
 
+    // BE trả kèm bản đồ {field -> thông báo} khi trùng: tô đỏ TẤT CẢ ô sai cùng lúc.
+    if (res?.validationErrors) {
+      setErrors((prev) => ({ ...prev, ...res.validationErrors }));
+      return;
+    }
+
     // Lỗi trùng định danh: tô đỏ đúng ô để user biết phải sửa chỗ nào, thay vì
     // chỉ đọc banner chung rồi tự dò. Các lỗi khác vẫn hiện ở banner như cũ.
     const FIELD_BY_ERROR_CODE = {

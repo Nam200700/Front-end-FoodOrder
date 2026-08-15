@@ -126,6 +126,11 @@ export const useAuthStore = create(
           if (resData?.errorCode === 'VALIDATION_FAILED' && resData?.data) {
             return { success: false, validationErrors: resData.data, error: resData.message };
           }
+          // Lỗi trùng định danh: BE trả kèm bản đồ {field -> thông báo} nên có thể tô đỏ
+          // NHIỀU ô cùng lúc (trùng cả CCCD lẫn biển số) chứ không chỉ ô đầu tiên.
+          if (resData?.data && typeof resData.data === 'object' && !Array.isArray(resData.data)) {
+            return { success: false, validationErrors: resData.data, errorCode: resData.errorCode, error: resData.message };
+          }
           // Trả kèm errorCode + message thật của backend (PHONE_EXISTS/EMAIL_EXISTS...) để Register.jsx
           // tô đỏ đúng field và hiện lý do rõ ràng; nếu không có message mới dùng câu generic.
           return {
@@ -169,7 +174,15 @@ export const useAuthStore = create(
           const errMsg = error.response?.data?.message || 'Gửi lại hồ sơ đối tác thất bại!';
           // Trả kèm errorCode (RESTAURANT_PHONE_EXISTS...) để PartnerApproval tô đỏ đúng ô,
           // thay vì chỉ hiện banner chung ở đầu form — giống cách register() đang làm.
-          return { success: false, errorCode: error.response?.data?.errorCode, error: errMsg };
+          const resData = error.response?.data;
+          return {
+            success: false,
+            errorCode: resData?.errorCode,
+            // Bản đồ {field -> thông báo} khi trùng nhiều ô cùng lúc (CCCD + biển số).
+            validationErrors: (resData?.data && typeof resData.data === 'object' && !Array.isArray(resData.data))
+              ? resData.data : undefined,
+            error: errMsg,
+          };
         }
       },
 
@@ -197,7 +210,15 @@ export const useAuthStore = create(
           const errMsg = error.response?.data?.message || 'Gửi lại hồ sơ đối tác thất bại!';
           // Trả kèm errorCode (ID_CARD_EXISTS / LICENSE_PLATE_EXISTS) để PartnerApproval
           // tô đỏ đúng ô thay vì chỉ hiện banner chung ở đầu form.
-          return { success: false, errorCode: error.response?.data?.errorCode, error: errMsg };
+          const resData = error.response?.data;
+          return {
+            success: false,
+            errorCode: resData?.errorCode,
+            // Bản đồ {field -> thông báo} khi trùng nhiều ô cùng lúc (CCCD + biển số).
+            validationErrors: (resData?.data && typeof resData.data === 'object' && !Array.isArray(resData.data))
+              ? resData.data : undefined,
+            error: errMsg,
+          };
         }
       },
 

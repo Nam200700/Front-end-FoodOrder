@@ -6,6 +6,8 @@ import { ThemeProvider } from './contexts/ThemeContext';
 import { WebSocketProvider } from './contexts/WebSocketContext';
 import { ErrorBoundary } from './components/common/ErrorBoundary';
 import { useAuthStore } from './stores/authStore';
+import { ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 function App() {
   // Khi mở/F5 app: access token trong bộ nhớ đã mất -> thử silent refresh (cookie HttpOnly)
@@ -33,6 +35,12 @@ function App() {
 
             {/* Floating Demo Tool để chuyển vai trò cực kỳ tiện lợi */}
             <RoleSwitcher />
+
+            {/* Toast dùng chung CHO TOÀN APP — mount 1 lần duy nhất ở đây.
+                Trước đây mỗi layout tự mount một cái, nên các trang nằm NGOÀI layout
+                (OTP, Đăng ký, Chờ duyệt đối tác) gọi toast mà không có gì hiển thị.
+                Đặt ở đây còn tránh toast bị mất khi chuyển giữa các layout. */}
+            <ToastContainer />
           </BrowserRouter>
         </WebSocketProvider>
       </ThemeProvider>

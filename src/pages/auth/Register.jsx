@@ -252,6 +252,8 @@ export default function Register() {
         setErrors(res.validationErrors);
         // Nếu lỗi rơi vào field cơ bản (bước 2) thì đưa người dùng về đúng bước để sửa
         if (['fullName', 'email', 'phone', 'password'].some((k) => res.validationErrors[k])) setStep(2);
+        // Lỗi hồ sơ đối tác (CCCD, biển số, SĐT quán) nằm ở bước 3
+        else if (['idCard', 'licensePlate', 'restaurantPhone'].some((k) => res.validationErrors[k])) setStep(3);
       } else {
         const msg = res.error || '';
         const code = res.errorCode;

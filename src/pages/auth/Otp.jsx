@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../../stores/authStore';
-import { ShieldCheck, ArrowLeft, RefreshCw, Mail, Lock, CheckCircle2, Clock } from 'lucide-react';
+import { ShieldCheck, ArrowLeft, RefreshCw, Mail, Lock, CheckCircle2, Clock, AlertCircle } from 'lucide-react';
 import apiClient from '../../services/api';
 import { toast } from 'react-toastify';
 
@@ -31,6 +31,10 @@ export default function Otp() {
   const [loading, setLoading] = useState(false);
   const [focusIdx, setFocusIdx] = useState(0);
   const [shake, setShake] = useState(false);
+  // Lỗi hiển thị NGAY DƯỚI ô nhập: người dùng đang nhìn vào ô OTP nên dễ thấy hơn
+  // toast ở góc màn hình (nhất là trên điện thoại). Nội dung lấy từ BE nên hiện đúng
+  // "Mã OTP không chính xác!" / "Mã OTP đã hết hạn!" / "Tài khoản tạm khóa đến ...".
+  const [error, setError] = useState('');
   const inputRefs = useRef([]);
 
   useEffect(() => {
@@ -42,6 +46,7 @@ export default function Otp() {
 
   const handleChange = (index, value) => {
     if (isNaN(value)) return;
+    setError('');           // gõ lại số mới -> xoá lỗi cũ
     const newOtp = [...otp];
     newOtp[index] = value.substring(value.length - 1);
     setOtp(newOtp);
@@ -63,6 +68,7 @@ export default function Otp() {
     e.preventDefault();
     const pasteData = e.clipboardData.getData('text').trim();
     if (pasteData.length === 6 && !isNaN(pasteData)) {
+      setError('');
       const newOtp = pasteData.split('');
       setOtp(newOtp);
       inputRefs.current[5].focus();
@@ -78,6 +84,7 @@ export default function Otp() {
     if (otpString.length < 6) return;
 
     setLoading(true);
+    setError('');
     try {
       const result = await apiClient.post('/auth/verify-otp', { email, otp: otpString });
       const { token, user } = result.data.data;
@@ -97,7 +104,9 @@ export default function Otp() {
       }
     } catch (err) {
       console.error('[Otp]: Verification failed', err);
-      toast.error(err.response?.data?.message || 'Mã OTP không đúng hoặc đã hết hạn.');
+      const msg = err.response?.data?.message || 'Mã OTP không đúng hoặc đã hết hạn.';
+      setError(msg);
+      toast.error(msg);
       setOtp(['', '', '', '', '', '']);
       setShake(true);
       setTimeout(() => setShake(false), 450);
@@ -117,11 +126,14 @@ export default function Otp() {
   const handleResend = async () => {
     if (timer > 0) return;
     if (resendCount >= MAX_RESEND) {
-      toast.error('Bạn đã vượt quá số lần yêu cầu gửi lại OTP cho phép (tối đa 3 lần).');
+      const msg = 'Bạn đã vượt quá số lần yêu cầu gửi lại OTP cho phép (tối đa 3 lần).';
+      setError(msg);
+      toast.error(msg);
       return;
     }
 
     setLoading(true);
+    setError('');
     try {
       await apiClient.post('/auth/resend-otp', { email });
       setResendCount(c => c + 1);
@@ -131,7 +143,9 @@ export default function Otp() {
       toast.success('Mã OTP mới đã được gửi tới email của bạn.');
     } catch (err) {
       console.error('[Otp]: Resend failed', err);
-      toast.error(err.response?.data?.message || 'Gửi lại OTP thất bại. Vui lòng thử lại sau.');
+      const msg = err.response?.data?.message || 'Gửi lại OTP thất bại. Vui lòng thử lại sau.';
+      setError(msg);
+      toast.error(msg);
     } finally {
       setLoading(false);
     }
@@ -218,17 +232,31 @@ export default function Otp() {
                     onKeyDown={(e) => handleKeyDown(index, e)}
                     onFocus={() => setFocusIdx(index)}
                     onBlur={() => setFocusIdx(-1)}
+                    aria-invalid={!!error}
                     className="w-12 h-14 text-center text-2xl font-black rounded-2xl border-2 outline-none transition-all duration-200 text-md-on-surface"
                     style={{
-                      borderColor: active ? accent : '#e2e8f0',
-                      backgroundColor: isFilled ? `${accent}0f` : '#f8fafc',
-                      boxShadow: isFocus ? `0 0 0 4px ${accent}1f` : 'none',
+                      borderColor: error ? '#EA4335' : (active ? accent : '#e2e8f0'),
+                      backgroundColor: error ? '#EA43350d' : (isFilled ? `${accent}0f` : '#f8fafc'),
+                      boxShadow: isFocus ? `0 0 0 4px ${error ? '#EA43351f' : `${accent}1f`}` : 'none',
                       transform: isFocus ? 'translateY(-2px)' : 'none',
                     }}
                   />
                 );
               })}
             </div>
+
+            {/* Thông báo lỗi ngay dưới ô nhập — role="alert" để trình đọc màn hình đọc lên */}
+            {error && (
+              <div
+                role="alert"
+                aria-live="assertive"
+                className="flex items-start gap-2 px-3.5 py-2.5 rounded-radius-md border animate-rise-in"
+                style={{ color: '#C5221F', backgroundColor: '#EA43350d', borderColor: '#EA433540' }}
+              >
+                <AlertCircle size={15} className="shrink-0 mt-px" />
+                <span className="text-xs font-bold leading-relaxed">{error}</span>
+              </div>
+            )}
 
             {/* Chỉ báo tiến trình nhập (6 chấm) */}
             <div className="flex justify-center gap-1.5">

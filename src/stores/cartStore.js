@@ -189,29 +189,20 @@ export const useCartStore = create((set, get) => ({
     }
   },
 
-  updateQty: async (foodId, currentQty, targetQty) => {
+  updateQty: async (cartItemId, targetQty) => {
     try {
-      const delta = targetQty - currentQty;
-      if (delta === 0) return;
-
-      if (targetQty <= 0) {
-        const allItems = get().carts.flatMap(c => c.items);
-        const targetItem = allItems.find(i => i.foodId === Number(foodId));
-        if (targetItem) {
-          await get().removeItem(targetItem.cartItemId);
+      await apiClient.put(
+        `/carts/me/items/${cartItemId}/quantity`,
+        {
+          quantity: targetQty
         }
-        return;
-      }
-      
-      await apiClient.post('/carts/me/items', {
-        foodId: Number(foodId),
-        quantity: delta,
-        note: null
-      });
-      
+      );
+
       await get().fetchCart();
+      return true;
     } catch (err) {
       console.error('Lỗi khi cập nhật số lượng:', err);
+      return false;
     }
   },
 

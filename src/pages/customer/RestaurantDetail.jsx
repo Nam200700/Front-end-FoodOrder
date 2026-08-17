@@ -17,7 +17,6 @@ import Button from '../../components/common/Button';
 import Card from '../../components/common/Card';
 import Modal from '../../components/common/Modal';
 import apiClient from '../../services/api';
-import { calculateHaversineDistance } from '../../utils/haversine';
 import { toast } from 'react-toastify';
 import { mapRestaurant } from '../../utils/mappers';
 import { useModalState } from '../../hooks/useModalState';
@@ -867,7 +866,10 @@ export default function RestaurantDetail() {
         setLoading(false);
       }
     };
+    fetchDetails();
+  }, [id]);
 
+  useEffect(() => {
     const fetchFavoriteStatus = async () => {
       try {
         const response = await apiClient.get('/favorites');
@@ -877,10 +879,8 @@ export default function RestaurantDetail() {
         console.warn('Lỗi khi kiểm tra yêu thích:', err);
       }
     };
-
-    fetchDetails();
     fetchFavoriteStatus();
-  }, [id, user?.lat, user?.lng]);
+  }, [id]);
 
   // Parallax ảnh bìa — ghi transform trực tiếp vào DOM qua rAF (không setState mỗi frame → hết giật).
   useEffect(() => {
@@ -968,6 +968,11 @@ export default function RestaurantDetail() {
 
   const activeGroupCheckedRef = useRef(false);
 
+  useEffect(() => {
+    setGroupOrder(null);
+    activeGroupCheckedRef.current = false;
+  }, [id]);
+
   // Khôi phục phiên đặt nhóm đang hoạt động của quán này khi mở lại trang
   useEffect(() => {
     if (activeGroupCheckedRef.current) return;
@@ -1028,7 +1033,9 @@ export default function RestaurantDetail() {
   // Poll nhẹ để cập nhật món/thành viên khác trong lúc phiên còn mở
   useEffect(() => {
     if (!groupOrder || (groupOrder.status !== 'OPEN' && groupOrder.status !== 'LOCKED')) return;
-    const timer = setInterval(() => refreshGroupOrder(groupOrder.groupOrderId), 6000);
+    const timer = setInterval(() => {
+      if (!document.hidden) refreshGroupOrder(groupOrder.groupOrderId); // [SỬA]
+    }, 6000);
     return () => clearInterval(timer);
   }, [groupOrder?.groupOrderId, groupOrder?.status]);
 
@@ -1543,6 +1550,15 @@ export default function RestaurantDetail() {
             <Button 
               variant="outline"
               size="sm"
+              onClick={async () => {
+                const url = window.location.href;
+                if (navigator.share) {
+                  try { await navigator.share({ title: restaurant.name, url }); } catch {}
+                } else if (navigator.clipboard && window.isSecureContext) {
+                  await navigator.clipboard.writeText(url);
+                  toast.success('Đã sao chép liên kết quán!');
+                }
+              }}
               className="w-11 h-11 !p-0 border-none rounded-radius-full bg-white/95 backdrop-blur-md flex items-center justify-center text-md-on-surface shadow-shadow-2 hover:scale-105 transition-transform"
             >
               <Share2 size={20} />
@@ -2095,7 +2111,7 @@ export default function RestaurantDetail() {
               type="datetime-local"
               value={groupDeadline}
               onChange={(e) => setGroupDeadline(e.target.value)}
-              className="w-full p-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-emerald-400"
+              className="w-full p-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-primary-400"
             />
           </div>
           <div className="space-y-1.5">
@@ -2104,7 +2120,7 @@ export default function RestaurantDetail() {
               value={groupNote}
               onChange={(e) => setGroupNote(e.target.value)}
               rows={2}
-              className="w-full p-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-emerald-400 resize-none"
+              className="w-full p-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-primary-400 resize-none"
             />
           </div>
           <Button onClick={handleCreateGroupOrder} disabled={creatingGroup} className="w-full !bg-primary-600 hover:!bg-primary-700">

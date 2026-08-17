@@ -205,7 +205,7 @@ export default function Reviews() {
         >
           <ArrowLeft size={18} />
         </Button>
-        <h1 className="text-lg font-extrabold text-md-on-surface">
+        <h1 className="text-xl md:text-2xl font-bold text-gray-900 flex items-center gap-2.5">
           {readOnly ? `Chi Tiết Đánh Giá #${orderId}` : `Đánh Giá Đơn Hàng #${orderId}`}
         </h1>
       </div>

@@ -5,7 +5,7 @@ import { useWebSocketContext } from '../../contexts/WebSocketContext';
 import {
   ShoppingBag, RefreshCw, Ban, AlertCircle, MessageSquare, Star, FileText, MapPin, CreditCard, Eye,
   User, Phone, Bike, Wallet, StickyNote, CalendarClock, UtensilsCrossed, Package, BadgeCheck, Clock, Check,
-  Store, CheckCircle2, ChevronRight, Receipt, Ticket, ChevronLeft, Search, X, Heart, Home, Sparkles
+  Store, CheckCircle2, ChevronRight, Receipt, Ticket, ChevronLeft, Search, X, Heart, Home, Sparkles, Users 
 } from 'lucide-react';
 import { formatCurrency } from '../../utils/format';
 import { getFoodImageUrl, DEFAULT_FOOD_IMAGE } from '../../utils/avatarHelper';
@@ -19,6 +19,7 @@ import Button from '../../components/common/Button';
 import Modal from '../../components/common/Modal';
 import Card from '../../components/common/Card';
 import { useModalState } from '../../hooks/useModalState';
+import { useAuthStore } from '../../stores/authStore';
 
 // Tabs trạng thái đơn hàng
 const ORDER_STATUS_TABS = [
@@ -175,6 +176,7 @@ function RichFirstOrderEmpty({ navigate }) {
 
 export default function OrderHistory() {
   const navigate = useNavigate();
+  const {user} = useAuthStore();
   const replaceCart = useCartStore((state) => state.replaceCart);
   const { subscribe, connected } = useWebSocketContext();
   const [activeTab, setActiveTab] = useState('ALL');
@@ -208,6 +210,8 @@ export default function OrderHistory() {
 
   const [keywordInput, setKeywordInput] = useState('');
   const [debouncedKeyword, setDebouncedKeyword] = useState('');
+
+
 
   const mapOrders = (data) => {
     const realData = data?.content || [];
@@ -247,7 +251,13 @@ export default function OrderHistory() {
         phone: order.customerPhone,
         voucherCode: order.voucherCode,
         discountAmount: order.discountAmount,
-        cancelReason: order.cancelReason
+        cancelReason: order.cancelReason,
+        // [MỚI] Thông tin đơn đặt nhóm
+        groupOrderId: order.groupOrderId || null,
+        groupHostId: order.groupHostId || null,
+        groupHostName: order.groupHostName || null,
+        isGroupOrder: !!order.groupOrderId,
+        isGroupHost: !!order.groupOrderId && user?.id != null && String(order.groupHostId) === String(user.id),
       };
     });
   };
@@ -559,6 +569,11 @@ export default function OrderHistory() {
                           <span className="font-bold text-slate-500">MÃ ĐƠN #{order.id}</span>
                           <span className="w-1 h-1 rounded-full bg-slate-300 shrink-0" />
                           <span className="inline-flex items-center gap-1 whitespace-nowrap"><CalendarClock size={11} /> {order.createdAt}</span>
+                          {order.isGroupOrder && (
+                            <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded-full">
+                              <Users size={10} /> {order.isGroupHost ? 'Đơn nhóm' : `Đơn nhóm · Chủ nhóm: ${order.groupHostName || 'N/A'}`}
+                            </span>
+                          )}
                         </div>
                       </div>
 
@@ -595,7 +610,7 @@ export default function OrderHistory() {
                     )}
 
                     {/* Nhắc đánh giá: đơn đã giao thành công nhưng khách chưa đánh giá */}
-                    {order.status === 'COMPLETED' && !order.reviewed && (
+                    {order.status === 'COMPLETED' && !order.reviewed && (!order.isGroupOrder || order.isGroupHost) && (
                       <button
                         onClick={(e) => { e.stopPropagation(); navigate(`/reviews/${order.id}`); }}
                         className="group/rate w-full flex items-center gap-3 bg-gradient-to-r from-amber-50 to-orange-50/40 border border-amber-100 rounded-xl px-3 py-2.5 text-left hover:border-amber-300 hover:shadow-sm transition-all cursor-pointer"
@@ -662,44 +677,53 @@ export default function OrderHistory() {
 
                       <div className="flex items-center justify-end gap-1.5 w-full sm:w-auto" onClick={(e) => e.stopPropagation()}>
                         {order.status === 'PENDING' ? (
-                          <Button
-                            type="button"
-                            onClick={(e) => cancelModal.open(order.id)}
-                            icon={Ban}
-                            className="!px-2.5 !py-1.5 !bg-red-500 hover:!bg-red-600 text-white !rounded-lg text-[11px] !font-bold !shadow-sm flex-1 sm:flex-none sm:w-auto"
-                          >
-                            Hủy đơn
-                          </Button>
+                          (!order.isGroupOrder || order.isGroupHost) ? (
+                            <Button
+                              type="button"
+                              onClick={(e) => cancelModal.open(order.id)}
+                              icon={Ban}
+                              className="!px-2.5 !py-1.5 !bg-red-500 hover:!bg-red-600 text-white !rounded-lg text-[11px] !font-bold !shadow-sm flex-1 sm:flex-none sm:w-auto"
+                            >
+                              Hủy đơn
+                            </Button>
+                          ) : (
+                            <span className="text-[11px] font-semibold text-slate-400 italic px-2">
+                              Chỉ chủ nhóm mới hủy được đơn này
+                            </span>
+                          )
                         ) : (
                           <>
                             {order.status === 'COMPLETED' && (
-                              <>
-                                <Button
-                                  type="button"
-                                  onClick={(e) => handleReorder(e, order)}
-                                  icon={RefreshCw}
-                                  className="!px-2.5 !py-1.5 !bg-orange-500 hover:!bg-orange-600 text-white !rounded-lg text-[11px] !font-bold !shadow-sm whitespace-nowrap flex-1 sm:flex-none sm:w-auto"
-                                >
-                                  Mua lại
-                                </Button>
-                                 
-                                {order.reviewed ? (
+                            <>
+                              {/* Mua lại: ai cũng được (chỉ thêm vào giỏ của chính họ) */}
+                              <Button
+                                type="button"
+                                onClick={(e) => handleReorder(e, order)}
+                                icon={RefreshCw}
+                                className="!px-2.5 !py-1.5 !bg-orange-500 hover:!bg-orange-600 text-white !rounded-lg text-[11px] !font-bold !shadow-sm whitespace-nowrap flex-1 sm:flex-none sm:w-auto"
+                              >
+                                Mua lại
+                              </Button>
+
+                              {/* Đánh giá: đơn nhóm thì chỉ chủ nhóm mới thấy nút này */}
+                              {(!order.isGroupOrder || order.isGroupHost) && (
+                                order.reviewed ? (
                                   <Button
                                     type="button"
                                     onClick={(e) => {
-                                      e.stopPropagation(); 
+                                      e.stopPropagation();
                                       navigate(`/reviews/${order.id}`);
                                     }}
                                     icon={Star}
                                     className="!px-2.5 !py-1.5 !bg-slate-100 !text-slate-500 !border-none !rounded-lg text-[11px] !font-bold !shadow-none whitespace-nowrap flex-1 sm:flex-none sm:w-auto cursor-not-allowed flex items-center justify-center gap-1"
                                   >
-                                    Đã đánh giá 
+                                    Đã đánh giá
                                   </Button>
                                 ) : (
                                   <Button
                                     type="button"
                                     onClick={(e) => {
-                                      e.stopPropagation(); 
+                                      e.stopPropagation();
                                       navigate(`/reviews/${order.id}`);
                                     }}
                                     icon={MessageSquare}
@@ -707,9 +731,10 @@ export default function OrderHistory() {
                                   >
                                     Đánh giá
                                   </Button>
-                                )}
-                              </>
-                            )}         
+                                )
+                              )}
+                            </>
+                          )}  
                           </>
                         )}
 

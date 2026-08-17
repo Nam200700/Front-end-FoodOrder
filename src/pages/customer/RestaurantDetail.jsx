@@ -1129,7 +1129,7 @@ export default function RestaurantDetail() {
     try {
       const res = await apiClient.patch(`/group-orders/${groupOrder.groupOrderId}/lock`);
       setGroupOrder(res.data?.data);
-      toast.success('Đã khóa phiên, mọi người không thể thêm món nữa');
+      toast.success('Đã khóa phiên, mọi người không thể thêm món!');
     } catch (err) {
       toast.error(err.response?.data?.message || 'Không thể khóa phiên');
     } finally {
@@ -1267,7 +1267,7 @@ export default function RestaurantDetail() {
       const listRes = await apiClient.get('/addresses');
       setGroupUserAddresses(listRes.data?.data || []);
 
-      toast.success('Đã đặt làm mặc định và cập nhật địa chỉ giao hàng cho phiên nhóm!');
+      toast.success('Chọn địa chỉ thành công!');
       groupAddressListModal.close();
     } catch (err) {
       toast.error(err.response?.data?.message || 'Không thể đổi địa chỉ.');
@@ -2274,7 +2274,7 @@ export default function RestaurantDetail() {
           {confirmInviteModal.data?.preview && (
             <div className="p-3.5 sm:p-4 rounded-radius-md bg-orange-50/50 border border-orange-100 space-y-2.5 text-xs sm:text-sm">
               <div className="flex justify-between items-center">
-                <span className="text-md-on-surface-variant font-semibold shrink-0">Chủ phiên:</span>
+                <span className="text-md-on-surface-variant font-semibold shrink-0">Chủ nhóm:</span>
                 <span className="font-extrabold text-md-on-surface text-right truncate pl-2">
                   {confirmInviteModal.data.preview.hostName || 'Thành viên'}
                 </span>

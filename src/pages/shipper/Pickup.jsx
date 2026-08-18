@@ -426,7 +426,7 @@ export default function ShipperPickup() {
       const status = activeJob.status;
       const id = activeJob.id;
 
-      if (status === 'READY_FOR_PICKUP') {
+      if (status === 'READY_FOR_PICKUP' || status === "SHIPPER_ACCEPTED") {
         await apiClient.patch(`/shipper/orders/${id}/picked-up`);
         await apiClient.patch(`/shipper/orders/${id}/delivering`);
         toast.success('Đã xác nhận lấy hàng thành công!');

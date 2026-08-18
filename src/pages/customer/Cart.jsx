@@ -583,6 +583,11 @@ export default function Cart() {
     return bestVal > 0 ? best : null;
   }, [myVouchers, selectingRestaurantId, carts, shippingInfos]);
 
+  const sortedMyVouchers = useMemo(() => {
+    if (!selectingRestaurantId || myVouchers.length == 0) return myVouchers;
+    return [...myVouchers].sort((a, b) => estimateVoucherSaving(b) - estimateVoucherSaving(a));
+  }, [myVouchers, selectingRestaurantId, carts, shippingInfos]);
+
   const finalTotalAmount = useMemo(() => {
     const total = selectedItemsSubtotal + totalShippingFee - totalDiscountAmount;
     return total > 0 ? total : 0;
@@ -1377,9 +1382,9 @@ export default function Cart() {
             Bạn chắc chắn muốn xóa toàn bộ sản phẩm thuộc giỏ hàng của <span className="font-extrabold text-slate-700">Quán {deleteCartModal.data?.restaurantName}</span>?
           </p>
 
-          <div className="inline-flex items-center gap-1.5 text-[11px] font-bold text-amber-700 bg-amber-50 border border-amber-200 px-3 py-1.5 rounded-full">
+          {/* <div className="inline-flex items-center gap-1.5 text-[11px] font-bold text-amber-700 bg-amber-50 border border-amber-200 px-3 py-1.5 rounded-full">
             <AlertTriangle size={13} className="shrink-0" /> Hành động này không thể hoàn tác
-          </div>
+          </div> */}
 
           <div className="flex gap-3 pt-2 justify-center">
             <Button
@@ -1522,7 +1527,7 @@ export default function Cart() {
                 {/* TAB 1: VOUCHER CỦA TÔI */}
                 {activeVoucherTab === 'my' && (
                   <>
-                    {myVouchers.map((item, idx) => {
+                    {sortedMyVouchers.map((item, idx) => {
                       const isSelectedForThisRes = selectedVouchers[selectingRestaurantId]?.userVoucherId === item.userVoucherId;
                       const meta = vmeta(item.discountType);
                       const MetaIcon = meta.icon;

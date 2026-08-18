@@ -17,7 +17,6 @@ import Button from '../../components/common/Button';
 import Card from '../../components/common/Card';
 import Modal from '../../components/common/Modal';
 import apiClient from '../../services/api';
-import { calculateHaversineDistance } from '../../utils/haversine';
 import { toast } from 'react-toastify';
 import { mapRestaurant } from '../../utils/mappers';
 import { useModalState } from '../../hooks/useModalState';
@@ -525,6 +524,8 @@ function GroupOrderPanel({
   const memberInitial = (name) => (name || '?').trim().charAt(0).toUpperCase();
   const memberColor = (name) => AVATAR_COLORS[((name || '?').charCodeAt(0) || 0) % AVATAR_COLORS.length];
 
+  const myItemsLocked = myMember?.status === 'READY';
+
   return (
     <Card variant="elevated" className="p-0 overflow-hidden rounded-2xl border border-emerald-100 shadow-md">
       {/* Header gradient */}
@@ -629,7 +630,7 @@ function GroupOrderPanel({
                         </div>
                         <div className="flex items-center gap-1.5 shrink-0">
                           <span className="font-semibold text-slate-600">{formatCurrency(it.lineTotal)}</span>
-                          {isCurrentUser && groupOrder.status === 'OPEN' && (
+                          {isCurrentUser && groupOrder.status === 'OPEN' && !myItemsLocked && (
                             <>
                               <button type="button" disabled={busy} onClick={() => onEditNote(it)}
                                 className="p-0.5 rounded text-slate-400 hover:text-emerald-600 hover:bg-emerald-100/60 transition-all disabled:opacity-50" title="Ghi chú">
@@ -756,6 +757,7 @@ export default function RestaurantDetail() {
   const isGroupMode = !!groupOrder && groupOrder.status !== 'ORDERED' && groupOrder.status !== 'CANCELLED';
   const myMember = groupOrder?.members?.find((m) => m.userId === user?.id);
   const isHost = !!myMember?.isHost;
+  const isMyGroupItemsLocked = isGroupMode && myMember?.status === 'READY';
 
   const menuSectionsRef = useRef({});
   const heroImgRef = useRef(null); // parallax ghi thẳng vào DOM, KHÔNG qua state (tránh re-render cả trang khi cuộn)
@@ -864,7 +866,10 @@ export default function RestaurantDetail() {
         setLoading(false);
       }
     };
+    fetchDetails();
+  }, [id]);
 
+  useEffect(() => {
     const fetchFavoriteStatus = async () => {
       try {
         const response = await apiClient.get('/favorites');
@@ -874,10 +879,8 @@ export default function RestaurantDetail() {
         console.warn('Lỗi khi kiểm tra yêu thích:', err);
       }
     };
-
-    fetchDetails();
     fetchFavoriteStatus();
-  }, [id, user?.lat, user?.lng]);
+  }, [id]);
 
   // Parallax ảnh bìa — ghi transform trực tiếp vào DOM qua rAF (không setState mỗi frame → hết giật).
   useEffect(() => {
@@ -965,6 +968,11 @@ export default function RestaurantDetail() {
 
   const activeGroupCheckedRef = useRef(false);
 
+  useEffect(() => {
+    setGroupOrder(null);
+    activeGroupCheckedRef.current = false;
+  }, [id]);
+
   // Khôi phục phiên đặt nhóm đang hoạt động của quán này khi mở lại trang
   useEffect(() => {
     if (activeGroupCheckedRef.current) return;
@@ -1025,7 +1033,9 @@ export default function RestaurantDetail() {
   // Poll nhẹ để cập nhật món/thành viên khác trong lúc phiên còn mở
   useEffect(() => {
     if (!groupOrder || (groupOrder.status !== 'OPEN' && groupOrder.status !== 'LOCKED')) return;
-    const timer = setInterval(() => refreshGroupOrder(groupOrder.groupOrderId), 6000);
+    const timer = setInterval(() => {
+      if (!document.hidden) refreshGroupOrder(groupOrder.groupOrderId); // [SỬA]
+    }, 6000);
     return () => clearInterval(timer);
   }, [groupOrder?.groupOrderId, groupOrder?.status]);
 
@@ -1126,7 +1136,7 @@ export default function RestaurantDetail() {
     try {
       const res = await apiClient.patch(`/group-orders/${groupOrder.groupOrderId}/lock`);
       setGroupOrder(res.data?.data);
-      toast.success('Đã khóa phiên, mọi người không thể thêm món nữa');
+      toast.success('Đã khóa phiên, mọi người không thể thêm món!');
     } catch (err) {
       toast.error(err.response?.data?.message || 'Không thể khóa phiên');
     } finally {
@@ -1172,6 +1182,10 @@ export default function RestaurantDetail() {
   // Hàm gọi API xóa món ăn khỏi phiên đặt nhóm
   const handleRemoveGroupItem = async (itemId) => {
     if (!groupOrder?.groupOrderId) return;
+    if (isMyGroupItemsLocked) {
+      toast.warn('Bạn đã hoàn tất chọn món, không thể xóa món nữa.');
+      return;
+    }
     try {
       setGroupBusy(true);
       const res = await apiClient.delete(`/group-orders/${groupOrder.groupOrderId}/items/${itemId}`);
@@ -1184,24 +1198,40 @@ export default function RestaurantDetail() {
     }
   };
 
-  //copy link mời
-  const copyInviteLink = () => {
-    if (!groupOrder?.inviteUrl) return;
-    navigator.clipboard.writeText(groupOrder.inviteUrl);
-    toast.success('Đã sao chép liên kết mời!');
+  const copyInviteLink = async () => {
+    const url = buildInviteUrl(restaurant.id, groupOrder?.inviteCode);
+    if (!groupOrder?.inviteCode) return;
+    try {
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(url);
+      } else {
+        const textarea = document.createElement('textarea');
+        textarea.value = url;
+        textarea.style.position = 'fixed';
+        textarea.style.opacity = '0';
+        document.body.appendChild(textarea);
+        textarea.focus();
+        textarea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textarea);
+      }
+      toast.success('Đã sao chép liên kết mời!');
+    } catch (err) {
+      toast.error('Không thể sao chép, vui lòng copy thủ công.');
+    }
   };
 
-  //share link mời
   const shareInvite = async () => {
-    if (!groupOrder?.inviteUrl) return;
+    const url = buildInviteUrl(restaurant.id, groupOrder?.inviteCode);
+    if (!groupOrder?.inviteCode) return;
     if (navigator.share) {
       try {
         await navigator.share({
           title: `Tham gia đặt đơn nhóm tại ${restaurant?.name}`,
           text: 'Cùng đặt món với mình nhé!',
-          url: groupOrder.inviteUrl,
+          url,
         });
-      } catch { /* người dùng huỷ chia sẻ — bỏ qua */ }
+      } catch { /* huỷ chia sẻ */ }
     } else {
       copyInviteLink();
     }
@@ -1244,7 +1274,7 @@ export default function RestaurantDetail() {
       const listRes = await apiClient.get('/addresses');
       setGroupUserAddresses(listRes.data?.data || []);
 
-      toast.success('Đã đặt làm mặc định và cập nhật địa chỉ giao hàng cho phiên nhóm!');
+      toast.success('Chọn địa chỉ thành công!');
       groupAddressListModal.close();
     } catch (err) {
       toast.error(err.response?.data?.message || 'Không thể đổi địa chỉ.');
@@ -1323,6 +1353,10 @@ export default function RestaurantDetail() {
     }
   };
 
+  // Ưu tiên domain thực tế trình duyệt đang chạy, không phụ thuộc BE cấu hình đúng hay chưa
+  const buildInviteUrl = (restaurantId, inviteCode) =>
+    `${window.location.origin}/restaurants/${restaurantId}?group=${inviteCode}`;
+
   
 
   // ═══════════════════════ HẾT PHẦN NHÓM ═══════════════════════
@@ -1331,6 +1365,10 @@ export default function RestaurantDetail() {
   const handleAddToCart = async (item) => {
     if (!restaurant) return;
     if (isGroupMode) {
+      if (isMyGroupItemsLocked) {
+        toast.warn('Bạn đã hoàn tất chọn món, không thể thêm món.');
+        return;
+      }
       const currentQty = getItemQty(item.id);
       await handleUpdateGroupQty(item, currentQty + 1);
       return;
@@ -1340,6 +1378,10 @@ export default function RestaurantDetail() {
 
   const handleQtyButtonChange = (item, newQty) => {
     if (isGroupMode) {
+      if (isMyGroupItemsLocked) {
+        toast.warn('Bạn đã hoàn tất chọn món, không thể thay đổi số lượng.');
+        return;
+      }
       handleUpdateGroupQty(item, newQty);
       return;
     }
@@ -1508,6 +1550,15 @@ export default function RestaurantDetail() {
             <Button 
               variant="outline"
               size="sm"
+              onClick={async () => {
+                const url = window.location.href;
+                if (navigator.share) {
+                  try { await navigator.share({ title: restaurant.name, url }); } catch {}
+                } else if (navigator.clipboard && window.isSecureContext) {
+                  await navigator.clipboard.writeText(url);
+                  toast.success('Đã sao chép liên kết quán!');
+                }
+              }}
               className="w-11 h-11 !p-0 border-none rounded-radius-full bg-white/95 backdrop-blur-md flex items-center justify-center text-md-on-surface shadow-shadow-2 hover:scale-105 transition-transform"
             >
               <Share2 size={20} />
@@ -1762,7 +1813,7 @@ export default function RestaurantDetail() {
                                   <div className="flex items-center text-white rounded-radius-full py-1 px-2.5 xs:py-1.5 xs:px-3.5 gap-2 xs:gap-3.5 shadow-shadow-2 bg-md-primary">
                                     <button 
                                       onClick={() => handleQtyButtonChange(item, qty - 1)}
-                                      disabled={groupBusy}
+                                      disabled={groupBusy || isMyGroupItemsLocked}
                                       className="p-1 rounded-full hover:bg-white/10 active:scale-90 transition-transform disabled:opacity-50"
                                     >
                                       <Minus size={14} className="stroke-[3px] xs:size-[16px]" />
@@ -1770,7 +1821,7 @@ export default function RestaurantDetail() {
                                     <span className="text-xs xs:text-sm font-extrabold min-w-4 xs:min-w-5 text-center">{qty}</span>
                                     <button 
                                       onClick={() => handleQtyButtonChange(item, qty + 1)}
-                                      disabled={groupBusy}
+                                      disabled={groupBusy || isMyGroupItemsLocked}
                                       className="p-1 rounded-full hover:bg-white/10 active:scale-90 transition-transform disabled:opacity-50"
                                     >
                                       <Plus size={14} className="stroke-[3px] xs:size-[16px]" />
@@ -1781,7 +1832,7 @@ export default function RestaurantDetail() {
                                     variant="outline"
                                     size="sm"
                                     onClick={() => handleAddToCart(item)}
-                                    disabled={groupBusy || (isGroupMode && groupOrder.status !== 'OPEN')}
+                                    disabled={groupBusy || (isGroupMode && groupOrder.status !== 'OPEN') || isMyGroupItemsLocked}
                                     className="w-8 h-8 xs:w-10 xs:h-10 !p-0 rounded-radius-full border transition-all duration-200 shrink-0 border-md-primary/30 text-md-primary hover:bg-md-primary hover:text-white"
                                   >
                                     <Plus size={18} className="stroke-[2.5px] xs:size-[20px]" />
@@ -2060,7 +2111,7 @@ export default function RestaurantDetail() {
               type="datetime-local"
               value={groupDeadline}
               onChange={(e) => setGroupDeadline(e.target.value)}
-              className="w-full p-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-emerald-400"
+              className="w-full p-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-primary-400"
             />
           </div>
           <div className="space-y-1.5">
@@ -2069,7 +2120,7 @@ export default function RestaurantDetail() {
               value={groupNote}
               onChange={(e) => setGroupNote(e.target.value)}
               rows={2}
-              className="w-full p-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-emerald-400 resize-none"
+              className="w-full p-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-primary-400 resize-none"
             />
           </div>
           <Button onClick={handleCreateGroupOrder} disabled={creatingGroup} className="w-full !bg-primary-600 hover:!bg-primary-700">
@@ -2090,7 +2141,7 @@ export default function RestaurantDetail() {
           <div className="space-y-4 -mt-3 text-center">
             <div className="flex justify-center p-3 bg-white rounded-xl border border-slate-200 shadow-sm w-fit mx-auto">
               <QRCodeSVG
-                value={groupOrder.inviteUrl}
+                value={buildInviteUrl(restaurant.id, groupOrder.inviteCode)}
                 size={200}
                 level="M"
                 marginSize={0}
@@ -2101,7 +2152,7 @@ export default function RestaurantDetail() {
 
             <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2">
               <Link2 size={15} className="text-slate-400 shrink-0" />
-              <span className="text-xs font-semibold text-slate-600 truncate flex-1 text-left">{groupOrder.inviteUrl}</span>
+              <span className="text-xs font-semibold text-slate-600 truncate flex-1 text-left">{buildInviteUrl(restaurant.id, groupOrder.inviteCode)}</span>
               <button onClick={copyInviteLink} className="p-1.5 rounded-full hover:bg-slate-200 text-slate-500 cursor-pointer shrink-0" title="Sao chép liên kết">
                 <Copy size={14} />
               </button>
@@ -2112,9 +2163,9 @@ export default function RestaurantDetail() {
               <Button onClick={() => inviteModal.close()} className="flex-1 !bg-primary-600 hover:!bg-primary-700">Xong</Button>
             </div>
 
-            <p className="text-[11px] text-slate-400">
+            {/* <p className="text-[11px] text-slate-400">
               Mã mời: <span className="font-black text-slate-600 tracking-widest break-all">{groupOrder.inviteCode}</span>
-            </p>
+            </p> */}
           </div>
         )}
       </Modal>
@@ -2239,7 +2290,7 @@ export default function RestaurantDetail() {
           {confirmInviteModal.data?.preview && (
             <div className="p-3.5 sm:p-4 rounded-radius-md bg-orange-50/50 border border-orange-100 space-y-2.5 text-xs sm:text-sm">
               <div className="flex justify-between items-center">
-                <span className="text-md-on-surface-variant font-semibold shrink-0">Chủ phiên:</span>
+                <span className="text-md-on-surface-variant font-semibold shrink-0">Chủ nhóm:</span>
                 <span className="font-extrabold text-md-on-surface text-right truncate pl-2">
                   {confirmInviteModal.data.preview.hostName || 'Thành viên'}
                 </span>
@@ -2499,7 +2550,7 @@ export default function RestaurantDetail() {
                                 <span className="truncate flex-1 min-w-0">{it.foodName} × {it.quantity}</span>
                                 <div className="flex items-center gap-1 shrink-0">
                                   <span className="font-semibold text-slate-600">{formatCurrency(it.lineTotal)}</span>
-                                  {isCurrentUser && isOpen && (
+                                  {isCurrentUser && isOpen && myMember?.status !== 'READY' && (
                                     <>
                                       <button onClick={() => { openNoteEditor(it); }} className="p-0.5 text-slate-400 hover:text-orange-600">
                                         <Pencil size={11} />

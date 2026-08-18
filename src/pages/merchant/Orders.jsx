@@ -26,6 +26,7 @@ const STATUS_ACCENT = {
   CONFIRMED: 'border-l-blue-500',
   PREPARING: 'border-l-indigo-500',
   READY_FOR_PICKUP: 'border-l-teal-500',
+  SHIPPER_ACCEPTED: 'border-l-teal-500',
   PICKED_UP: 'border-l-cyan-500',
   DELIVERING: 'border-l-sky-500',
   COMPLETED: 'border-l-emerald-500',
@@ -38,6 +39,7 @@ const STATUS_PILL = {
   CONFIRMED: { bg: 'bg-blue-100', text: 'text-blue-700', icon: Check },
   PREPARING: { bg: 'bg-indigo-100', text: 'text-indigo-700', icon: UtensilsCrossed },
   READY_FOR_PICKUP: { bg: 'bg-teal-100', text: 'text-teal-700', icon: Package },
+  SHIPPER_ACCEPTED: { bg: 'bg-teal-100', text: 'text-teal-700', icon: Package },   // FIX: thêm mới
   PICKED_UP: { bg: 'bg-cyan-100', text: 'text-cyan-700', icon: Bike },
   DELIVERING: { bg: 'bg-sky-100', text: 'text-sky-700', icon: Bike },
   COMPLETED: { bg: 'bg-emerald-100', text: 'text-emerald-700', icon: BadgeCheck },
@@ -468,6 +470,7 @@ export default function MerchantOrders() {
       case 'CONFIRMED': return 'Đã xác nhận';
       case 'PREPARING': return 'Đang chuẩn bị';
       case 'READY_FOR_PICKUP': return 'Chờ lấy hàng';
+      case 'SHIPPER_ACCEPTED': return 'Tài xế đang tới lấy';
       case 'COMPLETED': return 'Thành công';
       case 'CANCELLED': return 'Đã từ chối';
       default: return status;
@@ -769,25 +772,34 @@ export default function MerchantOrders() {
 
                       {order.status === 'PREPARING' && (
                         <>
-                          <Button
-                            variant="danger"
-                            size="sm"
-                            icon={Ban}
+                          <Button variant="danger" size="sm" icon={Ban}
                             disabled={actionLoadingId === order.id}
                             onClick={(e) => handleOpenCancelModal(e, order.id, 'cancel')}
-                            className="w-full sm:w-auto !py-2.5 rounded-lg text-xs"
-                          >
+                            className="w-full sm:w-auto !py-2.5 rounded-lg text-xs">
                             Hủy đơn
                           </Button>
-                          <Button
-                            variant="secondary"
-                            size="sm"
+                          <Button variant="secondary" size="sm"
                             loading={actionLoadingId === order.id}
                             disabled={actionLoadingId === order.id}
                             onClick={(e) => handleReady(e, order.id)}
-                            className="w-full sm:w-auto !py-2.5 rounded-lg text-xs !bg-[#34A853] hover:!bg-[#2E8B49]"
-                          >
+                            className="w-full sm:w-auto !py-2.5 rounded-lg text-xs !bg-[#34A853] hover:!bg-[#2E8B49]">
                             Sẵn sàng giao
+                          </Button>
+                        </>
+                      )}
+
+                      {/* FIX: thêm mới — đơn đã có shipper nhận nhưng quán vẫn cần đánh dấu sẵn sàng khi nấu xong */}
+                      {order.status === 'SHIPPER_ACCEPTED' && (
+                        <>
+                          <span className="inline-flex items-center gap-1.5 text-[11px] font-bold text-teal-600 bg-teal-50 border border-teal-200 px-3 py-2 rounded-lg">
+                            <Bike size={13} /> {order.shipper ? `Shipper: ${order.shipper}` : 'Đã có tài xế nhận'}
+                          </span>
+                          <Button variant="secondary" size="sm"
+                            loading={actionLoadingId === order.id}
+                            disabled={actionLoadingId === order.id}
+                            onClick={(e) => handleReady(e, order.id)}
+                            className="w-full sm:w-auto !py-2.5 rounded-lg text-xs !bg-[#34A853] hover:!bg-[#2E8B49]">
+                            Món đã xong
                           </Button>
                         </>
                       )}
@@ -1063,16 +1075,21 @@ export default function MerchantOrders() {
                 )}
 
                 {status === 'PREPARING' && (
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    icon={Package}
-                    loading={busy}
-                    disabled={busy}
+                  <Button variant="secondary" size="sm" icon={Package}
+                    loading={busy} disabled={busy}
                     onClick={(e) => handleReady(e, orderId)}
-                    className="rounded-lg text-xs !py-2 !bg-[#34A853] hover:!bg-[#2E8B49]"
-                  >
+                    className="rounded-lg text-xs !py-2 !bg-[#34A853] hover:!bg-[#2E8B49]">
                     Sẵn sàng giao
+                  </Button>
+                )}
+
+                {/* FIX: thêm mới */}
+                {status === 'SHIPPER_ACCEPTED' && (
+                  <Button variant="secondary" size="sm" icon={Package}
+                    loading={busy} disabled={busy}
+                    onClick={(e) => handleReady(e, orderId)}
+                    className="rounded-lg text-xs !py-2 !bg-[#34A853] hover:!bg-[#2E8B49]">
+                    Món đã xong
                   </Button>
                 )}
               </div>

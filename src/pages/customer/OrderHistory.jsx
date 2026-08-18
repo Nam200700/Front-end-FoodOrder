@@ -38,6 +38,7 @@ const STATUS_ACCENT = {
   CONFIRMED: 'border-l-blue-500',
   PREPARING: 'border-l-indigo-500',
   READY_FOR_PICKUP: 'border-l-sky-500',
+  SHIPPER_ACCEPTED: 'border-l-sky-500',
   DELIVERING: 'border-l-orange-500',
   COMPLETED: 'border-l-emerald-500',
   CANCELLED: 'border-l-rose-400',
@@ -49,6 +50,7 @@ const STATUS_ICON = {
   CONFIRMED: Check,
   PREPARING: UtensilsCrossed,
   READY_FOR_PICKUP: Package,
+  SHIPPER_ACCEPTED: Package,
   DELIVERING: Bike,
   COMPLETED: BadgeCheck,
   CANCELLED: Ban,
@@ -63,7 +65,7 @@ const PROGRESS_STEPS = [
   { key: 'COMPLETED', label: 'Hoàn tất', icon: BadgeCheck },
 ];
 // Map trạng thái → chỉ số bước (READY_FOR_PICKUP/PICKED_UP nằm giữa chuẩn bị & giao)
-const STEP_INDEX = { PENDING: 0, CONFIRMED: 1, PREPARING: 2, READY_FOR_PICKUP: 2, PICKED_UP: 3, DELIVERING: 3, COMPLETED: 4 };
+const STEP_INDEX = { PENDING: 0, CONFIRMED: 1, PREPARING: 2, READY_FOR_PICKUP: 2, SHIPPER_ACCEPTED: 2, PICKED_UP: 3, DELIVERING: 3, COMPLETED: 4 };
 const isActiveStatus = (s) => s !== 'COMPLETED' && s !== 'CANCELLED';
 
 // Câu thông báo khi trạng thái đơn đổi (realtime) — hiện toast cho khách
@@ -71,6 +73,7 @@ const STATUS_TOAST = {
   CONFIRMED: 'đã được quán xác nhận',
   PREPARING: 'quán đang chuẩn bị món',
   READY_FOR_PICKUP: 'đang chờ tài xế đến lấy',
+  SHIPPER_ACCEPTED: 'đã có tài xế nhận đơn, đang tới lấy hàng',
   PICKED_UP: 'tài xế đã lấy hàng',
   DELIVERING: 'đang trên đường giao đến bạn',
   COMPLETED: 'đã giao thành công',
@@ -399,6 +402,7 @@ export default function OrderHistory() {
       case 'CONFIRMED': return 'Đã xác nhận';
       case 'PREPARING': return 'Đang chuẩn bị';
       case 'READY_FOR_PICKUP': return 'Chờ tài xế';
+      case 'SHIPPER_ACCEPTED': return 'Tài xế đang đến lấy';
       case 'DELIVERING': return 'Đang giao hàng';
       default: return 'Không hợp lệ';
     }
@@ -418,6 +422,8 @@ export default function OrderHistory() {
         return 'bg-indigo-50 text-indigo-700'; 
       case 'READY_FOR_PICKUP': 
         return 'bg-sky-50 text-sky-700'; 
+      case 'SHIPPER_ACCEPTED':                   
+        return 'bg-sky-50 text-sky-700';
       case 'DELIVERING':
         return 'bg-orange-50 text-orange-700'; 
       default: 

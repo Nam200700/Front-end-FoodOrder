@@ -422,24 +422,26 @@ export default function ShipperPickup() {
     if (!activeJob) return;
     try {
       setLoading(true);
-      // READY_FOR_PICKUP -> PICKED_UP -> DELIVERING -> COMPLETED.
       const status = activeJob.status;
       const id = activeJob.id;
-
-      if (status === 'READY_FOR_PICKUP' || status === "SHIPPER_ACCEPTED") {
+      // 1. Nếu quán vẫn đang nấu món -> chưa cho lấy hàng
+      if (status === 'PREPARING') {
+        toast.warn('Quán chưa nấu xong món, vui lòng chờ quán báo "Sẵn sàng giao"!');
+        return;
+      }
+      // 2. Bước 1: Quán đã nấu xong -> Shipper xác nhận đã lấy hàng từ quán
+      if (status === 'READY_FOR_PICKUP') {
         await apiClient.patch(`/shipper/orders/${id}/picked-up`);
-        await apiClient.patch(`/shipper/orders/${id}/delivering`);
         toast.success('Đã xác nhận lấy hàng thành công!');
         await fetchActiveJob();
       } 
-      // else if (status === 'PICKED_UP') {
-      //   await apiClient.patch(`/shipper/orders/${id}/delivering`);
-      //   await apiClient.patch(`/shipper/orders/${id}/complete`);
-      //   toast.success('Đơn hàng đã giao thành công!');
-      //   setActiveJob(null);
-      //   setRouteCoords([]);
-      //   await fetchAvailableOrders();
-      // } 
+      // 3. Bước 2: Đã lấy hàng -> Shipper rời quán và Bắt đầu giao hàng
+      else if (status === 'PICKED_UP') {
+        await apiClient.patch(`/shipper/orders/${id}/delivering`);
+        toast.success('Đã bắt đầu di chuyển giao hàng!');
+        await fetchActiveJob();
+      } 
+      // 4. Bước 3: Đang giao -> Shipper xác nhận đã giao xong cho khách
       else if (status === 'DELIVERING') {
         await apiClient.patch(`/shipper/orders/${id}/complete`);
         toast.success('Đơn hàng đã giao thành công!');
@@ -449,7 +451,7 @@ export default function ShipperPickup() {
       }
     } catch (err) {
       console.error(err);
-      toast.error('Lỗi cập nhật tiến trình đơn hàng. Vui lòng thử lại!');
+      toast.error(err.response?.data?.message || 'Lỗi cập nhật tiến trình đơn hàng. Vui lòng thử lại!');
     } finally {
       setLoading(false);
     }
@@ -663,17 +665,35 @@ export default function ShipperPickup() {
               variant="primary"
               size="md"
               icon={Check}
-              className="w-full !bg-md-tertiary hover:!bg-opacity-95 !rounded-radius-full !py-3.5 text-xs uppercase tracking-wider"
+              disabled={activeJob.status === 'PREPARING'}
+              className={`w-full !rounded-radius-full !py-3.5 text-xs uppercase tracking-wider ${
+                activeJob.status === 'PREPARING'
+                  ? '!bg-slate-300 text-slate-500 cursor-not-allowed'
+                  : activeJob.status === 'READY_FOR_PICKUP'
+                  ? '!bg-blue-600 hover:!bg-blue-700'
+                  : activeJob.status === 'PICKED_UP'
+                  ? '!bg-orange-500 hover:!bg-orange-600'
+                  : '!bg-md-tertiary hover:!bg-opacity-95'
+              }`}
             >
-              {activeJob.step === 'ACCEPTED' ? 'Xác nhận đã lấy hàng' : 'Xác nhận giao thành công'}
+              {activeJob.status === 'PREPARING'
+                ? 'Đang chờ quán làm món...'
+                : activeJob.status === 'READY_FOR_PICKUP'
+                ? 'Xác nhận đã lấy hàng'
+                : activeJob.status === 'PICKED_UP'
+                ? 'Bắt đầu giao hàng'
+                : 'Xác nhận giao thành công'}
             </Button>
 
-            <button
-              onClick={() => setAbandonOpen(true)}
-              className="w-full mt-2 py-2 text-xs font-bold text-rose-500 hover:text-rose-600 transition-colors cursor-pointer inline-flex items-center justify-center gap-1.5"
-            >
-              <X size={13} /> Bỏ đơn này
-            </button>
+            {/* Chỉ cho phép hiển thị Nút Bỏ đơn khi đơn đang ở bước PREPARING hoặc READY_FOR_PICKUP */}
+            {(activeJob.status === 'PREPARING' || activeJob.status === 'READY_FOR_PICKUP') && (
+              <button
+                onClick={() => setAbandonOpen(true)}
+                className="w-full mt-2 py-2 text-xs font-bold text-rose-500 hover:text-rose-600 transition-colors cursor-pointer inline-flex items-center justify-center gap-1.5"
+              >
+                <X size={13} /> Bỏ đơn này
+              </button>
+            )}
           </div>
 
           {abandonOpen && (

@@ -793,6 +793,8 @@ export default function RestaurantDetail() {
 
   const [checkoutNote, setCheckoutNote] = useState('');
 
+  const [defaultAddress, setDefaultAddress] = useState(null);
+
   useEffect(() => {
     if (!id) return;
     
@@ -1047,13 +1049,15 @@ export default function RestaurantDetail() {
   //tạo đơn nhóm
   const handleCreateGroupOrder = async () => {
     if (!restaurant) return;
+    if (!defaultAddress) {
+      toast.warn('Bạn chưa có địa chỉ giao hàng nào, vui lòng thêm địa chỉ trước khi tạo phiên nhóm.');
+      return;
+    }
     setCreatingGroup(true);
     try {
       const payload = {
         restaurantId: Number(id),
-        deliveryLat: user?.lat || 10.762622,
-        deliveryLng: user?.lng || 106.660172,
-        deliveryAddress: user?.address || null,
+        addressId: defaultAddress.addressId,
         joinDeadline: groupDeadline || null,
         note: groupNote || null,
       };
@@ -1067,6 +1071,12 @@ export default function RestaurantDetail() {
     } finally {
       setCreatingGroup(false);
     }
+  };
+
+  // Mở modal tạo phiên nhóm 
+  const openCreateGroupModal = async () => {
+    await fetchDefaultAddress();
+    createGroupModal.open();
   };
 
   const handleUpdateGroupQty = async (item, newQty) => {
@@ -1247,22 +1257,12 @@ export default function RestaurantDetail() {
 
   // Mở modal danh sách địa chỉ cho phiên nhóm — chỉ host, khi phiên còn OPEN
   const openGroupAddressModal = async () => {
-    try {
-      const res = await apiClient.get('/addresses');
-      const list = res.data?.data || [];
-      setGroupUserAddresses(list);
-      const defaultAddr = list.find((a) => a.default);
-      if (defaultAddr) setGroupSelectedAddressId(defaultAddr.addressId);
-    } catch (err) {
-      console.warn('Không tải được danh sách địa chỉ:', err);
-    }
+    await fetchDefaultAddress();
     groupAddressListModal.open();
   };
 
   const selectGroupAddress = async (item) => {
-    if (!groupOrder) return;
     setSavingGroupAddress(true);
-    setGroupSelectedAddressId(item.addressId);
     try {
       await apiClient.put(`/addresses/${item.addressId}`, {
         label: item.label || 'Nhà riêng',
@@ -1272,26 +1272,26 @@ export default function RestaurantDetail() {
         isDefault: true,
       });
 
-      const res = await apiClient.patch(`/group-orders/${groupOrder.groupOrderId}/address`, {
-        addressId: item.addressId,
-      });
-      const updatedGroup = res.data?.data || null;
-      setGroupOrder(updatedGroup);
+      const updatedItem = { ...item };
+      setDefaultAddress(updatedItem);
 
-      // Đổi địa chỉ xong -> LUÔN tính lại phí ship theo toạ độ giao hàng MỚI, bỏ qua cache
-      if (updatedGroup?.deliveryLat && updatedGroup?.deliveryLng) {
-        fetchShippingForRestaurant(
-          id,
-          Number(updatedGroup.deliveryLat),
-          Number(updatedGroup.deliveryLng),
-          true
-        );
+      // Nếu đang có phiên nhóm mở → đồng bộ luôn cho phiên đó
+      if (groupOrder) {
+        const res = await apiClient.patch(`/group-orders/${groupOrder.groupOrderId}/address`, {
+          addressId: item.addressId,
+        });
+        const updatedGroup = res.data?.data || null;
+        setGroupOrder(updatedGroup);
+
+        if (updatedGroup?.deliveryLat && updatedGroup?.deliveryLng) {
+          fetchShippingForRestaurant(id, Number(updatedGroup.deliveryLat), Number(updatedGroup.deliveryLng), true);
+        }
       }
 
       const listRes = await apiClient.get('/addresses');
       setGroupUserAddresses(listRes.data?.data || []);
 
-      toast.success('Chọn địa chỉ thành công!');
+      toast.success('Đã đặt làm địa chỉ mặc định!');
       groupAddressListModal.close();
     } catch (err) {
       toast.error(err.response?.data?.message || 'Không thể đổi địa chỉ.');
@@ -1322,6 +1322,22 @@ export default function RestaurantDetail() {
     });
     groupAddressListModal.close();
     groupMapModal.open();
+  };
+
+  // Lấy địa chỉ mặc định hiện tại của user — dùng chung cho cả tạo nhóm lẫn đổi địa chỉ
+  const fetchDefaultAddress = async () => {
+    try {
+      const res = await apiClient.get('/addresses');
+      const list = res.data?.data || [];
+      setGroupUserAddresses(list);
+      const defaultAddr = list.find((a) => a.default) || list[0] || null;
+      setDefaultAddress(defaultAddr);
+      return defaultAddr;
+    } catch (err) {
+      console.warn('Không tải được danh sách địa chỉ:', err);
+      setDefaultAddress(null);
+      return null;
+    }
   };
 
   // Xác nhận trên bản đồ -> lưu vào /addresses 
@@ -1644,7 +1660,7 @@ export default function RestaurantDetail() {
               {!isGroupMode ? (
                 <Button
                   variant="outline"
-                  onClick={() => createGroupModal.open()}
+                  onClick={openCreateGroupModal}
                   icon={Users}
                   className="bg-emerald-50 hover:bg-emerald-100 text-emerald-600 font-bold w-full sm:w-auto px-3 !text-xs sm:!text-sm whitespace-nowrap col-span-2 sm:col-span-1"
                 >

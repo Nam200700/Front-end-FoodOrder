@@ -508,7 +508,7 @@ const GROUP_STATUS_META = {
 function GroupOrderPanel({
   groupOrder, isHost, myMember, onMarkReady, onLock, onCheckout, onLeave,
   onCancel, onShowInvite, busy, handleRemoveGroupItem, onEditNote,
-  shippingFee, distanceKm, durationMinutes, onChangeAddress
+  shippingFee, distanceKm, durationMinutes, onChangeAddress, defaultAddress 
 }) {
   const { user } = useAuthStore();
   if (!groupOrder) return null;
@@ -567,8 +567,20 @@ function GroupOrderPanel({
       </div>
 
       <div className="p-4 space-y-4">
-        {groupOrder.deliveryAddress && (
-          isHost && onChangeAddress ? (
+        {isHost && onChangeAddress ? (
+          defaultAddress ? (
+            <button
+              onClick={onChangeAddress}
+              className="w-full flex items-start gap-2.5 text-xs bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl px-3 py-2.5 transition-colors text-left group"
+            >
+              <MapPin size={15} className="text-emerald-600 shrink-0 mt-0.5" />
+              <span className="flex-1 min-w-0">
+                <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-wide">Giao đến</span>
+                <span className="block font-bold text-slate-700 break-words whitespace-normal">{defaultAddress.address}</span>
+              </span>
+              <Edit2 size={13} className="text-slate-400 group-hover:text-emerald-600 shrink-0 mt-0.5 transition-colors" />
+            </button>
+          ) : groupOrder.deliveryAddress ? (
             <button
               onClick={onChangeAddress}
               className="w-full flex items-start gap-2.5 text-xs bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl px-3 py-2.5 transition-colors text-left group"
@@ -580,7 +592,9 @@ function GroupOrderPanel({
               </span>
               <Edit2 size={13} className="text-slate-400 group-hover:text-emerald-600 shrink-0 mt-0.5 transition-colors" />
             </button>
-          ) : (
+          ) : null
+        ) : (
+          groupOrder.deliveryAddress && (
             <div className="w-full flex items-start gap-2.5 text-xs bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5">
               <MapPin size={15} className="text-slate-400 shrink-0 mt-0.5" />
               <span className="flex-1 min-w-0">
@@ -1272,10 +1286,12 @@ export default function RestaurantDetail() {
         isDefault: true,
       });
 
-      const updatedItem = { ...item };
-      setDefaultAddress(updatedItem);
+      const listRes = await apiClient.get('/addresses');
+      const list = listRes.data?.data || [];
+      setGroupUserAddresses(list);
+      const newDefault = list.find((a) => a.default) || null;
+      setDefaultAddress(newDefault);
 
-      // Nếu đang có phiên nhóm mở → đồng bộ luôn cho phiên đó
       if (groupOrder) {
         const res = await apiClient.patch(`/group-orders/${groupOrder.groupOrderId}/address`, {
           addressId: item.addressId,
@@ -1287,9 +1303,6 @@ export default function RestaurantDetail() {
           fetchShippingForRestaurant(id, Number(updatedGroup.deliveryLat), Number(updatedGroup.deliveryLng), true);
         }
       }
-
-      const listRes = await apiClient.get('/addresses');
-      setGroupUserAddresses(listRes.data?.data || []);
 
       toast.success('Đã đặt làm địa chỉ mặc định!');
       groupAddressListModal.close();
@@ -1340,7 +1353,6 @@ export default function RestaurantDetail() {
     }
   };
 
-  // Xác nhận trên bản đồ -> lưu vào /addresses 
   const handleGroupMapConfirmAndSave = async (latVal, lngVal, addressNameVal) => {
     try {
       const payload = {
@@ -1348,7 +1360,7 @@ export default function RestaurantDetail() {
         address: addressNameVal,
         latitude: Number(latVal),
         longitude: Number(lngVal),
-        isDefault: groupUserAddresses.length === 0,
+        isDefault: true, 
       };
 
       let savedAddressId = groupEditingAddressId;
@@ -1361,40 +1373,37 @@ export default function RestaurantDetail() {
         toast.success('Thêm địa chỉ mới thành công!');
       }
 
-      if (groupOrder) {
-        const res = savedAddressId
-          ? await apiClient.patch(`/group-orders/${groupOrder.groupOrderId}/address`, { addressId: savedAddressId })
-          : await apiClient.patch(`/group-orders/${groupOrder.groupOrderId}/address`, {
-              deliveryAddress: addressNameVal,
-              deliveryLat: Number(latVal),
-              deliveryLng: Number(lngVal),
-            });
+      if (groupOrder && savedAddressId) {
+        const res = await apiClient.patch(`/group-orders/${groupOrder.groupOrderId}/address`, { addressId: savedAddressId });
         const updatedGroup = res.data?.data || null;
         setGroupOrder(updatedGroup);
-        if (savedAddressId) setGroupSelectedAddressId(savedAddressId);
 
-        // LUÔN tính lại phí ship theo toạ độ giao hàng MỚI, bỏ qua cache
         if (updatedGroup?.deliveryLat && updatedGroup?.deliveryLng) {
-          fetchShippingForRestaurant(
-            id,
-            Number(updatedGroup.deliveryLat),
-            Number(updatedGroup.deliveryLng),
-            true
-          );
+          fetchShippingForRestaurant(id, Number(updatedGroup.deliveryLat), Number(updatedGroup.deliveryLng), true);
         }
       }
 
       groupMapModal.close();
       setGroupEditingAddressId(null);
 
+      // Refetch để có defaultAddress đúng thực tế
       const listRes = await apiClient.get('/addresses');
-      setGroupUserAddresses(listRes.data?.data || []);
+      const list = listRes.data?.data || [];
+      setGroupUserAddresses(list);
+      setDefaultAddress(list.find((a) => a.default) || null);
+
       groupAddressListModal.open();
     } catch (err) {
       console.error('Lỗi lưu địa chỉ cho phiên nhóm:', err);
       toast.error(err.response?.data?.message || 'Lưu địa chỉ thất bại!');
     }
   };
+
+  useEffect(() => {
+    if (groupOrder && !defaultAddress) {
+      fetchDefaultAddress();
+    }
+  }, [groupOrder]);
   
   // ═══════════════════════ HẾT PHẦN NHÓM ═══════════════════════
 
@@ -1907,6 +1916,7 @@ export default function RestaurantDetail() {
                 distanceKm={cachedShipping?.distanceKm}
                 durationMinutes={durationMinutes}
                 onChangeAddress={openGroupAddressModal}
+                defaultAddress={defaultAddress}
               />
             ) : (
               <Card variant="elevated" className="p-5">
@@ -2453,7 +2463,7 @@ export default function RestaurantDetail() {
         <div className="space-y-4 -mx-6 -my-6 flex flex-col h-full">
           <div className="max-h-[55vh] overflow-y-auto space-y-3 px-6 pt-2 pb-1">
             {groupUserAddresses.map((item) => {
-              const isSelected = groupSelectedAddressId === item.addressId;
+              const isSelected = defaultAddress?.addressId === item.addressId;
               return (
                 <div
                   key={item.addressId}
@@ -2553,12 +2563,12 @@ export default function RestaurantDetail() {
 
               {/* Nội dung cuộn: địa chỉ + danh sách thành viên */}
               <div className="flex-1 overflow-y-auto px-6 py-3 space-y-3 no-scrollbar">
-                {groupOrder.deliveryAddress && (
+                {defaultAddress && (
                   <div className="flex items-start gap-2.5 text-xs bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5">
                     <MapPin size={14} className="text-orange-500 shrink-0 mt-0.5" />
                     <span className="flex-1 min-w-0">
                       <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-wide">Giao đến</span>
-                      <span className="block font-bold text-slate-700 break-words">{groupOrder.deliveryAddress}</span>
+                      <span className="block font-bold text-slate-700 break-words">{defaultAddress.address}</span>
                     </span>
                     {isHost && isOpen && (
                       <button

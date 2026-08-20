@@ -26,13 +26,27 @@ const STAGE_UI = {
   CONFIRMED:        { icon: Store,       title: 'Quán đã xác nhận đơn',    desc: 'Quán chuẩn bị bắt tay vào làm món cho bạn.', grad: 'from-orange-400 to-orange-600' },
   PREPARING:        { icon: ChefHat,     title: 'Đang chuẩn bị món',       desc: 'Đầu bếp đang trổ tài — món ngon sắp xong!', grad: 'from-orange-500 to-rose-500' },
   READY_FOR_PICKUP: { icon: Package,     title: 'Món đã sẵn sàng',         desc: 'Đang chờ tài xế tới lấy hàng của bạn.', grad: 'from-amber-500 to-orange-600' },
-  SHIPPER_ACCEPTED: { icon: Package,     title: 'Tài xế đang đến lấy hàng', desc: 'Đã có tài xế nhận đơn và đang trên đường tới quán.', grad: 'from-amber-500 to-orange-600' }, // FIX: thêm mới
   DELIVERING:       { icon: Bike,        title: 'Tài xế đang giao tới bạn', desc: 'Món đang trên đường — sắp tới nơi rồi!', grad: 'from-orange-500 to-red-500' },
   COMPLETED:        { icon: PartyPopper, title: 'Giao hàng thành công!',   desc: 'Chúc bạn ngon miệng. Đừng quên đánh giá nhé!', grad: 'from-emerald-500 to-green-600' },
   CANCELLED:        { icon: Ban,         title: 'Đơn hàng đã bị hủy',      desc: 'Đơn hàng của bạn đã được hủy.', grad: 'from-slate-500 to-slate-700' },
 };
-const getStageUI = (status) => (status === 'PICKED_UP' ? STAGE_UI.DELIVERING : (STAGE_UI[status] || STAGE_UI.PENDING));
-
+const getStageUI = (displayOrder) => {
+  if (!displayOrder) return STAGE_UI.PENDING;
+  const status = displayOrder.status;
+  if (status === 'PICKED_UP') return STAGE_UI.DELIVERING;
+  const base = STAGE_UI[status] || STAGE_UI.PENDING;
+  
+  // Nếu đã có shipper nhận đơn khi đơn đang chuẩn bị/sẵn sàng lấy
+  if (displayOrder.shipper && (status === 'PREPARING' || status === 'READY_FOR_PICKUP')) {
+    return {
+      ...base,
+      desc: status === 'PREPARING'
+        ? `Quán đang làm món. Tài xế ${displayOrder.shipper.name || ''} đã nhận đơn và đang tới quán.`
+        : `Món đã xong. Tài xế ${displayOrder.shipper.name || ''} đang tới lấy hàng.`
+    };
+  }
+  return base;
+};
 // Thiết lập default icon cho Leaflet để tránh mất ảnh marker
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
@@ -344,7 +358,6 @@ export default function OrderTracking() {
       case 'PREPARING':
         return 2;
       case 'READY_FOR_PICKUP':
-      case 'SHIPPER_ACCEPTED':   
         return 3;
       case 'PICKED_UP':
       case 'DELIVERING':
@@ -393,7 +406,6 @@ export default function OrderTracking() {
             CONFIRMED: mapped.confirmedAt,
             PREPARING: mapped.preparingAt,
             READY_FOR_PICKUP: mapped.readyAt,
-            SHIPPER_ACCEPTED: mapped.readyAt,
             PICKED_UP: mapped.pickedUpAt,
             DELIVERING: mapped.pickedUpAt,
             COMPLETED: mapped.completedAt,

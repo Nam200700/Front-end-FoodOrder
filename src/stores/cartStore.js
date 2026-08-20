@@ -98,12 +98,14 @@ export const useCartStore = create((set, get) => ({
     }
   },
 
-  fetchShippingForRestaurant: async (resId, deliveryLat, deliveryLng) => {
+  fetchShippingForRestaurant: async (resId, deliveryLat, deliveryLng, force = false) => {
     if (!resId || !deliveryLat || !deliveryLng) return;
 
     const { restaurantShippingCache } = get();
     const cached = restaurantShippingCache[resId];
-    if (cached && cached.lat === deliveryLat && cached.lng === deliveryLng) return;
+    // Chỉ dùng cache khi KHÔNG force và toạ độ không đổi
+    if (!force && cached && cached.lat === deliveryLat && cached.lng === deliveryLng) return;
+
     try {
       const res = await apiClient.get("/shipping/calculate", {
         params: {
@@ -122,7 +124,7 @@ export const useCartStore = create((set, get) => ({
               shippingFee: data.shippingFee,
               distanceKm: data.distanceKm,
               durationMinutes: data.durationMinutes,
-              lat: deliveryLat,   
+              lat: deliveryLat,
               lng: deliveryLng,
             }
           }

@@ -774,7 +774,7 @@ export default function MerchantOrders() {
                               <Bike size={13} /> Shipper: {order.shipper}
                             </span>
                           )}
-                          <Button 
+                          {/* <Button 
                             variant="danger" 
                             size="sm" 
                             icon={Ban}
@@ -783,7 +783,7 @@ export default function MerchantOrders() {
                             className="w-full sm:w-auto !py-2.5 rounded-lg text-xs"
                           >
                             Hủy đơn
-                          </Button>
+                          </Button> */}
                           <Button 
                             variant="secondary" 
                             size="sm"

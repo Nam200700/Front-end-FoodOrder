@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import apiClient from '../services/api';
+import { toast } from 'react-toastify';
 
 export const useCartStore = create((set, get) => ({
   carts: [], // Danh sách giỏ hàng: [{ cartId, restaurantId, restaurantName, latitude, longitude, items: [], subtotal }]
@@ -187,6 +188,7 @@ export const useCartStore = create((set, get) => ({
       return true;
     } catch (err) {
       console.error('Lỗi khi thêm món vào giỏ hàng:', err);
+      toast.error(err.response?.data?.message || 'Không thể thêm món vào giỏ hàng!');
       return false;
     }
   },
@@ -204,6 +206,7 @@ export const useCartStore = create((set, get) => ({
       return true;
     } catch (err) {
       console.error('Lỗi khi cập nhật số lượng:', err);
+      toast.error(err.response?.data?.message || 'Không thể cập nhật số lượng!');
       return false;
     }
   },
@@ -214,6 +217,7 @@ export const useCartStore = create((set, get) => ({
       await get().fetchCart();
     } catch (err) {
       console.error('Lỗi khi xóa món khỏi giỏ hàng:', err);
+      toast.error(err.response?.data?.message || 'Không thể xóa món khỏi giỏ hàng!');
     }
   },
 

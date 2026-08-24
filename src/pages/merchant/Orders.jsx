@@ -234,6 +234,8 @@ export default function MerchantOrders() {
       setTotalPages(response.data?.data?.totalPages || 1);
       
       const mapped = realData.map(ord => {
+        const dateObj = ord.createdAt ? new Date(ord.createdAt) : new Date();
+        const dateStr = `${String(dateObj.getDate()).padStart(2, '0')}/${String(dateObj.getMonth() + 1).padStart(2, '0')}/${dateObj.getFullYear()} ${String(dateObj.getHours()).padStart(2, '0')}:${String(dateObj.getMinutes()).padStart(2, '0')}`;
         return {
           id: ord.orderId.toString(),
           customer: ord.customerName,
@@ -245,7 +247,7 @@ export default function MerchantOrders() {
             image: getFoodImageUrl(i.foodImageUrl)
           })),
           total: Number(ord.totalAmount),
-          createdAt: formatDateTime(ord.createdAt),
+          createdAt: dateStr,
           createdAtMs: ord.createdAt ? new Date(ord.createdAt).getTime() : null, 
           phone: ord.customerPhone,
           status: ord.orderStatus,

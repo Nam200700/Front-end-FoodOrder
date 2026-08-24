@@ -78,8 +78,14 @@ export default function Home() {
   const cartTotal = carts.reduce((sum, cart) => sum + (cart.subtotal || 0), 0);
   const { user, updateProfile } = useAuthStore();
 
-  const customerLat = user?.lat || DEFAULT_LAT;
-  const customerLng = user?.lng || DEFAULT_LNG;
+  const [currentCoords, setCurrentCoords] = useState({
+    lat: DEFAULT_LAT,
+    lng: DEFAULT_LNG
+  });
+
+  // Nếu user đã đăng nhập thì lấy từ user.lat/lng, nếu chưa thì lấy từ currentCoords (GPS)
+  const customerLat = user?.lat || currentCoords.lat;
+  const customerLng = user?.lng || currentCoords.lng;
 
   const [restaurants, setRestaurants] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -122,6 +128,24 @@ export default function Home() {
   useEffect(() => {
     setVisibleExploreCount(PAGE_SIZE);
   }, [debouncedSearch, activeCategory, sortByFilter, onlyOpen, onlyFavorites]);
+
+  useEffect(() => {
+    // Nếu chưa đăng nhập (!user), tự động lấy GPS để làm tâm quét quán ăn
+    if (!user && navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const { latitude, longitude } = position.coords;
+          
+          // Cập nhật tọa độ thực tế vào state -> tự động kích hoạt tính toán lại khoảng cách
+          setCurrentCoords({ lat: latitude, lng: longitude });
+        },
+        (error) => {
+          console.warn('Người dùng từ chối GPS hoặc lỗi định vị:', error);
+        },
+        { enableHighAccuracy: true, timeout: 7000 }
+      );
+    }
+  }, [user]);
 
   useEffect(() => {
     let ignore = false;

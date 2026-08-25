@@ -16,7 +16,17 @@ if (!configured && import.meta.env.PROD) {
   throw new Error('[Config] Phải khai VITE_WS_URL (hoặc VITE_WS_BASE_URL) khi build production!');
 }
 
-// SockJS chạy trên HTTP(S), không nhận scheme ws:// — chuyển giúp để dù khai kiểu nào cũng chạy.
-export const WS_URL = (configured || 'http://localhost:8080/ws').replace(/^ws/, 'http');
+/*
+ * Chấp nhận hai dạng khai báo:
+ *   - Đường dẫn TƯƠNG ĐỐI ("/ws") — dùng cho bản deploy, nơi nginx phục vụ cả FE và BE
+ *     trên cùng một origin. SockJS tự ghép với origin của trang, nên trang chạy HTTPS thì
+ *     kết nối cũng đi HTTPS -> không bao giờ dính lỗi mixed content.
+ *   - URL TUYỆT ĐỐI ("http://192.168.1.58:8080/ws") — dùng khi chạy dev, FE và BE khác cổng.
+ *
+ * SockJS chạy trên HTTP(S) chứ không nhận scheme ws:// nên phải đổi giúp; chỉ đổi khi
+ * chuỗi thực sự bắt đầu bằng ws:// hoặc wss:// — đường dẫn tương đối "/ws" giữ nguyên.
+ */
+export const WS_URL = (configured || 'http://localhost:8080/ws')
+  .replace(/^ws(s?):\/\//, 'http$1://');
 
 export default WS_URL;

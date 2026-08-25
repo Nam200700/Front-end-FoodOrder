@@ -2207,7 +2207,7 @@ export default function RestaurantDetail() {
             </div>
 
             <div className="flex gap-2">
-              {/* <Button onClick={shareInvite} variant="outline" className="flex-1" icon={Send}>Chia sẻ</Button> */}
+              <Button onClick={shareInvite} variant="outline" className="flex-1" icon={Send}>Chia sẻ</Button>
               <Button onClick={() => inviteModal.close()} className="flex-1 !bg-primary-600 hover:!bg-primary-700">Xong</Button>
             </div>
 

@@ -30,7 +30,9 @@ export function WebSocketProvider({ children }) {
 
     console.log('[WebSocket Context]: Connecting...');
     const client = new Client({
-      webSocketFactory: () => new SockJS(WS_URL.replace(/^ws/, 'http')),
+      // WS_URL đã được utils/wsUrl.js chuẩn hoá sẵn scheme, không đổi lại ở đây nữa:
+      // phép replace cũ (/^ws/) sẽ cắt nhầm nếu địa chỉ là đường dẫn tương đối.
+      webSocketFactory: () => new SockJS(WS_URL),
       connectHeaders: {
         Authorization: `Bearer ${token}`, // Đính kèm JWT khi handshake bảo mật
       },

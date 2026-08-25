@@ -211,7 +211,8 @@ export default function OrderHistory() {
   const [keywordInput, setKeywordInput] = useState('');
   const [debouncedKeyword, setDebouncedKeyword] = useState('');
 
-
+  const [fromDate, setFromDate] = useState('');
+  const [toDate, setToDate] = useState('');
 
   const mapOrders = (data) => {
     const realData = data?.content || [];
@@ -269,7 +270,9 @@ export default function OrderHistory() {
         page: page,
         size: pageSize,
         ...(activeTab !== 'ALL' && { status: activeTab }),
-        ...(debouncedKeyword.trim() && { keyword: debouncedKeyword.trim() })
+        ...(debouncedKeyword.trim() && { keyword: debouncedKeyword.trim() }),
+        fromDate: fromDate,
+        toDate: toDate
       };
       const response = await apiClient.get('/orders', { params });
       const responseData = response.data?.data || response.data;
@@ -282,11 +285,15 @@ export default function OrderHistory() {
     } finally {
       if (!background) setLoading(false);
     }
-  }, [activeTab, page, debouncedKeyword]);
+  }, [activeTab, page, debouncedKeyword, fromDate, toDate]);
 
   useEffect(() => {
     setPage(0);
   }, [activeTab]);
+
+  useEffect(() => {
+    setPage(0);
+  }, [fromDate, toDate]);
 
   useEffect(() => {
     fetchOrderHistory();
@@ -451,7 +458,7 @@ export default function OrderHistory() {
 
         {/* Dải tổng quan: tổng đơn · đã giao · tổng chi tiêu.
             Mobile: 2 ô nhỏ cùng hàng, ô "Đã chi tiêu" tràn cả hàng để số tiền không bị cắt. */}
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-2.5 md:gap-3 mb-5">
+        {/* <div className="grid grid-cols-2 md:grid-cols-3 gap-2.5 md:gap-3 mb-5">
           {[
             { icon: Receipt, label: 'Tổng đơn', value: summary.total, cls: 'text-slate-700', bg: 'bg-slate-100 text-slate-500' },
             { icon: CheckCircle2, label: 'Đã giao', value: summary.completed, cls: 'text-emerald-600', bg: 'bg-emerald-100 text-emerald-600' },
@@ -472,7 +479,7 @@ export default function OrderHistory() {
               </div>
             );
           })}
-        </div>
+        </div> */}
 
         {/* Thanh điều hướng Tabs Trạng thái & Ô Tìm kiếm ở góc phải */}
         <div className="mb-6 flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-slate-200 pb-3">
@@ -507,6 +514,37 @@ export default function OrderHistory() {
                 className="absolute inset-y-0 right-0 flex items-center pr-3 text-slate-400 hover:text-slate-600 transition-colors cursor-pointer"
               >
                 <X size={15} />
+              </button>
+            )}
+          </div>
+
+          {/* Bộ lọc theo khoảng thời gian */}
+          <div className="flex items-center gap-2 shrink-0">
+            <input
+              type="date"
+              value={fromDate}
+              onChange={(e) => setFromDate(e.target.value)}
+              max={toDate || undefined}
+              className="px-2.5 py-2 bg-white border border-slate-200 rounded-xl text-xs md:text-sm focus:outline-none focus:border-blue-500 text-slate-600 shadow-sm transition-all"
+              title="Từ ngày"
+            />
+            <span className="text-slate-400 text-xs">–</span>
+            <input
+              type="date"
+              value={toDate}
+              onChange={(e) => setToDate(e.target.value)}
+              min={fromDate || undefined}
+              className="px-2.5 py-2 bg-white border border-slate-200 rounded-xl text-xs md:text-sm focus:outline-none focus:border-blue-500 text-slate-600 shadow-sm transition-all"
+              title="Đến ngày"
+            />
+            {(fromDate || toDate) && (
+              <button
+                type="button"
+                onClick={() => { setFromDate(''); setToDate(''); }}
+                className="text-slate-400 hover:text-slate-600 text-xs font-bold cursor-pointer"
+                title="Xóa bộ lọc ngày"
+              >
+                ✕
               </button>
             )}
           </div>

@@ -308,7 +308,7 @@ export default function MerchantStats() {
             </div>
           )}
 
-          <SectionTitle icon={DollarSign} hint="quán thực nhận, tiền món, chiết khấu, giao vận">Dòng tiền</SectionTitle>
+          <SectionTitle icon={DollarSign} hint="">Dòng Tiền</SectionTitle>
 
           {/* KPI dòng tiền (4) */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
@@ -361,7 +361,7 @@ export default function MerchantStats() {
             </div>
           )}
 
-          <SectionTitle icon={Gauge} hint="GTV, AOV, khách, tỷ lệ huỷ/hoàn thành">Vận hành</SectionTitle>
+          <SectionTitle icon={Gauge} hint="">Vận Hành</SectionTitle>
 
           {/* Dải chỉ số vận hành (5) — chiều sâu thêm */}
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
@@ -410,7 +410,7 @@ export default function MerchantStats() {
             })}
           </div>
 
-          <SectionTitle icon={BarChart3} hint="phân bổ dòng tiền · xu hướng · top món · trạng thái">Phân bổ &amp; Xu hướng</SectionTitle>
+          <SectionTitle icon={BarChart3} hint="">Phân Bổ &amp; Xu Hướng</SectionTitle>
 
           {/* Phân bổ dòng tiền */}
           <div className="bg-slate-50 border border-slate-200/60 rounded-radius-xl p-5 space-y-3.5 shadow-sm">

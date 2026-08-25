@@ -508,7 +508,7 @@ const GROUP_STATUS_META = {
 function GroupOrderPanel({
   groupOrder, isHost, myMember, onMarkReady, onLock, onCheckout, onLeave,
   onCancel, onShowInvite, busy, handleRemoveGroupItem, onEditNote,
-  shippingFee, distanceKm, durationMinutes, onChangeAddress, defaultAddress 
+  shippingFee, distanceKm, durationMinutes, onChangeAddress, defaultAddress, onKickMember
 }) {
   const { user } = useAuthStore();
   if (!groupOrder) return null;
@@ -610,6 +610,7 @@ function GroupOrderPanel({
           {members.map((m) => {
             const isCurrentUser = m.userId === user?.id;
             const ready = m.status === 'READY';
+            const canManageItems = isCurrentUser || isHost; // host được quyền xóa/sửa món của ai cũng được
             return (
               <div key={m.memberId} className="rounded-xl border border-slate-100 bg-slate-50/60 p-2.5">
                 <div className="flex items-center justify-between gap-2">
@@ -622,12 +623,26 @@ function GroupOrderPanel({
                       {m.isHost && <span className="text-[9px] shrink-0 bg-orange-100 text-orange-600 px-1.5 py-0.5 rounded-full font-black">HOST</span>}
                     </span>
                   </div>
-                  <span className={`inline-flex items-center gap-1 text-[9px] font-black px-1.5 py-0.5 rounded-full shrink-0 ${
-                    ready ? 'bg-emerald-100 text-emerald-700' : m.status === 'LEFT' ? 'bg-slate-200 text-slate-400' : 'bg-amber-100 text-amber-600'
-                  }`}>
-                    {ready && <CheckCheck size={10} />}
-                    {ready ? 'Sẵn sàng' : m.status === 'LEFT' ? 'Đã rời' : 'Đang chọn'}
-                  </span>
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <span className={`inline-flex items-center gap-1 text-[9px] font-black px-1.5 py-0.5 rounded-full ${
+                      ready ? 'bg-emerald-100 text-emerald-700' : m.status === 'LEFT' ? 'bg-slate-200 text-slate-400' : 'bg-amber-100 text-amber-600'
+                    }`}>
+                      {ready && <CheckCheck size={10} />}
+                      {ready ? 'Sẵn sàng' : m.status === 'LEFT' ? 'Đã rời' : 'Đang chọn'}
+                    </span>
+                    {/* nút kick — chỉ host thấy, không kick chính mình, không kick người đã rời */}
+                    {isHost && !m.isHost && m.status !== 'LEFT' && groupOrder.status === 'OPEN' && (
+                      <button
+                        type="button"
+                        disabled={busy}
+                        onClick={() => onKickMember?.(m.memberId)}
+                        className="p-1 rounded-full text-slate-400 hover:text-red-600 hover:bg-red-50 transition-all disabled:opacity-50"
+                        title="Loại khỏi nhóm"
+                      >
+                        <Ban size={13} />
+                      </button>
+                    )}
+                  </div>
                 </div>
                 {m.items?.length > 0 ? (
                   <ul className="mt-2 space-y-1 pl-9">
@@ -644,12 +659,14 @@ function GroupOrderPanel({
                         </div>
                         <div className="flex items-center gap-1.5 shrink-0">
                           <span className="font-semibold text-slate-600">{formatCurrency(it.lineTotal)}</span>
-                          {isCurrentUser && groupOrder.status === 'OPEN' && !myItemsLocked && (
+                          {canManageItems && groupOrder.status === 'OPEN' && (
                             <>
-                              <button type="button" disabled={busy} onClick={() => onEditNote(it)}
-                                className="p-0.5 rounded text-slate-400 hover:text-emerald-600 hover:bg-emerald-100/60 transition-all disabled:opacity-50" title="Ghi chú">
-                                <Pencil size={12} />
-                              </button>
+                              {isCurrentUser && !myItemsLocked && (
+                                <button type="button" disabled={busy} onClick={() => onEditNote(it)}
+                                  className="p-0.5 rounded text-slate-400 hover:text-emerald-600 hover:bg-emerald-100/60 transition-all disabled:opacity-50" title="Ghi chú">
+                                  <Pencil size={12} />
+                                </button>
+                              )}
                               <button type="button" disabled={busy} onClick={() => handleRemoveGroupItem(it.groupOrderItemId)}
                                 className="p-0.5 rounded text-slate-400 hover:text-red-600 hover:bg-red-50 transition-all disabled:opacity-50" title="Xóa">
                                 <X size={13} />
@@ -984,6 +1001,21 @@ export default function RestaurantDetail() {
     setSearchParams(next, { replace: true });
   };
 
+  // kick thành viên khỏi phiên nhóm (chỉ host)
+  const handleKickMember = async (memberId) => {
+    if (!groupOrder?.groupOrderId) return;
+    try {
+      setGroupBusy(true);
+      const res = await apiClient.delete(`/group-orders/${groupOrder.groupOrderId}/members/${memberId}`);
+      setGroupOrder(res.data?.data || null);
+      toast.success('Đã loại thành viên khỏi phiên nhóm.');
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Không thể loại thành viên.');
+    } finally {
+      setGroupBusy(false);
+    }
+  };
+
   const activeGroupCheckedRef = useRef(false);
 
   useEffect(() => {
@@ -1214,7 +1246,8 @@ export default function RestaurantDetail() {
   // Hàm gọi API xóa món ăn khỏi phiên đặt nhóm
   const handleRemoveGroupItem = async (itemId) => {
     if (!groupOrder?.groupOrderId) return;
-    if (isMyGroupItemsLocked) {
+    // Chỉ cảnh báo khóa món khi KHÔNG PHẢI host (host luôn được phép xóa món bất kỳ)
+    if (!isHost && isMyGroupItemsLocked) {
       toast.warn('Bạn đã hoàn tất chọn món, không thể xóa món nữa.');
       return;
     }
@@ -1917,6 +1950,7 @@ export default function RestaurantDetail() {
                 durationMinutes={durationMinutes}
                 onChangeAddress={openGroupAddressModal}
                 defaultAddress={defaultAddress}
+                onKickMember={handleKickMember}
               />
             ) : (
               <Card variant="elevated" className="p-5">
@@ -2157,6 +2191,7 @@ export default function RestaurantDetail() {
             <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Hạn chót chọn món (tuỳ chọn)</span>
             <input
               type="datetime-local"
+              lang="vi-VN"
               value={groupDeadline}
               onChange={(e) => setGroupDeadline(e.target.value)}
               className="w-full p-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-primary-400"
@@ -2207,7 +2242,7 @@ export default function RestaurantDetail() {
             </div>
 
             <div className="flex gap-2">
-              {/* <Button onClick={shareInvite} variant="outline" className="flex-1" icon={Send}>Chia sẻ</Button> */}
+              <Button onClick={shareInvite} variant="outline" className="flex-1" icon={Send}>Chia sẻ</Button>
               <Button onClick={() => inviteModal.close()} className="flex-1 !bg-primary-600 hover:!bg-primary-700">Xong</Button>
             </div>
 
@@ -2610,7 +2645,7 @@ export default function RestaurantDetail() {
                                 <span className="truncate flex-1 min-w-0">{it.foodName} × {it.quantity}</span>
                                 <div className="flex items-center gap-1 shrink-0">
                                   <span className="font-semibold text-slate-600">{formatCurrency(it.lineTotal)}</span>
-                                  {isCurrentUser && isOpen && myMember?.status !== 'READY' && (
+                                  {(isCurrentUser || isHost) && isOpen && (
                                     <>
                                       <button onClick={() => { openNoteEditor(it); }} className="p-0.5 text-slate-400 hover:text-orange-600">
                                         <Pencil size={11} />

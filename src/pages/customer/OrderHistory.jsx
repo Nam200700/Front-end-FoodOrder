@@ -495,7 +495,7 @@ export default function OrderHistory() {
           </div>
 
           {/* Ô tìm kiếm góc phải (full-width trên mobile) */}
-          <div className="relative w-full md:w-72 md:shrink-0">
+          <div className="relative w-full md:w-66 md:shrink-0">
             <span className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-slate-400">
               <Search size={16} />
             </span>
@@ -503,7 +503,7 @@ export default function OrderHistory() {
               type="text"
               value={keywordInput}
               onChange={(e) => setKeywordInput(e.target.value)}
-              placeholder="Tìm mã đơn, tên quán, món ăn..."
+              placeholder="Tìm mã đơn, tên quán, món ăn"
               className="w-full pl-9 pr-9 py-2 bg-white border border-slate-200 rounded-xl text-xs md:text-sm focus:outline-none focus:border-orange-500 text-slate-800 placeholder-slate-400 shadow-sm transition-all"
             />
             {keywordInput && (

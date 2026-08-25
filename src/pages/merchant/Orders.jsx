@@ -391,7 +391,6 @@ export default function MerchantOrders() {
     }
   };
 
-  // mode: 'reject' = từ chối đơn PENDING ; 'cancel' = hủy đơn đã xác nhận (CONFIRMED/PREPARING)
   const [cancelMode, setCancelMode] = useState('reject');
   const handleOpenCancelModal = (e, orderId, mode = 'reject') => {
     e.stopPropagation();

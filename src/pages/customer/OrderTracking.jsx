@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useOrderStore } from '../../stores/orderStore';
 import { useChatStore } from '../../stores/chatStore';
@@ -88,69 +88,56 @@ export default function OrderTracking() {
   const polylineRef = useRef(null); // Ref để chứa đường đi
 
   // 1. Tải thông tin đơn hàng chi tiết từ Backend và đồng bộ thời gian thực
-  useEffect(() => {
-    const fetchOrderDetails = async (showSpinner = true) => {
-      try {
-        if (showSpinner) setLoading(true);
-        setErrorMsg('');
-        const response = await apiClient.get(`/orders/${id}`);
-        const realData = response.data?.data;
-        if (realData) {
-          const mapped = mapOrder(realData);
-          if (mapped) {
-            mapped.timestamps = {
-              PENDING: mapped.createdAtTime,
-              CONFIRMED: mapped.confirmedAt,
-              PREPARING: mapped.preparingAt,
-              READY_FOR_PICKUP: mapped.readyAt,
-              PICKED_UP: mapped.pickedUpAt,
-              DELIVERING: mapped.pickedUpAt,
-              COMPLETED: mapped.completedAt,
-            };
-          }
-          setOrder(mapped);
-        } else {
-          setErrorMsg('Đơn hàng không tồn tại hoặc bạn không có quyền truy cập đơn hàng này.');
+  const fetchOrderDetails = useCallback(async (showSpinner = true) => {
+    try {
+      if (showSpinner) setLoading(true);
+      setErrorMsg('');
+      const response = await apiClient.get(`/orders/${id}`);
+      const realData = response.data?.data;
+      if (realData) {
+        const mapped = mapOrder(realData);
+        if (mapped) {
+          mapped.timestamps = {
+            PENDING: mapped.createdAtTime,
+            CONFIRMED: mapped.confirmedAt,
+            PREPARING: mapped.preparingAt,
+            READY_FOR_PICKUP: mapped.readyAt,
+            PICKED_UP: mapped.pickedUpAt,
+            DELIVERING: mapped.pickedUpAt,
+            COMPLETED: mapped.completedAt,
+          };
         }
-      } catch (error) {
-        console.error('Lỗi khi tải chi tiết đơn hàng:', error);
-        setErrorMsg('Không thể tải thông tin đơn hàng. Vui lòng kiểm tra lại!');
-      } finally {
-        if (showSpinner) setLoading(false);
+        setOrder(mapped);
+      } else {
+        setErrorMsg('Đơn hàng không tồn tại hoặc bạn không có quyền truy cập đơn hàng này.');
       }
-    };
+    } catch (error) {
+      console.error('Lỗi khi tải chi tiết đơn hàng:', error);
+      setErrorMsg('Không thể tải thông tin đơn hàng. Vui lòng kiểm tra lại!');
+    } finally {
+      if (showSpinner) setLoading(false);
+    }
+  }, [id]);
 
+  // Effect 1: fetch + subscribe realtime
+  useEffect(() => {
     fetchOrderDetails(true);
 
     const destination = `/topic/order/${id}`;
-    console.log('[WebSocket Subscribe]: Subscribing to ' + destination);
     const sub = subscribe(destination, (updatedOrder) => {
-      console.log('[WebSocket Order Update]: Received updated order', updatedOrder);
       const parsed = parseOrderEvent(updatedOrder);
-      if (parsed && parsed.status) {
-        fetchOrderDetails(false);
-      }
+      if (parsed && parsed.status) fetchOrderDetails(false);
     });
 
-    return () => {
-      if (sub) {
-        console.log('[WebSocket Unsubscribe]: Unsubscribing from ' + destination);
-        sub.unsubscribe();
-      }
-    };
-  }, [id]);
+    return () => { if (sub) sub.unsubscribe(); };
+  }, [id, subscribe, fetchOrderDetails]);
 
+  // Effect 2: refetch khi quay lại tab
   useEffect(() => {
-    const onVisible = () => {
-      if (!document.hidden) {
-        fetchOrderDetails(false); 
-      }
-    };
+    const onVisible = () => { if (!document.hidden) fetchOrderDetails(false); };
     document.addEventListener('visibilitychange', onVisible);
-    return () => {
-      document.removeEventListener('visibilitychange', onVisible);
-    };
-  }, [id]);
+    return () => document.removeEventListener('visibilitychange', onVisible);
+  }, [fetchOrderDetails]);
 
   // 2. Tải thông tin toạ độ Quán ăn từ Backend
   useEffect(() => {

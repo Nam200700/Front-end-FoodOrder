@@ -759,9 +759,9 @@ export default function OrderTracking() {
                   style={{ animationDelay: `${idx * 60}ms` }}
                 >
                   <div className="flex items-start gap-3 min-w-0">
-                    <span className="shrink-0 mt-0.5 w-6 h-6 rounded-lg bg-white border border-orange-200 text-orange-600 font-black text-xs flex items-center justify-center shadow-sm">
+                    {/* <span className="shrink-0 mt-0.5 w-6 h-6 rounded-lg bg-white border border-orange-200 text-orange-600 font-black text-xs flex items-center justify-center shadow-sm">
                       {item.quantity}
-                    </span>
+                    </span> */}
                     <div className="min-w-0">
                       <span className="font-bold text-md-on-surface block leading-snug">{item.name}</span>
                       <span className="block text-[11px] text-slate-500 font-semibold mt-0.5">

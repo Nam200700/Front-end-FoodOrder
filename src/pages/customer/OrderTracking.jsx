@@ -806,7 +806,7 @@ export default function OrderTracking() {
               </div>
               {displayOrder.voucherCode && (
                 <div className="flex justify-between items-center text-md-on-surface-variant">
-                  <span className="flex items-center gap-2"><Banknote size={15} className="text-emerald-500" /> Voucher ({displayOrder.voucherCode})</span>
+                  <span className="flex items-center gap-2"><Banknote size={15} className="text-emerald-500" /> Giảm giá từ voucher</span>
                   <span className="font-bold text-md-on-surface">-{formatCurrency(displayOrder.discountAmount)}</span>
                 </div>
               )}

@@ -533,7 +533,7 @@ function GroupOrderPanel({
         <Users className="absolute -right-3 -bottom-3 text-white/10" size={90} strokeWidth={1} />
         <div className="relative flex items-center justify-between">
           <h3 className="text-xs font-extrabold uppercase tracking-wider flex items-center gap-1.5">
-            <Users size={15} /> Đơn Đặt Nhóm
+            <Users size={15} /> Đặt đơn nhóm
           </h3>
           <span className={`text-[10px] font-black px-2.5 py-1 rounded-full bg-white/20 backdrop-blur-sm`}>
             {statusMeta.label}
@@ -757,6 +757,9 @@ export default function RestaurantDetail() {
 
   const startNewConversation = useChatStore((state) => state.startNewConversation);
   const { user } = useAuthStore();
+
+  const [phone, setPhone] = useState(user?.phone || '');
+  const [fullname, setFullname] = useState(user?.name || '');
 
   const [restaurant, setRestaurant] = useState(null);
   const [menu, setMenu] = useState([]);
@@ -2117,7 +2120,7 @@ export default function RestaurantDetail() {
             >
               <Users size={20} className="shrink-0" />
               <span className="flex flex-col items-start min-w-0">
-                <span className="text-xs xs:text-sm font-extrabold truncate">Cả nhóm: {formatCurrency(groupOrder.subtotalAmount || 0)}</span>
+                <span className="text-xs xs:text-sm font-extrabold truncate">Đơn nhóm: {formatCurrency(groupOrder.subtotalAmount || 0)}</span>
                 <span className="text-[10px] font-semibold text-white/80 underline underline-offset-2">Xem chi tiết</span>
               </span>
             </button>
@@ -2185,10 +2188,10 @@ export default function RestaurantDetail() {
       >
         <div className="space-y-4 -mt-3">
           <p className="text-xs text-slate-500 leading-relaxed">
-            Mời bạn bè cùng chọn món tại <b className="text-slate-700">{restaurant.name}</b>. Hệ thống sẽ gộp tất cả món thành 1 đơn duy nhất khi bạn chốt đơn.
+            Mời bạn bè cùng chọn món tại <b className="text-slate-700">{restaurant.name}</b>. 
           </p>
           <div className="space-y-1.5">
-            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Hạn chót chọn món (tuỳ chọn)</span>
+            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Hạn chót chọn món</span>
             <input
               type="datetime-local"
               lang="vi-VN"
@@ -2359,7 +2362,7 @@ export default function RestaurantDetail() {
       <Modal
         isOpen={confirmInviteModal.isOpen}
         onClose={handleCancelJoin}
-        title="Lời mời tham gia đặt nhóm"
+        title="Lời Mời Tham Gia Đặt Nhóm"
         size="sm"
         className="[&_h2]:!text-slate-900 [&_h2]:!text-base [&_h2]:md:!text-lg [&_h2]:!font-bold [&_button]:disabled:opacity-50"
       >
@@ -2517,7 +2520,7 @@ export default function RestaurantDetail() {
 
                   <div className="flex-1 text-xs space-y-1">
                     <span className="font-extrabold text-slate-900 text-sm flex items-center gap-2 flex-wrap">
-                      {item.label || 'Địa chỉ'}
+                      {fullname}
                       {item.default && (
                         <span className="px-2 py-0.5 text-[10px] font-bold text-md-primary bg-orange-50 border border-orange-200 rounded-md">
                           Mặc định

@@ -210,6 +210,7 @@ export default function Cart() {
     confirmOrderModal.open();
   };
 
+  //đặt hàng
   const executeBulkPlaceOrder = async () => {
     if (!bulkOrderPayload) return;
   
@@ -243,6 +244,7 @@ export default function Cart() {
     }
   };
 
+  //tích chọn cart để order
   const handleToggleSelectRestaurant = (cart, distance) => {
     const restaurantId = Number(cart.restaurantId);
 
@@ -267,6 +269,7 @@ export default function Cart() {
 
   const isAllSelected = carts.length > 0 && selectedRestaurantIds.length === carts.length;
 
+  //tích chọn tất cả cart
   const handleSelectAll = () => {
     if (isAllSelected) {
       setSelectedRestaurantIds([]);
@@ -309,10 +312,12 @@ export default function Cart() {
 
   const handleDeleteCart = () => {
     const { restaurantId } = deleteCartModal.data;
-    clearCartOfRestaurant(restaurantId);
+    clearCartOfRestaurant(restaurantId); //xóa
+    //nếu có đang tích chọn thì loại bỏ
     setSelectedRestaurantIds(prev => 
       prev.filter(id => Number(id) !== Number(restaurantId))
     );
+    //xóa chọn voucher của cart đó
     setSelectedVouchers(prev => {
       const updated = { ...prev };
       delete updated[restaurantId];
@@ -322,6 +327,7 @@ export default function Cart() {
     toast.success('Đã xóa giỏ hàng thành công!');
   };
 
+  //lấy danh sách địa chỉ của user
   const fetchUserAddresses = async () => {
     try {
       const res = await apiClient.get('/addresses');
@@ -339,6 +345,7 @@ export default function Cart() {
     }
   };
 
+  //chọn địa chỉ mặc định
   const handleSelectAddressItem = async (item) => {
     setSelectedAddressId(item.addressId);
     setAddress(item.address);
@@ -371,6 +378,7 @@ export default function Cart() {
     }
   };
 
+  //mở modal thêm mới địa chỉ
   const handleOpenAddModal = () => {
     setEditingAddressId(null);
     setAddressLabel('Nhà riêng');
@@ -382,6 +390,7 @@ export default function Cart() {
     mapModal2.open();
   };
 
+  //mở modal cập nhật địa chỉ
   const handleOpenEditModal = (item) => {
     setEditingAddressId(item.addressId);
     setAddressLabel(item.label || 'Nhà riêng');
@@ -393,6 +402,7 @@ export default function Cart() {
     mapModal2.open();
   };
 
+  //thêm mới hoặc cập nhật địa chỉ
   const handleMapConfirmAndSave = async (latVal, lngVal, addressNameVal) => {
     try {
       const payload = {
@@ -448,9 +458,7 @@ export default function Cart() {
     voucherModal.open();
   };
 
-  // =========================================================================
   // XỬ LÝ CLICK CHỌN VOUCHER (BẮN TOAST CẢNH BÁO NẾU ĐƠN < minOrderAmount)
-  // =========================================================================
   const handleSelectVoucherForRestaurant = (voucherItem) => {
     if (!selectingRestaurantId) return;
 
@@ -482,6 +490,7 @@ export default function Cart() {
     voucherModal.close();
   };
 
+  //bỏ voucher
   const handleRemoveVoucherForRestaurant = (restaurantId) => {
     setSelectedVouchers(prev => {
       const copy = { ...prev };
@@ -491,6 +500,7 @@ export default function Cart() {
     toast.info('Đã bỏ chọn voucher của quán!');
   };
 
+  //nhận voucher
   const handleClaimPublicVoucher = async (voucherId) => {
     try {
       await apiClient.post(`/vouchers/${voucherId}/add`);
@@ -501,18 +511,22 @@ export default function Cart() {
     }
   };
 
+  //Lọc ra các giỏ hàng (quán) đang được tick chọn
   const selectedCarts = useMemo(() => {
     return carts.filter(c => selectedRestaurantIds.includes(Number(c.restaurantId)));
   }, [carts, selectedRestaurantIds]);
 
+  //Tổng số món ăn trong các quán đã chọn
   const totalItems = useMemo(() => {
     return selectedCarts.reduce((s, c) => s + c.items.reduce((a, i) => a + i.quantity, 0), 0);
   }, [selectedCarts]);
 
+  //Tổng tiền hàng (chưa ship, chưa giảm giá) của các quán đã chọn
   const selectedItemsSubtotal = useMemo(() => {
     return selectedCarts.reduce((sum, cart) => sum + cart.subtotal, 0);
   }, [selectedCarts]);
 
+  //Tổng phí ship của các quán đã chọn
   const totalShippingFee = useMemo(() => {
     return selectedCarts.reduce((sum, cart) => {
       const feeInfo = shippingInfos[cart.restaurantId];
@@ -520,6 +534,7 @@ export default function Cart() {
     }, 0);
   }, [selectedCarts, shippingInfos]);
 
+  //Tính số tiền giảm giá của 1 quán dựa trên voucher đã áp cho quán đó
   const calculateCartDiscount = (cart) => {
     const voucher = selectedVouchers[cart.restaurantId];
     if (!voucher) return 0;
@@ -576,6 +591,7 @@ export default function Cart() {
     return Math.round(d > totalBefore ? totalBefore : d);
   };
 
+  //Tìm voucher tiết kiệm nhất trong ví cho quán đang chọn → gắn nhãn "Tiết kiệm nhất"
   const bestUserVoucherId = useMemo(() => {
     if (!selectingRestaurantId || myVouchers.length === 0) return null;
     let best = null, bestVal = 0;
@@ -583,11 +599,13 @@ export default function Cart() {
     return bestVal > 0 ? best : null;
   }, [myVouchers, selectingRestaurantId, carts, shippingInfos]);
 
+  //Sắp xếp danh sách voucher trong ví theo mức tiết kiệm giảm dần (voucher lợi nhất lên đầu)
   const sortedMyVouchers = useMemo(() => {
     if (!selectingRestaurantId || myVouchers.length == 0) return myVouchers;
     return [...myVouchers].sort((a, b) => estimateVoucherSaving(b) - estimateVoucherSaving(a));
   }, [myVouchers, selectingRestaurantId, carts, shippingInfos]);
 
+  //Tổng tiền cuối cùng phải thanh toán = tiền hàng + ship − giảm giá 
   const finalTotalAmount = useMemo(() => {
     const total = selectedItemsSubtotal + totalShippingFee - totalDiscountAmount;
     return total > 0 ? total : 0;
@@ -1540,7 +1558,7 @@ export default function Cart() {
 
                       const saving = estimateVoucherSaving(item);
                       const isBest = bestUserVoucherId === item.userVoucherId && !isSelectedForThisRes && isEligible;
-                      const exp = expiryInfo(item.expiredAt);
+                      const exp = expiryInfo(item.expiredAt); //Kiểm tra voucher sắp hết hạn (≤3 ngày) để cảnh báo màu đỏ
 
                       return (
                         <div

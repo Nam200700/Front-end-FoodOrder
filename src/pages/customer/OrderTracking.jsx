@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useOrderStore } from '../../stores/orderStore';
 import { useChatStore } from '../../stores/chatStore';
@@ -88,69 +88,56 @@ export default function OrderTracking() {
   const polylineRef = useRef(null); // Ref để chứa đường đi
 
   // 1. Tải thông tin đơn hàng chi tiết từ Backend và đồng bộ thời gian thực
-  useEffect(() => {
-    const fetchOrderDetails = async (showSpinner = true) => {
-      try {
-        if (showSpinner) setLoading(true);
-        setErrorMsg('');
-        const response = await apiClient.get(`/orders/${id}`);
-        const realData = response.data?.data;
-        if (realData) {
-          const mapped = mapOrder(realData);
-          if (mapped) {
-            mapped.timestamps = {
-              PENDING: mapped.createdAtTime,
-              CONFIRMED: mapped.confirmedAt,
-              PREPARING: mapped.preparingAt,
-              READY_FOR_PICKUP: mapped.readyAt,
-              PICKED_UP: mapped.pickedUpAt,
-              DELIVERING: mapped.pickedUpAt,
-              COMPLETED: mapped.completedAt,
-            };
-          }
-          setOrder(mapped);
-        } else {
-          setErrorMsg('Đơn hàng không tồn tại hoặc bạn không có quyền truy cập đơn hàng này.');
+  const fetchOrderDetails = useCallback(async (showSpinner = true) => {
+    try {
+      if (showSpinner) setLoading(true);
+      setErrorMsg('');
+      const response = await apiClient.get(`/orders/${id}`);
+      const realData = response.data?.data;
+      if (realData) {
+        const mapped = mapOrder(realData);
+        if (mapped) {
+          mapped.timestamps = {
+            PENDING: mapped.createdAtTime,
+            CONFIRMED: mapped.confirmedAt,
+            PREPARING: mapped.preparingAt,
+            READY_FOR_PICKUP: mapped.readyAt,
+            PICKED_UP: mapped.pickedUpAt,
+            DELIVERING: mapped.pickedUpAt,
+            COMPLETED: mapped.completedAt,
+          };
         }
-      } catch (error) {
-        console.error('Lỗi khi tải chi tiết đơn hàng:', error);
-        setErrorMsg('Không thể tải thông tin đơn hàng. Vui lòng kiểm tra lại!');
-      } finally {
-        if (showSpinner) setLoading(false);
+        setOrder(mapped);
+      } else {
+        setErrorMsg('Đơn hàng không tồn tại hoặc bạn không có quyền truy cập đơn hàng này.');
       }
-    };
+    } catch (error) {
+      console.error('Lỗi khi tải chi tiết đơn hàng:', error);
+      setErrorMsg('Không thể tải thông tin đơn hàng. Vui lòng kiểm tra lại!');
+    } finally {
+      if (showSpinner) setLoading(false);
+    }
+  }, [id]);
 
+  // Effect 1: fetch + subscribe realtime
+  useEffect(() => {
     fetchOrderDetails(true);
 
     const destination = `/topic/order/${id}`;
-    console.log('[WebSocket Subscribe]: Subscribing to ' + destination);
     const sub = subscribe(destination, (updatedOrder) => {
-      console.log('[WebSocket Order Update]: Received updated order', updatedOrder);
       const parsed = parseOrderEvent(updatedOrder);
-      if (parsed && parsed.status) {
-        fetchOrderDetails(false);
-      }
+      if (parsed && parsed.status) fetchOrderDetails(false);
     });
 
-    return () => {
-      if (sub) {
-        console.log('[WebSocket Unsubscribe]: Unsubscribing from ' + destination);
-        sub.unsubscribe();
-      }
-    };
-  }, [id]);
+    return () => { if (sub) sub.unsubscribe(); };
+  }, [id, subscribe, fetchOrderDetails]);
 
+  // Effect 2: refetch khi quay lại tab
   useEffect(() => {
-    const onVisible = () => {
-      if (!document.hidden) {
-        fetchOrderDetails(false); 
-      }
-    };
+    const onVisible = () => { if (!document.hidden) fetchOrderDetails(false); };
     document.addEventListener('visibilitychange', onVisible);
-    return () => {
-      document.removeEventListener('visibilitychange', onVisible);
-    };
-  }, [id]);
+    return () => document.removeEventListener('visibilitychange', onVisible);
+  }, [fetchOrderDetails]);
 
   // 2. Tải thông tin toạ độ Quán ăn từ Backend
   useEffect(() => {
@@ -772,9 +759,9 @@ export default function OrderTracking() {
                   style={{ animationDelay: `${idx * 60}ms` }}
                 >
                   <div className="flex items-start gap-3 min-w-0">
-                    <span className="shrink-0 mt-0.5 w-6 h-6 rounded-lg bg-white border border-orange-200 text-orange-600 font-black text-xs flex items-center justify-center shadow-sm">
+                    {/* <span className="shrink-0 mt-0.5 w-6 h-6 rounded-lg bg-white border border-orange-200 text-orange-600 font-black text-xs flex items-center justify-center shadow-sm">
                       {item.quantity}
-                    </span>
+                    </span> */}
                     <div className="min-w-0">
                       <span className="font-bold text-md-on-surface block leading-snug">{item.name}</span>
                       <span className="block text-[11px] text-slate-500 font-semibold mt-0.5">
@@ -819,7 +806,7 @@ export default function OrderTracking() {
               </div>
               {displayOrder.voucherCode && (
                 <div className="flex justify-between items-center text-md-on-surface-variant">
-                  <span className="flex items-center gap-2"><Banknote size={15} className="text-emerald-500" /> Voucher ({displayOrder.voucherCode})</span>
+                  <span className="flex items-center gap-2"><Banknote size={15} className="text-emerald-500" /> Giảm giá từ voucher</span>
                   <span className="font-bold text-md-on-surface">-{formatCurrency(displayOrder.discountAmount)}</span>
                 </div>
               )}

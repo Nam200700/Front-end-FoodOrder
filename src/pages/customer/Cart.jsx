@@ -197,10 +197,8 @@ export default function Cart() {
     });
 
     const payload = {
-      deliveryAddress: address,
+      addressId: selectedAddressId,
       restaurantId: selectedRestaurantIds.map(id => parseInt(id)),
-      deliveryLat: Number(deliveryLat),
-      deliveryLng: Number(deliveryLng),
       paymentMethod: paymentMethod,
       note: orderNotes,
       restaurantVouchers: restaurantVouchersMap
@@ -486,7 +484,7 @@ export default function Cart() {
       ...prev,
       [selectingRestaurantId]: voucherItem
     }));
-    toast.success(`Đã chọn mã ${voucherItem.code} cho quán ${currentCart?.restaurantName || ''}!`);
+    toast.success(`Đã chọn voucher cho quán ${currentCart?.restaurantName || ''}!`);
     voucherModal.close();
   };
 

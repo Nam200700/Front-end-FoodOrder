@@ -578,20 +578,18 @@ export default function MerchantOrders() {
           </div>
         )}
 
-        {/* THANH TAB TRẠNG THÁI VÀ Ô TÌM KIẾM BÊN */}
-        <div className="mb-6 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4 border-b border-slate-200 pb-3">
-          <div className="overflow-x-auto scrollbar-none w-full md:w-auto">
-            <FilterTabs
-              tabs={ORDER_STATUS_TABS}
-              activeTab={activeTab}
-              onTabChange={setActiveTab}
-              counts={statusCounts}
-              className="flex flex-row !flex-nowrap whitespace-nowrap [&_div]:flex [&_div]:flex-row [&_div]:flex-nowrap [&_button]:shrink-0 [&_button.bg-md-primary]:!bg-blue-600 [&_button.bg-md-primary]:!text-white [&_button.bg-md-primary]:!shadow-blue-100"
-            />
-          </div>
+        <div className="mb-3 overflow-x-auto scrollbar-none w-full">
+          <FilterTabs
+            tabs={ORDER_STATUS_TABS}
+            activeTab={activeTab}
+            onTabChange={setActiveTab}
+            counts={statusCounts}
+            className="flex flex-row !flex-nowrap whitespace-nowrap [&_div]:flex [&_div]:flex-row [&_div]:flex-nowrap [&_button]:shrink-0 [&_button.bg-md-primary]:!bg-blue-600 [&_button.bg-md-primary]:!text-white [&_button.bg-md-primary]:!shadow-blue-100"
+          />
+        </div>
 
-          {/* Ô tìm kiếm góc phải */}
-          <div className="relative min-w-[240px] md:w-69 shrink-0">
+        <div className="mb-3 flex flex-col sm:flex-row sm:items-center gap-2.5">
+          <div className="relative w-full sm:w-85 sm:shrink-0">
             <span className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-slate-400">
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
@@ -614,7 +612,7 @@ export default function MerchantOrders() {
               </button>
             )}
           </div>
-          {/* Bộ lọc theo khoảng thời gian */}
+
           <div className="flex items-center gap-2 shrink-0">
             <input
               type="date"

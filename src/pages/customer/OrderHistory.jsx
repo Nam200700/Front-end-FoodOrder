@@ -481,21 +481,19 @@ export default function OrderHistory() {
           })}
         </div> */}
 
-        {/* Thanh điều hướng Tabs Trạng thái & Ô Tìm kiếm ở góc phải */}
-        <div className="mb-6 flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-slate-200 pb-3">
-          <div className="overflow-x-auto scrollbar-none touch-pan-x">
-            <FilterTabs
-              tabs={ORDER_STATUS_TABS}
-              activeTab={activeTab}
-              onTabChange={setActiveTab}
-              counts={statusCounts}
-              className="min-w-max gap-2.5 !flex-nowrap [&_button]:text-center [&_button]:!py-2 [&_button]:!px-4 [&_button]:text-xs [&_button]:md:text-sm [&_button]:font-bold [&_button]:!rounded-lg [&_button]:whitespace-nowrap [&_button]:!border-transparent [&_button]:cursor-pointer"
-              activeClassName="!bg-orange-500 !text-white !border-orange-500 shadow-sm"
-            />
-          </div>
+        <div className="mb-3 overflow-x-auto scrollbar-none touch-pan-x">
+          <FilterTabs
+            tabs={ORDER_STATUS_TABS}
+            activeTab={activeTab}
+            onTabChange={setActiveTab}
+            counts={statusCounts}
+            className="min-w-max gap-2.5 !flex-nowrap [&_button]:text-center [&_button]:!py-2 [&_button]:!px-4 [&_button]:text-xs [&_button]:md:text-sm [&_button]:font-bold [&_button]:!rounded-lg [&_button]:whitespace-nowrap [&_button]:!border-transparent [&_button]:cursor-pointer"
+            activeClassName="!bg-orange-500 !text-white !border-orange-500 shadow-sm"
+          />
+        </div>
 
-          {/* Ô tìm kiếm góc phải (full-width trên mobile) */}
-          <div className="relative w-full md:w-66 md:shrink-0">
+        <div className="mb-3 flex flex-col sm:flex-row sm:items-center gap-2.5">
+          <div className="relative w-full sm:w-80 sm:shrink-0">
             <span className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-slate-400">
               <Search size={16} />
             </span>
@@ -518,14 +516,13 @@ export default function OrderHistory() {
             )}
           </div>
 
-          {/* Bộ lọc theo khoảng thời gian */}
           <div className="flex items-center gap-2 shrink-0">
             <input
               type="date"
               value={fromDate}
               onChange={(e) => setFromDate(e.target.value)}
               max={toDate || undefined}
-              className="px-2.5 py-2 bg-white border border-slate-200 rounded-xl text-xs md:text-sm focus:outline-none focus:border-blue-500 text-slate-600 shadow-sm transition-all"
+              className="px-2.5 py-2 bg-white border border-slate-200 rounded-xl text-xs md:text-sm focus:outline-none focus:border-orange-500 text-slate-600 shadow-sm transition-all"
               title="Từ ngày"
             />
             <span className="text-slate-400 text-xs">–</span>
@@ -534,7 +531,7 @@ export default function OrderHistory() {
               value={toDate}
               onChange={(e) => setToDate(e.target.value)}
               min={fromDate || undefined}
-              className="px-2.5 py-2 bg-white border border-slate-200 rounded-xl text-xs md:text-sm focus:outline-none focus:border-blue-500 text-slate-600 shadow-sm transition-all"
+              className="px-2.5 py-2 bg-white border border-slate-200 rounded-xl text-xs md:text-sm focus:outline-none focus:border-orange-500 text-slate-600 shadow-sm transition-all"
               title="Đến ngày"
             />
             {(fromDate || toDate) && (
@@ -927,7 +924,7 @@ export default function OrderHistory() {
                   {o.voucherCode && (
                     <div className="flex justify-between items-center text-sm font-medium pt-1">
                       <span className="inline-flex items-center gap-1.5 text-orange-600">
-                        Voucher ({o.voucherCode})
+                        Giảm giá từ voucher
                       </span>
                       <span className="text-rose-600 font-bold">-{formatCurrency(o.discountAmount)}</span>
                     </div>

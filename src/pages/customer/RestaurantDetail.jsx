@@ -9,7 +9,7 @@ import {
   MessageSquare, AlertTriangle, Bike, AlertCircle, X, ZoomIn, ChevronLeft, ChevronRight,
   Utensils, Info, Truck, Wallet, Timer, Sparkles, TrendingUp, ThumbsUp, Award, ArrowDownUp,
   Camera, ChevronDown, Frown, Meh, Smile, Laugh, MessageSquareText, Store,
-  Users, Copy, QrCode, Link2, Lock, Send, LogOut, Ban, CheckCheck, Pencil, StickyNote, Edit2
+  Users, Copy, QrCode, Link2, Lock, Send, LogOut, Ban, CheckCheck, Pencil, StickyNote, Edit2, CreditCard
 } from 'lucide-react';
 import { formatCurrency } from '../../utils/format';
 import { getFoodImageUrl, DEFAULT_FOOD_IMAGE } from '../../utils/avatarHelper';
@@ -826,8 +826,12 @@ export default function RestaurantDetail() {
   const groupDetailModal = useModalState(); 
 
   const [checkoutNote, setCheckoutNote] = useState('');
+  const [groupPaymentMethod, setGroupPaymentMethod] = useState('');
 
   const [defaultAddress, setDefaultAddress] = useState(null);
+
+  const confirmCheckoutModal = useModalState();
+  const cancelGroupModal = useModalState();
 
   useEffect(() => {
     if (!id) return;
@@ -1042,14 +1046,12 @@ export default function RestaurantDetail() {
     })();
   }, [id]);
 
-  const confirmCheckoutModal = useModalState();
-
   //đặt hàng
   const doCheckoutGroup = async (force = false) => {
     setGroupBusy(true);
     try {
       const res = await apiClient.post(`/group-orders/${groupOrder.groupOrderId}/checkout`, {
-        paymentMethod: 'COD',
+        paymentMethod: groupPaymentMethod,
         note: checkoutNote.trim() || null,
         force,
       });
@@ -1238,6 +1240,7 @@ export default function RestaurantDetail() {
       await apiClient.patch(`/group-orders/${groupOrder.groupOrderId}/cancel`, { reason: 'Chủ phiên hủy phiên đặt nhóm' });
       setGroupOrder(null);
       clearGroupParam();
+      cancelGroupModal.close();
       toast.success('Đã hủy phiên đặt nhóm');
     } catch (err) {
       toast.error(err.response?.data?.message || 'Không thể hủy phiên');
@@ -1944,7 +1947,7 @@ export default function RestaurantDetail() {
                 onLock={handleLockGroup}
                 onCheckout={handleCheckoutGroup}
                 onLeave={handleLeaveGroup}
-                onCancel={handleCancelGroup}
+                onCancel={() => cancelGroupModal.open()}
                 onShowInvite={() => inviteModal.open()}
                 handleRemoveGroupItem={handleRemoveGroupItem}
                 onEditNote={openNoteEditor}
@@ -2459,7 +2462,24 @@ export default function RestaurantDetail() {
           )}
 
           <div className="space-y-1.5">
-            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Ghi chú cho đơn (tuỳ chọn)</span>
+            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Phương thức thanh toán</span>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => setGroupPaymentMethod('COD')}
+                className={`flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl border text-xs font-bold transition-all cursor-pointer active:scale-95 ${
+                  groupPaymentMethod === 'COD'
+                    ? 'border-emerald-500 bg-emerald-50 text-emerald-700 shadow-sm'
+                    : 'border-slate-200 text-slate-500 hover:border-slate-300 bg-white'
+                }`}
+              >
+                <Wallet size={14} /> Tiền mặt (COD)
+              </button>
+            </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Ghi chú đơn hàng</span>
             <textarea
               value={checkoutNote}
               onChange={(e) => setCheckoutNote(e.target.value)}
@@ -2720,7 +2740,7 @@ export default function RestaurantDetail() {
 
                 {isHost && groupOrder.status !== 'ORDERED' && groupOrder.status !== 'CANCELLED' && (
                   <button
-                    onClick={handleCancelGroup}
+                    onClick={() => { groupDetailModal.close(); cancelGroupModal.open(); }}
                     disabled={groupBusy}
                     className="w-full text-center text-[11px] font-semibold text-rose-500 hover:underline pt-0.5"
                   >
@@ -2731,6 +2751,50 @@ export default function RestaurantDetail() {
             </div>
           );
         })()}
+      </Modal>
+
+      {/* ─── MODAL XÁC NHẬN HỦY ĐẶT ĐƠN NHÓM ─────────────────────────────────── */}
+      <Modal
+        isOpen={cancelGroupModal.isOpen}
+        onClose={() => cancelGroupModal.close()}
+        title="Xác Nhận Hủy Đặt Đơn Nhóm"
+        size="sm"
+        className="[&_h2]:!text-slate-900 [&_h2]:!text-base [&_h2]:!font-bold"
+      >
+        <div className="space-y-4 -mt-3 text-center">
+          <div className="flex justify-center pt-1">
+            <div className="relative w-16 h-16">
+              <span className="absolute inset-0 rounded-full bg-red-200/60 animate-halo" style={{ transformBox: 'fill-box', transformOrigin: 'center' }} />
+              <div className="relative w-16 h-16 rounded-full bg-gradient-to-br from-red-50 to-rose-100 border border-red-100 flex items-center justify-center text-red-500 shadow-sm">
+                <Ban size={26} />
+              </div>
+            </div>
+          </div>
+
+          <p className="text-xs text-slate-500 leading-relaxed px-2">
+            Bạn chắc chắn muốn hủy phiên đặt đơn nhóm này? 
+          </p>
+
+          <div className="flex gap-3 pt-1 justify-center">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => cancelGroupModal.close()}
+              disabled={groupBusy}
+              className="w-full !rounded-xl !text-xs !font-bold !py-2.5"
+            >
+              Giữ lại phiên
+            </Button>
+            <Button
+              type="button"
+              onClick={handleCancelGroup}
+              disabled={groupBusy}
+              className="w-full !rounded-xl !text-xs !font-bold !py-2.5 !bg-red-600 text-white hover:!bg-red-700"
+            >
+              {groupBusy ? 'Đang hủy...' : 'Xác nhận hủy'}
+            </Button>
+          </div>
+        </div>
       </Modal>
 
       {/* ─── MODAL BẢN ĐỒ THÊM/SỬA ĐỊA CHỈ CHO PHIÊN NHÓM ─────────────────────────── */}

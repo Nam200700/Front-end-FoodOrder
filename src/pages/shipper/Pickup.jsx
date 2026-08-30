@@ -1013,7 +1013,7 @@ export default function ShipperPickup() {
 
             {/* Thanh toán chi tiết */}
             <div className="bg-slate-50 p-3 rounded-lg border border-slate-100 space-y-1.5 text-xs">
-              <div className="flex justify-between text-slate-500"><span>Tạm tính món</span><span>{formatCurrency(d.subtotalAmount)}</span></div>
+              {/*<div className="flex justify-between text-slate-500"><span>Tạm tính món</span><span>{formatCurrency(d.subtotalAmount)}</span></div>*/}
               <div className="flex justify-between text-slate-500"><span>Phí giao hàng (bạn nhận)</span><span className="text-md-tertiary font-bold">{formatCurrency(d.fee)}</span></div>
               <div className="flex justify-between text-slate-500"><span>Hình thức thanh toán</span><span className="font-bold text-slate-700 inline-flex items-center gap-1">{isCOD ? <Banknote size={12} className="text-amber-500" /> : <Wallet size={12} className="text-emerald-500" />}{payLabel}</span></div>
               <div className="flex justify-between text-sm pt-1.5 border-t border-slate-200">

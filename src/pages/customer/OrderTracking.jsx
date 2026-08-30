@@ -2,8 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useOrderStore } from '../../stores/orderStore';
 import { useChatStore } from '../../stores/chatStore';
-import { ArrowLeft, Phone, MessageSquare, ChevronDown, ChevronUp, CheckCircle, Clock, Ban, AlertCircle, Map, AlertTriangle, Store, Bike, MapPin, ChefHat, Package, PartyPopper, ReceiptText, Check, Navigation, Star, Utensils, Wallet, Truck, Banknote, Tag } from 'lucide-react';
-import { formatCurrency } from '../../utils/format';
+import { ArrowLeft, Phone, MessageSquare, ChevronDown, ChevronUp, CheckCircle, Clock, Ban, AlertCircle, Map, AlertTriangle, Store, Bike, MapPin, ChefHat, Package, PartyPopper, ReceiptText, Check, Navigation, Star, Utensils, Wallet, Truck, Banknote, Tag, CreditCard } from 'lucide-react';import { formatCurrency } from '../../utils/format';
 import Button from '../../components/common/Button';
 import Card from '../../components/common/Card';
 import Spinner from '../../components/common/Spinner';
@@ -790,6 +789,25 @@ export default function OrderTracking() {
                 </span>
                 <p className="text-sm text-md-on-surface mt-0.5 font-semibold leading-relaxed">
                   {displayOrder.address}
+                </p>
+              </div>
+            </div>
+
+            {/* Phương thức thanh toán */}
+            <div className="flex items-start gap-3 pt-4 border-t border-slate-100">
+              <span className={`shrink-0 w-8 h-8 rounded-xl flex items-center justify-center ${
+                displayOrder.paymentMethod === 'VNPAY' ? 'bg-indigo-50 text-indigo-600' : 'bg-emerald-50 text-emerald-600'
+              }`}>
+                {displayOrder.paymentMethod === 'VNPAY' ? <CreditCard size={16} /> : <Wallet size={16} />}
+              </span>
+              <div className="min-w-0">
+                <span className={`text-[10px] md:text-xs font-extrabold uppercase tracking-wider ${
+                  displayOrder.paymentMethod === 'VNPAY' ? 'text-indigo-600' : 'text-emerald-600'
+                }`}>
+                  Phương thức thanh toán
+                </span>
+                <p className="text-sm text-md-on-surface mt-0.5 font-semibold leading-relaxed">
+                  {displayOrder.paymentMethod === 'VNPAY' ? 'Chuyển khoản VNPAY' : 'Thanh toán khi nhận hàng (COD)'}
                 </p>
               </div>
             </div>

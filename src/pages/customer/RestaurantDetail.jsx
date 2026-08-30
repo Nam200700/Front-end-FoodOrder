@@ -787,6 +787,7 @@ export default function RestaurantDetail() {
   const noteModal = useModalState(null);
   const [noteDraft, setNoteDraft] = useState('');
   const [savingNote, setSavingNote] = useState(false);
+  const [noteReturnToGroupDetail, setNoteReturnToGroupDetail] = useState(false); 
 
   const isGroupMode = !!groupOrder && groupOrder.status !== 'ORDERED' && groupOrder.status !== 'CANCELLED';
   const myMember = groupOrder?.members?.find((m) => m.userId === user?.id);
@@ -1048,6 +1049,10 @@ export default function RestaurantDetail() {
 
   //đặt hàng
   const doCheckoutGroup = async (force = false) => {
+    if (!groupPaymentMethod) {
+      toast.warn('Vui lòng chọn phương thức thanh toán!');
+      return;
+    }
     setGroupBusy(true);
     try {
       const res = await apiClient.post(`/group-orders/${groupOrder.groupOrderId}/checkout`, {
@@ -1102,6 +1107,11 @@ export default function RestaurantDetail() {
     if (!restaurant) return;
     if (!defaultAddress) {
       toast.warn('Bạn chưa có địa chỉ giao hàng nào, vui lòng thêm địa chỉ trước khi tạo phiên nhóm.');
+      return;
+    }
+
+    if (!groupDeadline) {
+      toast.warn('Vui lòng chọn hạn chót chọn món trước khi tạo phiên nhóm!');
       return;
     }
     setCreatingGroup(true);
@@ -1164,6 +1174,15 @@ export default function RestaurantDetail() {
     noteModal.open(groupItem);
   };
 
+  // Đóng modal ghi chú — nếu mở từ modal Chi tiết đơn nhóm (mobile) thì mở lại modal đó
+  const closeNoteModal = () => {
+    noteModal.close();
+    if (noteReturnToGroupDetail) {
+      setNoteReturnToGroupDetail(false);
+      groupDetailModal.open();
+    }
+  };
+
   // ghi chú món
   const saveItemNote = async () => {
     const target = noteModal.data;
@@ -1176,7 +1195,7 @@ export default function RestaurantDetail() {
       });
       setGroupOrder(res.data?.data || null);
       toast.success('Đã cập nhật ghi chú cho món ăn.');
-      noteModal.close();
+      closeNoteModal(); 
     } catch (err) {
       toast.error(err.response?.data?.message || 'Không thể cập nhật ghi chú.');
     } finally {
@@ -2262,7 +2281,7 @@ export default function RestaurantDetail() {
       {/* ─── MODAL GHI CHÚ CHO TỪNG MÓN TRONG PHIÊN NHÓM ───────────────────────── */}
       <Modal
         isOpen={noteModal.isOpen}
-        onClose={() => noteModal.close()}
+        onClose={closeNoteModal} 
         title="Ghi Chú Món Ăn"
         size="sm"
         className="[&_h2]:!text-slate-900 [&_h2]:!text-base [&_h2]:md:!text-lg [&_h2]:!font-bold"
@@ -2670,7 +2689,14 @@ export default function RestaurantDetail() {
                                   <span className="font-semibold text-slate-600">{formatCurrency(it.lineTotal)}</span>
                                   {(isCurrentUser || isHost) && isOpen && (
                                     <>
-                                      <button onClick={() => { openNoteEditor(it); }} className="p-0.5 text-slate-400 hover:text-orange-600">
+                                      <button
+                                        onClick={() => {
+                                          setNoteReturnToGroupDetail(true);
+                                          groupDetailModal.close();
+                                          openNoteEditor(it);
+                                        }}
+                                        className="p-0.5 text-slate-400 hover:text-orange-600"
+                                      >
                                         <Pencil size={11} />
                                       </button>
                                       <button onClick={() => handleRemoveGroupItem(it.groupOrderItemId)} className="p-0.5 text-slate-400 hover:text-red-600">

@@ -7,7 +7,7 @@ import {
   ShoppingBag, CheckSquare, Square,
   User, Truck, Edit2, Plus, Tag,
   Minus, Wallet, BadgePercent, Bike, ShieldCheck, Receipt, Clock, ChevronRight, StickyNote, Check, Sparkles,
-  Search, Heart, Package, Ticket, Gift, AlertCircle, Trash2, AlertTriangle
+  Search, Heart, Package, Ticket, Gift, AlertCircle, Trash2, AlertTriangle, CreditCard
 } from 'lucide-react';
 import { formatCurrency } from '../../utils/format';
 import Button from '../../components/common/Button';
@@ -61,7 +61,7 @@ export default function Cart() {
   const [bulkOrderPayload, setBulkOrderPayload] = useState(null);
 
   const [isUpdatingLocation, setIsUpdatingLocation] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState('COD');
+  const [paymentMethod, setPaymentMethod] = useState('');
 
   const confirmOrderModal = useModalState(); // Modal đặt hàng
   const deleteCartModal = useModalState({ restaurantId: null, restaurantName: '' }); // Modal xóa giỏ hàng
@@ -154,6 +154,11 @@ export default function Cart() {
     if (!address.trim() || !deliveryLat || !deliveryLng) { 
       toast.warning('Vui lòng chọn địa chỉ giao hàng!'); 
       return; 
+    }
+
+    if (!paymentMethod.trim()) {
+      toast.warning('Vui lòng chọn phương thức thanh toán!'); 
+      return;
     }
 
     const currentSelectedCarts = carts.filter(c => selectedRestaurantIds.includes(Number(c.restaurantId)));
@@ -717,6 +722,7 @@ export default function Cart() {
             const shippingFee = shipInfo.shippingFee;
             const distance = shipInfo.distanceKm || 0;
             const duration = shipInfo.durationMinutes;
+            const hasAddress = Boolean(address && deliveryLat && deliveryLng);
             
             const cartItemCount = cart.items.reduce((a, i) => a + i.quantity, 0);
             const isChecked = selectedRestaurantIds.includes(Number(cart.restaurantId));
@@ -990,14 +996,22 @@ export default function Cart() {
                         <span className="text-xs text-slate-500 flex items-center gap-1.5">
                           <MapPin size={13} className="text-slate-400" /> Khoảng cách & thời gian:
                         </span>
-                        <span className="font-bold text-xs text-slate-700">
-                          {isCalculatingShipping ? 'Đang tính...' : `${distance.toFixed(1)} km (~${Math.round(duration)} phút)`}
+                         <span className={`font-bold text-xs ${hasAddress ? 'text-slate-700' : 'text-amber-600'}`}>
+                          {!hasAddress
+                            ? 'Chưa có địa chỉ giao hàng'
+                            : isCalculatingShipping
+                            ? 'Đang tính...'
+                            : `${distance.toFixed(1)} km (~${Math.round(duration)} phút)`}
                         </span>
                       </div>
                       <div className="flex justify-between items-center">
                         <span className="text-xs text-slate-500 flex items-center gap-1.5"><Bike size={13} className="text-slate-400" /> Phí giao hàng:</span>
-                        <span className="font-bold text-xs text-slate-700">
-                          {isCalculatingShipping || isUpdatingLocation ? 'Đang tính...' : formatCurrency(shippingFee)}
+                        <span className={`font-bold text-xs ${hasAddress ? 'text-slate-700' : 'text-amber-600'}`}>
+                          {!hasAddress
+                            ? 'Chưa có địa chỉ giao hàng'
+                            : isCalculatingShipping || isUpdatingLocation
+                            ? 'Đang tính...'
+                            : formatCurrency(shippingFee)}
                         </span>
                       </div>
                       {cartDiscount > 0 && (
@@ -1101,6 +1115,37 @@ export default function Cart() {
             <div className="flex items-center justify-between text-xs text-slate-600">
               <span className="flex items-center gap-1.5"><Store size={13} className="text-slate-400" /> Số quán đã chọn:</span>
               <span className="font-extrabold text-slate-800">{selectedRestaurantIds.length} / {carts.length}</span>
+            </div>
+
+            {/* Chọn phương thức thanh toán */}
+            <div className="space-y-1.5 pt-1 border-t border-slate-100">
+              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5 pt-1">
+                <Wallet size={12} className="text-[#ff6b35]" /> Phương thức thanh toán
+              </span>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setPaymentMethod('COD')}
+                  className={`flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl border text-xs font-bold transition-all cursor-pointer active:scale-95 ${
+                    paymentMethod === 'COD'
+                      ? 'border-[#ff6b35] bg-orange-50 text-[#ff6b35] shadow-sm'
+                      : 'border-slate-200 text-slate-500 hover:border-slate-300 bg-white'
+                  }`}
+                >
+                  <Wallet size={14} /> Tiền mặt (COD)
+                </button>
+                {/* <button
+                  type="button"
+                  onClick={() => setPaymentMethod('VNPAY')}
+                  className={`flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl border text-xs font-bold transition-all cursor-pointer active:scale-95 ${
+                    paymentMethod === 'VNPAY'
+                      ? 'border-[#ff6b35] bg-orange-50 text-[#ff6b35] shadow-sm'
+                      : 'border-slate-200 text-slate-500 hover:border-slate-300 bg-white'
+                  }`}
+                >
+                  <CreditCard size={14} /> VNPAY
+                </button> */}
+              </div>
             </div>
 
             <div className="flex items-center justify-between text-sm text-slate-600 pt-2 border-t border-slate-100 mt-1">

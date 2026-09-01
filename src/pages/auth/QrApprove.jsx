@@ -1,8 +1,10 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useSearchParams, useNavigate, Link } from 'react-router-dom';
-import { ShieldCheck, Check, X, AlertTriangle, Loader2, MonitorSmartphone, LogIn, CheckCircle2, Home, Smartphone } from 'lucide-react';
+import { ShieldCheck, Check, X, AlertTriangle, Loader2, MonitorSmartphone, LogIn, CheckCircle2, Home, Smartphone, ScanLine, Camera } from 'lucide-react';
 import apiClient from '../../services/api';
 import { useAuthStore } from '../../stores/authStore';
+import QrScannerModal from '../../components/common/QrScannerModal';
+import { extractSid } from '../../utils/qrLogin';
 
 /**
  * Trang XÁC NHẬN đăng nhập QR — mở trên ĐIỆN THOẠI (đã đăng nhập) khi quét mã.
@@ -16,13 +18,28 @@ export default function QrApprove() {
 
   const [state, setState] = useState('confirm'); // confirm | working | approved | rejected | error
   const [errorMsg, setErrorMsg] = useState('');
+  const [scannerOpen, setScannerOpen] = useState(false);
+  const [scanError, setScanError] = useState('');
 
-  // Đánh dấu "đã quét" để máy tính kia hiện trạng thái (best-effort)
+  // Đánh dấu "đã quét" để máy tính kia hiện trạng thái (best-effort).
+  // Không có sid = người dùng mở trang trực tiếp -> phần render sẽ mời quét mã, không báo lỗi.
   useEffect(() => {
-    if (!sid) { setState('error'); setErrorMsg('Thiếu mã QR. Vui lòng quét lại từ màn hình đăng nhập.'); return; }
-    if (!isLoggedIn) return;
+    if (!sid || !isLoggedIn) return;
     apiClient.post('/auth/qr/scanned', { sid }).catch(() => {});
   }, [sid, isLoggedIn]);
+
+  // Quét được mã -> tách sid rồi điều hướng sang chính trang này kèm sid: luồng xác nhận
+  // sẵn có sẽ tự chạy (post /qr/scanned, hiện nút Đồng ý/Từ chối).
+  const handleScanResult = (text) => {
+    setScannerOpen(false);
+    const scannedSid = extractSid(text);
+    if (!scannedSid) {
+      setScanError('Mã QR không hợp lệ. Hãy quét đúng mã trên màn hình đăng nhập.');
+      return;
+    }
+    setScanError('');
+    navigate(`/qr/approve?sid=${scannedSid}`);
+  };
 
   const doApprove = async () => {
     setState('working');
@@ -67,6 +84,36 @@ export default function QrApprove() {
             <Link to="/login" className="mt-5 inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-[#FF6B35] hover:bg-[#ff7947] text-white text-xs font-extrabold shadow-sm transition-all active:scale-95">
               <LogIn size={14} /> Đăng nhập ngay
             </Link>
+          </>
+        ) : !sid ? (
+          <>
+            {/* Đã đăng nhập nhưng vào thẳng (không qua quét) -> mời quét mã bằng camera */}
+            <div className="relative w-20 h-20 mx-auto mb-4">
+              <span className="absolute inset-0 rounded-3xl bg-[#FF6B35]/25 animate-soft-halo" />
+              <div className="absolute inset-2 rounded-2xl bg-gradient-to-br from-[#FF6B35] to-amber-400 text-white flex items-center justify-center shadow-sm animate-float">
+                <ScanLine size={30} />
+              </div>
+            </div>
+            <h1 className="text-lg font-extrabold text-slate-800">Quét mã để đăng nhập thiết bị khác</h1>
+            <p className="text-xs text-slate-500 mt-2 leading-relaxed">
+              Mở màn hình đăng nhập trên máy tính, rồi bấm nút bên dưới để quét mã QR hiển thị ở đó.
+            </p>
+
+            {scanError && (
+              <div className="mt-4 flex items-start gap-2 text-[11px] text-rose-600 bg-rose-50 border border-rose-100 rounded-xl px-3 py-2 text-left">
+                <AlertTriangle size={14} className="shrink-0 mt-0.5" /> <span>{scanError}</span>
+              </div>
+            )}
+
+            <button
+              onClick={() => { setScanError(''); setScannerOpen(true); }}
+              className="mt-5 w-full inline-flex items-center justify-center gap-2 px-5 py-3 rounded-full bg-[#FF6B35] hover:bg-[#ff7947] text-white text-xs font-extrabold shadow-sm transition-all active:scale-95 cursor-pointer"
+            >
+              <Camera size={15} /> Quét mã QR
+            </button>
+            <button onClick={() => navigate('/')} className="mt-2 inline-flex items-center gap-1.5 px-4 py-2 text-slate-500 text-xs font-bold hover:text-slate-700 transition-colors cursor-pointer">
+              <Home size={13} /> Về trang chủ
+            </button>
           </>
         ) : state === 'approved' ? (
           <>
@@ -190,6 +237,10 @@ export default function QrApprove() {
           </>
         )}
       </div>
+
+      {scannerOpen && (
+        <QrScannerModal onResult={handleScanResult} onClose={() => setScannerOpen(false)} />
+      )}
     </div>
   );
 }

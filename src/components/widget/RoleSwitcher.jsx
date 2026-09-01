@@ -1,13 +1,15 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useAuthStore } from '../../stores/authStore';
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
   Shield, User, Store, Bike, ChevronLeft,
   Home, ClipboardList, Map, Settings, ArrowRight,
   Search, ShoppingBag, Heart, MessageSquare, BookOpen, BarChart3, Star, Wallet, Users, AlertTriangle,
-  Eye, EyeOff, LogOut, ArrowUp, RefreshCw, LifeBuoy
+  Eye, EyeOff, LogOut, ArrowUp, RefreshCw, LifeBuoy, ScanLine
 } from 'lucide-react';
 import { ROLE_SCENE } from '../auth/RoleScenes';
+import QrScannerModal from '../common/QrScannerModal';
+import { extractSid } from '../../utils/qrLogin';
 
 export default function RoleSwitcher() {
   const { role, isLoggedIn } = useAuthStore();
@@ -15,6 +17,7 @@ export default function RoleSwitcher() {
   const navigate = useNavigate();
   const location = useLocation();
   const [expanded, setExpanded] = useState(false);
+  const [qrScanOpen, setQrScanOpen] = useState(false);
   const [isHidden, setIsHidden] = useState(() => {
     return sessionStorage.getItem('demoWidgetHidden') === 'true';
   });
@@ -253,6 +256,18 @@ export default function RoleSwitcher() {
             })}
           </div>
 
+          {/* Quét mã QR để duyệt đăng nhập trên thiết bị khác — mở camera trong trình duyệt.
+              Đặt riêng ở đây thay vì nhét vào hàng tools (grid-cols-4) để không vỡ lưới. */}
+          <button
+            type="button"
+            onClick={() => { setExpanded(false); setQrScanOpen(true); }}
+            title="Quét mã QR để đăng nhập thiết bị khác"
+            className="group flex items-center justify-center gap-2 w-full py-2.5 rounded-xl border border-slate-100 bg-white text-slate-600 transition-all cursor-pointer hover:-translate-y-0.5 hover:shadow-sm hover:border-slate-200 hover:text-slate-800"
+          >
+            <span className={`w-7 h-7 rounded-lg flex items-center justify-center transition-transform group-hover:scale-110 ${currentRoleObj.chip}`}><ScanLine size={14} /></span>
+            <span className="text-[11px] font-extrabold leading-none">Quét mã QR đăng nhập</span>
+          </button>
+
           {/* Quick Navigation Links */}
           {quickLinks.length > 0 && (
             <div className="bg-slate-50/60 border border-slate-100 rounded-2xl p-3.5 space-y-2.5 flex-1 min-h-0 overflow-y-auto scrollbar-thin">
@@ -356,6 +371,18 @@ export default function RoleSwitcher() {
       </div>
 
       </div>
+
+      {qrScanOpen && (
+        <QrScannerModal
+          onResult={(text) => {
+            setQrScanOpen(false);
+            const sid = extractSid(text);
+            // Có sid -> sang trang duyệt kèm sid: luồng Đồng ý/Từ chối sẵn có tự chạy tiếp.
+            if (sid) navigate(`/qr/approve?sid=${sid}`);
+          }}
+          onClose={() => setQrScanOpen(false)}
+        />
+      )}
     </>
   );
 }

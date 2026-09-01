@@ -1867,12 +1867,17 @@ export default function RestaurantDetail() {
                   ref={(el) => (menuSectionsRef.current[sec.id] = el)}
                   className="scroll-mt-28 sm:scroll-mt-36"
                 >
-                  <h3 className="text-sm sm:text-base font-extrabold text-md-on-surface border-b border-md-outline-variant/35 pb-3 mb-6 uppercase tracking-wider flex items-center justify-between">
-                    <span>{sec.categoryName}</span>
-                    <span className="text-xs text-md-on-surface-variant font-medium normal-case">
-                      Có {sec.items.length} món
+                  <div className="flex items-center gap-3 border-b border-md-outline-variant/35 pb-3.5 mb-6">
+                    <span className="w-9 h-9 rounded-xl bg-gradient-to-br from-md-primary to-amber-400 text-white flex items-center justify-center shrink-0 shadow-sm shadow-md-primary/30">
+                      <Utensils size={16} />
                     </span>
-                  </h3>
+                    <h3 className="flex-1 min-w-0 text-sm sm:text-base font-extrabold text-md-on-surface uppercase tracking-wider truncate">
+                      {sec.categoryName}
+                    </h3>
+                    <span className="shrink-0 inline-flex items-center gap-1 text-[11px] font-bold text-md-primary bg-md-primary/10 px-2.5 py-1 rounded-full">
+                      {sec.items.length} món
+                    </span>
+                  </div>
                   
                   <div className="space-y-4 sm:space-y-5">
                     {sec.items.map((item, itemIdx) => {

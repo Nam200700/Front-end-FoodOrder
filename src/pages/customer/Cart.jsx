@@ -61,7 +61,10 @@ export default function Cart() {
   const [bulkOrderPayload, setBulkOrderPayload] = useState(null);
 
   const [isUpdatingLocation, setIsUpdatingLocation] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState('');
+  // COD là phương thức duy nhất hiện có (VNPAY còn comment), nên chọn sẵn COD để không
+  // ai bị chặn ở bước "chưa chọn phương thức" — đặc biệt trên mobile nơi trước đây không
+  // có nút chọn nào cả.
+  const [paymentMethod, setPaymentMethod] = useState('COD');
 
   const confirmOrderModal = useModalState(); // Modal đặt hàng
   const deleteCartModal = useModalState({ restaurantId: null, restaurantName: '' }); // Modal xóa giỏ hàng
@@ -1032,6 +1035,38 @@ export default function Cart() {
               </Card>
             );
           })}
+
+          {/* PHƯƠNG THỨC THANH TOÁN — bản MOBILE luôn hiển thị (desktop dùng khối ở cột phải).
+              Đặt ngay dưới danh sách giỏ để người dùng thấy & chọn được, không phải mở modal. */}
+          <Card variant="flat" className="lg:hidden p-4 !border-slate-200 !rounded-2xl space-y-2">
+            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+              <Wallet size={13} className="text-[#ff6b35]" /> Phương thức thanh toán
+            </span>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => setPaymentMethod('COD')}
+                className={`flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl border text-xs font-bold transition-all cursor-pointer active:scale-95 ${
+                  paymentMethod === 'COD'
+                    ? 'border-[#ff6b35] bg-orange-50 text-[#ff6b35] shadow-sm'
+                    : 'border-slate-200 text-slate-500 hover:border-slate-300 bg-white'
+                }`}
+              >
+                <Wallet size={14} /> Tiền mặt (COD)
+              </button>
+              {/* <button
+                type="button"
+                onClick={() => setPaymentMethod('VNPAY')}
+                className={`flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl border text-xs font-bold transition-all cursor-pointer active:scale-95 ${
+                  paymentMethod === 'VNPAY'
+                    ? 'border-[#ff6b35] bg-orange-50 text-[#ff6b35] shadow-sm'
+                    : 'border-slate-200 text-slate-500 hover:border-slate-300 bg-white'
+                }`}
+              >
+                <CreditCard size={14} /> VNPAY
+              </button> */}
+            </div>
+          </Card>
         </div>
 
         {/* CỘT PHẢI: THÔNG TIN GIAO HÀNG & TỔNG QUAN ĐƠN HÀNG — hiển thị trên desktop. */}
